@@ -169,11 +169,40 @@
 - All endpoints implement proper error handling with domain errors
 - **Status**: Phase 2 (Entity Management) complete! Ready for Phase 3 (Search & AI Features)
 
+### Session 10: Phase 3 - RAG & AI Features (2025-11-18)
+- **TASK-012 Completed**: Implement chunking and RAG pipeline
+- **TASK-013 Completed**: Implement AI draft generation from text
+- Created ChunkingService with sliding window algorithm (512 tokens, 20% overlap)
+- Character-based tokenization approximation (~4 chars/token)
+- Implemented RagService for contextual Q&A using GPT-4.5 via AI Gateway
+- Scope filtering: GLOBAL, PERSON, DEPARTMENT, WORK
+- Similarity threshold (0.5) for relevance filtering
+- Created WorkNoteService to coordinate D1, chunking, and Vectorize operations
+- Automatic chunk generation on work note create/update
+- Automatic chunk deletion on work note delete
+- Async embedding to avoid blocking CRUD operations
+- Vectorize Integration: batch chunk embedding with metadata
+- Chunk ID format: workId#chunkN (e.g., WORK-abc123#chunk0)
+- POST /rag/query endpoint for contextual Q&A
+- Implemented AIDraftService for GPT-4.5 draft generation
+- POST /ai/work-notes/draft-from-text: generates structured drafts from unstructured text
+- POST /ai/work-notes/{workId}/todo-suggestions: generates todo items for work notes
+- Korean workplace-optimized prompts with temperature 0.7
+- JSON-only response format for reliable parsing
+- Rate limit handling (429 errors) with Korean error messages
+- Updated work note routes to use WorkNoteService instead of repository directly
+- All routes properly authenticated and error-handled
+- **Status**: Phase 3 (Search & AI Features) 100% complete! All 5 tasks (TASK-009 through TASK-013) finished.
+
 ## Known Issues
 _None yet_
 
 ## Technical Debt
-_None yet_
+- Consider implementing proper tokenizer library (e.g., tiktoken) instead of character-based approximation for more accurate chunking in production
+- Vectorize deleteWorkNoteChunks uses a workaround (query + delete) instead of native prefix deletion - monitor performance with large datasets
 
 ## Lessons Learned
-_To be updated as development progresses_
+- Async embedding in WorkNoteService prevents blocking CRUD operations while ensuring eventual consistency
+- Character-based tokenization (~4 chars/token) works well as approximation for Korean and English text
+- RRF algorithm (k=60) effectively merges FTS and vector search results
+- Korean workplace-specific prompts with JSON-only mode significantly improve AI response quality and reliability

@@ -4,33 +4,29 @@
 current_task: null
 
 notes: |
-  TASK-011 completed successfully.
+  TASK-012 and TASK-013 completed successfully!
 
-  Implemented hybrid search with RRF (Reciprocal Rank Fusion) ranking:
-  - Created HybridSearchService combining FTS and Vectorize results
-  - Parallel execution of lexical (FTS) and semantic (Vectorize) searches
-  - RRF algorithm merges results with k=60 constant (based on research)
-  - Source attribution: LEXICAL, SEMANTIC, or HYBRID
-  - Updated POST /search/work-notes to use hybrid search
+  **TASK-012: RAG Chunking and Pipeline**
+  - Implemented ChunkingService with 512 token chunks, 20% overlap
+  - Created RagService for contextual Q&A with GPT-4.5
+  - Scope filtering: GLOBAL, PERSON, DEPARTMENT, WORK
+  - Automatic chunking and embedding on work note create/update
+  - WorkNoteService coordinates D1, chunking, and Vectorize operations
+  - POST /rag/query endpoint with similarity threshold and source attribution
 
-  RRF Algorithm:
-  - Formula: score = sum(1 / (k + rank)) for each result set
-  - k=60 is the standard parameter from IR research
-  - Results appear in both FTS and Vectorize get highest combined scores
-  - Final results sorted by combined RRF score
+  **TASK-013: AI Draft Generation**
+  - Implemented AIDraftService for GPT-4.5 draft generation
+  - POST /ai/work-notes/draft-from-text - generates structured drafts from text
+  - POST /ai/work-notes/{workId}/todo-suggestions - generates todo items
+  - Korean workplace-optimized prompts
+  - Rate limit handling (429 errors)
+  - JSON response format for reliable parsing
 
-  Key features:
-  - HybridSearchService.search() - executes both searches in parallel
-  - Automatic result merging with RRF ranking
-  - Source attribution shows which engine(s) found each result
-  - Graceful degradation: if one search fails, other continues
-  - Fetch limit optimization: 2x limit for each engine, merge to final limit
+  **Phase 3 (Search & AI) Complete!**
+  - TASK-009: FTS lexical search ✓
+  - TASK-010: Vectorize embedding service ✓
+  - TASK-011: Hybrid search with RRF ✓
+  - TASK-012: RAG chunking and query pipeline ✓
+  - TASK-013: AI draft generation ✓
 
-  Integration:
-  - POST /search/work-notes returns hybrid results with source attribution
-  - searchType field now returns 'HYBRID' instead of 'LEXICAL'
-  - Filters apply to both FTS and Vectorize searches
-  - Category filter applied to Vectorize metadata
-
-  Phase 3 (Search & AI) - TASK-009, TASK-010, and TASK-011 complete!
-  Ready for TASK-012: RAG chunking and pipeline.
+  Ready for Phase 4 (PDF Processing) or Phase 5 (Testing & Polish).

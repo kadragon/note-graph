@@ -18,6 +18,8 @@ import departments from './routes/departments';
 import workNotes from './routes/work-notes';
 import todos from './routes/todos';
 import search from './routes/search';
+import rag from './routes/rag';
+import aiDraft from './routes/ai-draft';
 
 // Re-export Env type for compatibility
 export type { Env };
@@ -65,6 +67,8 @@ app.route('/departments', departments);
 app.route('/work-notes', workNotes);
 app.route('/todos', todos);
 app.route('/search', search);
+app.route('/rag', rag);
+app.route('/ai', aiDraft);
 
 // 404 handler
 app.notFound((c) => {
