@@ -72,14 +72,17 @@ export class HybridSearchService {
     limit?: number
   ): Promise<SearchResultItem[]> {
     try {
-      // Build Vectorize filter from search filters
+      // Build Vectorize filter from search filters (category only for now)
       const vectorFilter = this.buildVectorizeFilter(filters);
 
       // Search Vectorize
       const results = await this.vectorizeService.search(query, limit ? limit * 2 : 20, vectorFilter);
 
-      // Fetch work notes from D1 for matched IDs
-      const workNotes = await this.fetchWorkNotesByIds(results.map((r) => r.id));
+      // Fetch work notes from D1 for matched IDs with person/dept filters applied
+      const workNotes = await this.fetchWorkNotesByIds(
+        results.map((r) => r.id),
+        filters
+      );
 
       // Combine with scores and source
       const searchResults: SearchResultItem[] = [];
@@ -180,6 +183,8 @@ export class HybridSearchService {
 
   /**
    * Build Vectorize metadata filter from search filters
+   * Note: Only category is used here. Person and department filters are applied
+   * via D1 query in fetchWorkNotesByIds() for accurate filtering.
    */
   private buildVectorizeFilter(filters?: SearchFilters): Record<string, string> | undefined {
     if (!filters) return undefined;
@@ -190,30 +195,54 @@ export class HybridSearchService {
       vectorFilter.category = filters.category;
     }
 
-    // Note: personId and deptName filters are applied via D1 after fetching
-    // because Vectorize metadata has limitations on complex filtering
-
     return Object.keys(vectorFilter).length > 0 ? vectorFilter : undefined;
   }
 
   /**
-   * Fetch work notes by IDs from D1
+   * Fetch work notes by IDs from D1 with optional filters
+   *
+   * @param workIds - Work note IDs to fetch
+   * @param filters - Optional filters to apply (personId, deptName)
+   * @returns Map of work note ID to work note
    */
-  private async fetchWorkNotesByIds(workIds: string[]): Promise<Map<string, WorkNote>> {
+  private async fetchWorkNotesByIds(
+    workIds: string[],
+    filters?: SearchFilters
+  ): Promise<Map<string, WorkNote>> {
     if (workIds.length === 0) {
       return new Map();
     }
 
     // Build SQL with parameter placeholders
     const placeholders = workIds.map(() => '?').join(',');
-    const sql = `
-      SELECT work_id as workId, title, content_raw as contentRaw,
-             category, created_at as createdAt, updated_at as updatedAt
-      FROM work_notes
-      WHERE work_id IN (${placeholders})
+    let sql = `
+      SELECT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
+             wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt
+      FROM work_notes wn
     `;
 
-    const result = await this.db.prepare(sql).bind(...workIds).all<WorkNote>();
+    const conditions: string[] = [`wn.work_id IN (${placeholders})`];
+    const params: unknown[] = [...workIds];
+
+    // Apply person and department filters (same logic as FTS search)
+    if (filters?.personId || filters?.deptName) {
+      sql += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
+      sql += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
+
+      if (filters?.personId) {
+        conditions.push('wnp.person_id = ?');
+        params.push(filters.personId);
+      }
+
+      if (filters?.deptName) {
+        conditions.push('p.current_dept = ?');
+        params.push(filters.deptName);
+      }
+    }
+
+    sql += ` WHERE ${conditions.join(' AND ')}`;
+
+    const result = await this.db.prepare(sql).bind(...params).all<WorkNote>();
 
     const workNotesMap = new Map<string, WorkNote>();
     for (const workNote of result.results || []) {

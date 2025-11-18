@@ -21,18 +21,18 @@ export class FtsSearchService {
     const limit = filters?.limit ?? 10;
 
     // Build FTS query
-    // Trigram tokenizer automatically handles Korean partial matching
+    // unicode61 tokenizer handles Korean text well
     const ftsQuery = this.buildFtsQuery(query);
 
     // Build SQL query with filters
     let sql = `
       SELECT
-        wn.work_id,
+        wn.work_id as workId,
         wn.title,
-        wn.content_raw,
+        wn.content_raw as contentRaw,
         wn.category,
-        wn.created_at,
-        wn.updated_at,
+        wn.created_at as createdAt,
+        wn.updated_at as updatedAt,
         fts.rank as fts_rank
       FROM notes_fts fts
       INNER JOIN work_notes wn ON wn.rowid = fts.rowid
@@ -57,21 +57,21 @@ export class FtsSearchService {
       params.push(filters.to);
     }
 
-    // Person filter requires join
-    if (filters?.personId) {
+    // Person and department filters
+    // If both are specified, find work notes for that person who is in that department
+    if (filters?.personId || filters?.deptName) {
       sql += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
-      conditions.push('wnp.person_id = ?');
-      params.push(filters.personId);
-    }
+      sql += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
 
-    // Department filter requires join
-    if (filters?.deptName) {
-      sql += `
-        INNER JOIN work_note_person wnp2 ON wn.work_id = wnp2.work_id
-        INNER JOIN persons p ON wnp2.person_id = p.person_id
-      `;
-      conditions.push('p.current_dept = ?');
-      params.push(filters.deptName);
+      if (filters?.personId) {
+        conditions.push('wnp.person_id = ?');
+        params.push(filters.personId);
+      }
+
+      if (filters?.deptName) {
+        conditions.push('p.current_dept = ?');
+        params.push(filters.deptName);
+      }
     }
 
     // Add WHERE clause
@@ -110,7 +110,7 @@ export class FtsSearchService {
 
   /**
    * Build FTS query string from user input
-   * Uses trigram tokenizer which automatically handles Korean partial matching
+   * Uses unicode61 tokenizer for Korean text support
    *
    * @param query - User search query
    * @returns FTS query string
@@ -119,8 +119,8 @@ export class FtsSearchService {
     // Clean query
     const cleaned = query.trim();
 
-    // For trigram tokenizer, don't use quotes - let trigram do partial matching
-    // Trigram breaks text into 3-character sequences, enabling substring matching
+    // For unicode61 tokenizer, simple term matching works well
+    // For multi-word queries, FTS5 will match documents containing any of the terms
     return cleaned;
   }
 

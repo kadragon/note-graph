@@ -164,6 +164,68 @@ export class VectorizeService {
   }
 
   /**
+   * Truncate string to maximum byte length while respecting UTF-8 boundaries
+   *
+   * @param str - String to truncate
+   * @param maxBytes - Maximum byte length
+   * @returns Truncated string
+   */
+  private truncateToBytes(str: string, maxBytes: number): string {
+    const encoder = new TextEncoder();
+    const encoded = encoder.encode(str);
+
+    if (encoded.length <= maxBytes) {
+      return str;
+    }
+
+    let cutIndex = maxBytes;
+    // Ensure we don't cut in the middle of a multi-byte character
+    // Check if we're in the middle of a UTF-8 multi-byte sequence (0x80-0xBF)
+    while (cutIndex > 0) {
+      const byte = encoded[cutIndex];
+      if (byte !== undefined && (byte & 0xC0) === 0x80) {
+        cutIndex--;
+      } else {
+        break;
+      }
+    }
+
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(encoded.slice(0, cutIndex));
+  }
+
+  /**
+   * Encode person IDs to fit within byte limit without corruption
+   * Only includes complete IDs that fit within the limit
+   *
+   * @param personIdsString - Comma-separated person IDs
+   * @param maxBytes - Maximum byte length (default 60)
+   * @returns Encoded person IDs string
+   */
+  private encodePersonIdsWithLimit(personIdsString: string, maxBytes: number = 60): string {
+    const personIds = personIdsString.split(',');
+    const result: string[] = [];
+    let currentLength = 0;
+
+    for (const id of personIds) {
+      // Calculate length with comma separator (except for first item)
+      const addition = result.length === 0 ? id : `,${id}`;
+      const encoder = new TextEncoder();
+      const newLength = currentLength + encoder.encode(addition).length;
+
+      if (newLength <= maxBytes) {
+        result.push(id);
+        currentLength = newLength;
+      } else {
+        // Stop adding if we exceed the limit
+        break;
+      }
+    }
+
+    return result.join(',');
+  }
+
+  /**
    * Encode metadata to fit within Vectorize limits
    * Vectorize has strict limits: string fields must be < 64 bytes
    *
@@ -179,19 +241,18 @@ export class VectorizeService {
 
     // Add optional fields if present and within limits
     if (metadata.person_ids) {
-      // Compact person IDs: truncate if too long
-      const personIds = metadata.person_ids.substring(0, 60);
-      encoded.person_ids = personIds;
+      // Encode person IDs without corruption - only include complete IDs
+      encoded.person_ids = this.encodePersonIdsWithLimit(metadata.person_ids, 60);
     }
 
     if (metadata.dept_name) {
-      // Dept name should be short, but truncate to be safe
-      encoded.dept_name = metadata.dept_name.substring(0, 60);
+      // Truncate based on byte length, not character count
+      encoded.dept_name = this.truncateToBytes(metadata.dept_name, 60);
     }
 
     if (metadata.category) {
-      // Category should be short
-      encoded.category = metadata.category.substring(0, 60);
+      // Truncate based on byte length, not character count
+      encoded.category = this.truncateToBytes(metadata.category, 60);
     }
 
     if (metadata.created_at_bucket) {
