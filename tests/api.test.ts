@@ -23,9 +23,9 @@ describe('API Integration Tests', () => {
     });
   });
 
-  describe('Root Endpoint', () => {
+  describe('API Info Endpoint', () => {
     it('should return API information', async () => {
-      const response = await SELF.fetch('http://localhost/');
+      const response = await SELF.fetch('http://localhost/api');
       expect(response.status).toBe(200);
 
       const data = await response.json<{ name: string; version: string }>();
@@ -43,10 +43,10 @@ describe('API Integration Tests', () => {
       expect(data.code).toBe('UNAUTHORIZED');
     });
 
-    it('should accept authenticated requests with test header', async () => {
+    it('should accept authenticated requests with Cloudflare Access headers', async () => {
       const response = await SELF.fetch('http://localhost/me', {
         headers: {
-          'X-Test-User-Email': 'test@example.com',
+          'Cf-Access-Authenticated-User-Email': 'test@example.com',
         },
       });
 
