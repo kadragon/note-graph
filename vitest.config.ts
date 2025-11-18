@@ -4,9 +4,8 @@ export default defineWorkersConfig({
   test: {
     poolOptions: {
       workers: {
-        wrangler: {
-          configPath: "./wrangler.toml",
-        },
+        singleWorker: true,
+        main: "./src/index.ts",
         miniflare: {
           // Miniflare options for local testing
           compatibilityDate: "2024-01-01",
