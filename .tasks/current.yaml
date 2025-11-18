@@ -4,5 +4,5 @@
 current_task: null
 
 notes: |
-  TASK-003 completed successfully.
-  Ready to start TASK-004: Set up Hono API structure and routing.
+  TASK-004 completed successfully.
+  Ready to start TASK-005: Implement Person repository and CRUD endpoints.
