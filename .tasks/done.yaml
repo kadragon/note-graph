@@ -618,6 +618,52 @@ completed_tasks:
       - Proper modal components
       - Rich text editor
       - Advanced form validation
+
+  - task_id: TASK-018
+    title: "Handle missing department when creating person"
+    spec_id: SPEC-person-1
+    completed_at: "2025-11-18T12:06:12Z"
+    outcome: |
+      Added validation to prevent D1 foreign key constraint failures when creating
+      persons with non-existent departments.
+      - PersonRepository now checks department existence and returns a
+        user-friendly validation error in Korean instead of surfacing DB errors.
+      - Updated test setup to provision minimal D1 schema for person/department
+        tests under Workers runtime.
+      - Introduced regression tests covering missing and existing department
+        scenarios for person creation.
+    test_results: |
+      ✓ npm test -- person.test.ts
+      - Verifies 400 VALIDATION_ERROR when department does not exist
+      - Verifies 201 Created when department exists
+    estimated_effort: 1h
+    actual_effort: ~1h
+
+  - task_id: TASK-019
+    title: "Person form uses searchable departments and inline add"
+    spec_id: SPEC-person-1
+    completed_at: "2025-11-18T12:10:17Z"
+    outcome: |
+      Updated person creation UI to select departments from existing records with
+      search (datalist) and added inline department creation. Prevents free-text
+      invalid departments while keeping Korean UX messaging consistent.
+    test_results: |
+      ✓ npm test -- person.test.ts (regression suite unchanged)
+    estimated_effort: 2h
+    actual_effort: ~1h
+
+  - task_id: TASK-020
+    title: "Debounced department search in person form"
+    spec_id: SPEC-person-1
+    completed_at: "2025-11-18T12:13:33Z"
+    outcome: |
+      Added backend query support for department search and wired person create
+      modal to debounce remote search while preserving inline department add.
+      Improves UX for large department lists and keeps FK-safe selection.
+    test_results: |
+      ✓ npm test -- departments.test.ts
+    estimated_effort: 2h
+    actual_effort: ~0.5h
       - Dark mode theme
       - PWA features
 

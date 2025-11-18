@@ -20,5 +20,13 @@ export const updateDepartmentSchema = z.object({
   description: z.string().max(500).optional(),
 });
 
+/**
+ * Query parameters for listing departments (search)
+ */
+export const listDepartmentsQuerySchema = z.object({
+  q: z.string().max(100).optional(),
+});
+
 export type CreateDepartmentInput = z.infer<typeof createDepartmentSchema>;
 export type UpdateDepartmentInput = z.infer<typeof updateDepartmentSchema>;
+export type ListDepartmentsQuery = z.infer<typeof listDepartmentsQuerySchema>;
