@@ -163,6 +163,10 @@ describe('PdfJobRepository', () => {
 
     it('should update the updatedAt timestamp', async () => {
       // Arrange
+      vi.useFakeTimers();
+      const initialTime = new Date('2024-01-01T00:00:00Z');
+      vi.setSystemTime(initialTime);
+
       const jobId = 'test-job-006';
       const r2Key = 'uploads/test6.pdf';
       const metadata: PdfUploadMetadata = {
@@ -172,8 +176,8 @@ describe('PdfJobRepository', () => {
       };
       const job1 = await repository.create(jobId, r2Key, metadata);
 
-      // Wait a bit to ensure timestamp difference
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Advance time by 1 second
+      vi.advanceTimersByTime(1000);
 
       // Act
       await repository.updateStatusToProcessing(jobId);
@@ -181,6 +185,9 @@ describe('PdfJobRepository', () => {
       // Assert
       const job2 = await repository.getById(jobId);
       expect(job2?.updatedAt).not.toBe(job1.updatedAt);
+
+      // Cleanup
+      vi.useRealTimers();
     });
   });
 
