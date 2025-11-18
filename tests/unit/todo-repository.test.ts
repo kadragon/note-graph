@@ -256,15 +256,31 @@ describe('TodoRepository', () => {
 
       // Assert
       expect(result.length).toBeGreaterThan(0);
-      // Todos with due dates should come before those without
+
+      // Verify due dates are in ASC order (nulls last)
       const withDueDate = result.filter((t) => t.dueDate !== null);
       const withoutDueDate = result.filter((t) => t.dueDate === null);
 
+      // Check that todos with due dates come before those without
       if (withDueDate.length > 0 && withoutDueDate.length > 0) {
         const lastWithDueIndex = result.findIndex((t) => t.dueDate === null);
         if (lastWithDueIndex > 0) {
           expect(result[lastWithDueIndex - 1].dueDate).not.toBeNull();
         }
+      }
+
+      // Verify due dates are sorted in ascending order
+      for (let i = 1; i < withDueDate.length; i++) {
+        const prevDate = new Date(withDueDate[i - 1].dueDate!).getTime();
+        const currDate = new Date(withDueDate[i].dueDate!).getTime();
+        expect(prevDate).toBeLessThanOrEqual(currDate);
+      }
+
+      // Verify created_at is sorted in descending order for todos without due dates
+      for (let i = 1; i < withoutDueDate.length; i++) {
+        const prevCreated = new Date(withoutDueDate[i - 1].createdAt).getTime();
+        const currCreated = new Date(withoutDueDate[i].createdAt).getTime();
+        expect(prevCreated).toBeGreaterThanOrEqual(currCreated);
       }
     });
   });

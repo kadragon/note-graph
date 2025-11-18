@@ -11,7 +11,7 @@
 Must implement before other features are considered stable. These are core business logic and data access layers.
 
 ### [ ] WorkNoteRepository Tests (4-6 hours)
-**File:** `/home/user/note-graph/tests/unit/repositories/work-note-repository.test.ts`  
+**File:** `tests/unit/repositories/work-note-repository.test.ts`  
 **Coverage Target:** 25-30 test cases
 
 - [ ] CRUD Operations
@@ -53,7 +53,7 @@ Must implement before other features are considered stable. These are core busin
   - [ ] Transaction behavior
 
 ### [ ] TodoRepository Tests (3-4 hours)
-**File:** `/home/user/note-graph/tests/unit/repositories/todo-repository.test.ts`  
+**File:** `tests/unit/repositories/todo-repository.test.ts`  
 **Coverage Target:** 20-25 test cases
 
 - [ ] CRUD Operations
@@ -86,7 +86,7 @@ Must implement before other features are considered stable. These are core busin
   - [ ] Orphaned todos
 
 ### [ ] PersonRepository Tests (3-4 hours)
-**File:** `/home/user/note-graph/tests/unit/repositories/person-repository.test.ts`  
+**File:** `tests/unit/repositories/person-repository.test.ts`  
 **Coverage Target:** 20-25 test cases
 
 - [ ] CRUD Operations
@@ -118,7 +118,7 @@ Must implement before other features are considered stable. These are core busin
   - [ ] Department existence validation
 
 ### [ ] WorkNotesRouter Tests (4-5 hours)
-**File:** `/home/user/note-graph/tests/api/work-notes.test.ts`  
+**File:** `tests/api/work-notes.test.ts`  
 **Coverage Target:** 20-25 test cases
 
 - [ ] GET /work-notes
@@ -166,7 +166,7 @@ Must implement before other features are considered stable. These are core busin
   - [ ] Proper HTTP status codes
 
 ### [ ] WorkNoteService Tests (3-4 hours)
-**File:** `/home/user/note-graph/tests/unit/services/work-note-service.test.ts`  
+**File:** `tests/unit/services/work-note-service.test.ts`  
 **Coverage Target:** 18-22 test cases
 
 - [ ] CRUD with Chunking/Embedding
@@ -202,7 +202,7 @@ Must implement before other features are considered stable. These are core busin
 Important features that should be well-tested but not blocking.
 
 ### [ ] AIGraphService Tests (2-3 hours)
-**File:** `/home/user/note-graph/tests/unit/services/ai-draft-service.test.ts`  
+**File:** `tests/unit/services/ai-draft-service.test.ts`  
 **Coverage Target:** 15-18 test cases
 
 - [ ] Draft Generation
@@ -235,7 +235,7 @@ Important features that should be well-tested but not blocking.
   - [ ] Korean text
 
 ### [ ] RagService Tests (3-4 hours)
-**File:** `/home/user/note-graph/tests/unit/services/rag-service.test.ts`  
+**File:** `tests/unit/services/rag-service.test.ts`  
 **Coverage Target:** 18-22 test cases
 
 - [ ] RAG Query
@@ -268,7 +268,7 @@ Important features that should be well-tested but not blocking.
   - [ ] Handle malformed responses
 
 ### [ ] PdfExtractionService Tests (1.5-2 hours)
-**File:** `/home/user/note-graph/tests/unit/services/pdf-extraction-service.test.ts`  
+**File:** `tests/unit/services/pdf-extraction-service.test.ts`  
 **Coverage Target:** 12-15 test cases
 
 - [ ] Valid PDF
@@ -296,7 +296,7 @@ Important features that should be well-tested but not blocking.
   - [ ] PDF with special fonts
 
 ### [ ] DepartmentRepository Tests (2-3 hours)
-**File:** `/home/user/note-graph/tests/unit/repositories/department-repository.test.ts`  
+**File:** `tests/unit/repositories/department-repository.test.ts`  
 **Coverage Target:** 15-18 test cases
 
 - [ ] CRUD Operations
@@ -330,7 +330,7 @@ Important features that should be well-tested but not blocking.
   - [ ] Korean department names
 
 ### [ ] PersonsRouter Additional Tests (2-3 hours)
-**File:** `/home/user/note-graph/tests/api/persons.test.ts` (extend existing)  
+**File:** `tests/api/persons.test.ts` (extend existing)  
 **Coverage Target:** Add 14+ test cases
 
 - [ ] GET /persons
@@ -363,7 +363,7 @@ Important features that should be well-tested but not blocking.
 Supporting features and utilities.
 
 ### [ ] PDFRouter Tests (2-3 hours)
-**File:** `/home/user/note-graph/tests/api/pdf.test.ts`  
+**File:** `tests/api/pdf.test.ts`  
 **Coverage Target:** 16-20 test cases
 
 - [ ] POST /pdf/upload
@@ -393,7 +393,7 @@ Supporting features and utilities.
   - [ ] Empty PDF handling
 
 ### [ ] TodosRouter Tests (1.5-2 hours)
-**File:** `/home/user/note-graph/tests/api/todos.test.ts`  
+**File:** `tests/api/todos.test.ts`  
 **Coverage Target:** 12-15 test cases
 
 - [ ] GET /todos
@@ -420,7 +420,7 @@ Supporting features and utilities.
   - [ ] Returns 404 if not found
 
 ### [ ] PdfJobRepository Tests (1.5-2 hours)
-**File:** `/home/user/note-graph/tests/unit/repositories/pdf-job-repository.test.ts`  
+**File:** `tests/unit/repositories/pdf-job-repository.test.ts`  
 **Coverage Target:** 12-15 test cases
 
 - [ ] CRUD Operations
@@ -445,7 +445,7 @@ Supporting features and utilities.
   - [ ] Count by status
 
 ### [ ] RagRouter Tests (1.5-2 hours)
-**File:** `/home/user/note-graph/tests/api/rag.test.ts`  
+**File:** `tests/api/rag.test.ts`  
 **Coverage Target:** 10-12 test cases
 
 - [ ] POST /rag/query
@@ -465,7 +465,7 @@ Supporting features and utilities.
   - [ ] API errors
 
 ### [ ] AuthMiddleware Unit Tests (1-2 hours)
-**File:** `/home/user/note-graph/tests/unit/middleware/auth.test.ts` (NEW)  
+**File:** `tests/unit/middleware/auth.test.ts` (NEW)  
 **Coverage Target:** 12-15 test cases
 
 - [ ] Header Extraction
