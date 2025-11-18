@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, TASK-005
+// Trace: SPEC-person-1, TASK-005, TASK-018
 /**
  * Person repository for D1 database operations
  */
@@ -6,10 +6,24 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Person, PersonDeptHistory, PersonWorkNote } from '../types/person';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/person';
-import { NotFoundError, ConflictError } from '../types/errors';
+import { NotFoundError, ConflictError, ValidationError } from '../types/errors';
 
 export class PersonRepository {
   constructor(private db: D1Database) {}
+
+  /**
+   * Ensure the provided department exists, otherwise throw validation error
+   */
+  private async ensureDepartmentExists(deptName: string): Promise<void> {
+    const exists = await this.db
+      .prepare('SELECT 1 as present FROM departments WHERE dept_name = ?')
+      .bind(deptName)
+      .first<{ present: number }>();
+
+    if (!exists) {
+      throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', { deptName });
+    }
+  }
 
   /**
    * Find person by ID
@@ -62,6 +76,11 @@ export class PersonRepository {
     const existing = await this.findById(data.personId);
     if (existing) {
       throw new ConflictError(`Person already exists with ID: ${data.personId}`);
+    }
+
+    // Validate department existence before inserting history
+    if (data.currentDept) {
+      await this.ensureDepartmentExists(data.currentDept);
     }
 
     const statements = [
@@ -130,6 +149,10 @@ export class PersonRepository {
     const isDeptChanging = data.currentDept !== undefined && data.currentDept !== existing.currentDept;
 
     if (isDeptChanging) {
+      if (data.currentDept) {
+        await this.ensureDepartmentExists(data.currentDept);
+      }
+
       // Deactivate current department history entry
       statements.push(
         this.db

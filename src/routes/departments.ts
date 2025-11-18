@@ -7,8 +7,8 @@ import { Hono } from 'hono';
 import type { Env } from '../index';
 import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
-import { validateBody } from '../utils/validation';
-import { createDepartmentSchema, updateDepartmentSchema } from '../schemas/department';
+import { validateBody, validateQuery } from '../utils/validation';
+import { createDepartmentSchema, updateDepartmentSchema, listDepartmentsQuerySchema } from '../schemas/department';
 import { DepartmentRepository } from '../repositories/department-repository';
 import { DomainError } from '../types/errors';
 
@@ -22,8 +22,9 @@ departments.use('*', authMiddleware);
  */
 departments.get('/', async (c) => {
   try {
+    const query = validateQuery(c, listDepartmentsQuerySchema);
     const repository = new DepartmentRepository(c.env.DB);
-    const results = await repository.findAll();
+    const results = await repository.findAll(query.q, query.limit);
 
     return c.json(results);
   } catch (error) {

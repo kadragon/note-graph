@@ -119,7 +119,10 @@ const API = {
   updatePerson: (personId, data) => API.put(`/persons/${personId}`, data),
 
   // Departments
-  getDepartments: () => API.get('/departments'),
+  getDepartments: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return API.get(`/departments${query ? '?' + query : ''}`);
+  },
   getDepartment: (deptName) => API.get(`/departments/${deptName}`),
   createDepartment: (data) => API.post('/departments', data),
   updateDepartment: (deptName, data) => API.put(`/departments/${deptName}`, data),
@@ -802,14 +805,19 @@ const App = {
             </tr>
           </thead>
           <tbody>
-            ${persons.map(person => `
+            ${persons.map(person => {
+              const id = person.personId || person.person_id;
+              const dept = person.currentDept || person.dept_name || '-';
+              const position = person.currentPosition || person.title || '-';
+              return `
               <tr>
-                <td>${UI.escapeHtml(person.person_id)}</td>
+                <td>${UI.escapeHtml(id)}</td>
                 <td>${UI.escapeHtml(person.name)}</td>
-                <td>${UI.escapeHtml(person.dept_name || '-')}</td>
-                <td>${UI.escapeHtml(person.title || '-')}</td>
+                <td>${UI.escapeHtml(dept)}</td>
+                <td>${UI.escapeHtml(position)}</td>
               </tr>
-            `).join('')}
+              `;
+            }).join('')}
           </tbody>
         </table>
       `;
@@ -818,24 +826,277 @@ const App = {
     }
   },
 
-  showCreatePersonModal() {
-    const personId = prompt('사번(ID)을 입력하세요:');
-    if (!personId) return;
+  async showCreatePersonModal() {
+    // Fetch departments for selection
+    let departments = [];
+    let baseDepartments = [];
+    let suggestions = [];
+    let activeIndex = -1;
+    let isLoading = false;
+    try {
+      departments = await API.getDepartments();
+      baseDepartments = departments;
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+    }
 
-    const name = prompt('이름을 입력하세요:');
-    if (!name) return;
+    // Create modal
+    const modal = this.createModal('사람 추가', `
+      <form id="create-person-form">
+        <div class="form-group">
+          <label class="form-label">사번 (6자리 숫자) *</label>
+          <input type="text" class="form-input" id="person-id-input" pattern="\\d{6}" maxlength="6" required>
+          <small style="color: var(--gray-600);">6자리 숫자로 입력하세요</small>
+        </div>
 
-    const deptName = prompt('부서명을 입력하세요 (선택):') || null;
-    const title = prompt('직급을 입력하세요 (선택):') || null;
+        <div class="form-group">
+          <label class="form-label">이름 *</label>
+          <input type="text" class="form-input" id="person-name-input" required>
+        </div>
 
-    UI.showLoading();
-    API.createPerson({ person_id: personId, name, dept_name: deptName, title })
-      .then(() => {
+        <div class="form-group">
+          <label class="form-label">부서</label>
+          <div class="input-with-action suggestions">
+            <input type="text" class="form-input" id="person-dept-input" placeholder="부서 선택 또는 검색" autocomplete="off">
+            <div id="dept-loading" class="spinner-sm hidden"></div>
+            <button type="button" class="btn btn-secondary" id="add-dept-inline">+ 새 부서</button>
+            <div class="suggestions-list hidden" id="dept-suggestions"></div>
+          </div>
+          <small style="color: var(--gray-600);">기존 부서를 검색해 선택하거나, 없으면 새 부서를 추가하세요. 최대 5개 제안이 표시됩니다.</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">직급</label>
+          <input type="text" class="form-input" id="person-position-input">
+        </div>
+
+        <div class="form-group hidden" id="new-dept-form">
+          <label class="form-label">새 부서 추가</label>
+          <div class="inline-fields">
+            <input type="text" class="form-input" id="new-dept-name" placeholder="부서 이름" required>
+            <input type="text" class="form-input" id="new-dept-desc" placeholder="설명 (선택)" />
+            <button type="button" class="btn btn-primary" id="save-new-dept">추가</button>
+            <button type="button" class="btn btn-secondary" id="cancel-new-dept">취소</button>
+          </div>
+          <small style="color: var(--gray-600);">추가 후 자동으로 선택됩니다.</small>
+        </div>
+
+        <div class="flex-gap mt-3">
+          <button type="submit" class="btn btn-primary">저장</button>
+          <button type="button" class="btn btn-secondary modal-close">취소</button>
+        </div>
+      </form>
+    `);
+
+    document.body.appendChild(modal);
+
+    // Populate department options
+    const deptInput = modal.querySelector('#person-dept-input');
+    const deptLoading = modal.querySelector('#dept-loading');
+    const suggestionBox = modal.querySelector('#dept-suggestions');
+    const addDeptButton = modal.querySelector('#add-dept-inline');
+    const newDeptForm = modal.querySelector('#new-dept-form');
+    const newDeptName = modal.querySelector('#new-dept-name');
+    const newDeptDesc = modal.querySelector('#new-dept-desc');
+    const saveNewDept = modal.querySelector('#save-new-dept');
+    const cancelNewDept = modal.querySelector('#cancel-new-dept');
+
+    const renderSuggestions = (items = []) => {
+      suggestions = items.slice(0, 5);
+      if (suggestions.length === 0) {
+        suggestionBox.classList.add('hidden');
+        activeIndex = -1;
+        return;
+      }
+
+      suggestionBox.innerHTML = suggestions
+        .map((dept, idx) => `
+          <div class="suggestion-item${idx === activeIndex ? ' active' : ''}" data-name="${UI.escapeHtml(dept.deptName || dept.dept_name)}">
+            ${UI.escapeHtml(dept.deptName || dept.dept_name)}
+          </div>
+        `)
+        .join('');
+      suggestionBox.classList.remove('hidden');
+    };
+
+    renderSuggestions(departments);
+
+    const setLoading = (state) => {
+      isLoading = state;
+      deptLoading.classList.toggle('hidden', !state);
+    };
+
+    // Debounced remote search for departments
+    const debounce = (fn, delay = 250) => {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+      };
+    };
+
+    const fetchAndRenderDepartments = async (term) => {
+      if (!term) {
+        departments = baseDepartments;
+        renderSuggestions(departments);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const results = await API.getDepartments({ q: term, limit: 5 });
+        departments = results;
+        renderSuggestions(results);
+      } catch (error) {
+        console.error('Department search failed:', error);
+        UI.showToast('부서 검색에 실패했습니다', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    deptInput.addEventListener('input', debounce((event) => {
+      const term = event.target.value.trim();
+      activeIndex = -1;
+      fetchAndRenderDepartments(term);
+    }, 300));
+
+    // Keyboard navigation for suggestions
+    deptInput.addEventListener('keydown', (event) => {
+      if (suggestions.length === 0) return;
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        activeIndex = (activeIndex + 1) % suggestions.length;
+        renderSuggestions(suggestions);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        activeIndex = activeIndex <= 0 ? suggestions.length - 1 : activeIndex - 1;
+        renderSuggestions(suggestions);
+      } else if (event.key === 'Enter') {
+        if (activeIndex >= 0) {
+          event.preventDefault();
+          const selected = suggestions[activeIndex];
+          deptInput.value = selected.deptName || selected.dept_name;
+          suggestionBox.classList.add('hidden');
+        }
+      } else if (event.key === 'Escape') {
+        suggestionBox.classList.add('hidden');
+        activeIndex = -1;
+      }
+    });
+
+    // Click selection
+    suggestionBox.addEventListener('click', (event) => {
+      const item = event.target.closest('.suggestion-item');
+      if (!item) return;
+      const value = item.dataset.name;
+      deptInput.value = value;
+      suggestionBox.classList.add('hidden');
+    });
+
+    // Toggle inline department form
+    addDeptButton.addEventListener('click', () => {
+      newDeptForm.classList.remove('hidden');
+      newDeptName.focus();
+    });
+
+    cancelNewDept.addEventListener('click', () => {
+      newDeptForm.classList.add('hidden');
+      newDeptName.value = '';
+      newDeptDesc.value = '';
+    });
+
+    saveNewDept.addEventListener('click', async () => {
+      const name = newDeptName.value.trim();
+      const description = newDeptDesc.value.trim();
+      if (!name) {
+        UI.showToast('부서 이름을 입력해주세요', 'warning');
+        newDeptName.focus();
+        return;
+      }
+
+      UI.showLoading();
+      try {
+        const created = await API.createDepartment({ deptName: name, description: description || undefined });
+        UI.showToast('부서가 추가되었습니다', 'success');
+        // Refresh local list and select
+        baseDepartments = [...baseDepartments, created];
+        departments = baseDepartments;
+        renderSuggestions(baseDepartments);
+        deptInput.value = created.deptName || created.dept_name || name;
+        newDeptForm.classList.add('hidden');
+        newDeptName.value = '';
+        newDeptDesc.value = '';
+      } catch (error) {
+        UI.showToast('부서 추가 실패: ' + error.message, 'error');
+      } finally {
+        UI.hideLoading();
+      }
+    });
+
+    // Auto-filter using datalist (native browser handles search)
+
+    // Handle form submit
+    const form = document.getElementById('create-person-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const personId = document.getElementById('person-id-input').value.trim();
+      const name = document.getElementById('person-name-input').value.trim();
+      const dept = document.getElementById('person-dept-input').value.trim() || undefined;
+      const position = document.getElementById('person-position-input').value.trim() || undefined;
+
+      if (dept) {
+        const exists = departments.some((d) => (d.deptName || d.dept_name) === dept);
+        if (!exists) {
+          UI.showToast('부서 목록에서 선택하거나 새 부서를 추가해주세요.', 'warning');
+          deptInput.focus();
+          return;
+        }
+      }
+
+      UI.showLoading();
+      try {
+        await API.createPerson({
+          personId,
+          name,
+          currentDept: dept,
+          currentPosition: position
+        });
         UI.showToast('사람이 추가되었습니다', 'success');
-        return this.loadPersons();
-      })
-      .catch(error => UI.showToast('추가 실패: ' + error.message, 'error'))
-      .finally(() => UI.hideLoading());
+        modal.remove();
+        await this.loadPersons();
+      } catch (error) {
+        UI.showToast('추가 실패: ' + error.message, 'error');
+      } finally {
+        UI.hideLoading();
+      }
+    });
+
+    // Handle close buttons
+    modal.querySelectorAll('.modal-close, .modal-backdrop').forEach(el => {
+      el.addEventListener('click', () => modal.remove());
+    });
+  },
+
+  // Helper: Create modal dialog
+  createModal(title, content) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-backdrop"></div>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">${UI.escapeHtml(title)}</h3>
+          <button class="modal-close-btn modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          ${content}
+        </div>
+      </div>
+    `;
+    return modal;
   },
 
   // Departments

@@ -1,4 +1,4 @@
-// Trace: SPEC-dept-1, TASK-006
+// Trace: SPEC-dept-1, TASK-006, TASK-020
 /**
  * Department repository for D1 database operations
  */
@@ -30,14 +30,21 @@ export class DepartmentRepository {
   /**
    * Find all departments
    */
-  async findAll(): Promise<Department[]> {
-    const result = await this.db
-      .prepare(
-        `SELECT dept_name as deptName, description, created_at as createdAt
-         FROM departments
-         ORDER BY dept_name ASC`
-      )
-      .all<Department>();
+  async findAll(searchQuery?: string, limit: number = 100): Promise<Department[]> {
+    let sql = `SELECT dept_name as deptName, description, created_at as createdAt
+               FROM departments`;
+    const params: string[] = [];
+
+    if (searchQuery) {
+      sql += ` WHERE dept_name LIKE ?`;
+      params.push(`%${searchQuery}%`);
+    }
+
+    sql += ` ORDER BY dept_name ASC LIMIT ?`;
+    params.push(String(limit));
+
+    const stmt = this.db.prepare(sql);
+    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<Department>();
 
     return result.results || [];
   }
