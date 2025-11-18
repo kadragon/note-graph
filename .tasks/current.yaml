@@ -4,32 +4,33 @@
 current_task: null
 
 notes: |
-  TASK-008 completed successfully.
+  TASK-011 completed successfully.
 
-  Implemented:
-  - Todo type definitions (Todo, TodoWithWorkNote, TodoStatus, RepeatRule, RecurrenceType)
-  - TodoRepository with recurrence strategies (DUE_DATE, COMPLETION_DATE)
-  - POST /work-notes/:workId/todos - creates todo for work note
-  - GET /work-notes/:workId/todos - lists todos for work note
-  - GET /todos - lists todos with view filters (today, this_week, this_month, backlog, all)
-  - PATCH /todos/:todoId - updates todo with automatic recurrence generation
+  Implemented hybrid search with RRF (Reciprocal Rank Fusion) ranking:
+  - Created HybridSearchService combining FTS and Vectorize results
+  - Parallel execution of lexical (FTS) and semantic (Vectorize) searches
+  - RRF algorithm merges results with k=60 constant (based on research)
+  - Source attribution: LEXICAL, SEMANTIC, or HYBRID
+  - Updated POST /search/work-notes to use hybrid search
 
-  All endpoints implement proper error handling with domain errors.
-  Recurrence logic generates new instance when status changes to '완료'.
-  View filters correctly implement wait_until logic and date range filtering.
-  Backlog view shows overdue todos (due < now AND status != '완료').
+  RRF Algorithm:
+  - Formula: score = sum(1 / (k + rank)) for each result set
+  - k=60 is the standard parameter from IR research
+  - Results appear in both FTS and Vectorize get highest combined scores
+  - Final results sorted by combined RRF score
 
-  Phase 2 (Entity Management) complete!
+  Key features:
+  - HybridSearchService.search() - executes both searches in parallel
+  - Automatic result merging with RRF ranking
+  - Source attribution shows which engine(s) found each result
+  - Graceful degradation: if one search fails, other continues
+  - Fetch limit optimization: 2x limit for each engine, merge to final limit
 
-  Performance Optimizations Applied (2025-11-18):
-  Based on Gemini Code Assist suggestions, optimized all repository methods:
-  - DepartmentRepository: Eliminated DB refetch in create() and update()
-  - PersonRepository: Eliminated DB refetch in create() and update()
-  - TodoRepository: Eliminated DB refetch in create() and update()
-  - WorkNoteRepository: Eliminated DB refetch in create() and update()
-  - WorkNoteRepository.findByIdWithDetails(): Parallelized queries with Promise.all
+  Integration:
+  - POST /search/work-notes returns hybrid results with source attribution
+  - searchType field now returns 'HYBRID' instead of 'LEXICAL'
+  - Filters apply to both FTS and Vectorize searches
+  - Category filter applied to Vectorize metadata
 
-  Benefits: 8 fewer DB roundtrips on create/update operations, improved query
-  performance via parallelization, reduced D1 load and API latency.
-
-  Ready to start Phase 3: Search & AI Features.
+  Phase 3 (Search & AI) - TASK-009, TASK-010, and TASK-011 complete!
+  Ready for TASK-012: RAG chunking and pipeline.

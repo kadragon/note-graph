@@ -118,16 +118,17 @@ CREATE TABLE IF NOT EXISTS pdf_jobs (
 );
 
 -- ============================================================================
--- Full-Text Search (FTS5 with trigram tokenizer)
+-- Full-Text Search (FTS5 with unicode61 tokenizer)
 -- ============================================================================
 
 -- FTS5 virtual table for work notes
--- Uses trigram tokenizer for Korean partial matching
+-- Uses unicode61 tokenizer for Korean text support
+-- unicode61 works better than trigram for Korean due to character composition
 CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
   title,
   content_raw,
   category,
-  tokenize='trigram',
+  tokenize='unicode61 remove_diacritics 0',
   content='work_notes',
   content_rowid='rowid'
 );
