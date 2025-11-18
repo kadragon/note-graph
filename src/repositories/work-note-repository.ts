@@ -47,29 +47,29 @@ export class WorkNoteRepository {
       return null;
     }
 
-    // Get associated persons
-    const personsResult = await this.db
-      .prepare(
-        `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                wnp.role, p.name as personName
-         FROM work_note_person wnp
-         INNER JOIN persons p ON wnp.person_id = p.person_id
-         WHERE wnp.work_id = ?`
-      )
-      .bind(workId)
-      .all<WorkNotePersonAssociation>();
-
-    // Get related work notes
-    const relationsResult = await this.db
-      .prepare(
-        `SELECT wnr.id, wnr.work_id as workId, wnr.related_work_id as relatedWorkId,
-                wn.title as relatedWorkTitle
-         FROM work_note_relation wnr
-         LEFT JOIN work_notes wn ON wnr.related_work_id = wn.work_id
-         WHERE wnr.work_id = ?`
-      )
-      .bind(workId)
-      .all<WorkNoteRelation>();
+    // Get associated persons and related work notes in parallel
+    const [personsResult, relationsResult] = await Promise.all([
+      this.db
+        .prepare(
+          `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
+                  wnp.role, p.name as personName
+           FROM work_note_person wnp
+           INNER JOIN persons p ON wnp.person_id = p.person_id
+           WHERE wnp.work_id = ?`
+        )
+        .bind(workId)
+        .all<WorkNotePersonAssociation>(),
+      this.db
+        .prepare(
+          `SELECT wnr.id, wnr.work_id as workId, wnr.related_work_id as relatedWorkId,
+                  wn.title as relatedWorkTitle
+           FROM work_note_relation wnr
+           LEFT JOIN work_notes wn ON wnr.related_work_id = wn.work_id
+           WHERE wnr.work_id = ?`
+        )
+        .bind(workId)
+        .all<WorkNoteRelation>(),
+    ]);
 
     return {
       ...workNote,
@@ -198,12 +198,15 @@ export class WorkNoteRepository {
 
     await this.db.batch(statements);
 
-    const workNote = await this.findById(workId);
-    if (!workNote) {
-      throw new Error('Failed to create work note');
-    }
-
-    return workNote;
+    // Return the created work note without extra DB roundtrip
+    return {
+      workId,
+      title: data.title,
+      contentRaw: data.contentRaw,
+      category: data.category || null,
+      createdAt: now,
+      updatedAt: now,
+    };
   }
 
   /**
@@ -331,12 +334,14 @@ export class WorkNoteRepository {
       await this.db.batch(statements);
     }
 
-    const updated = await this.findById(workId);
-    if (!updated) {
-      throw new Error('Failed to update work note');
-    }
-
-    return updated;
+    // Return the updated work note without extra DB roundtrip
+    return {
+      ...existing,
+      title: data.title !== undefined ? data.title : existing.title,
+      contentRaw: data.contentRaw !== undefined ? data.contentRaw : existing.contentRaw,
+      category: data.category !== undefined ? (data.category || null) : existing.category,
+      updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
+    };
   }
 
   /**

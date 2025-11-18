@@ -62,12 +62,12 @@ export class DepartmentRepository {
       .bind(data.deptName, data.description || null, now)
       .run();
 
-    const department = await this.findByName(data.deptName);
-    if (!department) {
-      throw new Error('Failed to create department');
-    }
-
-    return department;
+    // Return the created department without extra DB roundtrip
+    return {
+      deptName: data.deptName,
+      description: data.description || null,
+      createdAt: now,
+    };
   }
 
   /**
@@ -91,12 +91,11 @@ export class DepartmentRepository {
         .run();
     }
 
-    const updated = await this.findByName(deptName);
-    if (!updated) {
-      throw new Error('Failed to update department');
-    }
-
-    return updated;
+    // Return the updated department without extra DB roundtrip
+    return {
+      ...existing,
+      description: data.description !== undefined ? data.description || null : existing.description,
+    };
   }
 
   /**
