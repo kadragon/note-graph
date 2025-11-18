@@ -43,8 +43,8 @@ export const listWorkNotesQuerySchema = z.object({
   category: z.string().optional(),
   personId: z.string().optional(),
   deptName: z.string().optional(),
-  from: z.string().optional(), // ISO date
-  to: z.string().optional(),   // ISO date
+  from: z.string().datetime({ message: 'from must be a valid ISO 8601 date-time string' }).optional(),
+  to: z.string().datetime({ message: 'to must be a valid ISO 8601 date-time string' }).optional(),
 });
 
 export type CreateWorkNoteInput = z.infer<typeof createWorkNoteSchema>;

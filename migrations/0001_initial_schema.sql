@@ -7,6 +7,7 @@
 -- ============================================================================
 
 -- Persons (colleagues/contacts)
+-- Note: updated_at must be set explicitly in application code on UPDATE operations
 CREATE TABLE IF NOT EXISTS persons (
   person_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS person_dept_history (
 );
 
 -- Work notes
+-- Note: updated_at must be set explicitly in application code on UPDATE operations
 CREATE TABLE IF NOT EXISTS work_notes (
   work_id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -74,6 +76,19 @@ CREATE TABLE IF NOT EXISTS work_note_versions (
   UNIQUE(work_id, version_no)
 );
 
+-- Trigger to enforce max 5 versions per work note
+CREATE TRIGGER IF NOT EXISTS trg_work_note_versions_limit
+AFTER INSERT ON work_note_versions
+BEGIN
+  DELETE FROM work_note_versions
+  WHERE work_id = NEW.work_id AND id IN (
+    SELECT id FROM work_note_versions
+    WHERE work_id = NEW.work_id
+    ORDER BY version_no DESC
+    LIMIT -1 OFFSET 5
+  );
+END;
+
 -- Todos with recurrence support
 CREATE TABLE IF NOT EXISTS todos (
   todo_id TEXT PRIMARY KEY,
@@ -89,6 +104,7 @@ CREATE TABLE IF NOT EXISTS todos (
 );
 
 -- PDF processing jobs
+-- Note: updated_at must be set explicitly in application code on UPDATE operations
 CREATE TABLE IF NOT EXISTS pdf_jobs (
   job_id TEXT PRIMARY KEY,
   status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'READY', 'ERROR')),

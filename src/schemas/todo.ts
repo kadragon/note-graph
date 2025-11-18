@@ -26,8 +26,8 @@ export const recurrenceTypeSchema = z.enum(['DUE_DATE', 'COMPLETION_DATE']);
 export const createTodoSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(1000).optional(),
-  dueDate: z.string().optional(), // ISO date
-  waitUntil: z.string().optional(), // ISO date
+  dueDate: z.string().datetime({ message: 'dueDate must be a valid ISO 8601 date-time string' }).optional(),
+  waitUntil: z.string().datetime({ message: 'waitUntil must be a valid ISO 8601 date-time string' }).optional(),
   repeatRule: repeatRuleSchema.default('NONE'),
   recurrenceType: recurrenceTypeSchema.optional(),
 });
@@ -39,8 +39,8 @@ export const updateTodoSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(1000).optional(),
   status: todoStatusSchema.optional(),
-  dueDate: z.string().optional(),
-  waitUntil: z.string().optional(),
+  dueDate: z.string().datetime({ message: 'dueDate must be a valid ISO 8601 date-time string' }).optional(),
+  waitUntil: z.string().datetime({ message: 'waitUntil must be a valid ISO 8601 date-time string' }).optional(),
   repeatRule: repeatRuleSchema.optional(),
   recurrenceType: recurrenceTypeSchema.optional(),
 });
