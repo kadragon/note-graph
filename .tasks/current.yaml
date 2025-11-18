@@ -4,5 +4,5 @@
 current_task: null
 
 notes: |
-  TASK-020 completed. Debounced department search added to person form and backend
-  query support implemented. TASK-019/TASK-018 remain in effect.
+  TASK-021 completed. Department search UX improved with loading/error feedback,
+  keyboard navigation, and 5-item suggestion cap.

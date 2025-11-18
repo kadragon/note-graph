@@ -30,7 +30,7 @@ export class DepartmentRepository {
   /**
    * Find all departments
    */
-  async findAll(searchQuery?: string): Promise<Department[]> {
+  async findAll(searchQuery?: string, limit: number = 100): Promise<Department[]> {
     let sql = `SELECT dept_name as deptName, description, created_at as createdAt
                FROM departments`;
     const params: string[] = [];
@@ -40,7 +40,8 @@ export class DepartmentRepository {
       params.push(`%${searchQuery}%`);
     }
 
-    sql += ` ORDER BY dept_name ASC`;
+    sql += ` ORDER BY dept_name ASC LIMIT ?`;
+    params.push(String(limit));
 
     const stmt = this.db.prepare(sql);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<Department>();
