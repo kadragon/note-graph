@@ -1,4 +1,4 @@
-// Trace: SPEC-auth-1, TASK-001, TASK-003
+// Trace: SPEC-auth-1, TASK-001, TASK-003, TASK-004
 /**
  * Note Graph - Main Worker Entry Point
  * Personal work note management system with AI-powered features
@@ -7,8 +7,15 @@
 import { Hono } from 'hono';
 import type { AuthUser } from './types/auth';
 import { AuthenticationError } from './types/auth';
+import { DomainError } from './types/errors';
 import { authMiddleware } from './middleware/auth';
 import { getMeHandler } from './handlers/auth';
+
+// Route imports
+import persons from './routes/persons';
+import departments from './routes/departments';
+import workNotes from './routes/work-notes';
+import todos from './routes/todos';
 
 // Environment bindings type definition
 export interface Env {
@@ -58,6 +65,15 @@ app.get('/', (c) => {
 // GET /me - Get current authenticated user
 app.get('/me', authMiddleware, getMeHandler);
 
+// ============================================================================
+// API Route Groups
+// ============================================================================
+
+app.route('/persons', persons);
+app.route('/departments', departments);
+app.route('/work-notes', workNotes);
+app.route('/todos', todos);
+
 // 404 handler
 app.notFound((c) => {
   return c.json(
@@ -82,6 +98,18 @@ app.onError((err, c) => {
       },
       401
     );
+  }
+
+  // Handle domain errors (ValidationError, NotFoundError, etc.)
+  if (err instanceof DomainError) {
+    const response: { code: string; message: string; details?: unknown } = {
+      code: err.code,
+      message: err.message,
+    };
+    if (err.details) {
+      response.details = err.details;
+    }
+    return c.json(response, err.statusCode as 400 | 404 | 409 | 429 | 500);
   }
 
   // Avoid leaking internal error details to the client in non-dev environments.

@@ -74,6 +74,35 @@ completed_tasks:
     estimated_effort: 2h
     actual_effort: ~0.5h
 
+  - task_id: TASK-004
+    title: "Set up Hono API structure and routing"
+    spec_id: SPEC-worknote-1
+    completed_at: "2025-11-18T03:20:00Z"
+    outcome: |
+      Successfully created modular API routing structure with:
+      - Domain error classes: DomainError, NotFoundError, ValidationError, ConflictError, BadRequestError, RateLimitError
+      - Zod validation schemas for all entities (Person, Department, WorkNote, Todo)
+      - Validation utilities: validateBody, validateQuery, validateParams
+      - Route modules: persons, departments, work-notes, todos (all with auth middleware)
+      - Enhanced error handler supporting all domain error types
+      - All route groups mounted in main app
+      - All acceptance criteria met:
+        ✓ All API route groups defined (4 groups with 15+ endpoints)
+        ✓ Request validation works (Zod schemas with detailed error messages)
+        ✓ Consistent error responses (standardized format with code, message, details)
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ Test 1: GET /persons returns placeholder (PASS)
+      ✓ Test 2: POST /persons with valid data (PASS)
+      ✓ Test 3: POST /persons with invalid data returns validation error (PASS)
+      ✓ Test 4: GET /departments returns placeholder (PASS)
+      ✓ Test 5: GET /work-notes with query params (PASS)
+      ✓ Test 6: GET /todos with view filter (PASS)
+      ✓ Test 7: Unauthenticated request returns 401 (PASS)
+      ✓ All routes protected by auth middleware
+    estimated_effort: 3h
+    actual_effort: ~0.75h
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"
