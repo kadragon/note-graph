@@ -125,12 +125,74 @@ export class VectorizeService {
   }
 
   /**
+   * Upsert chunks for RAG (multiple embeddings per work note)
+   *
+   * @param chunks - Array of text chunks with metadata
+   */
+  async upsertChunks(chunks: Array<{ id: string; text: string; metadata: ChunkMetadata }>): Promise<void> {
+    if (chunks.length === 0) {
+      return;
+    }
+
+    // Generate embeddings for all chunks in batch
+    const texts = chunks.map((c) => c.text);
+    const embeddings = await this.embeddingService.generateEmbeddings(texts);
+
+    // Prepare vectors for upsert
+    const vectors = chunks.map((chunk, index) => {
+      const embedding = embeddings[index];
+      if (!embedding) {
+        throw new Error(`Missing embedding for chunk ${chunk.id}`);
+      }
+      return {
+        id: chunk.id,
+        values: embedding,
+        metadata: this.encodeMetadata(chunk.metadata),
+      };
+    });
+
+    // Upsert all chunks into Vectorize
+    await this.vectorize.upsert(vectors);
+  }
+
+  /**
    * Delete work note embedding from Vectorize
    *
    * @param workId - Work note ID
    */
   async deleteWorkNote(workId: string): Promise<void> {
     await this.vectorize.deleteByIds([workId]);
+  }
+
+  /**
+   * Delete all chunks for a work note from Vectorize
+   *
+   * Uses namespace pattern matching: workId#chunk*
+   *
+   * @param workId - Work note ID
+   */
+  async deleteWorkNoteChunks(workId: string): Promise<void> {
+    // Note: Vectorize doesn't have a native "delete by prefix" operation
+    // We need to use namespace filtering in query and then delete by IDs
+    // For now, we'll use a workaround by searching for chunks with work_id filter
+    // and deleting them by ID
+
+    try {
+      // Query for all chunks with this work_id (using dummy embedding)
+      const results = await this.vectorize.query(new Array(1536).fill(0), {
+        topK: 100, // Reasonable max chunks per work note
+        filter: { work_id: workId },
+        returnMetadata: false,
+      });
+
+      if (results.matches.length > 0) {
+        const chunkIds = results.matches.map((m) => m.id);
+        await this.vectorize.deleteByIds(chunkIds);
+      }
+    } catch (error) {
+      console.error('Error deleting work note chunks:', error);
+      // Non-fatal: log and continue
+    }
   }
 
   /**
