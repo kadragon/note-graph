@@ -4,19 +4,19 @@
 current_task: null
 
 notes: |
-  TASK-005 completed successfully.
+  TASK-006 completed successfully.
 
   Implemented:
-  - Person type definitions (Person, PersonDeptHistory, PersonWorkNote)
-  - PersonRepository with all CRUD operations
-  - POST /persons - creates person with auto department history entry
-  - GET /persons - lists persons with optional search
-  - GET /persons/:personId - gets person by ID
-  - PUT /persons/:personId - updates person and manages department history
-  - GET /persons/:personId/history - retrieves full department history
-  - GET /persons/:personId/work-notes - lists person's associated work notes
+  - Department type definitions (Department, DepartmentMember, DepartmentWorkNote)
+  - DepartmentRepository with all CRUD operations
+  - POST /departments - creates new department
+  - GET /departments - lists all departments
+  - GET /departments/:deptName - gets department by name
+  - PUT /departments/:deptName - updates department
+  - GET /departments/:deptName/work-notes - lists department's work notes
 
   All endpoints implement proper error handling with domain errors.
-  Department history tracking works correctly (deactivates old, creates new on dept change).
+  Department members derived from person_dept_history where is_active=true.
+  Department work notes found via work_note_person join.
 
-  Ready to start TASK-006: Implement Department repository and CRUD endpoints.
+  Ready to start TASK-007: Implement WorkNote repository with versioning.

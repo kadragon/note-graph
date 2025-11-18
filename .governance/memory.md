@@ -109,6 +109,22 @@
 - All endpoints implement proper error handling with domain errors (NotFoundError, ConflictError)
 - **Status**: Person management complete, ready for Department repository (TASK-006)
 
+### Session 7: Department Repository and CRUD (2025-11-18)
+- **TASK-006 Completed**: Implement Department repository and CRUD endpoints
+- Created Department type definitions: `Department`, `DepartmentMember`, `DepartmentWorkNote`
+- Implemented DepartmentRepository with D1 queries and join operations
+- Created 5 fully functional endpoints:
+  - POST /departments (creates new department)
+  - GET /departments (list all departments sorted by name)
+  - GET /departments/:deptName (retrieve by name)
+  - PUT /departments/:deptName (update description)
+  - GET /departments/:deptName/work-notes (department's work notes via join)
+- Department member queries support filtering by is_active status
+- Work notes found via work_note_person join with DISTINCT to avoid duplicates
+- Fixed TypeScript type casting for domain error statusCode in route handlers
+- All endpoints implement proper error handling with domain errors
+- **Status**: Department management complete, ready for WorkNote repository (TASK-007)
+
 ## Known Issues
 _None yet_
 
