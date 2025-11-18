@@ -1,0 +1,205 @@
+spec_id: SPEC-rag-2
+title: "Embedding Reliability and Retry Mechanism"
+description: >
+  Ensure eventual consistency between D1 (work notes) and Vectorize (embeddings)
+  by implementing automatic retry with exponential backoff for failed embedding operations.
+  Failed embeddings should not block work note CRUD but should be retried automatically.
+
+given_when_then:
+  - given: "Work note is created successfully in D1"
+    when: "Embedding operation fails due to transient error (network, rate limit, etc.)"
+    then: >
+      System logs the failure to embedding_retry_queue,
+      automatically retries with exponential backoff (3 attempts),
+      and moves to dead-letter queue if all retries fail
+
+  - given: "Work note is updated successfully in D1"
+    when: "Re-embedding operation fails"
+    then: "System follows same retry mechanism as create"
+
+  - given: "Embedding retry attempt fails"
+    when: "Retry count < max retries (3)"
+    then: "System schedules next retry with exponential backoff (2s, 4s, 8s)"
+
+  - given: "Embedding retry attempt fails"
+    when: "Retry count >= max retries (3)"
+    then: "System moves item to dead-letter status for manual inspection"
+
+  - given: "Admin views dead-letter queue"
+    when: "GET /admin/embedding-failures requested"
+    then: "System returns list of permanently failed embeddings with error details"
+
+  - given: "Admin initiates manual retry"
+    when: "POST /admin/embedding-failures/{id}/retry requested"
+    then: "System reprocesses failed embedding and updates status"
+
+acceptance_tests:
+  - id: TEST-rag-2-1
+    desc: "Failed embedding is logged to retry queue"
+    steps:
+      - "Mock Vectorize to throw error on upsert"
+      - "Create work note via POST /work-notes"
+      - "Verify work note created in D1"
+      - "Verify retry queue entry created with attempt_count=1"
+
+  - id: TEST-rag-2-2
+    desc: "Retry mechanism uses exponential backoff"
+    steps:
+      - "Create retry queue entry with attempt_count=1"
+      - "Process retry"
+      - "Verify next_retry_at = now + 4s (second attempt)"
+      - "Verify attempt_count incremented to 2"
+
+  - id: TEST-rag-2-3
+    desc: "Failed retries move to dead-letter after max attempts"
+    steps:
+      - "Create retry queue entry with attempt_count=3"
+      - "Process retry (fails)"
+      - "Verify status changed to 'dead_letter'"
+      - "Verify dead_letter_at timestamp set"
+
+  - id: TEST-rag-2-4
+    desc: "Successful retry removes item from queue"
+    steps:
+      - "Create retry queue entry"
+      - "Mock Vectorize to succeed"
+      - "Process retry"
+      - "Verify queue entry deleted"
+      - "Verify chunks exist in Vectorize"
+
+  - id: TEST-rag-2-5
+    desc: "Admin can list dead-letter items"
+    steps:
+      - "Create multiple dead-letter entries"
+      - "GET /admin/embedding-failures"
+      - "Verify list contains dead-letter items with error details"
+
+  - id: TEST-rag-2-6
+    desc: "Admin can manually retry dead-letter item"
+    steps:
+      - "Create dead-letter entry"
+      - "POST /admin/embedding-failures/{id}/retry"
+      - "Verify retry reprocessed"
+      - "Verify status updated on success"
+
+dependencies:
+  governance:
+    - "Max retry attempts: 3"
+    - "Exponential backoff delays: 2s, 4s, 8s"
+    - "Retry queue processed by background worker"
+    - "Dead-letter items require manual intervention"
+
+linked_tasks:
+  - TASK-022
+
+technical_notes:
+  - "Retry queue stored in D1 (embedding_retry_queue table)"
+  - "Background processing can be Cloudflare Cron Trigger or Queue"
+  - "Exponential backoff formula: delay = 2^attempt_count seconds"
+  - "Dead-letter items preserved indefinitely for audit"
+  - "Admin routes require authentication"
+  - "Retry operation is idempotent (safe to retry multiple times)"
+  - "Error details stored as JSON for debugging"
+
+database_schema: |
+  CREATE TABLE embedding_retry_queue (
+    id TEXT PRIMARY KEY,
+    work_id TEXT NOT NULL,
+    operation_type TEXT NOT NULL, -- 'create', 'update', 'delete'
+    attempt_count INTEGER DEFAULT 0,
+    max_attempts INTEGER DEFAULT 3,
+    next_retry_at TEXT, -- ISO datetime
+    status TEXT DEFAULT 'pending', -- 'pending', 'retrying', 'dead_letter'
+    error_message TEXT,
+    error_details TEXT, -- JSON
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    dead_letter_at TEXT,
+    FOREIGN KEY (work_id) REFERENCES work_notes(work_id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX idx_retry_queue_status ON embedding_retry_queue(status);
+  CREATE INDEX idx_retry_queue_next_retry ON embedding_retry_queue(next_retry_at);
+  CREATE INDEX idx_retry_queue_work_id ON embedding_retry_queue(work_id);
+
+retry_logic_pseudocode: |
+  async function processRetryQueue() {
+    const now = new Date()
+
+    // Get items ready for retry
+    const items = await db.query(`
+      SELECT * FROM embedding_retry_queue
+      WHERE status = 'pending'
+      AND next_retry_at <= ?
+      ORDER BY next_retry_at ASC
+      LIMIT 10
+    `, [now])
+
+    for (const item of items) {
+      try {
+        // Mark as retrying
+        await updateStatus(item.id, 'retrying')
+
+        // Fetch work note and attempt embedding
+        const workNote = await getWorkNote(item.work_id)
+        await chunkAndEmbedWorkNote(workNote)
+
+        // Success - remove from queue
+        await deleteRetryItem(item.id)
+
+      } catch (error) {
+        // Increment attempt count
+        const newAttemptCount = item.attempt_count + 1
+
+        if (newAttemptCount >= item.max_attempts) {
+          // Move to dead-letter
+          await updateRetryItem(item.id, {
+            status: 'dead_letter',
+            attempt_count: newAttemptCount,
+            dead_letter_at: new Date(),
+            error_message: error.message,
+            error_details: JSON.stringify(error)
+          })
+        } else {
+          // Schedule next retry with exponential backoff
+          const delay = Math.pow(2, newAttemptCount) * 1000 // 2s, 4s, 8s
+          const nextRetryAt = new Date(Date.now() + delay)
+
+          await updateRetryItem(item.id, {
+            status: 'pending',
+            attempt_count: newAttemptCount,
+            next_retry_at: nextRetryAt,
+            error_message: error.message,
+            error_details: JSON.stringify(error)
+          })
+        }
+      }
+    }
+  }
+
+api_endpoints:
+  - method: GET
+    path: /admin/embedding-failures
+    description: "List all dead-letter embedding failures"
+    query:
+      limit: integer (default 50)
+      offset: integer (default 0)
+    response:
+      items: array of EmbeddingFailure
+        - id: string
+        - work_id: string
+        - work_title: string (joined from work_notes)
+        - operation_type: string
+        - attempt_count: integer
+        - error_message: string
+        - created_at: string
+        - dead_letter_at: string
+      total: integer
+
+  - method: POST
+    path: /admin/embedding-failures/{id}/retry
+    description: "Manually retry a dead-letter item"
+    response:
+      success: boolean
+      message: string
+      status: string (updated status)

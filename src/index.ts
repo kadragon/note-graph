@@ -22,6 +22,7 @@ import search from './routes/search';
 import rag from './routes/rag';
 import aiDraft from './routes/ai-draft';
 import pdf from './routes/pdf';
+import admin from './routes/admin';
 
 // Re-export Env type for compatibility
 export type { Env };
@@ -73,6 +74,7 @@ app.route('/search', search);
 app.route('/rag', rag);
 app.route('/ai', aiDraft);
 app.route('/pdf-jobs', pdf);
+app.route('/admin', admin);
 
 // 404 handler
 app.notFound((c) => {
