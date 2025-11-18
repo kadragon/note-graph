@@ -677,8 +677,31 @@ completed_tasks:
       ✓ npm test -- departments.test.ts person.test.ts
     estimated_effort: 2h
     actual_effort: ~0.5h
-      - Dark mode theme
-      - PWA features
+
+  - task_id: TASK-022
+    title: "Implement Retry Mechanism for Embedding Failures"
+    spec_id: SPEC-rag-2
+    completed_at: "2025-11-18T13:37:00Z"
+    outcome: |
+      Implemented automatic retry mechanism with exponential backoff for failed
+      embedding operations, ensuring eventual consistency between D1 and Vectorize.
+      Created EmbeddingRetryService with retry queue management, dead-letter queue
+      for permanently failed items, and admin routes for monitoring and manual retry.
+      Integrated with WorkNoteService to automatically enqueue failures.
+    test_results: |
+      ✓ npm test (332 tests passing, 100% test suite success)
+      ✓ 19 new tests for embedding retry service
+      ✓ All acceptance tests from SPEC-rag-2 passed
+    estimated_effort: 4h
+    actual_effort: ~4h
+    implementation_details: |
+      - EmbeddingRetryService: Queue management with exponential backoff (2s, 4s, 8s)
+      - Database migration: 0002_embedding_retry_queue.sql with FK constraints
+      - Admin routes: /admin/embedding-failures, /admin/retry-queue/stats
+      - WorkNoteService integration: Automatic failure enqueuing for create/update
+      - Max 3 retry attempts before moving to dead-letter status
+      - Error details preserved as JSON for debugging
+      - Korean error messages for admin UI
 
   - task_id: TASK-022
     title: "Fix department creation errors in frontend"
