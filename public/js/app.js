@@ -15,8 +15,8 @@ const API = {
       ...options.headers,
     };
 
-    // In development, use test auth header
-    if (!headers['Cf-Access-Authenticated-User-Email']) {
+    // In development (localhost only), use test auth header
+    if (!headers['Cf-Access-Authenticated-User-Email'] && window.location.hostname === 'localhost') {
       headers['X-Test-User-Email'] = 'test@example.com';
     }
 
@@ -77,7 +77,8 @@ const API = {
     });
 
     const headers = {};
-    if (!headers['Cf-Access-Authenticated-User-Email']) {
+    // In development (localhost only), use test auth header
+    if (!headers['Cf-Access-Authenticated-User-Email'] && window.location.hostname === 'localhost') {
       headers['X-Test-User-Email'] = 'test@example.com';
     }
 
@@ -230,7 +231,7 @@ const Pages = {
             <h1 class="page-title">업무노트</h1>
             <p class="page-subtitle">업무 기록을 관리하세요</p>
           </div>
-          <button class="btn btn-primary" onclick="App.showCreateWorkNoteModal()">
+          <button class="btn btn-primary" id="create-worknote-btn">
             ➕ 새 노트
           </button>
         </div>
@@ -254,7 +255,7 @@ const Pages = {
             <h1 class="page-title">사람 관리</h1>
             <p class="page-subtitle">조직 구성원을 관리하세요</p>
           </div>
-          <button class="btn btn-primary" onclick="App.showCreatePersonModal()">
+          <button class="btn btn-primary" id="create-person-btn">
             ➕ 사람 추가
           </button>
         </div>
@@ -278,7 +279,7 @@ const Pages = {
             <h1 class="page-title">부서 관리</h1>
             <p class="page-subtitle">조직 부서를 관리하세요</p>
           </div>
-          <button class="btn btn-primary" onclick="App.showCreateDepartmentModal()">
+          <button class="btn btn-primary" id="create-department-btn">
             ➕ 부서 추가
           </button>
         </div>
@@ -309,10 +310,9 @@ const Pages = {
               class="form-input"
               id="search-input"
               placeholder="검색어를 입력하세요..."
-              onkeypress="if(event.key === 'Enter') App.performSearch()"
             >
           </div>
-          <button class="btn btn-primary" onclick="App.performSearch()">
+          <button class="btn btn-primary" id="search-btn">
             🔍 검색
           </button>
         </div>
@@ -351,9 +351,8 @@ const Pages = {
               class="chat-input"
               id="chat-input"
               placeholder="질문을 입력하세요..."
-              onkeypress="if(event.key === 'Enter') App.sendChatMessage()"
             >
-            <button class="btn btn-primary" onclick="App.sendChatMessage()">
+            <button class="btn btn-primary" id="send-chat-btn">
               전송
             </button>
           </div>
@@ -406,6 +405,7 @@ const App = {
   currentUser: null,
   currentTodoView: 'today',
   currentRagScope: 'GLOBAL',
+  currentPdfDraft: null,
   persons: [],
   departments: [],
 
@@ -479,7 +479,7 @@ const App = {
         container.innerHTML = `
           <div class="card">
             <div class="card-body" style="text-align: center; color: var(--danger);">
-              <p>페이지 로딩 실패: ${error.message}</p>
+              <p>페이지 로딩 실패: ${UI.escapeHtml(error.message)}</p>
             </div>
           </div>
         `;
@@ -506,19 +506,86 @@ const App = {
         break;
       case 'workNotes':
         await this.loadWorkNotes();
+        this.setupWorkNotesButtons();
         break;
       case 'persons':
         await this.loadPersons();
+        this.setupPersonsButtons();
         break;
       case 'departments':
         await this.loadDepartments();
+        this.setupDepartmentsButtons();
+        break;
+      case 'search':
+        this.setupSearchHandlers();
         break;
       case 'rag':
         this.setupRagTabs();
+        this.setupChatHandlers();
         break;
       case 'pdf':
         this.setupPdfUpload();
         break;
+    }
+  },
+
+  // Setup button handlers for work notes page
+  setupWorkNotesButtons() {
+    const createBtn = document.getElementById('create-worknote-btn');
+    if (createBtn) {
+      createBtn.addEventListener('click', () => this.showCreateWorkNoteModal());
+    }
+  },
+
+  // Setup button handlers for persons page
+  setupPersonsButtons() {
+    const createBtn = document.getElementById('create-person-btn');
+    if (createBtn) {
+      createBtn.addEventListener('click', () => this.showCreatePersonModal());
+    }
+  },
+
+  // Setup button handlers for departments page
+  setupDepartmentsButtons() {
+    const createBtn = document.getElementById('create-department-btn');
+    if (createBtn) {
+      createBtn.addEventListener('click', () => this.showCreateDepartmentModal());
+    }
+  },
+
+  // Setup search handlers
+  setupSearchHandlers() {
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+
+    if (searchInput) {
+      searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          this.performSearch();
+        }
+      });
+    }
+
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => this.performSearch());
+    }
+  },
+
+  // Setup chat handlers
+  setupChatHandlers() {
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-chat-btn');
+
+    if (chatInput) {
+      chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          this.sendChatMessage();
+        }
+      });
+    }
+
+    if (sendBtn) {
+      sendBtn.addEventListener('click', () => this.sendChatMessage());
     }
   },
 
@@ -552,8 +619,8 @@ const App = {
               <input
                 type="checkbox"
                 class="todo-checkbox"
+                data-todo-id="${todo.todo_id}"
                 ${todo.status === '완료' ? 'checked' : ''}
-                onchange="App.toggleTodoStatus('${todo.todo_id}', this.checked)"
               >
               <div class="todo-content">
                 <div class="todo-title">${UI.escapeHtml(todo.title)}</div>
@@ -571,8 +638,17 @@ const App = {
           `).join('')}
         </ul>
       `;
+
+      // Add event listeners to checkboxes
+      document.querySelectorAll('.todo-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+          const todoId = e.target.dataset.todoId;
+          const checked = e.target.checked;
+          this.toggleTodoStatus(todoId, checked, e.target);
+        });
+      });
     } catch (error) {
-      container.innerHTML = `<p style="text-align: center; color: var(--danger);">로딩 실패: ${error.message}</p>`;
+      container.innerHTML = `<p style="text-align: center; color: var(--danger);">로딩 실패: ${UI.escapeHtml(error.message)}</p>`;
     }
   },
 
@@ -586,11 +662,11 @@ const App = {
     return map[status] || 'badge-secondary';
   },
 
-  async toggleTodoStatus(todoId, checked) {
+  async toggleTodoStatus(todoId, checked, checkboxElement) {
     const newStatus = checked ? '완료' : '진행중';
 
     // Optimistic UI update
-    const checkbox = event.target;
+    const checkbox = checkboxElement;
     const originalChecked = !checked;
 
     try {
@@ -635,10 +711,10 @@ const App = {
                 <td><span class="badge badge-primary">${UI.escapeHtml(note.category)}</span></td>
                 <td>${UI.formatDate(note.created_at)}</td>
                 <td class="table-actions">
-                  <button class="btn btn-sm btn-secondary" onclick="App.viewWorkNote('${note.work_id}')">
+                  <button class="btn btn-sm btn-secondary view-worknote-btn" data-work-id="${note.work_id}">
                     보기
                   </button>
-                  <button class="btn btn-sm btn-danger" onclick="App.deleteWorkNote('${note.work_id}')">
+                  <button class="btn btn-sm btn-danger delete-worknote-btn" data-work-id="${note.work_id}">
                     삭제
                   </button>
                 </td>
@@ -647,8 +723,23 @@ const App = {
           </tbody>
         </table>
       `;
+
+      // Add event listeners to action buttons
+      document.querySelectorAll('.view-worknote-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const workId = e.target.dataset.workId;
+          this.viewWorkNote(workId);
+        });
+      });
+
+      document.querySelectorAll('.delete-worknote-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const workId = e.target.dataset.workId;
+          this.deleteWorkNote(workId);
+        });
+      });
     } catch (error) {
-      container.innerHTML = `<p style="text-align: center; color: var(--danger);">로딩 실패: ${error.message}</p>`;
+      container.innerHTML = `<p style="text-align: center; color: var(--danger);">로딩 실패: ${UI.escapeHtml(error.message)}</p>`;
     }
   },
 
@@ -723,7 +814,7 @@ const App = {
         </table>
       `;
     } catch (error) {
-      container.innerHTML = `<p style="text-align: center; color: var(--danger);">로딩 실패: ${error.message}</p>`;
+      container.innerHTML = `<p style="text-align: center; color: var(--danger);">로딩 실패: ${UI.escapeHtml(error.message)}</p>`;
     }
   },
 
@@ -778,7 +869,7 @@ const App = {
         </table>
       `;
     } catch (error) {
-      container.innerHTML = `<p style="text-align: center; color: var(--danger);">로딩 실패: ${error.message}</p>`;
+      container.innerHTML = `<p style="text-align: center; color: var(--danger);">로딩 실패: ${UI.escapeHtml(error.message)}</p>`;
     }
   },
 
@@ -856,7 +947,7 @@ const App = {
       container.innerHTML = `
         <div class="card mt-3">
           <div class="card-body" style="text-align: center; color: var(--danger);">
-            검색 실패: ${error.message}
+            검색 실패: ${UI.escapeHtml(error.message)}
           </div>
         </div>
       `;
@@ -1052,6 +1143,9 @@ const App = {
   },
 
   showPdfDraft(draft) {
+    // Store draft in app state instead of HTML attribute
+    this.currentPdfDraft = draft;
+
     const container = document.getElementById('draft-result');
 
     container.innerHTML = `
@@ -1087,29 +1181,44 @@ const App = {
           ` : ''}
 
           <div class="flex-gap mt-3">
-            <button class="btn btn-primary" onclick="App.saveGeneratedDraft(${JSON.stringify(draft).replace(/"/g, '&quot;')})">
+            <button class="btn btn-primary" id="save-draft-btn">
               📝 업무노트로 저장
             </button>
-            <button class="btn btn-secondary" onclick="location.reload()">
+            <button class="btn btn-secondary" id="reload-upload-btn">
               🔄 새로 업로드
             </button>
           </div>
         </div>
       </div>
     `;
+
+    // Add event listeners
+    document.getElementById('save-draft-btn').addEventListener('click', () => {
+      this.saveGeneratedDraft();
+    });
+
+    document.getElementById('reload-upload-btn').addEventListener('click', () => {
+      location.reload();
+    });
   },
 
-  async saveGeneratedDraft(draft) {
+  async saveGeneratedDraft() {
+    if (!this.currentPdfDraft) {
+      UI.showToast('저장할 초안이 없습니다', 'error');
+      return;
+    }
+
     UI.showLoading();
 
     try {
       await API.createWorkNote({
-        title: draft.title,
-        category: draft.category,
-        content: draft.content,
+        title: this.currentPdfDraft.title,
+        category: this.currentPdfDraft.category,
+        content: this.currentPdfDraft.content,
       });
 
       UI.showToast('업무노트가 저장되었습니다', 'success');
+      this.currentPdfDraft = null; // Clear draft
       this.navigate('#/work-notes');
 
     } catch (error) {
