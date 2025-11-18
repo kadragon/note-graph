@@ -1,6 +1,6 @@
-// Trace: SPEC-worknote-1, TASK-007, TASK-010
+// Trace: SPEC-worknote-1, SPEC-rag-1, TASK-007, TASK-010, TASK-012
 /**
- * Work note management routes
+ * Work note management routes with integrated RAG support
  */
 
 import { Hono } from 'hono';
@@ -10,11 +10,9 @@ import { authMiddleware } from '../middleware/auth';
 import { validateBody, validateQuery } from '../utils/validation';
 import { createWorkNoteSchema, updateWorkNoteSchema, listWorkNotesQuerySchema } from '../schemas/work-note';
 import { createTodoSchema } from '../schemas/todo';
-import { WorkNoteRepository } from '../repositories/work-note-repository';
+import { WorkNoteService } from '../services/work-note-service';
 import { TodoRepository } from '../repositories/todo-repository';
-import { EmbeddingService, VectorizeService } from '../services/embedding-service';
 import { DomainError } from '../types/errors';
-import type { WorkNote } from '../types/work-note';
 
 const workNotes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -22,40 +20,13 @@ const workNotes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 workNotes.use('*', authMiddleware);
 
 /**
- * Helper function to update work note embedding
- * Shared between create and update handlers to avoid code duplication
- */
-async function updateWorkNoteEmbedding(
-  env: Env,
-  workNote: WorkNote,
-  personIds: string[]
-): Promise<void> {
-  try {
-    const embeddingService = new EmbeddingService(env);
-    const vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
-
-    const createdAtBucket = workNote.createdAt.substring(0, 10); // YYYY-MM-DD
-
-    await vectorizeService.upsertWorkNote(workNote.workId, workNote.title, workNote.contentRaw, {
-      person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
-      category: workNote.category ?? undefined,
-      created_at_bucket: createdAtBucket,
-    });
-  } catch (embeddingError) {
-    // Log embedding error but don't fail the request
-    // Work note operation is successful, embedding can be retried later
-    console.error('Error updating embedding:', embeddingError);
-  }
-}
-
-/**
  * GET /work-notes - List work notes with filters
  */
 workNotes.get('/', async (c) => {
   try {
     const query = validateQuery(c, listWorkNotesQuerySchema);
-    const repository = new WorkNoteRepository(c.env.DB);
-    const results = await repository.findAll(query);
+    const service = new WorkNoteService(c.env);
+    const results = await service.findAll(query);
 
     return c.json(results);
   } catch (error) {
@@ -69,17 +40,13 @@ workNotes.get('/', async (c) => {
 
 /**
  * POST /work-notes - Create new work note
+ * Automatically chunks and embeds for RAG
  */
 workNotes.post('/', async (c) => {
   try {
     const data = await validateBody(c, createWorkNoteSchema);
-    const repository = new WorkNoteRepository(c.env.DB);
-    const workNote = await repository.create(data);
-
-    // Generate and store embedding for vector search
-    // Use personIds from request data to avoid extra DB call
-    const personIds = data.persons?.map((p) => p.personId) ?? [];
-    await updateWorkNoteEmbedding(c.env, workNote, personIds);
+    const service = new WorkNoteService(c.env);
+    const workNote = await service.create(data);
 
     return c.json(workNote, 201);
   } catch (error) {
@@ -97,8 +64,8 @@ workNotes.post('/', async (c) => {
 workNotes.get('/:workId', async (c) => {
   try {
     const { workId } = c.req.param();
-    const repository = new WorkNoteRepository(c.env.DB);
-    const workNote = await repository.findByIdWithDetails(workId);
+    const service = new WorkNoteService(c.env);
+    const workNote = await service.findByIdWithDetails(workId);
 
     if (!workNote) {
       return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
@@ -116,30 +83,14 @@ workNotes.get('/:workId', async (c) => {
 
 /**
  * PUT /work-notes/:workId - Update work note
+ * Automatically re-chunks and re-embeds for RAG
  */
 workNotes.put('/:workId', async (c) => {
   try {
     const { workId } = c.req.param();
     const data = await validateBody(c, updateWorkNoteSchema);
-    const repository = new WorkNoteRepository(c.env.DB);
-    const workNote = await repository.update(workId, data);
-
-    // Update embedding if title, content, or persons changed
-    if (data.title !== undefined || data.contentRaw !== undefined || data.persons !== undefined) {
-      // Get person IDs - use updated persons if provided, otherwise fetch from DB
-      let personIds: string[] = [];
-      if (data.persons !== undefined) {
-        personIds = data.persons.map((p) => p.personId);
-      } else {
-        // Only fetch if persons not in update data
-        const workNoteDetails = await repository.findByIdWithDetails(workId);
-        if (workNoteDetails) {
-          personIds = workNoteDetails.persons.map((p) => p.personId);
-        }
-      }
-
-      await updateWorkNoteEmbedding(c.env, workNote, personIds);
-    }
+    const service = new WorkNoteService(c.env);
+    const workNote = await service.update(workId, data);
 
     return c.json(workNote);
   } catch (error) {
@@ -153,22 +104,13 @@ workNotes.put('/:workId', async (c) => {
 
 /**
  * DELETE /work-notes/:workId - Delete work note
+ * Automatically deletes all chunks from Vectorize
  */
 workNotes.delete('/:workId', async (c) => {
   try {
     const { workId } = c.req.param();
-    const repository = new WorkNoteRepository(c.env.DB);
-    await repository.delete(workId);
-
-    // Delete embedding from Vectorize
-    try {
-      const embeddingService = new EmbeddingService(c.env);
-      const vectorizeService = new VectorizeService(c.env.VECTORIZE, embeddingService);
-      await vectorizeService.deleteWorkNote(workId);
-    } catch (embeddingError) {
-      // Log embedding error but don't fail the request
-      console.error('Error deleting embedding:', embeddingError);
-    }
+    const service = new WorkNoteService(c.env);
+    await service.delete(workId);
 
     return c.body(null, 204);
   } catch (error) {
