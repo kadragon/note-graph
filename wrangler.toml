@@ -75,11 +75,7 @@ local_protocol = "http"
 # ============================================================================
 # Build Configuration
 # ============================================================================
-[build]
-command = "npm run build"
-
-[build.upload]
-format = "service-worker"
+# Wrangler uses ES modules format by default (no build config needed for TypeScript)
 
 # ============================================================================
 # Observability
