@@ -1,10 +1,21 @@
-// Trace: SPEC-auth-1, TASK-001
+// Trace: SPEC-auth-1, TASK-001, TASK-003, TASK-004
 /**
  * Note Graph - Main Worker Entry Point
  * Personal work note management system with AI-powered features
  */
 
 import { Hono } from 'hono';
+import type { AuthUser } from './types/auth';
+import { AuthenticationError } from './types/auth';
+import { DomainError } from './types/errors';
+import { authMiddleware } from './middleware/auth';
+import { getMeHandler } from './handlers/auth';
+
+// Route imports
+import persons from './routes/persons';
+import departments from './routes/departments';
+import workNotes from './routes/work-notes';
+import todos from './routes/todos';
 
 // Environment bindings type definition
 export interface Env {
@@ -20,8 +31,8 @@ export interface Env {
   OPENAI_API_KEY: string;
 }
 
-// Initialize Hono app
-const app = new Hono<{ Bindings: Env }>();
+// Initialize Hono app with auth context
+const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
 // Health check endpoint
 app.get('/health', (c) => {
@@ -47,6 +58,22 @@ app.get('/', (c) => {
   });
 });
 
+// ============================================================================
+// Authenticated Endpoints
+// ============================================================================
+
+// GET /me - Get current authenticated user
+app.get('/me', authMiddleware, getMeHandler);
+
+// ============================================================================
+// API Route Groups
+// ============================================================================
+
+app.route('/persons', persons);
+app.route('/departments', departments);
+app.route('/work-notes', workNotes);
+app.route('/todos', todos);
+
 // 404 handler
 app.notFound((c) => {
   return c.json(
@@ -61,12 +88,36 @@ app.notFound((c) => {
 // Error handler
 app.onError((err, c) => {
   console.error(`Application error: ${err instanceof Error ? err.stack || err : JSON.stringify(err)}`);
+
+  // Handle authentication errors
+  if (err instanceof AuthenticationError) {
+    return c.json(
+      {
+        code: 'UNAUTHORIZED',
+        message: err.message,
+      },
+      401
+    );
+  }
+
+  // Handle domain errors (ValidationError, NotFoundError, etc.)
+  if (err instanceof DomainError) {
+    const response: { code: string; message: string; details?: unknown } = {
+      code: err.code,
+      message: err.message,
+    };
+    if (err.details) {
+      response.details = err.details;
+    }
+    return c.json(response, err.statusCode as 400 | 404 | 409 | 429 | 500);
+  }
+
   // Avoid leaking internal error details to the client in non-dev environments.
   const isDevelopment = c.env.ENVIRONMENT === 'development';
   const message = isDevelopment && err instanceof Error ? err.message : 'An internal server error occurred.';
   return c.json(
     {
-      error: 'Internal Server Error',
+      code: 'INTERNAL_ERROR',
       message,
     },
     500
