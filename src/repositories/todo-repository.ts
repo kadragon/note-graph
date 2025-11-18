@@ -222,12 +222,19 @@ export class TodoRepository {
       )
       .run();
 
-    const todo = await this.findById(todoId);
-    if (!todo) {
-      throw new Error('Failed to create todo');
-    }
-
-    return todo;
+    // Return the created todo without extra DB roundtrip
+    return {
+      todoId,
+      workId,
+      title: data.title,
+      description: data.description || null,
+      createdAt: now,
+      dueDate: data.dueDate || null,
+      waitUntil: data.waitUntil || null,
+      status: '진행중',
+      repeatRule: data.repeatRule,
+      recurrenceType: data.recurrenceType || null,
+    };
   }
 
   /**
@@ -327,11 +334,16 @@ export class TodoRepository {
       await this.db.batch(statements);
     }
 
-    const updated = await this.findById(todoId);
-    if (!updated) {
-      throw new Error('Failed to update todo');
-    }
-
-    return updated;
+    // Return the updated todo without extra DB roundtrip
+    return {
+      ...existing,
+      title: data.title !== undefined ? data.title : existing.title,
+      description: data.description !== undefined ? (data.description || null) : existing.description,
+      status: data.status !== undefined ? data.status : existing.status,
+      dueDate: data.dueDate !== undefined ? (data.dueDate || null) : existing.dueDate,
+      waitUntil: data.waitUntil !== undefined ? (data.waitUntil || null) : existing.waitUntil,
+      repeatRule: data.repeatRule !== undefined ? data.repeatRule : existing.repeatRule,
+      recurrenceType: data.recurrenceType !== undefined ? (data.recurrenceType || null) : existing.recurrenceType,
+    };
   }
 }

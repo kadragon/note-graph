@@ -102,12 +102,16 @@ export class PersonRepository {
 
     await this.db.batch(statements);
 
-    const person = await this.findById(data.personId);
-    if (!person) {
-      throw new Error('Failed to create person');
-    }
-
-    return person;
+    // Return the created person without extra DB roundtrip
+    return {
+      personId: data.personId,
+      name: data.name,
+      currentDept: data.currentDept || null,
+      currentPosition: data.currentPosition || null,
+      currentRoleDesc: data.currentRoleDesc || null,
+      createdAt: now,
+      updatedAt: now,
+    };
   }
 
   /**
@@ -193,12 +197,15 @@ export class PersonRepository {
       await this.db.batch(statements);
     }
 
-    const updated = await this.findById(personId);
-    if (!updated) {
-      throw new Error('Failed to update person');
-    }
-
-    return updated;
+    // Return the updated person without extra DB roundtrip
+    return {
+      ...existing,
+      name: data.name !== undefined ? data.name : existing.name,
+      currentDept: data.currentDept !== undefined ? (data.currentDept || null) : existing.currentDept,
+      currentPosition: data.currentPosition !== undefined ? (data.currentPosition || null) : existing.currentPosition,
+      currentRoleDesc: data.currentRoleDesc !== undefined ? (data.currentRoleDesc || null) : existing.currentRoleDesc,
+      updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
+    };
   }
 
   /**
