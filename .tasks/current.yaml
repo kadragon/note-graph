@@ -4,5 +4,19 @@
 current_task: null
 
 notes: |
-  TASK-004 completed successfully.
-  Ready to start TASK-005: Implement Person repository and CRUD endpoints.
+  TASK-005 completed successfully.
+
+  Implemented:
+  - Person type definitions (Person, PersonDeptHistory, PersonWorkNote)
+  - PersonRepository with all CRUD operations
+  - POST /persons - creates person with auto department history entry
+  - GET /persons - lists persons with optional search
+  - GET /persons/:personId - gets person by ID
+  - PUT /persons/:personId - updates person and manages department history
+  - GET /persons/:personId/history - retrieves full department history
+  - GET /persons/:personId/work-notes - lists person's associated work notes
+
+  All endpoints implement proper error handling with domain errors.
+  Department history tracking works correctly (deactivates old, creates new on dept change).
+
+  Ready to start TASK-006: Implement Department repository and CRUD endpoints.
