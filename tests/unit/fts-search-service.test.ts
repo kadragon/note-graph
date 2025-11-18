@@ -83,10 +83,13 @@ describe('FtsSearchService', () => {
 
       const results = await ftsService.search('test');
 
-      // FTS rank -1 should normalize to 0.9
-      expect(results[0].score).toBeCloseTo(0.9, 1);
-      // FTS rank -5 should normalize to 0.5
-      expect(results[1].score).toBeCloseTo(0.5, 1);
+      // FTS rank -1 should normalize to exactly 0.9
+      // Formula: Math.max(0, 1 + fts_rank / 10) = 1 + (-1)/10 = 0.9
+      expect(results[0].score).toBe(0.9);
+
+      // FTS rank -5 should normalize to exactly 0.5
+      // Formula: Math.max(0, 1 + fts_rank / 10) = 1 + (-5)/10 = 0.5
+      expect(results[1].score).toBe(0.5);
     });
 
     it('should apply category filter', async () => {
