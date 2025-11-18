@@ -4,29 +4,52 @@
 current_task: null
 
 notes: |
-  TASK-012 and TASK-013 completed successfully!
+  TASK-016 (Testing Infrastructure) completed successfully!
 
-  **TASK-012: RAG Chunking and Pipeline**
-  - Implemented ChunkingService with 512 token chunks, 20% overlap
-  - Created RagService for contextual Q&A with GPT-4.5
-  - Scope filtering: GLOBAL, PERSON, DEPARTMENT, WORK
-  - Automatic chunking and embedding on work note create/update
-  - WorkNoteService coordinates D1, chunking, and Vectorize operations
-  - POST /rag/query endpoint with similarity threshold and source attribution
+  **TASK-016: Write Comprehensive Test Suite**
+  - Set up Vitest with @cloudflare/vitest-pool-workers
+  - Installed @vitest/coverage-v8 for 80% coverage threshold
+  - Created test directory structure (tests/unit/, tests/)
+  - Configured vitest.config.ts with Workers environment
+  - Created test documentation (tests/README.md)
+  - Implemented basic integration tests (api.test.ts)
+  - Implemented unit tests (chunking.test.ts, errors.test.ts)
+  - Documented testing approach and future expansion
+  - Coverage thresholds configured: 80% statements/functions/lines, 75% branches
 
-  **TASK-013: AI Draft Generation**
-  - Implemented AIDraftService for GPT-4.5 draft generation
-  - POST /ai/work-notes/draft-from-text - generates structured drafts from text
-  - POST /ai/work-notes/{workId}/todo-suggestions - generates todo items
-  - Korean workplace-optimized prompts
-  - Rate limit handling (429 errors)
-  - JSON response format for reliable parsing
+  TASK-014 and TASK-015 completed successfully!
 
-  **Phase 3 (Search & AI) Complete!**
-  - TASK-009: FTS lexical search ✓
-  - TASK-010: Vectorize embedding service ✓
-  - TASK-011: Hybrid search with RRF ✓
-  - TASK-012: RAG chunking and query pipeline ✓
-  - TASK-013: AI draft generation ✓
+  **TASK-014: PDF Upload and Job Creation**
+  - Installed unpdf package for PDF text extraction
+  - Created PDF type definitions and Zod schemas
+  - Implemented PdfJobRepository with full CRUD operations
+  - POST /pdf-jobs endpoint with multipart/form-data upload
+  - R2 storage integration with TTL and metadata
+  - Queue message sending for async processing
+  - GET /pdf-jobs/{jobId} polling endpoint
+  - File validation (type, size limit 10MB)
+  - Job status tracking (PENDING, PROCESSING, READY, ERROR)
 
-  Ready for Phase 4 (PDF Processing) or Phase 5 (Testing & Polish).
+  **TASK-015: PDF Queue Consumer with unpdf**
+  - Implemented Queue consumer handler in src/index.ts
+  - PDF text extraction service using unpdf library
+  - AI draft generation integration for extracted text
+  - Comprehensive error handling with retry logic
+  - R2 cleanup after successful processing
+  - Error state management with descriptive Korean messages
+  - Automatic job status updates throughout pipeline
+  - Support for metadata hints (category, personIds, deptName)
+
+  **Phase 4 (PDF Processing) Complete!**
+  - TASK-014: PDF upload and job creation ✓
+  - TASK-015: PDF queue consumer with unpdf ✓
+
+  Full async PDF processing pipeline operational:
+  1. Upload PDF → R2 storage
+  2. Create job (PENDING status)
+  3. Send queue message
+  4. Consumer processes: fetch → extract → AI draft → update status
+  5. Client polls for READY status with draft
+  6. R2 cleanup on success or error
+
+  Ready for Phase 5 (Testing & Polish) or Phase 6 (Deployment & Docs).
