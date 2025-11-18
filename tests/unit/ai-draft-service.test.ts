@@ -480,7 +480,7 @@ describe('AIDraftService', () => {
       });
 
       // Act & Assert
-      await expect(service.generateDraftFromText(inputText)).rejects.toThrow();
+      await expect(service.generateDraftFromText(inputText)).rejects.toThrow('No response from GPT');
     });
 
     it('should handle malformed GPT response', async () => {
@@ -495,7 +495,7 @@ describe('AIDraftService', () => {
       });
 
       // Act & Assert
-      await expect(service.generateDraftFromText(inputText)).rejects.toThrow();
+      await expect(service.generateDraftFromText(inputText)).rejects.toThrow('No response from GPT');
     });
 
     it('should use AI Gateway URL', async () => {

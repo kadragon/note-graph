@@ -153,55 +153,6 @@ describe('EmbeddingService', () => {
       expect(result).toHaveLength(50);
     });
   });
-
-  describe('Static helper methods', () => {
-    it('should encode person IDs to comma-separated string', () => {
-      // Arrange
-      const personIds = ['123456', '234567', '345678'];
-
-      // Act
-      const encoded = VectorizeService.encodePersonIds(personIds);
-
-      // Assert
-      expect(encoded).toBe('123456,234567,345678');
-    });
-
-    it('should decode person IDs from comma-separated string', () => {
-      // Arrange
-      const encoded = '123456,234567,345678';
-
-      // Act
-      const decoded = VectorizeService.decodePersonIds(encoded);
-
-      // Assert
-      expect(decoded).toEqual(['123456', '234567', '345678']);
-    });
-
-    it('should handle empty string when decoding', () => {
-      // Arrange
-      const encoded = '';
-
-      // Act
-      const decoded = VectorizeService.decodePersonIds(encoded);
-
-      // Assert
-      // Empty string split returns an empty array (handled by ternary in implementation)
-      expect(decoded).toEqual([]);
-    });
-
-    it('should handle single person ID', () => {
-      // Arrange
-      const personIds = ['123456'];
-
-      // Act
-      const encoded = VectorizeService.encodePersonIds(personIds);
-      const decoded = VectorizeService.decodePersonIds(encoded);
-
-      // Assert
-      expect(encoded).toBe('123456');
-      expect(decoded).toEqual(['123456']);
-    });
-  });
 });
 
 describe('VectorizeService', () => {
@@ -595,6 +546,55 @@ describe('VectorizeService', () => {
           filter,
         })
       );
+    });
+  });
+
+  describe('Static helper methods', () => {
+    it('should encode person IDs to comma-separated string', () => {
+      // Arrange
+      const personIds = ['123456', '234567', '345678'];
+
+      // Act
+      const encoded = VectorizeService.encodePersonIds(personIds);
+
+      // Assert
+      expect(encoded).toBe('123456,234567,345678');
+    });
+
+    it('should decode person IDs from comma-separated string', () => {
+      // Arrange
+      const encoded = '123456,234567,345678';
+
+      // Act
+      const decoded = VectorizeService.decodePersonIds(encoded);
+
+      // Assert
+      expect(decoded).toEqual(['123456', '234567', '345678']);
+    });
+
+    it('should handle empty string when decoding', () => {
+      // Arrange
+      const encoded = '';
+
+      // Act
+      const decoded = VectorizeService.decodePersonIds(encoded);
+
+      // Assert
+      // Empty string split returns an empty array (handled by ternary in implementation)
+      expect(decoded).toEqual([]);
+    });
+
+    it('should handle single person ID', () => {
+      // Arrange
+      const personIds = ['123456'];
+
+      // Act
+      const encoded = VectorizeService.encodePersonIds(personIds);
+      const decoded = VectorizeService.decodePersonIds(encoded);
+
+      // Assert
+      expect(encoded).toBe('123456');
+      expect(decoded).toEqual(['123456']);
     });
   });
 });
