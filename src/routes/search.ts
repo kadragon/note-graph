@@ -1,7 +1,7 @@
-// Trace: SPEC-search-1, TASK-009
+// Trace: SPEC-search-1, TASK-009, TASK-011
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { FtsSearchService } from '../services/fts-search-service';
+import { HybridSearchService } from '../services/hybrid-search-service';
 import { searchWorkNotesSchema } from '../schemas/search';
 import { validateBody } from '../utils/validation';
 import { authMiddleware } from '../middleware/auth';
@@ -15,19 +15,18 @@ search.use('*', authMiddleware);
 
 /**
  * POST /search/work-notes
- * Search work notes using FTS lexical search
- * Later will be extended to hybrid search (FTS + Vectorize)
+ * Search work notes using hybrid search (FTS + Vectorize with RRF)
  */
 search.post('/work-notes', async (c: Context<{ Bindings: Env }>) => {
   try {
     // Validate request body
     const body = await validateBody(c, searchWorkNotesSchema);
 
-    // Create FTS search service
-    const ftsService = new FtsSearchService(c.env.DB);
+    // Create hybrid search service
+    const hybridSearchService = new HybridSearchService(c.env.DB, c.env);
 
-    // Execute FTS search
-    const results = await ftsService.search(body.query, {
+    // Execute hybrid search (FTS + Vectorize with RRF)
+    const results = await hybridSearchService.search(body.query, {
       personId: body.personId,
       deptName: body.deptName,
       category: body.category,
@@ -40,7 +39,7 @@ search.post('/work-notes', async (c: Context<{ Bindings: Env }>) => {
       results,
       count: results.length,
       query: body.query,
-      searchType: 'LEXICAL', // Will change to 'HYBRID' in TASK-011
+      searchType: 'HYBRID',
     });
   } catch (error) {
     if (error instanceof Error) {

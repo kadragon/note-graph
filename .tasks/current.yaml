@@ -4,30 +4,33 @@
 current_task: null
 
 notes: |
-  TASK-010 completed successfully.
+  TASK-011 completed successfully.
 
-  Implemented Vectorize index and embedding service:
-  - Created EmbeddingService for OpenAI text-embedding-3-small via AI Gateway
-  - Created VectorizeService for managing vector embeddings
-  - Integrated embedding into work note create/update/delete operations
-  - Embeddings generated automatically and stored in Vectorize
-  - Metadata includes: work_id, scope, person_ids, category, created_at_bucket
-  - Compact metadata encoding to fit within Vectorize 64-byte limits
+  Implemented hybrid search with RRF (Reciprocal Rank Fusion) ranking:
+  - Created HybridSearchService combining FTS and Vectorize results
+  - Parallel execution of lexical (FTS) and semantic (Vectorize) searches
+  - RRF algorithm merges results with k=60 constant (based on research)
+  - Source attribution: LEXICAL, SEMANTIC, or HYBRID
+  - Updated POST /search/work-notes to use hybrid search
+
+  RRF Algorithm:
+  - Formula: score = sum(1 / (k + rank)) for each result set
+  - k=60 is the standard parameter from IR research
+  - Results appear in both FTS and Vectorize get highest combined scores
+  - Final results sorted by combined RRF score
 
   Key features:
-  - EmbeddingService.generateEmbedding() - single text embedding
-  - EmbeddingService.generateEmbeddings() - batch embedding
-  - VectorizeService.upsertWorkNote() - embed and store work note
-  - VectorizeService.deleteWorkNote() - remove embedding
-  - VectorizeService.search() - semantic search (query embedding + vector similarity)
-  - Metadata encoding with truncation for size limits
-  - Error handling: embedding failures don't fail the main request
+  - HybridSearchService.search() - executes both searches in parallel
+  - Automatic result merging with RRF ranking
+  - Source attribution shows which engine(s) found each result
+  - Graceful degradation: if one search fails, other continues
+  - Fetch limit optimization: 2x limit for each engine, merge to final limit
 
   Integration:
-  - POST /work-notes - embeds new work notes
-  - PUT /work-notes/:workId - updates embeddings when title/content changes
-  - DELETE /work-notes/:workId - deletes embeddings
-  - All embedding operations are non-blocking (logged errors only)
+  - POST /search/work-notes returns hybrid results with source attribution
+  - searchType field now returns 'HYBRID' instead of 'LEXICAL'
+  - Filters apply to both FTS and Vectorize searches
+  - Category filter applied to Vectorize metadata
 
-  Phase 3 (Search & AI) - TASK-009 and TASK-010 complete!
-  Ready for TASK-011: Hybrid search with RRF ranking.
+  Phase 3 (Search & AI) - TASK-009, TASK-010, and TASK-011 complete!
+  Ready for TASK-012: RAG chunking and pipeline.
