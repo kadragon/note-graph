@@ -290,6 +290,28 @@
   - TASK-017: Frontend UI ✓
 - **Full application ready for Phase 6 (Deployment & Docs)!**
 
+### Session 14: Person Creation Validation Fix (2025-11-18)
+- **TASK-018 Completed**: Prevent foreign key errors when creating persons without existing departments
+- Added department existence check in PersonRepository (VALIDATION_ERROR with Korean message)
+- Added regression coverage in `tests/person.test.ts` with minimal D1 schema setup for Workers tests
+- Updated vitest config to include D1 binding and development ENVIRONMENT for test auth fallback
+
+### Session 15: Person Form Department Selector (2025-11-18)
+- **TASK-019 Completed**: Person creation UI now pulls department names from DB with searchable datalist
+- Added inline department creation button; newly created dept auto-selects
+- Block free-text unknown departments to align with FK constraints and validation
+- Minor UI tweaks: stable person list field mappings; inline form styling for inputs with actions
+
+### Session 16: Debounced Department Search (2025-11-18)
+- **TASK-020 Completed**: Added backend department search (optional q) and debounced search in person modal
+- New integration test `tests/departments.test.ts` validates search filtering
+- Debounce helps large department lists; empty input restores full list; inline add still works
+
+### Session 17: Department Search UX Polish (2025-11-18)
+- **TASK-021 Completed**: Added loading/error feedback, keyboard navigation, and 5-item suggestion cap to department selector
+- Suggestions render via custom dropdown with arrow/enter/escape controls; inline add stays compatible
+- Kept debounced async search; limited results to mitigate large lists
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
