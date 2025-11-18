@@ -14,11 +14,39 @@ import { WorkNoteRepository } from '../repositories/work-note-repository';
 import { TodoRepository } from '../repositories/todo-repository';
 import { EmbeddingService, VectorizeService } from '../services/embedding-service';
 import { DomainError } from '../types/errors';
+import type { WorkNote } from '../types/work-note';
 
 const workNotes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
 // All work note routes require authentication
 workNotes.use('*', authMiddleware);
+
+/**
+ * Helper function to update work note embedding
+ * Shared between create and update handlers to avoid code duplication
+ */
+async function updateWorkNoteEmbedding(
+  env: Env,
+  workNote: WorkNote,
+  personIds: string[]
+): Promise<void> {
+  try {
+    const embeddingService = new EmbeddingService(env);
+    const vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
+
+    const createdAtBucket = workNote.createdAt.substring(0, 10); // YYYY-MM-DD
+
+    await vectorizeService.upsertWorkNote(workNote.workId, workNote.title, workNote.contentRaw, {
+      person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
+      category: workNote.category ?? undefined,
+      created_at_bucket: createdAtBucket,
+    });
+  } catch (embeddingError) {
+    // Log embedding error but don't fail the request
+    // Work note operation is successful, embedding can be retried later
+    console.error('Error updating embedding:', embeddingError);
+  }
+}
 
 /**
  * GET /work-notes - List work notes with filters
@@ -49,28 +77,9 @@ workNotes.post('/', async (c) => {
     const workNote = await repository.create(data);
 
     // Generate and store embedding for vector search
-    try {
-      const embeddingService = new EmbeddingService(c.env);
-      const vectorizeService = new VectorizeService(c.env.VECTORIZE, embeddingService);
-
-      // Get full work note details for metadata
-      const workNoteDetails = await repository.findByIdWithDetails(workNote.workId);
-      if (workNoteDetails) {
-        // Extract metadata from work note
-        const personIds = workNoteDetails.persons.map((p) => p.personId);
-        const createdAtBucket = workNote.createdAt.split('T')[0] || workNote.createdAt.substring(0, 10); // YYYY-MM-DD
-
-        await vectorizeService.upsertWorkNote(workNote.workId, workNote.title, workNote.contentRaw, {
-          person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
-          category: workNote.category ?? undefined,
-          created_at_bucket: createdAtBucket,
-        });
-      }
-    } catch (embeddingError) {
-      // Log embedding error but don't fail the request
-      // Work note is created successfully, embedding can be retried later
-      console.error('Error generating embedding:', embeddingError);
-    }
+    // Use personIds from request data to avoid extra DB call
+    const personIds = data.persons?.map((p) => p.personId) ?? [];
+    await updateWorkNoteEmbedding(c.env, workNote, personIds);
 
     return c.json(workNote, 201);
   } catch (error) {
@@ -115,29 +124,21 @@ workNotes.put('/:workId', async (c) => {
     const repository = new WorkNoteRepository(c.env.DB);
     const workNote = await repository.update(workId, data);
 
-    // Update embedding if title or content changed
-    if (data.title !== undefined || data.contentRaw !== undefined) {
-      try {
-        const embeddingService = new EmbeddingService(c.env);
-        const vectorizeService = new VectorizeService(c.env.VECTORIZE, embeddingService);
-
-        // Get full work note details for metadata
+    // Update embedding if title, content, or persons changed
+    if (data.title !== undefined || data.contentRaw !== undefined || data.persons !== undefined) {
+      // Get person IDs - use updated persons if provided, otherwise fetch from DB
+      let personIds: string[] = [];
+      if (data.persons !== undefined) {
+        personIds = data.persons.map((p) => p.personId);
+      } else {
+        // Only fetch if persons not in update data
         const workNoteDetails = await repository.findByIdWithDetails(workId);
         if (workNoteDetails) {
-          // Extract metadata from work note
-          const personIds = workNoteDetails.persons.map((p) => p.personId);
-          const createdAtBucket = workNote.createdAt.split('T')[0] || workNote.createdAt.substring(0, 10); // YYYY-MM-DD
-
-          await vectorizeService.upsertWorkNote(workNote.workId, workNote.title, workNote.contentRaw, {
-            person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
-            category: workNote.category ?? undefined,
-            created_at_bucket: createdAtBucket,
-          });
+          personIds = workNoteDetails.persons.map((p) => p.personId);
         }
-      } catch (embeddingError) {
-        // Log embedding error but don't fail the request
-        console.error('Error updating embedding:', embeddingError);
       }
+
+      await updateWorkNoteEmbedding(c.env, workNote, personIds);
     }
 
     return c.json(workNote);
