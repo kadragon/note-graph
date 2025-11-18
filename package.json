@@ -16,20 +16,20 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "date-fns": "^3.0.0",
     "hono": "^4.0.0",
-    "zod": "^3.22.0",
     "nanoid": "^5.0.0",
-    "date-fns": "^3.0.0"
+    "zod": "^3.22.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241127.0",
     "@cloudflare/vitest-pool-workers": "^0.5.19",
+    "@cloudflare/workers-types": "^4.20251118.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.1",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
-    "wrangler": "^3.94.0",
-    "eslint": "^8.57.1",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0"
+    "wrangler": "^3.94.0"
   },
   "engines": {
     "node": ">=18.0.0"
