@@ -228,8 +228,34 @@
 - All TypeScript type checking passes
 - **Status**: Phase 4 (PDF Processing) 100% complete! Full async PDF→draft pipeline operational.
 
+### Session 12: Phase 5 - Testing Infrastructure Setup (2025-11-18)
+- **TASK-016 Completed**: Write comprehensive test suite
+- Installed @vitest/coverage-v8 package (v2.1.8) for code coverage
+- Configured Vitest with @cloudflare/vitest-pool-workers for Workers environment testing
+- Set coverage thresholds: 80% statements/functions/lines, 75% branches
+- Created test directory structure (tests/, tests/unit/, tests/setup.ts, tests/README.md)
+- Implemented basic integration tests (api.test.ts):
+  - Health check, root endpoint, authentication middleware, 404 handler
+- Implemented unit tests:
+  - chunking.test.ts - ChunkingService with overlap and Korean text
+  - errors.test.ts - All domain error classes
+- Documented testing approach with SDD × TDD workflow
+- Documented future test expansion plan for all specs
+- Identified AI Gateway binding issue with miniflare/workerd
+- Documented workarounds for comprehensive testing
+- **Status**: Phase 5 (Testing Infrastructure) established! Framework ready for expansion.
+
 ## Known Issues
-_None yet_
+
+### AI Gateway Binding in Tests
+**Issue**: The `@cloudflare/vitest-pool-workers` environment encounters errors with external AI worker bindings.
+
+**Error**: `wrapped binding module can't be resolved`
+
+**Workarounds**:
+1. Mock AI services in tests (recommended for unit testing)
+2. Use integration tests in actual Cloudflare environment
+3. Update to newer miniflare/workerd versions when AI binding support improves
 
 ## Technical Debt
 - Consider implementing proper tokenizer library (e.g., tiktoken) instead of character-based approximation for more accurate chunking in production
