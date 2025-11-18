@@ -1,10 +1,14 @@
-// Trace: SPEC-auth-1, TASK-001
+// Trace: SPEC-auth-1, TASK-001, TASK-003
 /**
  * Note Graph - Main Worker Entry Point
  * Personal work note management system with AI-powered features
  */
 
 import { Hono } from 'hono';
+import type { AuthUser } from './types/auth';
+import { AuthenticationError } from './types/auth';
+import { authMiddleware } from './middleware/auth';
+import { getMeHandler } from './handlers/auth';
 
 // Environment bindings type definition
 export interface Env {
@@ -20,8 +24,8 @@ export interface Env {
   OPENAI_API_KEY: string;
 }
 
-// Initialize Hono app
-const app = new Hono<{ Bindings: Env }>();
+// Initialize Hono app with auth context
+const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
 // Health check endpoint
 app.get('/health', (c) => {
@@ -47,6 +51,13 @@ app.get('/', (c) => {
   });
 });
 
+// ============================================================================
+// Authenticated Endpoints
+// ============================================================================
+
+// GET /me - Get current authenticated user
+app.get('/me', authMiddleware, getMeHandler);
+
 // 404 handler
 app.notFound((c) => {
   return c.json(
@@ -61,12 +72,24 @@ app.notFound((c) => {
 // Error handler
 app.onError((err, c) => {
   console.error(`Application error: ${err instanceof Error ? err.stack || err : JSON.stringify(err)}`);
+
+  // Handle authentication errors
+  if (err instanceof AuthenticationError) {
+    return c.json(
+      {
+        code: 'UNAUTHORIZED',
+        message: err.message,
+      },
+      401
+    );
+  }
+
   // Avoid leaking internal error details to the client in non-dev environments.
   const isDevelopment = c.env.ENVIRONMENT === 'development';
   const message = isDevelopment && err instanceof Error ? err.message : 'An internal server error occurred.';
   return c.json(
     {
-      error: 'Internal Server Error',
+      code: 'INTERNAL_ERROR',
       message,
     },
     500

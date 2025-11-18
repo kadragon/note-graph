@@ -4,5 +4,5 @@
 current_task: null
 
 notes: |
-  TASK-002 completed successfully.
-  Ready to start TASK-003: Implement authentication middleware.
+  TASK-003 completed successfully.
+  Ready to start TASK-004: Set up Hono API structure and routing.
