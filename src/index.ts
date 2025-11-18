@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import type { AuthUser } from './types/auth';
 import { AuthenticationError } from './types/auth';
 import { DomainError } from './types/errors';
+import type { Env } from './types/env';
 import { authMiddleware } from './middleware/auth';
 import { getMeHandler } from './handlers/auth';
 
@@ -16,20 +17,10 @@ import persons from './routes/persons';
 import departments from './routes/departments';
 import workNotes from './routes/work-notes';
 import todos from './routes/todos';
+import search from './routes/search';
 
-// Environment bindings type definition
-export interface Env {
-  DB: D1Database;
-  VECTORIZE: VectorizeIndex;
-  PDF_QUEUE: Queue;
-  PDF_TEMP_STORAGE: R2Bucket;
-  AI_GATEWAY: Fetcher;
-  ENVIRONMENT: string;
-  AI_GATEWAY_ID: string;
-  OPENAI_MODEL_CHAT: string;
-  OPENAI_MODEL_EMBEDDING: string;
-  OPENAI_API_KEY: string;
-}
+// Re-export Env type for compatibility
+export type { Env };
 
 // Initialize Hono app with auth context
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -73,6 +64,7 @@ app.route('/persons', persons);
 app.route('/departments', departments);
 app.route('/work-notes', workNotes);
 app.route('/todos', todos);
+app.route('/search', search);
 
 // 404 handler
 app.notFound((c) => {

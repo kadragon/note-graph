@@ -4,32 +4,28 @@
 current_task: null
 
 notes: |
-  TASK-008 completed successfully.
+  TASK-009 completed successfully.
 
-  Implemented:
-  - Todo type definitions (Todo, TodoWithWorkNote, TodoStatus, RepeatRule, RecurrenceType)
-  - TodoRepository with recurrence strategies (DUE_DATE, COMPLETION_DATE)
-  - POST /work-notes/:workId/todos - creates todo for work note
-  - GET /work-notes/:workId/todos - lists todos for work note
-  - GET /todos - lists todos with view filters (today, this_week, this_month, backlog, all)
-  - PATCH /todos/:todoId - updates todo with automatic recurrence generation
+  Implemented FTS (Full-Text Search) lexical search for work notes:
+  - Created search types (SearchResultItem, SearchSource, SearchFilters, etc.)
+  - Implemented FtsSearchService with D1 FTS5 queries
+  - Created POST /search/work-notes endpoint with auth middleware
+  - Supports Korean text search using unicode61 tokenizer
+  - Implements filters: personId, deptName, category, from, to, limit
+  - Returns ranked results with normalized scores (0-1 range)
 
-  All endpoints implement proper error handling with domain errors.
-  Recurrence logic generates new instance when status changes to '완료'.
-  View filters correctly implement wait_until logic and date range filtering.
-  Backlog view shows overdue todos (due < now AND status != '완료').
+  Key technical decisions:
+  - Changed from trigram to unicode61 tokenizer for better Korean support
+  - Trigram requires 3+ characters and doesn't work well with Korean syllables
+  - unicode61 with 'remove_diacritics 0' provides excellent Korean matching
+  - FTS rank normalized to positive score for consistency
 
-  Phase 2 (Entity Management) complete!
+  Testing verified:
+  - Korean keyword search works ('성적', '학생', '수업')
+  - English keyword search works ('KORUS')
+  - Category filtering works correctly
+  - Person and department filtering via JOINs
+  - Date range filtering works
 
-  Performance Optimizations Applied (2025-11-18):
-  Based on Gemini Code Assist suggestions, optimized all repository methods:
-  - DepartmentRepository: Eliminated DB refetch in create() and update()
-  - PersonRepository: Eliminated DB refetch in create() and update()
-  - TodoRepository: Eliminated DB refetch in create() and update()
-  - WorkNoteRepository: Eliminated DB refetch in create() and update()
-  - WorkNoteRepository.findByIdWithDetails(): Parallelized queries with Promise.all
-
-  Benefits: 8 fewer DB roundtrips on create/update operations, improved query
-  performance via parallelization, reduced D1 load and API latency.
-
-  Ready to start Phase 3: Search & AI Features.
+  Phase 3 (Search & AI) - TASK-009 complete!
+  Ready for TASK-010: Vectorize index and embedding service.
