@@ -47,7 +47,10 @@ describe('ChunkingService', () => {
     });
 
     it('should create overlapping chunks', () => {
-      const text = 'word '.repeat(300);
+      // Use sufficient text to create multiple chunks
+      // Chunk size: 512 tokens * 4 chars/token = 2048 chars
+      // Need > 2048 chars for multiple chunks
+      const text = 'word '.repeat(600); // ~3000 chars
       const chunks = chunkingService.chunkWorkNote(
         'WORK-003',
         'Medium Document',
@@ -59,12 +62,27 @@ describe('ChunkingService', () => {
         }
       );
 
-      if (chunks.length > 1) {
-        // Check that chunks have proper metadata
-        expect(chunks[0].metadata.chunk_index).toBe(0);
-        expect(chunks[1].metadata.chunk_index).toBe(1);
-        expect(chunks[0].metadata.work_id).toBe('WORK-003');
-        expect(chunks[1].metadata.work_id).toBe('WORK-003');
+      // Verify multiple chunks were created
+      expect(chunks.length).toBeGreaterThan(1);
+
+      // Verify chunk indices are sequential
+      expect(chunks[0].metadata.chunk_index).toBe(0);
+      expect(chunks[1].metadata.chunk_index).toBe(1);
+      expect(chunks[0].metadata.work_id).toBe('WORK-003');
+      expect(chunks[1].metadata.work_id).toBe('WORK-003');
+
+      // Verify actual content overlap between consecutive chunks
+      // With 20% overlap, last 20% of chunk[0] should appear in first part of chunk[1]
+      if (chunks.length >= 2) {
+        const chunk0Text = chunks[0].text;
+        const chunk1Text = chunks[1].text;
+
+        // Get last portion of first chunk (should be ~20% overlap region)
+        const overlapSize = Math.floor(chunk0Text.length * 0.15); // Use 15% to be safe
+        const chunk0End = chunk0Text.slice(-overlapSize);
+
+        // Verify this content appears at the start of second chunk
+        expect(chunk1Text).toContain(chunk0End);
       }
     });
 
@@ -238,11 +256,16 @@ describe('ChunkingService', () => {
     });
 
     it('should throw error for invalid chunk ID format', () => {
+      // Test with complete error message including the invalid ID
       expect(() => ChunkingService.parseChunkId('invalid-id')).toThrow(
-        'Invalid chunk ID format'
+        'Invalid chunk ID format: invalid-id'
       );
-      expect(() => ChunkingService.parseChunkId('WORK-001')).toThrow('Invalid chunk ID format');
-      expect(() => ChunkingService.parseChunkId('WORK-001#')).toThrow('Invalid chunk ID format');
+      expect(() => ChunkingService.parseChunkId('WORK-001')).toThrow(
+        'Invalid chunk ID format: WORK-001'
+      );
+      expect(() => ChunkingService.parseChunkId('WORK-001#')).toThrow(
+        'Invalid chunk ID format: WORK-001#'
+      );
     });
 
     it('should handle chunk IDs with special characters in work ID', () => {

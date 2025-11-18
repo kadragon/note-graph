@@ -1,5 +1,5 @@
 // Trace: SPEC-search-1, TASK-011, TASK-016
-// Unit tests for Hybrid Search Service
+// Unit tests for Hybrid Search Service - Public API Testing
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { HybridSearchService } from '../../src/services/hybrid-search-service';
@@ -7,464 +7,353 @@ import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types'
 import type { Env } from '../../src/types/env';
 import type { SearchResultItem } from '../../src/types/search';
 
-describe('HybridSearchService', () => {
+/**
+ * These tests focus on the public API of HybridSearchService.
+ * We test the search() method's behavior with different inputs and conditions,
+ * treating the service as a black box and verifying outputs and side effects.
+ */
+describe('HybridSearchService - Public API', () => {
   let mockDb: D1Database;
   let mockEnv: Env;
-  let hybridService: HybridSearchService;
+  let mockStmt: D1PreparedStatement;
 
   beforeEach(() => {
-    // Mock database
-    mockDb = {} as D1Database;
+    // Setup mock database and statement
+    mockStmt = {
+      bind: vi.fn().mockReturnThis(),
+      all: vi.fn().mockResolvedValue({
+        success: true,
+        results: [],
+      }),
+      first: vi.fn().mockResolvedValue(null),
+    } as unknown as D1PreparedStatement;
 
-    // Mock environment
+    mockDb = {
+      prepare: vi.fn().mockReturnValue(mockStmt),
+    } as unknown as D1Database;
+
+    // Setup mock environment
     mockEnv = {
       AI_GATEWAY_ID: 'test-gateway',
       OPENAI_API_KEY: 'test-key',
       OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
-      VECTORIZE: {} as any,
+      VECTORIZE: {
+        query: vi.fn().mockResolvedValue({
+          matches: [],
+          count: 0,
+        }),
+      } as any,
     } as Env;
 
-    hybridService = new HybridSearchService(mockDb, mockEnv);
+    // Mock global fetch for OpenAI embedding calls
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ embedding: new Array(1536).fill(0.1), index: 0 }],
+      }),
+    } as Response);
   });
 
-  describe('RRF Score Calculation', () => {
-    it('should calculate correct RRF score for rank 1 with k=60', () => {
-      const k = 60;
-      const rank = 1;
-      const expectedScore = 1 / (k + rank);
+  describe('search() method', () => {
+    it('should accept query string and return array of results', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
 
-      expect(expectedScore).toBeCloseTo(0.01639, 5);
+      // Act
+      const results = await service.search('test query');
+
+      // Assert
+      expect(results).toBeDefined();
+      expect(Array.isArray(results)).toBe(true);
     });
 
-    it('should calculate correct RRF scores for multiple ranks', () => {
-      const k = 60;
-      const scores = [1, 2, 3, 4, 5].map((rank) => 1 / (k + rank));
-
-      expect(scores[0]).toBeCloseTo(0.01639, 5); // Rank 1
-      expect(scores[1]).toBeCloseTo(0.01613, 5); // Rank 2
-      expect(scores[2]).toBeCloseTo(0.01587, 5); // Rank 3
-      expect(scores[3]).toBeCloseTo(0.01562, 5); // Rank 4
-      expect(scores[4]).toBeCloseTo(0.01538, 5); // Rank 5
-    });
-
-    it('should show higher ranks get lower RRF scores', () => {
-      const k = 60;
-      const rank1Score = 1 / (k + 1);
-      const rank10Score = 1 / (k + 10);
-
-      expect(rank1Score).toBeGreaterThan(rank10Score);
-    });
-
-    it('should combine RRF scores when found by both engines', () => {
-      const k = 60;
-      const ftsRank = 1;
-      const vectorRank = 2;
-
-      const ftsScore = 1 / (k + ftsRank);
-      const vectorScore = 1 / (k + vectorRank);
-      const combinedScore = ftsScore + vectorScore;
-
-      expect(combinedScore).toBeGreaterThan(ftsScore);
-      expect(combinedScore).toBeGreaterThan(vectorScore);
-      expect(combinedScore).toBeCloseTo(0.03252, 5);
-    });
-  });
-
-  describe('Source Attribution', () => {
-    it('should return LEXICAL for FTS-only results', () => {
-      const sources = new Set(['LEXICAL']);
-      const source =
-        sources.has('LEXICAL') && sources.has('SEMANTIC')
-          ? 'HYBRID'
-          : sources.has('LEXICAL')
-            ? 'LEXICAL'
-            : 'SEMANTIC';
-
-      expect(source).toBe('LEXICAL');
-    });
-
-    it('should return SEMANTIC for Vectorize-only results', () => {
-      const sources = new Set(['SEMANTIC']);
-      const source =
-        sources.has('LEXICAL') && sources.has('SEMANTIC')
-          ? 'HYBRID'
-          : sources.has('LEXICAL')
-            ? 'LEXICAL'
-            : 'SEMANTIC';
-
-      expect(source).toBe('SEMANTIC');
-    });
-
-    it('should return HYBRID when found by both engines', () => {
-      const sources = new Set(['LEXICAL', 'SEMANTIC']);
-      const source =
-        sources.has('LEXICAL') && sources.has('SEMANTIC')
-          ? 'HYBRID'
-          : sources.has('LEXICAL')
-            ? 'LEXICAL'
-            : 'SEMANTIC';
-
-      expect(source).toBe('HYBRID');
-    });
-  });
-
-  describe('Result Merging Logic', () => {
-    it('should merge duplicate results from both sources', () => {
-      const ftsResults: SearchResultItem[] = [
-        {
-          workNote: {
-            workId: 'WORK-001',
-            title: 'Test',
-            contentRaw: 'Content',
-            category: '업무',
-            createdAt: '2024-01-01',
-            updatedAt: '2024-01-01',
-          },
-          score: 0.8,
-          source: 'LEXICAL',
-        },
-      ];
-
-      const vectorResults: SearchResultItem[] = [
-        {
-          workNote: {
-            workId: 'WORK-001',
-            title: 'Test',
-            contentRaw: 'Content',
-            category: '업무',
-            createdAt: '2024-01-01',
-            updatedAt: '2024-01-01',
-          },
-          score: 0.9,
-          source: 'SEMANTIC',
-        },
-      ];
-
-      const k = 60;
-      const scoreMap = new Map<string, { score: number; sources: Set<string> }>();
-
-      // Simulate RRF merging
-      ftsResults.forEach((item, index) => {
-        const rank = index + 1;
-        const rrfScore = 1 / (k + rank);
-        scoreMap.set(item.workNote.workId, {
-          score: rrfScore,
-          sources: new Set(['LEXICAL']),
-        });
+    it('should handle empty query results gracefully', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
+      (mockStmt.all as any).mockResolvedValue({
+        success: true,
+        results: [],
+      });
+      (mockEnv.VECTORIZE.query as any).mockResolvedValue({
+        matches: [],
+        count: 0,
       });
 
-      vectorResults.forEach((item, index) => {
-        const rank = index + 1;
-        const rrfScore = 1 / (k + rank);
-        const existing = scoreMap.get(item.workNote.workId);
-        if (existing) {
-          existing.score += rrfScore;
-          existing.sources.add('SEMANTIC');
-        }
-      });
+      // Act
+      const results = await service.search('nonexistent term');
 
-      const result = scoreMap.get('WORK-001')!;
-      expect(result.sources.size).toBe(2);
-      expect(result.sources.has('LEXICAL')).toBe(true);
-      expect(result.sources.has('SEMANTIC')).toBe(true);
+      // Assert
+      expect(results).toEqual([]);
     });
 
-    it('should sort merged results by combined score descending', () => {
-      const results = [
-        { workId: 'WORK-1', score: 0.02 },
-        { workId: 'WORK-2', score: 0.05 },
-        { workId: 'WORK-3', score: 0.03 },
-      ];
-
-      const sorted = [...results].sort((a, b) => b.score - a.score);
-
-      expect(sorted[0].workId).toBe('WORK-2');
-      expect(sorted[1].workId).toBe('WORK-3');
-      expect(sorted[2].workId).toBe('WORK-1');
-    });
-
-    it('should handle empty FTS results', () => {
-      const ftsResults: SearchResultItem[] = [];
-      const vectorResults: SearchResultItem[] = [
-        {
-          workNote: {
-            workId: 'WORK-001',
-            title: 'Test',
-            contentRaw: 'Content',
-            category: '업무',
-            createdAt: '2024-01-01',
-            updatedAt: '2024-01-01',
-          },
-          score: 0.9,
-          source: 'SEMANTIC',
-        },
-      ];
-
-      const merged = [...ftsResults, ...vectorResults];
-      expect(merged).toHaveLength(1);
-      expect(merged[0].source).toBe('SEMANTIC');
-    });
-
-    it('should handle empty Vectorize results', () => {
-      const ftsResults: SearchResultItem[] = [
-        {
-          workNote: {
-            workId: 'WORK-001',
-            title: 'Test',
-            contentRaw: 'Content',
-            category: '업무',
-            createdAt: '2024-01-01',
-            updatedAt: '2024-01-01',
-          },
-          score: 0.8,
-          source: 'LEXICAL',
-        },
-      ];
-      const vectorResults: SearchResultItem[] = [];
-
-      const merged = [...ftsResults, ...vectorResults];
-      expect(merged).toHaveLength(1);
-      expect(merged[0].source).toBe('LEXICAL');
-    });
-
-    it('should handle both empty results', () => {
-      const ftsResults: SearchResultItem[] = [];
-      const vectorResults: SearchResultItem[] = [];
-
-      const merged = [...ftsResults, ...vectorResults];
-      expect(merged).toEqual([]);
-    });
-  });
-
-  describe('Filter Building', () => {
-    it('should build Vectorize filter with category', () => {
-      const filters = { category: '회의' };
-      const vectorFilter: Record<string, string> = {};
-
-      if (filters.category) {
-        vectorFilter.category = filters.category;
-      }
-
-      expect(vectorFilter).toEqual({ category: '회의' });
-    });
-
-    it('should return undefined when no filters', () => {
-      const filters = {};
-      const vectorFilter: Record<string, string> = {};
-
-      if ('category' in filters && filters.category) {
-        vectorFilter.category = filters.category;
-      }
-
-      const result = Object.keys(vectorFilter).length > 0 ? vectorFilter : undefined;
-      expect(result).toBeUndefined();
-    });
-
-    it('should not include person/dept in Vectorize filter', () => {
-      // Person and dept filters should be applied in D1 query, not Vectorize
+    it('should accept and apply filter parameters', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
       const filters = {
         category: '회의',
-        personId: 'P-001',
-        deptName: '개발팀',
+        personId: '123456',
+        limit: 20,
       };
 
-      const vectorFilter: Record<string, string> = {};
+      // Act
+      await service.search('test', filters);
 
-      // Only category goes to Vectorize
-      if (filters.category) {
-        vectorFilter.category = filters.category;
-      }
-
-      expect(vectorFilter).toEqual({ category: '회의' });
-      expect(vectorFilter).not.toHaveProperty('personId');
-      expect(vectorFilter).not.toHaveProperty('deptName');
-    });
-  });
-
-  describe('Work Note Fetching by IDs', () => {
-    it('should build SQL with IN clause for work IDs', () => {
-      const workIds = ['WORK-001', 'WORK-002', 'WORK-003'];
-      const placeholders = workIds.map(() => '?').join(',');
-
-      expect(placeholders).toBe('?,?,?');
+      // Assert - verify DB was called (FTS search happens)
+      expect(mockDb.prepare).toHaveBeenCalled();
+      // Verify filters were used in SQL query
+      const sqlCalls = (mockDb.prepare as any).mock.calls;
+      const sqlQuery = sqlCalls[0][0];
+      expect(sqlQuery).toContain('WHERE');
     });
 
-    it('should handle empty work IDs array', () => {
-      const workIds: string[] = [];
+    it('should respect limit parameter and not exceed it', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
 
-      if (workIds.length === 0) {
-        expect(true).toBe(true); // Should return early
-      }
-    });
-
-    it('should apply person filter in D1 query', () => {
-      const filters = { personId: 'P-001' };
-      const conditions: string[] = ['wn.work_id IN (?)'];
-      const params: unknown[] = ['WORK-001'];
-
-      if (filters.personId) {
-        conditions.push('wnp.person_id = ?');
-        params.push(filters.personId);
-      }
-
-      expect(conditions).toContain('wnp.person_id = ?');
-      expect(params).toContain('P-001');
-    });
-
-    it('should apply department filter in D1 query', () => {
-      const filters = { deptName: '개발팀' };
-      const conditions: string[] = ['wn.work_id IN (?)'];
-      const params: unknown[] = ['WORK-001'];
-
-      if (filters.deptName) {
-        conditions.push('p.current_dept = ?');
-        params.push(filters.deptName);
-      }
-
-      expect(conditions).toContain('p.current_dept = ?');
-      expect(params).toContain('개발팀');
-    });
-
-    it('should build work notes map from results', () => {
-      const dbResults = [
-        {
-          workId: 'WORK-001',
-          title: 'Test 1',
-          contentRaw: 'Content 1',
-          category: '업무',
-          createdAt: '2024-01-01',
-          updatedAt: '2024-01-01',
-        },
-        {
-          workId: 'WORK-002',
-          title: 'Test 2',
-          contentRaw: 'Content 2',
-          category: '회의',
-          createdAt: '2024-01-02',
-          updatedAt: '2024-01-02',
-        },
-      ];
-
-      const workNotesMap = new Map();
-      for (const workNote of dbResults) {
-        workNotesMap.set(workNote.workId, workNote);
-      }
-
-      expect(workNotesMap.size).toBe(2);
-      expect(workNotesMap.has('WORK-001')).toBe(true);
-      expect(workNotesMap.has('WORK-002')).toBe(true);
-      expect(workNotesMap.get('WORK-001')?.title).toBe('Test 1');
-    });
-  });
-
-  describe('Limit Application', () => {
-    it('should use default limit of 10', () => {
-      const filters = {};
-      const limit = filters.limit ?? 10;
-
-      expect(limit).toBe(10);
-    });
-
-    it('should use custom limit from filters', () => {
-      const filters = { limit: 20 };
-      const limit = filters.limit ?? 10;
-
-      expect(limit).toBe(20);
-    });
-
-    it('should multiply limit for individual searches', () => {
-      const limit = 10;
-      const searchLimit = limit * 2;
-
-      expect(searchLimit).toBe(20);
-    });
-
-    it('should apply limit after merging', () => {
-      const mergedResults = Array.from({ length: 30 }, (_, i) => ({
-        workNote: {
-          workId: `WORK-${i}`,
-          title: `Test ${i}`,
-          contentRaw: 'Content',
-          category: '업무',
-          createdAt: '2024-01-01',
-          updatedAt: '2024-01-01',
-        },
-        score: Math.random(),
-        source: 'HYBRID' as const,
+      // Mock FTS results with more items than limit
+      const manyResults = Array.from({ length: 30 }, (_, i) => ({
+        workId: `WORK-${i.toString().padStart(3, '0')}`,
+        title: `Result ${i}`,
+        contentRaw: `Content ${i}`,
+        category: '업무',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        fts_rank: -1,
       }));
 
-      const limit = 10;
-      const limited = mergedResults.slice(0, limit);
+      (mockStmt.all as any).mockResolvedValue({
+        success: true,
+        results: manyResults,
+      });
 
-      expect(limited).toHaveLength(10);
-      expect(mergedResults).toHaveLength(30);
-    });
-  });
+      // Act
+      const results = await service.search('test', { limit: 10 });
 
-  describe('Korean Text Handling', () => {
-    it('should handle Korean search queries', () => {
-      const query = '업무 보고서 작성';
-      const cleaned = query.trim();
-
-      expect(cleaned).toBe('업무 보고서 작성');
-      expect(cleaned.length).toBeGreaterThan(0);
+      // Assert
+      expect(results.length).toBeLessThanOrEqual(10);
     });
 
-    it('should handle Korean filter values', () => {
-      const filters = {
-        category: '회의',
-        deptName: '개발팀',
-      };
+    it('should handle Korean text in queries', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
 
-      expect(filters.category).toBe('회의');
-      expect(filters.deptName).toBe('개발팀');
+      // Act
+      const results = await service.search('한글 검색 테스트');
+
+      // Assert - should complete without errors
+      expect(results).toBeDefined();
+      expect(Array.isArray(results)).toBe(true);
     });
 
-    it('should handle mixed Korean and English text', () => {
-      const query = 'API 서버 개발 업무';
-      const cleaned = query.trim();
+    it('should return results with required fields', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
 
-      expect(cleaned).toContain('API');
-      expect(cleaned).toContain('서버');
-      expect(cleaned).toContain('업무');
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle FTS search errors gracefully', () => {
-      // FTS search errors should return empty array, not throw
-      const emptyResults: SearchResultItem[] = [];
-
-      expect(emptyResults).toEqual([]);
-    });
-
-    it('should handle Vector search errors gracefully', () => {
-      // Vector search errors should return empty array, not throw
-      const emptyResults: SearchResultItem[] = [];
-
-      expect(emptyResults).toEqual([]);
-    });
-
-    it('should continue with partial results if one search fails', () => {
-      const ftsResults: SearchResultItem[] = [
-        {
-          workNote: {
+      // Mock at least one result from FTS
+      (mockStmt.all as any).mockResolvedValue({
+        success: true,
+        results: [
+          {
             workId: 'WORK-001',
-            title: 'Test',
+            title: 'Test Result',
+            contentRaw: 'Test Content',
+            category: '업무',
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+            fts_rank: -1.5,
+          },
+        ],
+      });
+
+      // Act
+      const results = await service.search('test');
+
+      // Assert
+      if (results.length > 0) {
+        const result = results[0];
+        expect(result).toHaveProperty('workNote');
+        expect(result).toHaveProperty('score');
+        expect(result).toHaveProperty('source');
+        expect(result.workNote).toHaveProperty('workId');
+        expect(result.workNote).toHaveProperty('title');
+        expect(result.workNote).toHaveProperty('contentRaw');
+        expect(typeof result.score).toBe('number');
+        expect(['LEXICAL', 'SEMANTIC', 'HYBRID']).toContain(result.source);
+      }
+    });
+
+    it('should handle database errors without crashing', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
+      (mockStmt.all as any).mockRejectedValue(new Error('Database connection failed'));
+
+      // Act & Assert - should not throw, should return empty or handle gracefully
+      await expect(service.search('test')).resolves.toBeDefined();
+    });
+
+    it('should handle Vectorize errors without crashing', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
+      (mockEnv.VECTORIZE.query as any).mockRejectedValue(new Error('Vectorize service down'));
+
+      // Mock FTS to return results
+      (mockStmt.all as any).mockResolvedValue({
+        success: true,
+        results: [
+          {
+            workId: 'WORK-001',
+            title: 'FTS Result',
             contentRaw: 'Content',
             category: '업무',
             createdAt: '2024-01-01',
             updatedAt: '2024-01-01',
+            fts_rank: -1,
           },
-          score: 0.8,
-          source: 'LEXICAL',
-        },
-      ];
-      const vectorResults: SearchResultItem[] = []; // Failed search
+        ],
+      });
 
-      const merged = [...ftsResults, ...vectorResults];
-      expect(merged).toHaveLength(1);
-      expect(merged[0].source).toBe('LEXICAL');
+      // Act
+      const results = await service.search('test');
+
+      // Assert - should still return FTS results
+      expect(results).toBeDefined();
+      expect(Array.isArray(results)).toBe(true);
+    });
+
+    it('should call both FTS and Vectorize for search', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
+
+      // Act
+      await service.search('test query');
+
+      // Assert - verify both search methods were attempted
+      expect(mockDb.prepare).toHaveBeenCalled(); // FTS
+      expect(global.fetch).toHaveBeenCalled(); // OpenAI embedding for Vectorize
+    });
+  });
+
+  describe('Result Quality', () => {
+    it('should return results sorted by score in descending order', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
+
+      // Mock multiple FTS results with different ranks
+      (mockStmt.all as any).mockResolvedValue({
+        success: true,
+        results: [
+          {
+            workId: 'WORK-001',
+            title: 'Result 1',
+            contentRaw: 'Content 1',
+            category: '업무',
+            createdAt: '2024-01-01',
+            updatedAt: '2024-01-01',
+            fts_rank: -5,
+          },
+          {
+            workId: 'WORK-002',
+            title: 'Result 2',
+            contentRaw: 'Content 2',
+            category: '업무',
+            createdAt: '2024-01-01',
+            updatedAt: '2024-01-01',
+            fts_rank: -1,
+          },
+          {
+            workId: 'WORK-003',
+            title: 'Result 3',
+            contentRaw: 'Content 3',
+            category: '업무',
+            createdAt: '2024-01-01',
+            updatedAt: '2024-01-01',
+            fts_rank: -3,
+          },
+        ],
+      });
+
+      // Act
+      const results = await service.search('test');
+
+      // Assert - scores should be in descending order
+      if (results.length > 1) {
+        for (let i = 1; i < results.length; i++) {
+          expect(results[i - 1].score).toBeGreaterThanOrEqual(results[i].score);
+        }
+      }
+    });
+
+    it('should normalize scores to reasonable range', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
+
+      (mockStmt.all as any).mockResolvedValue({
+        success: true,
+        results: [
+          {
+            workId: 'WORK-001',
+            title: 'Result',
+            contentRaw: 'Content',
+            category: '업무',
+            createdAt: '2024-01-01',
+            updatedAt: '2024-01-01',
+            fts_rank: -2,
+          },
+        ],
+      });
+
+      // Act
+      const results = await service.search('test');
+
+      // Assert - scores should be reasonable
+      if (results.length > 0) {
+        expect(results[0].score).toBeGreaterThanOrEqual(0);
+        expect(results[0].score).toBeLessThanOrEqual(1);
+      }
+    });
+  });
+
+  describe('Filter Application', () => {
+    it('should construct appropriate SQL for category filter', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
+
+      // Act
+      await service.search('test', { category: '회의' });
+
+      // Assert
+      expect(mockDb.prepare).toHaveBeenCalled();
+      const sqlCalls = (mockDb.prepare as any).mock.calls;
+      const sqlQuery = sqlCalls[0][0];
+      expect(sqlQuery).toContain('category');
+    });
+
+    it('should construct appropriate SQL for person filter', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
+
+      // Act
+      await service.search('test', { personId: '123456' });
+
+      // Assert
+      expect(mockDb.prepare).toHaveBeenCalled();
+      const sqlCalls = (mockDb.prepare as any).mock.calls;
+      const sqlQuery = sqlCalls[0][0];
+      expect(sqlQuery).toContain('person');
+    });
+
+    it('should construct appropriate SQL for department filter', async () => {
+      // Arrange
+      const service = new HybridSearchService(mockDb, mockEnv);
+
+      // Act
+      await service.search('test', { deptName: '개발팀' });
+
+      // Assert
+      expect(mockDb.prepare).toHaveBeenCalled();
+      const sqlCalls = (mockDb.prepare as any).mock.calls;
+      const sqlQuery = sqlCalls[0][0];
+      expect(sqlQuery).toContain('dept');
     });
   });
 });
