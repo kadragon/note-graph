@@ -1,6 +1,8 @@
 # Test Coverage Analysis Report
 ## Note Graph API - Codebase Coverage Assessment
 
+**Note**: This document is a point-in-time snapshot generated on 2025-11-18. For current coverage information, please run coverage tools directly (e.g., `npm run test:coverage`) to get up-to-date metrics.
+
 Generated: 2025-11-18
 Analyzed Directories:
 - src/repositories/*.ts
@@ -585,17 +587,12 @@ Supporting features and utilities.
    - Tests needed: ~12-15 test cases
    - Impact: Low-Medium
 
-3. **DepartmentRepository** (175 lines)
-   - Effort: 1.5-2 hours
-   - Tests needed: ~12-15 test cases
-   - Impact: Low-Medium
-
-4. **RagRouter** (62 lines)
+3. **RagRouter** (62 lines)
    - Effort: 1.5-2 hours
    - Tests needed: ~10-12 test cases
    - Impact: Low
 
-5. **AuthMiddleware** (76 lines)
+4. **AuthMiddleware** (76 lines)
    - Effort: 1-2 hours
    - Tests needed: ~12-15 test cases
    - Impact: Medium (security)
