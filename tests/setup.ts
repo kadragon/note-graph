@@ -102,5 +102,19 @@ beforeAll(async () => {
     )`
   ).run();
 
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS pdf_jobs (
+      job_id TEXT PRIMARY KEY,
+      status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'READY', 'ERROR')),
+      r2_key TEXT,
+      extracted_text TEXT,
+      draft_json TEXT,
+      error_message TEXT,
+      metadata_json TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`
+  ).run();
+
   console.log('[Test Setup] Cloudflare Workers test environment initialized with full D1 schema');
 });
