@@ -19,6 +19,7 @@
     "date-fns": "^3.0.0",
     "hono": "^4.0.0",
     "nanoid": "^5.0.0",
+    "unpdf": "^1.4.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
