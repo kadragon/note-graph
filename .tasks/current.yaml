@@ -4,28 +4,30 @@
 current_task: null
 
 notes: |
-  TASK-009 completed successfully.
+  TASK-010 completed successfully.
 
-  Implemented FTS (Full-Text Search) lexical search for work notes:
-  - Created search types (SearchResultItem, SearchSource, SearchFilters, etc.)
-  - Implemented FtsSearchService with D1 FTS5 queries
-  - Created POST /search/work-notes endpoint with auth middleware
-  - Supports Korean text search using unicode61 tokenizer
-  - Implements filters: personId, deptName, category, from, to, limit
-  - Returns ranked results with normalized scores (0-1 range)
+  Implemented Vectorize index and embedding service:
+  - Created EmbeddingService for OpenAI text-embedding-3-small via AI Gateway
+  - Created VectorizeService for managing vector embeddings
+  - Integrated embedding into work note create/update/delete operations
+  - Embeddings generated automatically and stored in Vectorize
+  - Metadata includes: work_id, scope, person_ids, category, created_at_bucket
+  - Compact metadata encoding to fit within Vectorize 64-byte limits
 
-  Key technical decisions:
-  - Changed from trigram to unicode61 tokenizer for better Korean support
-  - Trigram requires 3+ characters and doesn't work well with Korean syllables
-  - unicode61 with 'remove_diacritics 0' provides excellent Korean matching
-  - FTS rank normalized to positive score for consistency
+  Key features:
+  - EmbeddingService.generateEmbedding() - single text embedding
+  - EmbeddingService.generateEmbeddings() - batch embedding
+  - VectorizeService.upsertWorkNote() - embed and store work note
+  - VectorizeService.deleteWorkNote() - remove embedding
+  - VectorizeService.search() - semantic search (query embedding + vector similarity)
+  - Metadata encoding with truncation for size limits
+  - Error handling: embedding failures don't fail the main request
 
-  Testing verified:
-  - Korean keyword search works ('성적', '학생', '수업')
-  - English keyword search works ('KORUS')
-  - Category filtering works correctly
-  - Person and department filtering via JOINs
-  - Date range filtering works
+  Integration:
+  - POST /work-notes - embeds new work notes
+  - PUT /work-notes/:workId - updates embeddings when title/content changes
+  - DELETE /work-notes/:workId - deletes embeddings
+  - All embedding operations are non-blocking (logged errors only)
 
-  Phase 3 (Search & AI) - TASK-009 complete!
-  Ready for TASK-010: Vectorize index and embedding service.
+  Phase 3 (Search & AI) - TASK-009 and TASK-010 complete!
+  Ready for TASK-011: Hybrid search with RRF ranking.

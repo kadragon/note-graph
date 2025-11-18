@@ -1,10 +1,10 @@
-// Trace: SPEC-worknote-1, TASK-007
+// Trace: SPEC-worknote-1, TASK-007, TASK-010
 /**
  * Work note management routes
  */
 
 import { Hono } from 'hono';
-import type { Env } from '../index';
+import type { Env } from '../types/env';
 import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
 import { validateBody, validateQuery } from '../utils/validation';
@@ -12,6 +12,7 @@ import { createWorkNoteSchema, updateWorkNoteSchema, listWorkNotesQuerySchema } 
 import { createTodoSchema } from '../schemas/todo';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import { TodoRepository } from '../repositories/todo-repository';
+import { EmbeddingService, VectorizeService } from '../services/embedding-service';
 import { DomainError } from '../types/errors';
 
 const workNotes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -46,6 +47,30 @@ workNotes.post('/', async (c) => {
     const data = await validateBody(c, createWorkNoteSchema);
     const repository = new WorkNoteRepository(c.env.DB);
     const workNote = await repository.create(data);
+
+    // Generate and store embedding for vector search
+    try {
+      const embeddingService = new EmbeddingService(c.env);
+      const vectorizeService = new VectorizeService(c.env.VECTORIZE, embeddingService);
+
+      // Get full work note details for metadata
+      const workNoteDetails = await repository.findByIdWithDetails(workNote.workId);
+      if (workNoteDetails) {
+        // Extract metadata from work note
+        const personIds = workNoteDetails.persons.map((p) => p.personId);
+        const createdAtBucket = workNote.createdAt.split('T')[0] || workNote.createdAt.substring(0, 10); // YYYY-MM-DD
+
+        await vectorizeService.upsertWorkNote(workNote.workId, workNote.title, workNote.contentRaw, {
+          person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
+          category: workNote.category ?? undefined,
+          created_at_bucket: createdAtBucket,
+        });
+      }
+    } catch (embeddingError) {
+      // Log embedding error but don't fail the request
+      // Work note is created successfully, embedding can be retried later
+      console.error('Error generating embedding:', embeddingError);
+    }
 
     return c.json(workNote, 201);
   } catch (error) {
@@ -90,6 +115,31 @@ workNotes.put('/:workId', async (c) => {
     const repository = new WorkNoteRepository(c.env.DB);
     const workNote = await repository.update(workId, data);
 
+    // Update embedding if title or content changed
+    if (data.title !== undefined || data.contentRaw !== undefined) {
+      try {
+        const embeddingService = new EmbeddingService(c.env);
+        const vectorizeService = new VectorizeService(c.env.VECTORIZE, embeddingService);
+
+        // Get full work note details for metadata
+        const workNoteDetails = await repository.findByIdWithDetails(workId);
+        if (workNoteDetails) {
+          // Extract metadata from work note
+          const personIds = workNoteDetails.persons.map((p) => p.personId);
+          const createdAtBucket = workNote.createdAt.split('T')[0] || workNote.createdAt.substring(0, 10); // YYYY-MM-DD
+
+          await vectorizeService.upsertWorkNote(workNote.workId, workNote.title, workNote.contentRaw, {
+            person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
+            category: workNote.category ?? undefined,
+            created_at_bucket: createdAtBucket,
+          });
+        }
+      } catch (embeddingError) {
+        // Log embedding error but don't fail the request
+        console.error('Error updating embedding:', embeddingError);
+      }
+    }
+
     return c.json(workNote);
   } catch (error) {
     if (error instanceof DomainError) {
@@ -108,6 +158,16 @@ workNotes.delete('/:workId', async (c) => {
     const { workId } = c.req.param();
     const repository = new WorkNoteRepository(c.env.DB);
     await repository.delete(workId);
+
+    // Delete embedding from Vectorize
+    try {
+      const embeddingService = new EmbeddingService(c.env);
+      const vectorizeService = new VectorizeService(c.env.VECTORIZE, embeddingService);
+      await vectorizeService.deleteWorkNote(workId);
+    } catch (embeddingError) {
+      // Log embedding error but don't fail the request
+      console.error('Error deleting embedding:', embeddingError);
+    }
 
     return c.body(null, 204);
   } catch (error) {
