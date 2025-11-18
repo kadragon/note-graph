@@ -116,5 +116,23 @@ beforeAll(async () => {
     )`
   ).run();
 
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS embedding_retry_queue (
+      id TEXT PRIMARY KEY,
+      work_id TEXT NOT NULL,
+      operation_type TEXT NOT NULL,
+      attempt_count INTEGER DEFAULT 0,
+      max_attempts INTEGER DEFAULT 3,
+      next_retry_at TEXT,
+      status TEXT DEFAULT 'pending',
+      error_message TEXT,
+      error_details TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      dead_letter_at TEXT,
+      FOREIGN KEY (work_id) REFERENCES work_notes(work_id) ON DELETE CASCADE
+    )`
+  ).run();
+
   console.log('[Test Setup] Cloudflare Workers test environment initialized with full D1 schema');
 });
