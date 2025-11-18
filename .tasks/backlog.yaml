@@ -99,7 +99,7 @@ tasks:
       - PUT /persons/{personId} (update history on dept change)
       - GET /persons/{personId}/history
     priority: 2
-    status: pending
+    status: completed
     estimated_effort: 4h
     test_refs:
       - TEST-person-1
@@ -122,7 +122,7 @@ tasks:
       - PUT /departments/{deptName}
       - GET /departments/{deptName}/work-notes (join query)
     priority: 2
-    status: pending
+    status: completed
     estimated_effort: 3h
     test_refs:
       - TEST-dept-1
@@ -146,7 +146,7 @@ tasks:
       - DELETE /work-notes/{workId} (cascade delete)
       - Version pruning logic (keep max 5)
     priority: 2
-    status: pending
+    status: completed
     estimated_effort: 6h
     test_refs:
       - TEST-worknote-1
@@ -173,7 +173,7 @@ tasks:
       - Wait_until filtering in queries
       - Backlog calculation (due < now AND status != completed)
     priority: 2
-    status: pending
+    status: completed
     estimated_effort: 6h
     test_refs:
       - TEST-todo-1
@@ -202,7 +202,7 @@ tasks:
       - Implement Korean partial matching with trigram
       - Return ranked results
     priority: 3
-    status: pending
+    status: completed
     estimated_effort: 3h
     test_refs:
       - TEST-search-1
@@ -222,7 +222,7 @@ tasks:
       - Implement upsert on work note create/update
       - Implement delete on work note delete
     priority: 3
-    status: pending
+    status: completed
     estimated_effort: 5h
     test_refs:
       - TEST-search-2
@@ -244,7 +244,7 @@ tasks:
       - Apply filters (person, dept, category, date)
       - Return with source attribution (LEXICAL/SEMANTIC/HYBRID)
     priority: 3
-    status: pending
+    status: completed
     estimated_effort: 5h
     test_refs:
       - TEST-search-3
@@ -269,7 +269,7 @@ tasks:
       - Call GPT-4.5 via AI Gateway
       - Return answer with source references
     priority: 3
-    status: pending
+    status: completed
     estimated_effort: 8h
     test_refs:
       - TEST-rag-1
@@ -295,7 +295,7 @@ tasks:
       - POST /ai/work-notes/{workId}/todo-suggestions endpoint
       - Handle AI Gateway rate limits (return 429)
     priority: 3
-    status: pending
+    status: completed
     estimated_effort: 4h
     test_refs:
       - TEST-ai-draft-1
@@ -325,7 +325,7 @@ tasks:
       - Return jobId with status=PENDING
       - GET /pdf-jobs/{jobId} polling endpoint
     priority: 4
-    status: pending
+    status: completed
     estimated_effort: 4h
     test_refs:
       - TEST-pdf-1
@@ -350,7 +350,7 @@ tasks:
       - Error handling and job status updates
       - Retry logic (max 3 attempts)
     priority: 4
-    status: pending
+    status: completed
     estimated_effort: 6h
     test_refs:
       - TEST-pdf-2
@@ -378,7 +378,7 @@ tasks:
       - Test edge cases (rate limits, errors, cascades)
       - Achieve 80% coverage target
     priority: 5
-    status: pending
+    status: completed
     estimated_effort: 12h
     acceptance_criteria:
       - "All acceptance tests from specs pass"
@@ -398,7 +398,7 @@ tasks:
       - PDF upload interface with polling UI
       - Optimistic UI for todo status changes
     priority: 5
-    status: pending
+    status: completed
     estimated_effort: 20h
     acceptance_criteria:
       - "All core workflows accessible via UI"
