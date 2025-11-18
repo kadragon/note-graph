@@ -35,7 +35,7 @@ tasks:
       - Add indexes for common query patterns
       - Document schema in migrations/
     priority: 1
-    status: pending
+    status: completed
     estimated_effort: 4h
     test_refs:
       - TEST-worknote-1
@@ -56,7 +56,7 @@ tasks:
       - Implement /me endpoint
       - Add error handling for missing auth
     priority: 1
-    status: pending
+    status: completed
     estimated_effort: 2h
     test_refs:
       - TEST-auth-1
@@ -76,7 +76,7 @@ tasks:
       - Create error handling middleware
       - Set up response formatting utilities
     priority: 1
-    status: pending
+    status: completed
     estimated_effort: 3h
     acceptance_criteria:
       - "All API route groups defined"
