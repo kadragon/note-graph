@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Build output
+dist/
+.wrangler/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.dev.vars
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Local database (Miniflare/Wrangler)
+.mf/
+
+# Temporary files
+*.tmp
+tmp/
+temp/
+
+# OS
+Thumbs.db
+
+# Cloudflare
+.wrangler/
+wrangler.toml.backup
+
+# User-specific configuration (after initial setup)
+# Uncomment if you want to ignore local config changes
+# wrangler.toml

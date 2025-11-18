@@ -1,0 +1,129 @@
+spec_id: SPEC-search-1
+title: "Hybrid Search (FTS + Vectorize)"
+description: >
+  Implement hybrid search combining D1 FTS5 (lexical) and
+  Cloudflare Vectorize (semantic) with RRF ranking.
+
+given_when_then:
+  - given: "Work notes exist with Korean text content"
+    when: "User searches for partial Korean keyword '업무'"
+    then: "FTS5 with trigram tokenizer finds matching notes"
+
+  - given: "Work notes exist"
+    when: "User searches semantically similar query"
+    then: "Vectorize returns semantically related notes even without exact keyword match"
+
+  - given: "Both FTS and Vectorize return results"
+    when: "User performs hybrid search"
+    then: "Results merged using RRF algorithm and sorted by combined score"
+
+  - given: "User searches with filters (person, dept, category)"
+    when: "Hybrid search executed"
+    then: >
+      FTS searches within filtered subset,
+      Vectorize applies metadata filters,
+      results combined
+
+acceptance_tests:
+  - id: TEST-search-1
+    desc: "FTS finds Korean partial matches"
+    steps:
+      - "Create work note with content '2024년 수업 성적 처리'"
+      - "Trigger FTS sync (via trigger)"
+      - "Search query '성적'"
+      - "Verify work note found via FTS"
+
+  - id: TEST-search-2
+    desc: "Vectorize finds semantic matches"
+    steps:
+      - "Create work note with content 'student grade management'"
+      - "Generate embedding and store in Vectorize"
+      - "Search query '학생 성적 관리' (semantically similar)"
+      - "Verify work note found via vector search"
+
+  - id: TEST-search-3
+    desc: "Hybrid search combines and ranks results"
+    steps:
+      - "Create multiple work notes"
+      - "Populate FTS and Vectorize indexes"
+      - "POST /search/work-notes with query"
+      - "Verify results include 'source' field (LEXICAL/SEMANTIC/HYBRID)"
+      - "Verify results sorted by combined RRF score"
+
+  - id: TEST-search-4
+    desc: "Filter search by person"
+    steps:
+      - "Create work notes associated with different persons"
+      - "POST /search/work-notes with query and personId filter"
+      - "Verify only work notes associated with specified person returned"
+
+  - id: TEST-search-5
+    desc: "Filter search by department"
+    steps:
+      - "Create work notes with persons from different departments"
+      - "POST /search/work-notes with query and deptName filter"
+      - "Verify only work notes from specified department returned"
+
+dependencies:
+  governance:
+    - "FTS trigram tokenizer configuration"
+    - "Vectorize index setup"
+    - "RRF parameter k=60"
+
+linked_tasks: []
+
+technical_notes:
+  - "FTS table: notes_fts with trigram tokenizer"
+  - "Sync via INSERT/UPDATE/DELETE triggers on work_notes"
+  - "Vectorize metadata: work_id, person_ids, dept_name, category, created_at_bucket"
+  - "RRF formula: score = sum(1 / (k + rank)) for each result set"
+  - "Default k=60 based on research, tunable"
+  - "Embedding model: text-embedding-3-small (1536 dimensions)"
+  - "Chunking for indexing handled separately (see RAG spec)"
+  - "For search, embed entire query as single vector"
+
+database_schema:
+  notes_fts:
+    - "VIRTUAL TABLE using fts5(title, content_raw, tokenize='trigram')"
+
+  triggers:
+    - notes_ai: AFTER INSERT sync to FTS
+    - notes_au: AFTER UPDATE sync to FTS
+    - notes_ad: AFTER DELETE sync to FTS
+
+vectorize_metadata:
+  work_id: string (8 bytes)
+  scope: string (6 bytes) # WORK
+  person_ids: string (compact encoding, <64 bytes)
+  dept_name: string (<20 bytes typical)
+  category: string (<20 bytes typical)
+  created_at_bucket: string (10 bytes, YYYY-MM-DD format)
+
+api_endpoints:
+  - method: POST
+    path: /search/work-notes
+    body:
+      query: string (required)
+      personId: string (optional)
+      deptName: string (optional)
+      category: string (optional)
+      from: date (optional)
+      to: date (optional)
+      limit: integer (default 10)
+    response:
+      - Array of SearchResultItem
+      - Each item: workNote, score, source (LEXICAL|SEMANTIC|HYBRID)
+
+algorithm:
+  rrf_implementation: |
+    function rrf(lexicalResults, semanticResults, k = 60) {
+      scoreMap = {}
+
+      for (item, rank) in lexicalResults:
+        scoreMap[item.id] += 1 / (k + rank + 1)
+
+      for (item, rank) in semanticResults:
+        scoreMap[item.id] += 1 / (k + rank + 1)
+
+      return sorted(scoreMap, by=score, desc)
+    }

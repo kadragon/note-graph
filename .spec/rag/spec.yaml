@@ -1,0 +1,148 @@
+spec_id: SPEC-rag-1
+title: "RAG (Retrieval-Augmented Generation)"
+description: >
+  Implement RAG system for contextual Q&A about work notes.
+  Support scoped queries (global, person, department, work).
+  Use chunking strategy with overlap for better context retrieval.
+
+given_when_then:
+  - given: "Work notes exist and are chunked/embedded"
+    when: "User asks natural language question"
+    then: >
+      System retrieves relevant chunks via Vectorize,
+      constructs prompt with context,
+      sends to GPT-4.5,
+      returns answer with source references
+
+  - given: "User on person detail page"
+    when: "User asks question in person RAG chat"
+    then: "Only chunks with matching person_id in metadata are searched"
+
+  - given: "User on department detail page"
+    when: "User asks question in department RAG chat"
+    then: "Only chunks with matching dept_name in metadata are searched"
+
+  - given: "User on work note detail page"
+    when: "User asks question in work note RAG chat"
+    then: "Only chunks from that specific work_id are searched"
+
+  - given: "Retrieved chunks have low similarity scores (all < 0.5)"
+    when: "RAG query executed"
+    then: "System returns response indicating insufficient context found"
+
+acceptance_tests:
+  - id: TEST-rag-1
+    desc: "Global RAG query returns relevant answer"
+    steps:
+      - "Create work notes and generate chunks"
+      - "POST /rag/query with scope=GLOBAL"
+      - "Verify answer returned"
+      - "Verify contexts array contains relevant chunks"
+
+  - id: TEST-rag-2
+    desc: "Person-scoped RAG filters by person"
+    steps:
+      - "Create work notes for multiple persons"
+      - "POST /rag/query with scope=PERSON and personId"
+      - "Verify contexts only from specified person's work notes"
+
+  - id: TEST-rag-3
+    desc: "Department-scoped RAG filters by department"
+    steps:
+      - "Create work notes from multiple departments"
+      - "POST /rag/query with scope=DEPARTMENT and deptName"
+      - "Verify contexts only from specified department"
+
+  - id: TEST-rag-4
+    desc: "Work-scoped RAG limits to single work note"
+    steps:
+      - "Create multiple work notes"
+      - "POST /rag/query with scope=WORK and workId"
+      - "Verify contexts only from specified work note"
+
+  - id: TEST-rag-5
+    desc: "Low-quality matches return appropriate response"
+    steps:
+      - "POST /rag/query with query unrelated to any work note"
+      - "Verify response indicates no relevant information found"
+      - "Verify contexts array empty or below threshold"
+
+dependencies:
+  governance:
+    - "Chunk size: 512 tokens"
+    - "Overlap: 20%"
+    - "Vectorize top-k: 5"
+    - "Similarity threshold: 0.5"
+    - "AI Gateway rate limits"
+
+linked_tasks: []
+
+technical_notes:
+  - "Chunking happens on work note create/update"
+  - "Each chunk embedded separately with text-embedding-3-small"
+  - "Chunk metadata includes: work_id, person_ids, dept_name, category, chunk_index"
+  - "Scope filter maps to Vectorize metadata filter"
+  - "Top-k default: 5, configurable in request"
+  - "Threshold 0.5: chunks below this similarity score discarded"
+  - "Prompt template includes: user query + retrieved chunks + system instructions"
+  - "Response includes: answer + array of source chunks with scores"
+
+chunking_algorithm: |
+  function chunkWorkNote(workNote) {
+    const CHUNK_SIZE = 512 // tokens
+    const OVERLAP = 0.2
+
+    const fullText = workNote.title + "\n\n" + workNote.content
+    const tokens = tokenize(fullText)
+    const step = Math.floor(CHUNK_SIZE * (1 - OVERLAP))
+
+    chunks = []
+    for (i = 0; i < tokens.length; i += step) {
+      chunkTokens = tokens.slice(i, i + CHUNK_SIZE)
+      chunks.push({
+        text: detokenize(chunkTokens),
+        metadata: {
+          work_id: workNote.workId,
+          person_ids: encodePersonIds(workNote.persons),
+          dept_name: getDeptFromPersons(workNote.persons),
+          category: workNote.category,
+          created_at_bucket: formatDate(workNote.createdAt, 'YYYY-MM-DD'),
+          chunk_index: chunks.length,
+          scope: 'WORK'
+        }
+      })
+    }
+
+    return chunks
+  }
+
+prompt_template: |
+  You are an assistant helping to answer questions about work notes.
+
+  Use the following context to answer the user's question.
+  If the context doesn't contain relevant information, say so.
+
+  Context:
+  {retrieved_chunks}
+
+  Question: {user_query}
+
+  Answer in Korean, be concise and reference specific work notes when possible.
+
+api_endpoints:
+  - method: POST
+    path: /rag/query
+    body:
+      query: string (required)
+      scope: GLOBAL | PERSON | DEPARTMENT | WORK (default GLOBAL)
+      personId: string (required if scope=PERSON)
+      deptName: string (required if scope=DEPARTMENT)
+      workId: string (required if scope=WORK)
+      topK: integer (default 5)
+    response:
+      answer: string
+      contexts: array of RagContextSnippet
+        - workId: string
+        - title: string
+        - snippet: string (chunk text)
+        - score: float (similarity score)

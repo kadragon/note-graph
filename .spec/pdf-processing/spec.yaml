@@ -1,0 +1,183 @@
+spec_id: SPEC-pdf-1
+title: "PDF Upload and Async Work Note Generation"
+description: >
+  Upload PDF files, extract text asynchronously via Queue,
+  generate work note draft using AI, present to user for editing.
+  PDFs stored temporarily only.
+
+given_when_then:
+  - given: "User has PDF file (e.g., official document)"
+    when: "User uploads PDF"
+    then: >
+      PDF uploaded to R2,
+      job created with status=PENDING,
+      jobId returned to client,
+      queue message sent for processing
+
+  - given: "PDF job in queue"
+    when: "Queue consumer processes message"
+    then: >
+      PDF retrieved from R2,
+      text extracted via unpdf,
+      AI generates work note draft,
+      job status updated to READY,
+      PDF deleted from R2 (or marked for TTL deletion)
+
+  - given: "PDF processing encounters error"
+    when: "Consumer fails to extract or process"
+    then: >
+      Job status set to ERROR,
+      error message recorded,
+      client shown error when polling
+
+  - given: "Job status=READY with draft"
+    when: "User polls job status"
+    then: >
+      Draft returned in response,
+      client presents draft editing UI
+
+  - given: "User edits and saves draft"
+    when: "Client POSTs work note creation"
+    then: >
+      Work note created normally (same as manual creation),
+      job can be marked complete or deleted
+
+acceptance_tests:
+  - id: TEST-pdf-1
+    desc: "Upload PDF and create job"
+    steps:
+      - "POST /pdf-jobs with multipart/form-data PDF file"
+      - "Verify 202 response with jobId and status=PENDING"
+
+  - id: TEST-pdf-2
+    desc: "Queue consumer processes PDF successfully"
+    steps:
+      - "Upload PDF, get jobId"
+      - "Wait for queue consumer to process"
+      - "GET /pdf-jobs/{jobId}"
+      - "Verify status=READY"
+      - "Verify draft field populated with WorkNoteDraft"
+
+  - id: TEST-pdf-3
+    desc: "PDF processing error handling"
+    steps:
+      - "Upload corrupted PDF"
+      - "Wait for queue consumer"
+      - "GET /pdf-jobs/{jobId}"
+      - "Verify status=ERROR"
+      - "Verify errorMessage field contains error description"
+
+  - id: TEST-pdf-4
+    desc: "Client polls job status until ready"
+    steps:
+      - "Upload PDF, get jobId"
+      - "Poll GET /pdf-jobs/{jobId} every 2 seconds"
+      - "When status=READY, retrieve draft"
+      - "Present draft to user for editing"
+
+  - id: TEST-pdf-5
+    desc: "Save edited draft as work note"
+    steps:
+      - "Get draft from completed PDF job"
+      - "User edits draft"
+      - "POST /work-notes with edited content"
+      - "Verify work note created successfully"
+
+dependencies:
+  governance:
+    - "R2 bucket for temporary storage"
+    - "Queue configuration"
+    - "unpdf library for text extraction"
+    - "AI Gateway for draft generation"
+
+linked_tasks: []
+
+technical_notes:
+  - "PDF storage in R2 with TTL=1 day (auto-cleanup)"
+  - "Or delete immediately after successful processing"
+  - "Queue retry logic: max 3 attempts"
+  - "Text extraction: unpdf (works in Workers environment)"
+  - "Draft generation same as text-based draft (reuse AI prompt)"
+  - "Job state stored in D1 table: pdf_jobs"
+  - "Job cleanup: delete jobs older than 7 days (scheduled cron)"
+
+database_schema:
+  pdf_jobs:
+    - job_id TEXT PRIMARY KEY
+    - status TEXT # PENDING, PROCESSING, READY, ERROR
+    - r2_key TEXT # R2 object key (while processing)
+    - extracted_text TEXT # Temporary, cleared after draft generation
+    - draft_json TEXT # JSON-encoded WorkNoteDraft
+    - error_message TEXT
+    - created_at TEXT
+    - updated_at TEXT
+    - metadata_json TEXT # category, personIds, deptName hints
+
+queue_message_schema:
+  jobId: string
+  r2Key: string
+  metadata:
+    category: string (nullable)
+    personIds: array of strings (nullable)
+    deptName: string (nullable)
+
+consumer_workflow: |
+  1. Receive message from PDF_QUEUE
+  2. Update job status to PROCESSING
+  3. Fetch PDF from R2 using r2Key
+  4. Extract text with unpdf
+  5. Store extracted text temporarily in job record
+  6. Call AI draft generation with extracted text + metadata
+  7. Store draft JSON in job record
+  8. Update job status to READY
+  9. Delete PDF from R2
+  10. Ack message
+
+  On error at any step:
+  - Update job status to ERROR
+  - Set error_message
+  - Delete PDF if exists
+  - Ack message (don't retry if unrecoverable)
+
+api_endpoints:
+  - method: POST
+    path: /pdf-jobs
+    content_type: multipart/form-data
+    fields:
+      file: binary (PDF)
+      category: string (optional)
+      personIds: comma-separated string (optional)
+      deptName: string (optional)
+    response:
+      status: 202
+      body: PdfJob with status=PENDING
+
+  - method: GET
+    path: /pdf-jobs/{jobId}
+    response:
+      PdfJob:
+        jobId: string
+        status: PENDING | PROCESSING | READY | ERROR
+        createdAt: timestamp
+        updatedAt: timestamp
+        errorMessage: string (if ERROR)
+        draft: WorkNoteDraft (if READY)
+
+r2_storage:
+  bucket: PDF_TEMP_STORAGE
+  key_format: "pdfs/{jobId}/{timestamp}-{filename}"
+  ttl: 86400 # 1 day in seconds
+  lifecycle_rule: auto-delete after 1 day
+
+error_scenarios:
+  - scenario: "Unsupported PDF version/encryption"
+    action: "Set ERROR status with message '지원하지 않는 PDF 형식입니다'"
+
+  - scenario: "PDF too large (>10MB)"
+    action: "Reject at upload with 413 Payload Too Large"
+
+  - scenario: "No extractable text (scanned image PDF)"
+    action: "Set ERROR status with message 'PDF에서 텍스트를 추출할 수 없습니다 (이미지 PDF일 수 있음)'"
+
+  - scenario: "AI service error during draft generation"
+    action: "Set ERROR status with message 'AI 초안 생성 중 오류가 발생했습니다'"

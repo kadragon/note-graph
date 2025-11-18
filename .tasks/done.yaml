@@ -1,0 +1,13 @@
+# Completed Tasks
+# Tasks moved here upon completion with timestamps and outcomes
+
+completed_tasks: []
+
+# Example entry format:
+# - task_id: TASK-001
+#   title: "Initialize Cloudflare Workers project"
+#   completed_at: "2025-11-18T10:00:00Z"
+#   outcome: |
+#     Successfully set up Wrangler project with TypeScript.
+#     All dependencies installed, dev server runs.
+#   test_results: "All acceptance tests passed"

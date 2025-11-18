@@ -1,0 +1,98 @@
+# Cloudflare Workers Configuration
+# See: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "note-graph"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Account ID - Replace with your Cloudflare account ID
+# account_id = "your-account-id-here"
+
+# ============================================================================
+# D1 Database
+# ============================================================================
+[[d1_databases]]
+binding = "DB"
+database_name = "worknote-db"
+database_id = "your-d1-database-id-here"  # Replace after creating database
+migrations_dir = "migrations"
+
+# ============================================================================
+# Vectorize
+# ============================================================================
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "worknote-vectors"
+# Configure via CLI: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
+
+# ============================================================================
+# Queues
+# ============================================================================
+[[queues.producers]]
+binding = "PDF_QUEUE"
+queue = "pdf-processing-queue"
+
+[[queues.consumers]]
+queue = "pdf-processing-queue"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+
+# ============================================================================
+# R2 Storage
+# ============================================================================
+[[r2_buckets]]
+binding = "PDF_TEMP_STORAGE"
+bucket_name = "worknote-pdf-temp"
+
+# ============================================================================
+# AI Gateway (for OpenAI API)
+# ============================================================================
+[ai]
+binding = "AI_GATEWAY"
+
+# ============================================================================
+# Environment Variables (Development)
+# ============================================================================
+[vars]
+ENVIRONMENT = "development"
+AI_GATEWAY_ID = "worknote-ai-gateway"
+OPENAI_MODEL_CHAT = "gpt-4.5-turbo"
+OPENAI_MODEL_EMBEDDING = "text-embedding-3-small"
+
+# ============================================================================
+# Production Environment Variables (use wrangler secret for sensitive data)
+# ============================================================================
+# OPENAI_API_KEY - Set via: wrangler secret put OPENAI_API_KEY
+
+# ============================================================================
+# Development Settings
+# ============================================================================
+[dev]
+port = 8787
+local_protocol = "http"
+
+# ============================================================================
+# Build Configuration
+# ============================================================================
+[build]
+command = "npm run build"
+
+[build.upload]
+format = "service-worker"
+
+# ============================================================================
+# Observability
+# ============================================================================
+[observability]
+enabled = true
+
+# ============================================================================
+# IMPORTANT NOTES
+# ============================================================================
+# 1. Create D1 database: wrangler d1 create worknote-db
+# 2. Create Vectorize index: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
+# 3. Create R2 bucket: wrangler r2 bucket create worknote-pdf-temp
+# 4. Create Queue: wrangler queues create pdf-processing-queue
+# 5. Set secrets: wrangler secret put OPENAI_API_KEY
+# 6. Update account_id, database_id after creation

@@ -1,0 +1,37 @@
+{
+  "name": "note-graph",
+  "version": "0.1.0",
+  "description": "Personal work note management system with AI-powered features",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "db:migrate": "wrangler d1 migrations apply worknote-db",
+    "db:migrate:local": "wrangler d1 migrations apply worknote-db --local",
+    "db:create-migration": "wrangler d1 migrations create worknote-db",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "zod": "^3.22.0",
+    "nanoid": "^5.0.0",
+    "date-fns": "^3.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240000.0",
+    "@cloudflare/vitest-pool-workers": "^0.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0",
+    "wrangler": "^3.28.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

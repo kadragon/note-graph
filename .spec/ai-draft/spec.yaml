@@ -1,0 +1,156 @@
+spec_id: SPEC-ai-draft-1
+title: "AI-Powered Work Note Draft Generation"
+description: >
+  Generate work note drafts from user text input using AI.
+  AI suggests title, structures content, and proposes todos.
+  User can edit draft before saving.
+
+given_when_then:
+  - given: "User has unstructured text about new work"
+    when: "User submits text to AI draft endpoint"
+    then: >
+      AI analyzes text,
+      generates structured draft with title, content, category suggestion,
+      proposes relevant todos with due dates
+
+  - given: "User provides category hint with text"
+    when: "AI generates draft"
+    then: "Draft category field populated with provided hint"
+
+  - given: "User provides person IDs with text"
+    when: "AI generates draft"
+    then: "AI considers persons' roles when structuring content"
+
+  - given: "AI draft generated"
+    when: "User edits draft and clicks save"
+    then: >
+      Work note created from edited draft,
+      selected todos created and linked,
+      embeddings generated for search/RAG
+
+acceptance_tests:
+  - id: TEST-ai-draft-1
+    desc: "Generate draft from text input"
+    steps:
+      - "POST /ai/work-notes/draft-from-text with inputText"
+      - "Verify response contains title, content, todos array"
+      - "Verify todos have title and dueDateSuggestion"
+
+  - id: TEST-ai-draft-2
+    desc: "Category hint influences draft"
+    steps:
+      - "POST with inputText and category='KORUS'"
+      - "Verify draft category field matches or relates to hint"
+
+  - id: TEST-ai-draft-3
+    desc: "Person context influences content"
+    steps:
+      - "Create person with specific role_desc"
+      - "POST with inputText and personIds array"
+      - "Verify draft content references person's role appropriately"
+
+  - id: TEST-ai-draft-4
+    desc: "AI rate limit enforced"
+    steps:
+      - "Make 300 AI calls in one day"
+      - "Attempt 301st call"
+      - "Verify 429 status returned with rate limit message"
+
+  - id: TEST-ai-draft-5
+    desc: "Todo suggestions from existing work note"
+    steps:
+      - "Create work note"
+      - "POST /ai/work-notes/{workId}/todo-suggestions"
+      - "Verify array of suggested todos returned"
+      - "Each suggestion has title, description, optional dueDateSuggestion"
+
+dependencies:
+  governance:
+    - "AI Gateway configuration"
+    - "GPT-4.5 model access"
+    - "Rate limit: 300/day, 6000/month"
+
+linked_tasks: []
+
+technical_notes:
+  - "Uses AI Gateway for rate limiting and logging"
+  - "Prompt engineering for Korean work note domain"
+  - "Draft response is JSON, not final work note"
+  - "Client responsible for presenting draft UI and handling save"
+  - "Rate limits tracked via AI Gateway, no custom counter needed"
+  - "Suggest 3-5 todos per draft, user can add/remove"
+  - "Due date suggestions based on content analysis (if mentioned) or defaults"
+
+prompt_templates:
+  draft_from_text: |
+    You are an assistant helping to structure work notes for a Korean workplace.
+
+    The user has provided the following unstructured text about their work:
+
+    {inputText}
+
+    Please analyze this and create a structured work note with:
+    1. A concise title (Korean)
+    2. Well-organized content (Korean, use markdown formatting)
+    3. Suggested category (one of: 수업성적, KORUS, 기획, 행정, etc. or infer new)
+    4. 3-5 relevant todo items with suggested due dates
+
+    Return JSON format:
+    {
+      "title": "...",
+      "content": "...",
+      "category": "...",
+      "todos": [
+        { "title": "...", "description": "...", "dueDateSuggestion": "YYYY-MM-DD" }
+      ]
+    }
+
+  todo_suggestions: |
+    You are an assistant helping to suggest todos for a work note.
+
+    Work Note:
+    Title: {title}
+    Content: {content}
+    Category: {category}
+
+    Based on this work note, suggest 3-5 actionable todos.
+
+    Return JSON array:
+    [
+      { "title": "...", "description": "...", "dueDateSuggestion": "YYYY-MM-DD" }
+    ]
+
+api_endpoints:
+  - method: POST
+    path: /ai/work-notes/draft-from-text
+    body:
+      inputText: string (required)
+      category: string (optional hint)
+      personIds: array of strings (optional)
+      deptName: string (optional)
+    response:
+      WorkNoteDraft:
+        title: string
+        content: string
+        category: string
+        todos: array of AIDraftTodo
+
+  - method: POST
+    path: /ai/work-notes/{workId}/todo-suggestions
+    body:
+      contextText: string (optional additional context)
+    response:
+      array of AIDraftTodo:
+        title: string
+        description: string
+        dueDateSuggestion: date-time (nullable)
+        repeatRule: TodoRepeatRule (nullable)
+
+error_handling:
+  - code: AI_RATE_LIMIT
+    status: 429
+    message: "AI 호출 상한을 초과했습니다. 잠시 후 다시 시도해주세요."
+
+  - code: AI_SERVICE_ERROR
+    status: 502
+    message: "AI 서비스 오류가 발생했습니다."

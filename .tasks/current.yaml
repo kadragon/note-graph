@@ -1,0 +1,8 @@
+# Current Task
+# Only one task should be active at a time
+
+current_task: null
+
+notes: |
+  No task currently in progress.
+  To start working, move a task from backlog.yaml to here.

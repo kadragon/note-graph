@@ -1,0 +1,56 @@
+spec_id: SPEC-auth-1
+title: "Authentication and User Identity"
+description: >
+  User authentication via Cloudflare Access with Google OAuth.
+  Single-user system where identity is determined from Access headers.
+
+given_when_then:
+  - given: "User has valid Google account configured in Cloudflare Access"
+    when: "User accesses any protected endpoint"
+    then: "Cloudflare Access authenticates user and injects Cf-Access-Authenticated-User-Email header"
+
+  - given: "User is not authenticated"
+    when: "User attempts to access protected endpoint"
+    then: "Cloudflare Access redirects to Google OAuth login"
+
+  - given: "Authenticated user"
+    when: "User requests /me endpoint"
+    then: "System returns user email and name from Access headers"
+
+acceptance_tests:
+  - id: TEST-auth-1
+    desc: "GET /me returns authenticated user information"
+    steps:
+      - "Send GET request to /me with valid Access JWT"
+      - "Verify response contains email field"
+      - "Verify response status is 200"
+
+  - id: TEST-auth-2
+    desc: "Requests without valid Access JWT are rejected"
+    steps:
+      - "Send GET request to /me without Access JWT"
+      - "Verify response status is 401"
+      - "Verify error message indicates authentication required"
+
+dependencies:
+  governance:
+    - "Cloudflare Access configuration (external)"
+    - "Google OAuth setup (external)"
+
+linked_tasks: []
+
+technical_notes:
+  - "No custom JWT validation needed initially (rely on Cloudflare Access)"
+  - "For enhanced security, can add JWKS-based validation later"
+  - "Single user system - no user database table needed"
+  - "User identification via Cf-Access-Authenticated-User-Email header"
+
+api_endpoints:
+  - method: GET
+    path: /me
+    description: "Get current authenticated user info"
+    response_schema:
+      type: object
+      properties:
+        email: { type: string }
+        name: { type: string, nullable: true }
