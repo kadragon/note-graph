@@ -649,6 +649,8 @@ body {
 /* --------------------------------------------------------------------------
  * Utility Classes
  * ------------------------------------------------------------------------ */
+/* Note: .hidden uses !important intentionally to ensure elements are hidden
+   regardless of other CSS rules (e.g., loading overlay, modals) */
 .hidden {
   display: none !important;
 }
