@@ -1,4 +1,4 @@
-// Trace: SPEC-dept-1, TASK-004
+// Trace: SPEC-dept-1, TASK-006
 /**
  * Department management routes
  */
@@ -9,6 +9,8 @@ import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
 import { validateBody } from '../utils/validation';
 import { createDepartmentSchema, updateDepartmentSchema } from '../schemas/department';
+import { DepartmentRepository } from '../repositories/department-repository';
+import { DomainError } from '../types/errors';
 
 const departments = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -19,67 +21,99 @@ departments.use('*', authMiddleware);
  * GET /departments - List all departments
  */
 departments.get('/', async (c) => {
-  // TODO: Implement DepartmentRepository.findAll() in TASK-006
-  return c.json({
-    message: 'List departments endpoint (to be implemented in TASK-006)',
-  });
+  try {
+    const repository = new DepartmentRepository(c.env.DB);
+    const results = await repository.findAll();
+
+    return c.json(results);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error listing departments:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * POST /departments - Create new department
  */
 departments.post('/', async (c) => {
-  const data = await validateBody(c, createDepartmentSchema);
+  try {
+    const data = await validateBody(c, createDepartmentSchema);
+    const repository = new DepartmentRepository(c.env.DB);
+    const department = await repository.create(data);
 
-  // TODO: Implement DepartmentRepository.create(data) in TASK-006
-  return c.json(
-    {
-      message: 'Create department endpoint (to be implemented in TASK-006)',
-      data,
-    },
-    201
-  );
+    return c.json(department, 201);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error creating department:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * GET /departments/:deptName - Get department by name
  */
 departments.get('/:deptName', async (c) => {
-  const { deptName } = c.req.param();
+  try {
+    const { deptName } = c.req.param();
+    const repository = new DepartmentRepository(c.env.DB);
+    const department = await repository.findByName(deptName);
 
-  // TODO: Implement DepartmentRepository.findByName(deptName) in TASK-006
-  return c.json({
-    message: 'Get department endpoint (to be implemented in TASK-006)',
-    deptName,
-  });
+    if (!department) {
+      return c.json({ code: 'NOT_FOUND', message: `Department not found: ${deptName}` }, 404);
+    }
+
+    return c.json(department);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error getting department:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * PUT /departments/:deptName - Update department
  */
 departments.put('/:deptName', async (c) => {
-  const { deptName } = c.req.param();
-  const data = await validateBody(c, updateDepartmentSchema);
+  try {
+    const { deptName } = c.req.param();
+    const data = await validateBody(c, updateDepartmentSchema);
+    const repository = new DepartmentRepository(c.env.DB);
+    const department = await repository.update(deptName, data);
 
-  // TODO: Implement DepartmentRepository.update(deptName, data) in TASK-006
-  return c.json({
-    message: 'Update department endpoint (to be implemented in TASK-006)',
-    deptName,
-    data,
-  });
+    return c.json(department);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error updating department:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * GET /departments/:deptName/work-notes - Get department's work notes
  */
 departments.get('/:deptName/work-notes', async (c) => {
-  const { deptName } = c.req.param();
+  try {
+    const { deptName } = c.req.param();
+    const repository = new DepartmentRepository(c.env.DB);
+    const workNotes = await repository.getWorkNotes(deptName);
 
-  // TODO: Implement DepartmentRepository.getWorkNotes(deptName) in TASK-006
-  return c.json({
-    message: 'Get department work notes endpoint (to be implemented in TASK-006)',
-    deptName,
-  });
+    return c.json(workNotes);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error getting department work notes:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 export default departments;

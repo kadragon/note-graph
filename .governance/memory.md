@@ -93,6 +93,82 @@
 - Tested API structure: routing, validation, error handling
 - **Status**: API structure complete, ready for repository implementation (TASK-005)
 
+### Session 6: Person Repository and CRUD (2025-11-18)
+- **TASK-005 Completed**: Implement Person repository and CRUD endpoints
+- Created Person type definitions: `Person`, `PersonDeptHistory`, `PersonWorkNote`
+- Implemented PersonRepository with D1 batch transactions for atomicity
+- Created 6 fully functional endpoints:
+  - POST /persons (creates person + auto department history entry)
+  - GET /persons (list with optional search)
+  - GET /persons/:personId (retrieve by ID)
+  - PUT /persons/:personId (update with department history management)
+  - GET /persons/:personId/history (full department assignment history)
+  - GET /persons/:personId/work-notes (person's work notes with roles)
+- Department history tracking: auto-creates initial entry, deactivates old and creates new on department change
+- Applied D1 migrations locally (39 SQL commands executed successfully)
+- All endpoints implement proper error handling with domain errors (NotFoundError, ConflictError)
+- **Status**: Person management complete, ready for Department repository (TASK-006)
+
+### Session 7: Department Repository and CRUD (2025-11-18)
+- **TASK-006 Completed**: Implement Department repository and CRUD endpoints
+- Created Department type definitions: `Department`, `DepartmentMember`, `DepartmentWorkNote`
+- Implemented DepartmentRepository with D1 queries and join operations
+- Created 5 fully functional endpoints:
+  - POST /departments (creates new department)
+  - GET /departments (list all departments sorted by name)
+  - GET /departments/:deptName (retrieve by name)
+  - PUT /departments/:deptName (update description)
+  - GET /departments/:deptName/work-notes (department's work notes via join)
+- Department member queries support filtering by is_active status
+- Work notes found via work_note_person join with DISTINCT to avoid duplicates
+- Fixed TypeScript type casting for domain error statusCode in route handlers
+- All endpoints implement proper error handling with domain errors
+- **Status**: Department management complete, ready for WorkNote repository (TASK-007)
+
+### Session 8: WorkNote Repository with Versioning (2025-11-18)
+- **TASK-007 Completed**: Implement WorkNote repository with versioning
+- Created WorkNote type definitions: `WorkNote`, `WorkNoteVersion`, `WorkNotePersonAssociation`, `WorkNoteRelation`, `WorkNoteDetail`
+- Implemented WorkNoteRepository with complex versioning logic and batch transactions
+- Created 5 fully functional endpoints:
+  - POST /work-notes (creates work note + person associations + related notes + first version)
+  - GET /work-notes (list with comprehensive filters: category, person, dept, date range, keyword)
+  - GET /work-notes/:workId (retrieve with all associations)
+  - PUT /work-notes/:workId (update + new version + auto prune old versions)
+  - DELETE /work-notes/:workId (delete with cascade - returns 204)
+- Version management: auto-creates on create/update, keeps max 5 versions, prunes oldest automatically
+- Person associations support OWNER/RELATED roles with batch operations
+- Related work note linking for bidirectional relationships
+- Complex filtering with JOIN operations for person and department filters
+- Work ID generation using nanoid in format WORK-{ulid}
+- Version pruning uses LIMIT -1 OFFSET pattern for efficient deletion
+- All endpoints implement proper error handling with domain errors
+- **Status**: WorkNote management complete, ready for Todo repository (TASK-008)
+
+### Session 9: Todo Repository with Recurrence (2025-11-18)
+- **TASK-008 Completed**: Implement Todo repository with recurrence logic
+- Created Todo type definitions: `Todo`, `TodoWithWorkNote`, `TodoStatus`, `RepeatRule`, `RecurrenceType`
+- Implemented TodoRepository with two recurrence strategies:
+  - DUE_DATE: next_due = old_due + interval (e.g., weekly meeting always on Mondays)
+  - COMPLETION_DATE: next_due = completion_date + interval (e.g., oil change every 3 months from last change)
+- Created 4 fully functional endpoints:
+  - POST /work-notes/:workId/todos (creates todo for work note, default status '진행중')
+  - GET /work-notes/:workId/todos (lists all todos for work note)
+  - GET /todos (list with view filters: today, this_week, this_month, backlog, all)
+  - PATCH /todos/:todoId (update with automatic recurrence generation)
+- View filters with intelligent date range calculation:
+  - today: due today AND (wait_until is null OR wait_until <= now)
+  - this_week: due this week AND (wait_until is null OR wait_until <= now)
+  - this_month: due this month AND (wait_until is null OR wait_until <= now)
+  - backlog: due_date < now AND status != '완료' (overdue todos)
+  - all: no filtering
+- Recurrence logic: automatically generates new todo instance when status changes to '완료'
+- New recurrent todo inherits: title, description, repeat_rule, recurrence_type, work_id
+- New recurrent todo gets: new todo_id, new created_at, status='진행중', calculated due_date, wait_until=null
+- Todo ID generation using nanoid in format TODO-{nanoid}
+- Korean status values supported: 진행중, 완료, 보류, 중단
+- All endpoints implement proper error handling with domain errors
+- **Status**: Phase 2 (Entity Management) complete! Ready for Phase 3 (Search & AI Features)
+
 ## Known Issues
 _None yet_
 

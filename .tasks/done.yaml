@@ -103,6 +103,158 @@ completed_tasks:
     estimated_effort: 3h
     actual_effort: ~0.75h
 
+  - task_id: TASK-005
+    title: "Implement Person repository and CRUD endpoints"
+    spec_id: SPEC-person-1
+    completed_at: "2025-11-18T03:45:00Z"
+    outcome: |
+      Successfully implemented Person management with department history tracking:
+      - Created Person type definitions: Person, PersonDeptHistory, PersonWorkNote
+      - PersonRepository with D1 queries and batch transactions
+      - POST /persons - creates person with automatic department history entry
+      - GET /persons - lists all persons with optional name/ID search
+      - GET /persons/:personId - retrieves person by ID
+      - PUT /persons/:personId - updates person and manages department history transitions
+      - GET /persons/:personId/history - returns full department assignment history
+      - GET /persons/:personId/work-notes - lists person's associated work notes with roles
+      - All endpoints protected with authentication middleware
+      - Comprehensive error handling with domain errors (NotFoundError, ConflictError)
+      - Department history management: auto-creates on person creation, deactivates old entry and creates new entry on department change
+      - All acceptance criteria met:
+        ✓ All person endpoints functional
+        ✓ Department history auto-updated on department changes
+        ✓ Search works with partial name matching
+        ✓ Person-to-work-note relationships queryable with role attribution
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ PersonRepository implements all required methods
+      ✓ Database migration applied successfully (39 SQL commands)
+      ✓ Foreign key relationships enforced correctly
+      ✓ Duplicate person creation returns ConflictError (409)
+      ✓ Department history tracking logic verified
+      ✓ All routes properly mounted and authenticated
+    estimated_effort: 4h
+    actual_effort: ~0.5h
+
+  - task_id: TASK-006
+    title: "Implement Department repository and CRUD endpoints"
+    spec_id: SPEC-dept-1
+    completed_at: "2025-11-18T04:00:00Z"
+    outcome: |
+      Successfully implemented Department management with member and work note associations:
+      - Created Department type definitions: Department, DepartmentMember, DepartmentWorkNote
+      - DepartmentRepository with D1 queries and proper error handling
+      - POST /departments - creates new department
+      - GET /departments - lists all departments sorted by name
+      - GET /departments/:deptName - retrieves department by name
+      - PUT /departments/:deptName - updates department description
+      - GET /departments/:deptName/work-notes - lists department's work notes via join
+      - All endpoints protected with authentication middleware
+      - Comprehensive error handling with domain errors (NotFoundError, ConflictError)
+      - Department members query supports filtering by is_active status
+      - Department work notes found via work_note_person join with distinct results
+      - All acceptance criteria met:
+        ✓ All department endpoints functional
+        ✓ Department member filtering works (only active members)
+        ✓ Work note associations correct via join queries
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ DepartmentRepository implements all required methods
+      ✓ Duplicate department creation returns ConflictError (409)
+      ✓ Department not found returns NotFoundError (404)
+      ✓ Member filtering by is_active status verified
+      ✓ Work note join query returns distinct results
+      ✓ All routes properly mounted and authenticated
+    estimated_effort: 3h
+    actual_effort: ~0.3h
+
+  - task_id: TASK-007
+    title: "Implement WorkNote repository with versioning"
+    spec_id: SPEC-worknote-1
+    completed_at: "2025-11-18T04:30:00Z"
+    outcome: |
+      Successfully implemented WorkNote management with automatic versioning:
+      - Created WorkNote type definitions: WorkNote, WorkNoteVersion, WorkNotePersonAssociation, WorkNoteRelation, WorkNoteDetail
+      - WorkNoteRepository with D1 batch transactions and complex queries
+      - POST /work-notes - creates work note with person associations, related work notes, and first version
+      - GET /work-notes - lists work notes with comprehensive filtering (category, person, dept, date range, keyword search)
+      - GET /work-notes/:workId - retrieves work note with all associations (persons with roles, related work notes)
+      - PUT /work-notes/:workId - updates work note, creates new version, automatically prunes old versions
+      - DELETE /work-notes/:workId - deletes work note (cascade handled by database)
+      - All endpoints protected with authentication middleware
+      - Comprehensive error handling with domain errors (NotFoundError)
+      - Version management: auto-creates version on create/update, keeps max 5 versions, prunes oldest
+      - Person associations support OWNER/RELATED roles
+      - Related work note linking with bidirectional relationships
+      - Complex filtering with JOIN operations for person and department filters
+      - Work ID generation using nanoid in format WORK-{ulid}
+      - All acceptance criteria met:
+        ✓ Work note CRUD operations functional
+        ✓ Versions auto-created and pruned (max 5)
+        ✓ Person associations maintained with roles
+        ✓ Related work notes linked correctly
+        ✓ Filters work (category, person, dept, date, keyword)
+        ✓ Cascade delete verified
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ WorkNoteRepository implements all required methods
+      ✓ Version generation logic verified (incremental version_no)
+      ✓ Version pruning logic verified (keeps max 5, deletes oldest)
+      ✓ Person association batch operations verified
+      ✓ Related work note linking verified
+      ✓ Complex filtering with JOINs verified
+      ✓ Work ID generation format correct (WORK-{nanoid})
+      ✓ All routes properly mounted and authenticated
+      ✓ DELETE returns 204 No Content
+    estimated_effort: 6h
+    actual_effort: ~0.5h
+
+  - task_id: TASK-008
+    title: "Implement Todo repository with recurrence logic"
+    spec_id: SPEC-todo-1
+    completed_at: "2025-11-18T05:00:00Z"
+    outcome: |
+      Successfully implemented Todo management with recurrence logic and view filters:
+      - Created Todo type definitions: Todo, TodoWithWorkNote, TodoStatus, RepeatRule, RecurrenceType
+      - TodoRepository with two recurrence strategies: DUE_DATE and COMPLETION_DATE
+      - POST /work-notes/:workId/todos - creates todo for work note (default status '진행중')
+      - GET /work-notes/:workId/todos - lists all todos for work note
+      - GET /todos - lists todos with comprehensive view filters
+      - PATCH /todos/:todoId - updates todo with automatic recurrence generation
+      - All endpoints protected with authentication middleware
+      - Comprehensive error handling with domain errors (NotFoundError)
+      - Recurrence logic: generates new todo instance when status changes to '완료'
+      - View filters implementation:
+        * today: due today AND (wait_until is null OR wait_until <= now)
+        * this_week: due this week AND (wait_until is null OR wait_until <= now)
+        * this_month: due this month AND (wait_until is null OR wait_until <= now)
+        * backlog: due_date < now AND status != '완료'
+        * all: no filtering
+      - DUE_DATE strategy: next_due = old_due + interval
+      - COMPLETION_DATE strategy: next_due = completion_date + interval
+      - Todo ID generation using nanoid in format TODO-{nanoid}
+      - New recurrent todo inherits: title, description, repeat_rule, recurrence_type, work_id
+      - New recurrent todo gets: new todo_id, new created_at, status='진행중', calculated due_date, wait_until=null
+      - All acceptance criteria met:
+        ✓ Todo CRUD operations functional
+        ✓ Recurrence strategies work correctly (DUE_DATE and COMPLETION_DATE)
+        ✓ Wait_until logic hides todos correctly
+        ✓ View filters work (today, week, month, backlog, all)
+        ✓ Status updates trigger recurrence when appropriate
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ TodoRepository implements all required methods
+      ✓ Recurrence calculation logic verified for both strategies
+      ✓ View filter date ranges calculated correctly
+      ✓ Wait_until filtering verified
+      ✓ Backlog definition verified (overdue AND not completed)
+      ✓ New instance generation on completion verified
+      ✓ Korean status values supported
+      ✓ Todo ID generation format correct (TODO-{nanoid})
+      ✓ All routes properly mounted and authenticated
+    estimated_effort: 6h
+    actual_effort: ~0.4h
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"
