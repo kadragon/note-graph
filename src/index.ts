@@ -12,7 +12,7 @@ export interface Env {
   VECTORIZE: VectorizeIndex;
   PDF_QUEUE: Queue;
   PDF_TEMP_STORAGE: R2Bucket;
-  AI_GATEWAY: any;
+  AI_GATEWAY: Fetcher;
   ENVIRONMENT: string;
   AI_GATEWAY_ID: string;
   OPENAI_MODEL_CHAT: string;
@@ -60,11 +60,14 @@ app.notFound((c) => {
 
 // Error handler
 app.onError((err, c) => {
-  console.error('Application error:', err);
+  console.error(`Application error: ${err instanceof Error ? err.stack || err : JSON.stringify(err)}`);
+  // Avoid leaking internal error details to the client in non-dev environments.
+  const isDevelopment = c.env.ENVIRONMENT === 'development';
+  const message = isDevelopment && err instanceof Error ? err.message : 'An internal server error occurred.';
   return c.json(
     {
       error: 'Internal Server Error',
-      message: err.message,
+      message,
     },
     500
   );
