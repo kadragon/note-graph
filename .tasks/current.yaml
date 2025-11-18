@@ -20,4 +20,16 @@ notes: |
   Backlog view shows overdue todos (due < now AND status != '완료').
 
   Phase 2 (Entity Management) complete!
+
+  Performance Optimizations Applied (2025-11-18):
+  Based on Gemini Code Assist suggestions, optimized all repository methods:
+  - DepartmentRepository: Eliminated DB refetch in create() and update()
+  - PersonRepository: Eliminated DB refetch in create() and update()
+  - TodoRepository: Eliminated DB refetch in create() and update()
+  - WorkNoteRepository: Eliminated DB refetch in create() and update()
+  - WorkNoteRepository.findByIdWithDetails(): Parallelized queries with Promise.all
+
+  Benefits: 8 fewer DB roundtrips on create/update operations, improved query
+  performance via parallelization, reduced D1 load and API latency.
+
   Ready to start Phase 3: Search & AI Features.
