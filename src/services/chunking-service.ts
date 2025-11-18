@@ -30,6 +30,12 @@ export const DEFAULT_CHUNK_CONFIG: ChunkConfig = {
 export class ChunkingService {
   private config: ChunkConfig;
 
+  /** Character-to-token ratio (approximate) */
+  private readonly CHARS_PER_TOKEN = 4;
+
+  /** Minimum chunk size ratio (chunks smaller than this are dropped) */
+  private readonly MIN_CHUNK_RATIO = 0.1;
+
   constructor(config: ChunkConfig = DEFAULT_CHUNK_CONFIG) {
     this.config = config;
   }
@@ -53,9 +59,7 @@ export class ChunkingService {
     const fullText = `${title}\n\n${content}`;
 
     // Convert to pseudo-tokens (character-based approximation)
-    // Average: ~4 characters per token for English/Korean
-    const CHARS_PER_TOKEN = 4;
-    const chunkSizeChars = this.config.chunkSize * CHARS_PER_TOKEN;
+    const chunkSizeChars = this.config.chunkSize * this.CHARS_PER_TOKEN;
     const stepChars = Math.floor(chunkSizeChars * (1 - this.config.overlapRatio));
 
     const chunks: TextChunk[] = [];
@@ -79,8 +83,8 @@ export class ChunkingService {
     for (let i = 0; i < fullText.length; i += stepChars) {
       const chunkText = fullText.slice(i, i + chunkSizeChars);
 
-      // Skip very small final chunks (< 10% of chunk size)
-      if (chunkText.length < chunkSizeChars * 0.1 && i > 0) {
+      // Skip very small final chunks (< MIN_CHUNK_RATIO of chunk size)
+      if (chunkText.length < chunkSizeChars * this.MIN_CHUNK_RATIO && i > 0) {
         break;
       }
 
@@ -107,8 +111,25 @@ export class ChunkingService {
    * @returns Approximate token count
    */
   estimateTokenCount(text: string): number {
-    const CHARS_PER_TOKEN = 4;
-    return Math.ceil(text.length / CHARS_PER_TOKEN);
+    return Math.ceil(text.length / this.CHARS_PER_TOKEN);
+  }
+
+  /**
+   * Extract a specific chunk text from full text
+   *
+   * @param fullText - Complete text to extract from
+   * @param chunkIndex - Index of the chunk to extract
+   * @returns Chunk text
+   */
+  getChunkText(fullText: string, chunkIndex: number): string {
+    const chunkSizeChars = this.config.chunkSize * this.CHARS_PER_TOKEN;
+    const stepChars = Math.floor(chunkSizeChars * (1 - this.config.overlapRatio));
+
+    const startPos = chunkIndex * stepChars;
+    const chunkText = fullText.slice(startPos, startPos + chunkSizeChars);
+
+    // Truncate to reasonable display length if needed
+    return chunkText.length > 500 ? chunkText.slice(0, 497) + '...' : chunkText;
   }
 
   /**

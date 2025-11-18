@@ -62,8 +62,14 @@ export class WorkNoteService {
 
     // Chunk and embed for RAG (async, non-blocking)
     this.chunkAndEmbedWorkNote(workNote, data).catch((error) => {
-      console.error('Error chunking and embedding work note:', error);
+      console.error('[CRITICAL] Failed to chunk and embed work note:', {
+        workId: workNote.workId,
+        title: workNote.title,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       // Non-fatal: work note is created, but RAG won't work for it
+      // TODO: Implement retry mechanism or dead-letter queue for production
     });
 
     return workNote;
@@ -78,8 +84,14 @@ export class WorkNoteService {
 
     // Re-chunk and re-embed for RAG (async, non-blocking)
     this.rechunkAndEmbedWorkNote(workNote, data).catch((error) => {
-      console.error('Error re-chunking and embedding work note:', error);
+      console.error('[CRITICAL] Failed to re-chunk and embed work note:', {
+        workId: workNote.workId,
+        title: workNote.title,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       // Non-fatal: work note is updated, but RAG won't reflect changes
+      // TODO: Implement retry mechanism or dead-letter queue for production
     });
 
     return workNote;
@@ -94,8 +106,13 @@ export class WorkNoteService {
 
     // Delete chunks from Vectorize (async, non-blocking)
     this.vectorizeService.deleteWorkNoteChunks(workId).catch((error) => {
-      console.error('Error deleting work note chunks:', error);
+      console.error('[WARNING] Failed to delete work note chunks:', {
+        workId,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       // Non-fatal: work note is deleted, but orphaned embeddings may remain
+      // These will eventually be cleaned up or overwritten
     });
   }
 
@@ -142,11 +159,12 @@ export class WorkNoteService {
 
   /**
    * Re-chunk and re-embed work note after update
+   *
+   * Uses atomic upsert-first strategy to prevent data loss:
+   * 1. Upsert new chunks (preserves old chunks if this fails)
+   * 2. Delete stale chunks only after successful upsert
    */
   private async rechunkAndEmbedWorkNote(workNote: WorkNote, data: UpdateWorkNoteInput): Promise<void> {
-    // Delete old chunks
-    await this.vectorizeService.deleteWorkNoteChunks(workNote.workId);
-
     // Get person IDs (use updated data if provided, otherwise fetch from DB)
     let personIds: string[] = [];
     if (data.persons !== undefined) {
@@ -180,8 +198,14 @@ export class WorkNoteService {
       metadata: chunk.metadata,
     }));
 
-    // Upsert new chunks into Vectorize
+    // ATOMIC: Upsert new chunks first (preserves old chunks if this fails)
     await this.vectorizeService.upsertChunks(chunksToEmbed);
+
+    // Only delete stale chunks after successful upsert
+    // Note: Vectorize upsert replaces chunks with same ID, so we only need to
+    // delete chunks that exceed the new chunk count
+    const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
+    await this.vectorizeService.deleteStaleChunks(workNote.workId, newChunkIds);
   }
 
   /**
@@ -190,16 +214,11 @@ export class WorkNoteService {
    * Uses the first person's current department
    */
   private async getDeptNameFromPersons(personIds: string[]): Promise<string | null> {
-    if (personIds.length === 0) {
+    if (personIds.length === 0 || !personIds[0]) {
       return null;
     }
 
-    // Get first person's department
-    const result = await this.repository['db']
-      .prepare('SELECT current_dept FROM persons WHERE person_id = ?')
-      .bind(personIds[0])
-      .first<{ current_dept: string | null }>();
-
-    return result?.current_dept || null;
+    // Get first person's department via repository
+    return this.repository.getDeptNameForPerson(personIds[0]);
   }
 }

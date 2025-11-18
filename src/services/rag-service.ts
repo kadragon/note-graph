@@ -19,6 +19,7 @@ export class RagService {
   private db: D1Database;
   private vectorizeService: VectorizeService;
   private embeddingService: EmbeddingService;
+  private env: Env;
 
   /** Minimum similarity score threshold for including chunks */
   private readonly SIMILARITY_THRESHOLD = 0.5;
@@ -27,6 +28,7 @@ export class RagService {
   private readonly DEFAULT_TOP_K = 5;
 
   constructor(env: Env) {
+    this.env = env;
     this.db = env.DB;
     this.embeddingService = new EmbeddingService(env);
     this.vectorizeService = new VectorizeService(env.VECTORIZE, this.embeddingService);
@@ -40,14 +42,16 @@ export class RagService {
    * @param env - Environment bindings (for AI Gateway)
    * @returns Answer with source context snippets
    */
-  async query(query: string, filters: RagQueryFilters, env: Env): Promise<RagQueryResponse> {
+  async query(query: string, filters: RagQueryFilters): Promise<RagQueryResponse> {
     const topK = filters.topK ?? this.DEFAULT_TOP_K;
 
     // Build Vectorize filter based on scope
     const vectorFilter = this.buildVectorFilter(filters);
 
     // Retrieve relevant chunks via vector search
-    const vectorResults = await this.vectorizeService.search(query, topK, vectorFilter);
+    // For PERSON scope, retrieve more results for post-filtering
+    const searchLimit = filters.scope === 'PERSON' ? topK * 3 : topK;
+    const vectorResults = await this.vectorizeService.search(query, searchLimit, vectorFilter);
 
     // Filter chunks by similarity threshold
     const relevantChunks = vectorResults.filter((r) => r.score >= this.SIMILARITY_THRESHOLD);
@@ -60,14 +64,14 @@ export class RagService {
       };
     }
 
-    // Fetch work note details for chunks
-    const contexts = await this.buildContextSnippets(relevantChunks);
+    // Fetch work note details for chunks (with PERSON scope filtering)
+    const contexts = await this.buildContextSnippets(relevantChunks, filters);
 
     // Construct prompt with retrieved contexts
     const prompt = this.constructPrompt(query, contexts);
 
     // Call GPT-4.5 via AI Gateway
-    const answer = await this.callGPT(prompt, env);
+    const answer = await this.callGPT(prompt);
 
     return {
       answer,
@@ -118,14 +122,24 @@ export class RagService {
    * Build context snippets from vector search results
    *
    * Fetches work note details and extracts chunk text
+   * Applies post-retrieval filtering for PERSON scope
    */
   private async buildContextSnippets(
-    vectorResults: Array<{ id: string; score: number; metadata: Record<string, string> }>
+    vectorResults: Array<{ id: string; score: number; metadata: Record<string, string> }>,
+    filters: RagQueryFilters
   ): Promise<RagContextSnippet[]> {
     const snippets: RagContextSnippet[] = [];
 
     for (const result of vectorResults) {
       try {
+        // Apply PERSON scope post-filtering
+        if (filters.scope === 'PERSON' && filters.personId) {
+          const personIds = result.metadata.person_ids?.split(',') || [];
+          if (!personIds.includes(filters.personId)) {
+            continue; // Skip chunks not associated with this person
+          }
+        }
+
         // Parse chunk ID to get work ID
         const [workId] = ChunkingService.parseChunkId(result.id);
 
@@ -145,6 +159,11 @@ export class RagService {
           snippet,
           score: result.score,
         });
+
+        // Stop after reaching topK results (after filtering)
+        if (snippets.length >= (filters.topK ?? this.DEFAULT_TOP_K)) {
+          break;
+        }
       } catch (error) {
         console.error('Error building context snippet:', error);
         // Skip this chunk and continue
@@ -174,25 +193,15 @@ export class RagService {
   /**
    * Extract snippet from work note based on chunk index
    *
-   * Note: In production, we should store chunk text in Vectorize metadata or separate table.
-   * For now, we approximate by extracting from work note content.
+   * Delegates to ChunkingService to avoid logic duplication
    */
   private extractSnippet(workNote: WorkNote, chunkIndexStr?: string): string {
     const fullText = `${workNote.title}\n\n${workNote.contentRaw}`;
     const chunkIndex = chunkIndexStr ? parseInt(chunkIndexStr, 10) : 0;
 
-    // Use same chunking logic to extract snippet
-    const CHARS_PER_TOKEN = 4;
-    const CHUNK_SIZE = 512;
-    const OVERLAP_RATIO = 0.2;
-    const chunkSizeChars = CHUNK_SIZE * CHARS_PER_TOKEN;
-    const stepChars = Math.floor(chunkSizeChars * (1 - OVERLAP_RATIO));
-
-    const startPos = chunkIndex * stepChars;
-    const snippet = fullText.slice(startPos, startPos + chunkSizeChars);
-
-    // Truncate to reasonable display length if needed
-    return snippet.length > 500 ? snippet.slice(0, 497) + '...' : snippet;
+    // Use ChunkingService to extract snippet (avoids duplicating chunking logic)
+    const chunkingService = new ChunkingService();
+    return chunkingService.getChunkText(fullText, chunkIndex);
   }
 
   /**
@@ -227,11 +236,11 @@ ${contextText}
   /**
    * Call GPT-4.5 via AI Gateway
    */
-  private async callGPT(prompt: string, env: Env): Promise<string> {
-    const url = `https://gateway.ai.cloudflare.com/v1/${env.AI_GATEWAY_ID}/openai/chat/completions`;
+  private async callGPT(prompt: string): Promise<string> {
+    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.AI_GATEWAY_ID}/openai/chat/completions`;
 
     const requestBody = {
-      model: env.OPENAI_MODEL_CHAT,
+      model: this.env.OPENAI_MODEL_CHAT,
       messages: [
         {
           role: 'user',
@@ -246,7 +255,7 @@ ${contextText}
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify(requestBody),
     });

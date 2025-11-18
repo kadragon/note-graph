@@ -36,17 +36,13 @@ app.post('/query', async (c) => {
   const ragService = new RagService(c.env);
 
   try {
-    const result = await ragService.query(
-      body.query,
-      {
-        scope: body.scope,
-        personId: body.personId,
-        deptName: body.deptName,
-        workId: body.workId,
-        topK: body.topK,
-      },
-      c.env
-    );
+    const result = await ragService.query(body.query, {
+      scope: body.scope,
+      personId: body.personId,
+      deptName: body.deptName,
+      workId: body.workId,
+      topK: body.topK,
+    });
 
     return c.json(result);
   } catch (error) {
