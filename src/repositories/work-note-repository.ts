@@ -378,4 +378,19 @@ export class WorkNoteRepository {
 
     return result.results || [];
   }
+
+  /**
+   * Get department name for a person
+   *
+   * @param personId - Person ID
+   * @returns Department name or null
+   */
+  async getDeptNameForPerson(personId: string): Promise<string | null> {
+    const result = await this.db
+      .prepare('SELECT current_dept FROM persons WHERE person_id = ?')
+      .bind(personId)
+      .first<{ current_dept: string | null }>();
+
+    return result?.current_dept || null;
+  }
 }

@@ -179,8 +179,9 @@ export class VectorizeService {
 
     try {
       // Query for all chunks with this work_id (using dummy embedding)
+      // Increased to 500 to handle large documents (50,000+ tokens = ~122 chunks)
       const results = await this.vectorize.query(new Array(1536).fill(0), {
-        topK: 100, // Reasonable max chunks per work note
+        topK: 500,
         filter: { work_id: workId },
         returnMetadata: false,
       });
@@ -191,6 +192,37 @@ export class VectorizeService {
       }
     } catch (error) {
       console.error('Error deleting work note chunks:', error);
+      // Non-fatal: log and continue
+    }
+  }
+
+  /**
+   * Delete stale chunks for a work note (chunks not in the new chunk ID set)
+   *
+   * Used for atomic re-embedding: upsert new chunks first, then delete stale ones
+   *
+   * @param workId - Work note ID
+   * @param newChunkIds - Set of new chunk IDs to keep
+   */
+  async deleteStaleChunks(workId: string, newChunkIds: Set<string>): Promise<void> {
+    try {
+      // Query for all chunks with this work_id
+      const results = await this.vectorize.query(new Array(1536).fill(0), {
+        topK: 500,
+        filter: { work_id: workId },
+        returnMetadata: false,
+      });
+
+      // Find stale chunks (chunks not in the new set)
+      const staleChunkIds = results.matches
+        .map((m) => m.id)
+        .filter((id) => !newChunkIds.has(id));
+
+      if (staleChunkIds.length > 0) {
+        await this.vectorize.deleteByIds(staleChunkIds);
+      }
+    } catch (error) {
+      console.error('Error deleting stale chunks:', error);
       // Non-fatal: log and continue
     }
   }
