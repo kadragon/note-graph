@@ -22,6 +22,33 @@ completed_tasks:
     estimated_effort: 2h
     actual_effort: ~1h
 
+  - task_id: TASK-002
+    title: "Create D1 database schema and migrations"
+    spec_id: SPEC-worknote-1
+    completed_at: "2025-11-18T02:45:00Z"
+    outcome: |
+      Successfully created complete D1 database schema with:
+      - 9 core tables: persons, person_dept_history, departments, work_notes,
+        work_note_person, work_note_relation, work_note_versions, todos, pdf_jobs
+      - FTS5 virtual table (notes_fts) with trigram tokenizer for Korean partial matching
+      - 3 FTS synchronization triggers (INSERT, UPDATE, DELETE)
+      - 24 custom indexes for foreign keys and common query patterns
+      - Comprehensive migration documentation in migrations/README.md
+      - All acceptance criteria met:
+        ✓ All tables created via migrations
+        ✓ FTS triggers functional (tested with Korean text)
+        ✓ Schema matches PRD specifications
+    test_results: |
+      ✓ Migration executed successfully (37 SQL commands)
+      ✓ All 9 core tables created
+      ✓ FTS5 virtual table created with trigram tokenizer
+      ✓ All 3 triggers created (notes_fts_ai, notes_fts_au, notes_fts_ad)
+      ✓ All 24 indexes created
+      ✓ FTS trigger test: Korean text search working correctly
+      ✓ Verified schema matches specifications
+    estimated_effort: 4h
+    actual_effort: ~0.5h
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"
