@@ -13,7 +13,8 @@
     "db:migrate:local": "wrangler d1 migrations apply worknote-db --local",
     "db:create-migration": "wrangler d1 migrations create worknote-db",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "prepare": "husky"
   },
   "dependencies": {
     "date-fns": "^3.0.0",
@@ -23,17 +24,25 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.5.19",
+    "@cloudflare/vitest-pool-workers": "^0.10.7",
     "@cloudflare/workers-types": "^4.20251118.0",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
-    "@vitest/coverage-v8": "^2.1.9",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^8.57.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.6",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "wrangler": "^3.94.0"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.47.0"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "tsc --noEmit"
+    ]
   }
 }
