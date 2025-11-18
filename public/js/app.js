@@ -830,6 +830,9 @@ const App = {
     // Fetch departments for selection
     let departments = [];
     let baseDepartments = [];
+    let suggestions = [];
+    let activeIndex = -1;
+    let isLoading = false;
     try {
       departments = await API.getDepartments();
       baseDepartments = departments;
@@ -853,12 +856,13 @@ const App = {
 
         <div class="form-group">
           <label class="form-label">부서</label>
-          <div class="input-with-action">
-            <input type="text" class="form-input" id="person-dept-input" list="dept-options" placeholder="부서 선택 또는 검색">
+          <div class="input-with-action suggestions">
+            <input type="text" class="form-input" id="person-dept-input" placeholder="부서 선택 또는 검색" autocomplete="off">
+            <div id="dept-loading" class="spinner-sm hidden"></div>
             <button type="button" class="btn btn-secondary" id="add-dept-inline">+ 새 부서</button>
+            <div class="suggestions-list hidden" id="dept-suggestions"></div>
           </div>
-          <datalist id="dept-options"></datalist>
-          <small style="color: var(--gray-600);">기존 부서를 검색해 선택하거나, 없으면 새 부서를 추가하세요.</small>
+          <small style="color: var(--gray-600);">기존 부서를 검색해 선택하거나, 없으면 새 부서를 추가하세요. 최대 5개 제안이 표시됩니다.</small>
         </div>
 
         <div class="form-group">
@@ -887,8 +891,9 @@ const App = {
     document.body.appendChild(modal);
 
     // Populate department options
-    const deptDatalist = modal.querySelector('#dept-options');
     const deptInput = modal.querySelector('#person-dept-input');
+    const deptLoading = modal.querySelector('#dept-loading');
+    const suggestionBox = modal.querySelector('#dept-suggestions');
     const addDeptButton = modal.querySelector('#add-dept-inline');
     const newDeptForm = modal.querySelector('#new-dept-form');
     const newDeptName = modal.querySelector('#new-dept-name');
@@ -896,13 +901,30 @@ const App = {
     const saveNewDept = modal.querySelector('#save-new-dept');
     const cancelNewDept = modal.querySelector('#cancel-new-dept');
 
-    const renderDepartments = (items = []) => {
-      deptDatalist.innerHTML = items
-        .map((dept) => `<option value="${UI.escapeHtml(dept.deptName || dept.dept_name)}"></option>`) // compat camel/snake
+    const renderSuggestions = (items = []) => {
+      suggestions = items.slice(0, 5);
+      if (suggestions.length === 0) {
+        suggestionBox.classList.add('hidden');
+        activeIndex = -1;
+        return;
+      }
+
+      suggestionBox.innerHTML = suggestions
+        .map((dept, idx) => `
+          <div class="suggestion-item${idx === activeIndex ? ' active' : ''}" data-name="${UI.escapeHtml(dept.deptName || dept.dept_name)}">
+            ${UI.escapeHtml(dept.deptName || dept.dept_name)}
+          </div>
+        `)
         .join('');
+      suggestionBox.classList.remove('hidden');
     };
 
-    renderDepartments(departments);
+    renderSuggestions(departments);
+
+    const setLoading = (state) => {
+      isLoading = state;
+      deptLoading.classList.toggle('hidden', !state);
+    };
 
     // Debounced remote search for departments
     const debounce = (fn, delay = 250) => {
@@ -916,24 +938,62 @@ const App = {
     const fetchAndRenderDepartments = async (term) => {
       if (!term) {
         departments = baseDepartments;
-        renderDepartments(departments);
+        renderSuggestions(departments);
         return;
       }
 
       try {
-        const results = await API.getDepartments({ q: term });
+        setLoading(true);
+        const results = await API.getDepartments({ q: term, limit: 5 });
         departments = results;
-        renderDepartments(results);
+        renderSuggestions(results);
       } catch (error) {
         console.error('Department search failed:', error);
         UI.showToast('부서 검색에 실패했습니다', 'error');
+      } finally {
+        setLoading(false);
       }
     };
 
     deptInput.addEventListener('input', debounce((event) => {
       const term = event.target.value.trim();
+      activeIndex = -1;
       fetchAndRenderDepartments(term);
     }, 300));
+
+    // Keyboard navigation for suggestions
+    deptInput.addEventListener('keydown', (event) => {
+      if (suggestions.length === 0) return;
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        activeIndex = (activeIndex + 1) % suggestions.length;
+        renderSuggestions(suggestions);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        activeIndex = activeIndex <= 0 ? suggestions.length - 1 : activeIndex - 1;
+        renderSuggestions(suggestions);
+      } else if (event.key === 'Enter') {
+        if (activeIndex >= 0) {
+          event.preventDefault();
+          const selected = suggestions[activeIndex];
+          deptInput.value = selected.deptName || selected.dept_name;
+          suggestionBox.classList.add('hidden');
+        }
+      } else if (event.key === 'Escape') {
+        suggestionBox.classList.add('hidden');
+        activeIndex = -1;
+      }
+    });
+
+    // Click selection
+    suggestionBox.addEventListener('click', (event) => {
+      const item = event.target.closest('.suggestion-item');
+      if (!item) return;
+      const value = item.dataset.name;
+      deptInput.value = value;
+      suggestionBox.classList.add('hidden');
+    });
 
     // Toggle inline department form
     addDeptButton.addEventListener('click', () => {
@@ -963,7 +1023,7 @@ const App = {
         // Refresh local list and select
         baseDepartments = [...baseDepartments, created];
         departments = baseDepartments;
-        renderDepartments(baseDepartments);
+        renderSuggestions(baseDepartments);
         deptInput.value = created.deptName || created.dept_name || name;
         newDeptForm.classList.add('hidden');
         newDeptName.value = '';

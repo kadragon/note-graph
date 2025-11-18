@@ -24,6 +24,21 @@ tasks:
       - "TypeScript compilation works"
       - "Basic Hono app responds to health check"
 
+  - task_id: TASK-021
+    spec_id: SPEC-person-1
+    title: "Improve department search UX in person form"
+    description: |
+      Add loading/error feedback, keyboard navigation, and limit search results
+      to 5 items with debounced async queries for the department selector in the
+      person creation form.
+    priority: 2
+    status: pending
+    estimated_effort: 2h
+    acceptance_criteria:
+      - "Debounced search shows up to 5 suggestions"
+      - "Loading and error states visible during search"
+      - "Keyboard arrows/Enter select suggestions"
+
   - task_id: TASK-020
     spec_id: SPEC-person-1
     title: "Debounced department search in person form"

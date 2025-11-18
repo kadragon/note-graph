@@ -24,7 +24,7 @@ departments.get('/', async (c) => {
   try {
     const query = validateQuery(c, listDepartmentsQuerySchema);
     const repository = new DepartmentRepository(c.env.DB);
-    const results = await repository.findAll(query.q);
+    const results = await repository.findAll(query.q, query.limit);
 
     return c.json(results);
   } catch (error) {

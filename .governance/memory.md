@@ -307,6 +307,11 @@
 - New integration test `tests/departments.test.ts` validates search filtering
 - Debounce helps large department lists; empty input restores full list; inline add still works
 
+### Session 17: Department Search UX Polish (2025-11-18)
+- **TASK-021 Completed**: Added loading/error feedback, keyboard navigation, and 5-item suggestion cap to department selector
+- Suggestions render via custom dropdown with arrow/enter/escape controls; inline add stays compatible
+- Kept debounced async search; limited results to mitigate large lists
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

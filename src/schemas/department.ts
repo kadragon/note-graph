@@ -25,6 +25,7 @@ export const updateDepartmentSchema = z.object({
  */
 export const listDepartmentsQuerySchema = z.object({
   q: z.string().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 export type CreateDepartmentInput = z.infer<typeof createDepartmentSchema>;
