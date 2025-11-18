@@ -57,7 +57,7 @@ binding = "AI_GATEWAY"
 [vars]
 ENVIRONMENT = "development"
 AI_GATEWAY_ID = "worknote-ai-gateway"
-OPENAI_MODEL_CHAT = "gpt-4.5-turbo"
+OPENAI_MODEL_CHAT = "gpt-5.1"
 OPENAI_MODEL_EMBEDDING = "text-embedding-3-small"
 
 # ============================================================================
