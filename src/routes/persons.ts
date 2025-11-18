@@ -29,7 +29,7 @@ persons.get('/', async (c) => {
     return c.json(results);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
     }
     console.error('Error listing persons:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -48,7 +48,7 @@ persons.post('/', async (c) => {
     return c.json(person, 201);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
     }
     console.error('Error creating person:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -71,7 +71,7 @@ persons.get('/:personId', async (c) => {
     return c.json(person);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
     }
     console.error('Error getting person:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -91,7 +91,7 @@ persons.put('/:personId', async (c) => {
     return c.json(person);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
     }
     console.error('Error updating person:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -110,7 +110,7 @@ persons.get('/:personId/history', async (c) => {
     return c.json(history);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
     }
     console.error('Error getting person history:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -129,7 +129,7 @@ persons.get('/:personId/work-notes', async (c) => {
     return c.json(workNotes);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
     }
     console.error('Error getting person work notes:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);

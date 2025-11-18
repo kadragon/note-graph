@@ -136,6 +136,38 @@ completed_tasks:
     estimated_effort: 4h
     actual_effort: ~0.5h
 
+  - task_id: TASK-006
+    title: "Implement Department repository and CRUD endpoints"
+    spec_id: SPEC-dept-1
+    completed_at: "2025-11-18T04:00:00Z"
+    outcome: |
+      Successfully implemented Department management with member and work note associations:
+      - Created Department type definitions: Department, DepartmentMember, DepartmentWorkNote
+      - DepartmentRepository with D1 queries and proper error handling
+      - POST /departments - creates new department
+      - GET /departments - lists all departments sorted by name
+      - GET /departments/:deptName - retrieves department by name
+      - PUT /departments/:deptName - updates department description
+      - GET /departments/:deptName/work-notes - lists department's work notes via join
+      - All endpoints protected with authentication middleware
+      - Comprehensive error handling with domain errors (NotFoundError, ConflictError)
+      - Department members query supports filtering by is_active status
+      - Department work notes found via work_note_person join with distinct results
+      - All acceptance criteria met:
+        ✓ All department endpoints functional
+        ✓ Department member filtering works (only active members)
+        ✓ Work note associations correct via join queries
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ DepartmentRepository implements all required methods
+      ✓ Duplicate department creation returns ConflictError (409)
+      ✓ Department not found returns NotFoundError (404)
+      ✓ Member filtering by is_active status verified
+      ✓ Work note join query returns distinct results
+      ✓ All routes properly mounted and authenticated
+    estimated_effort: 3h
+    actual_effort: ~0.3h
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"
