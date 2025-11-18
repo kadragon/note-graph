@@ -42,8 +42,8 @@ app.get('/health', (c) => {
   });
 });
 
-// Root endpoint
-app.get('/', (c) => {
+// API info endpoint
+app.get('/api', (c) => {
   return c.json({
     name: 'Note Graph API',
     version: '0.1.0',

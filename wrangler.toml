@@ -78,6 +78,13 @@ local_protocol = "http"
 # Wrangler uses ES modules format by default (no build config needed for TypeScript)
 
 # ============================================================================
+# Static Assets
+# ============================================================================
+[assets]
+directory = "public"
+binding = "ASSETS"
+
+# ============================================================================
 # Observability
 # ============================================================================
 [observability]
