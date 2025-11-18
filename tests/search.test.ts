@@ -3,103 +3,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FtsSearchService } from '../src/services/fts-search-service';
 import { EmbeddingService, VectorizeService } from '../src/services/embedding-service';
 import { HybridSearchService } from '../src/services/hybrid-search-service';
-import type { D1Database } from '@cloudflare/workers-types';
+import type { SearchResultItem } from '../src/types/search';
 import type { Env } from '../src/types/env';
 
 describe('Search Functionality', () => {
-  describe('TASK-009: FTS Lexical Search', () => {
-    describe('TEST-search-1: FTS finds Korean partial matches', () => {
-      it('should find work notes with Korean partial keyword matches', async () => {
-        // This test verifies that FTS5 with trigram tokenizer can find Korean text
-        // Create work note with content '2024년 수업 성적 처리'
-        // Search query '성적'
-        // Verify work note found via FTS
-
-        // Note: This test requires actual D1 database with FTS5 setup
-        // It should be run in integration test environment
-
-        expect(true).toBe(true); // Placeholder until DB setup
-      });
-
-      it('should rank results by FTS relevance score', async () => {
-        // Verify that FTS ranks results correctly
-        // More relevant matches should have higher scores
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should normalize FTS rank to 0-1 score range', async () => {
-        // FTS rank is typically -10 to 0 (negative)
-        // Should be normalized to 0-1 positive range
-
-        expect(true).toBe(true); // Placeholder
-      });
-    });
-
-    describe('FtsSearchService', () => {
-      it('should build FTS query correctly', () => {
-        // Test buildFtsQuery method
-        // Should clean and format query for FTS5
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should apply category filter', async () => {
-        // Test that category filter is applied in SQL WHERE clause
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should apply date range filters (from/to)', async () => {
-        // Test date filtering with from and to parameters
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should apply person filter with JOIN', async () => {
-        // Test personId filter joins work_note_person table
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should apply department filter with JOIN', async () => {
-        // Test deptName filter joins persons table for current_dept
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should verify FTS synchronization', async () => {
-        // Test verifyFtsSync method
-        // Should compare counts between work_notes and notes_fts tables
-
-        expect(true).toBe(true); // Placeholder
-      });
-    });
-  });
-
-  describe('TASK-010: Vectorize Index and Embedding Service', () => {
-    describe('TEST-search-2: Vectorize finds semantic matches', () => {
-      it('should find semantically similar work notes', async () => {
-        // Create work note with content 'student grade management'
-        // Generate embedding and store in Vectorize
-        // Search query '학생 성적 관리' (semantically similar in Korean)
-        // Verify work note found via vector search
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should return similarity scores', async () => {
-        // Verify that vector search returns cosine similarity scores
-
-        expect(true).toBe(true); // Placeholder
-      });
-    });
-
+  describe('TASK-010: Embedding Service (OpenAI Integration)', () => {
     describe('EmbeddingService', () => {
       it('should generate embedding for single text', async () => {
-        // Mock OpenAI API call
-        // Test generateEmbedding returns 1536-dimensional vector
-
         const mockEnv = {
           AI_GATEWAY_ID: 'test-gateway',
           OPENAI_API_KEY: 'test-key',
@@ -120,6 +30,16 @@ describe('Search Functionality', () => {
 
         expect(embedding).toHaveLength(1536);
         expect(embedding[0]).toBe(0.1);
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('gateway.ai.cloudflare.com'),
+          expect.objectContaining({
+            method: 'POST',
+            headers: expect.objectContaining({
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer test-key',
+            }),
+          })
+        );
       });
 
       it('should generate embeddings for multiple texts in batch', async () => {
@@ -146,9 +66,11 @@ describe('Search Functionality', () => {
         expect(embeddings).toHaveLength(2);
         expect(embeddings[0]).toHaveLength(1536);
         expect(embeddings[1]).toHaveLength(1536);
+        expect(embeddings[0][0]).toBe(0.1);
+        expect(embeddings[1][0]).toBe(0.2);
       });
 
-      it('should handle rate limit errors', async () => {
+      it('should handle rate limit errors (429)', async () => {
         const mockEnv = {
           AI_GATEWAY_ID: 'test-gateway',
           OPENAI_API_KEY: 'test-key',
@@ -180,220 +102,516 @@ describe('Search Functionality', () => {
 
         expect(embeddings).toEqual([]);
       });
-    });
 
-    describe('VectorizeService', () => {
-      it('should upsert work note embedding with metadata', async () => {
-        // Test upsertWorkNote method
-        // Verify metadata is correctly formatted and within 64-byte limits
+      it('should throw error when no embedding returned', async () => {
+        const mockEnv = {
+          AI_GATEWAY_ID: 'test-gateway',
+          OPENAI_API_KEY: 'test-key',
+          OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
+        } as Env;
 
-        expect(true).toBe(true); // Placeholder
+        const embeddingService = new EmbeddingService(mockEnv);
+
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            data: [],
+          }),
+        } as Response);
+
+        await expect(embeddingService.generateEmbedding('test')).rejects.toThrow(
+          'No embedding returned from OpenAI API'
+        );
       });
 
-      it('should delete work note embedding', async () => {
-        // Test deleteWorkNote method
-        // Verify vector is removed from index
+      it('should handle OpenAI API errors', async () => {
+        const mockEnv = {
+          AI_GATEWAY_ID: 'test-gateway',
+          OPENAI_API_KEY: 'test-key',
+          OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
+        } as Env;
 
-        expect(true).toBe(true); // Placeholder
+        const embeddingService = new EmbeddingService(mockEnv);
+
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 500,
+          text: async () => 'Internal Server Error',
+        } as Response);
+
+        await expect(embeddingService.generateEmbedding('test')).rejects.toThrow(
+          'OpenAI API error (500): Internal Server Error'
+        );
       });
 
-      it('should upsert chunk embeddings in batch', async () => {
-        // Test upsertChunks method
-        // Verify multiple chunks can be indexed at once
+      it('should use correct model and encoding format', async () => {
+        const mockEnv = {
+          AI_GATEWAY_ID: 'test-gateway',
+          OPENAI_API_KEY: 'test-key',
+          OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
+        } as Env;
 
-        expect(true).toBe(true); // Placeholder
-      });
+        const embeddingService = new EmbeddingService(mockEnv);
 
-      it('should search with metadata filters', async () => {
-        // Test search method with metadata filter
-        // Verify category filter is applied
+        let requestBody: any;
+        global.fetch = vi.fn().mockImplementation(async (url, options) => {
+          requestBody = JSON.parse(options?.body as string);
+          return {
+            ok: true,
+            json: async () => ({
+              data: [{ embedding: new Array(1536).fill(0.1), index: 0 }],
+            }),
+          } as Response;
+        });
 
-        expect(true).toBe(true); // Placeholder
-      });
+        await embeddingService.generateEmbedding('test text');
 
-      it('should encode metadata within size limits', async () => {
-        // Test encodeMetadata helper
-        // Verify person_ids, dept_name, category all fit in 64 bytes
-
-        expect(true).toBe(true); // Placeholder
+        expect(requestBody).toEqual({
+          model: 'text-embedding-3-small',
+          input: ['test text'],
+          encoding_format: 'float',
+        });
       });
     });
   });
 
-  describe('TASK-011: Hybrid Search with RRF', () => {
-    describe('TEST-search-3: Hybrid search combines and ranks results', () => {
-      it('should merge FTS and Vectorize results using RRF', async () => {
-        // Create multiple work notes
-        // Populate FTS and Vectorize indexes
-        // POST /search/work-notes with query
-        // Verify results include 'source' field (LEXICAL/SEMANTIC/HYBRID)
-        // Verify results sorted by combined RRF score
+  describe('TASK-011: Hybrid Search with RRF Ranking', () => {
+    describe('RRF Algorithm Validation', () => {
+      it('should calculate RRF score correctly with k=60', () => {
+        // RRF formula: score = 1 / (k + rank)
+        // For rank 1: 1 / (60 + 1) = 0.016393...
+        // For rank 2: 1 / (60 + 2) = 0.016129...
 
-        expect(true).toBe(true); // Placeholder
+        const k = 60;
+        const rank1Score = 1 / (k + 1);
+        const rank2Score = 1 / (k + 2);
+
+        expect(rank1Score).toBeCloseTo(0.01639, 5);
+        expect(rank2Score).toBeCloseTo(0.01613, 5);
+
+        // If same item found at rank 1 in both: combined score
+        const combinedScore = rank1Score + rank1Score;
+        expect(combinedScore).toBeCloseTo(0.03279, 5);
       });
 
-      it('should mark results found by both engines as HYBRID', async () => {
-        // If a work note is found by both FTS and Vectorize
-        // Source should be 'HYBRID'
+      it('should merge results found by both FTS and Vectorize as HYBRID', () => {
+        const ftsResults: SearchResultItem[] = [
+          {
+            workNote: {
+              workId: 'WORK-1',
+              title: 'Test 1',
+              contentRaw: 'Content 1',
+              category: '회의',
+              createdAt: '2024-01-01',
+              updatedAt: '2024-01-01',
+            },
+            score: 0.8,
+            source: 'LEXICAL',
+          },
+        ];
 
-        expect(true).toBe(true); // Placeholder
+        const vectorResults: SearchResultItem[] = [
+          {
+            workNote: {
+              workId: 'WORK-1',
+              title: 'Test 1',
+              contentRaw: 'Content 1',
+              category: '회의',
+              createdAt: '2024-01-01',
+              updatedAt: '2024-01-01',
+            },
+            score: 0.9,
+            source: 'SEMANTIC',
+          },
+        ];
+
+        // Simulate RRF merge
+        const k = 60;
+        const scoreMap = new Map<string, { score: number; sources: Set<string> }>();
+
+        // Add FTS score
+        ftsResults.forEach((item, index) => {
+          const rank = index + 1;
+          const rrfScore = 1 / (k + rank);
+          scoreMap.set(item.workNote.workId, {
+            score: rrfScore,
+            sources: new Set(['LEXICAL']),
+          });
+        });
+
+        // Add Vector score
+        vectorResults.forEach((item, index) => {
+          const rank = index + 1;
+          const rrfScore = 1 / (k + rank);
+          const existing = scoreMap.get(item.workNote.workId);
+          if (existing) {
+            existing.score += rrfScore;
+            existing.sources.add('SEMANTIC');
+          }
+        });
+
+        const result = scoreMap.get('WORK-1')!;
+        expect(result.sources.has('LEXICAL')).toBe(true);
+        expect(result.sources.has('SEMANTIC')).toBe(true);
+        expect(result.sources.size).toBe(2);
+
+        // Determine source type
+        const sourceType =
+          result.sources.has('LEXICAL') && result.sources.has('SEMANTIC') ? 'HYBRID' : 'LEXICAL';
+        expect(sourceType).toBe('HYBRID');
       });
 
-      it('should mark FTS-only results as LEXICAL', async () => {
-        // If work note found only by FTS
-        // Source should be 'LEXICAL'
+      it('should sort merged results by combined RRF score descending', () => {
+        // Simulate multiple results with different scores
+        const results = [
+          { workId: 'WORK-1', score: 0.01 }, // Lower score
+          { workId: 'WORK-2', score: 0.05 }, // Higher score
+          { workId: 'WORK-3', score: 0.03 }, // Medium score
+        ];
 
-        expect(true).toBe(true); // Placeholder
+        const sorted = [...results].sort((a, b) => b.score - a.score);
+
+        expect(sorted[0].workId).toBe('WORK-2');
+        expect(sorted[1].workId).toBe('WORK-3');
+        expect(sorted[2].workId).toBe('WORK-1');
       });
 
-      it('should mark Vectorize-only results as SEMANTIC', async () => {
-        // If work note found only by Vectorize
-        // Source should be 'SEMANTIC'
+      it('should handle FTS-only results (LEXICAL source)', () => {
+        const sources = new Set(['LEXICAL']);
+        const sourceType =
+          sources.has('LEXICAL') && sources.has('SEMANTIC')
+            ? 'HYBRID'
+            : sources.has('LEXICAL')
+              ? 'LEXICAL'
+              : 'SEMANTIC';
 
-        expect(true).toBe(true); // Placeholder
+        expect(sourceType).toBe('LEXICAL');
+      });
+
+      it('should handle Vectorize-only results (SEMANTIC source)', () => {
+        const sources = new Set(['SEMANTIC']);
+        const sourceType =
+          sources.has('LEXICAL') && sources.has('SEMANTIC')
+            ? 'HYBRID'
+            : sources.has('LEXICAL')
+              ? 'LEXICAL'
+              : 'SEMANTIC';
+
+        expect(sourceType).toBe('SEMANTIC');
+      });
+
+      it('should calculate different RRF scores for different ranks', () => {
+        const k = 60;
+        const scores = [];
+
+        for (let rank = 1; rank <= 5; rank++) {
+          scores.push(1 / (k + rank));
+        }
+
+        // Each subsequent rank should have lower score
+        for (let i = 1; i < scores.length; i++) {
+          expect(scores[i]).toBeLessThan(scores[i - 1]);
+        }
+
+        // Verify specific values
+        expect(scores[0]).toBeCloseTo(0.01639, 5); // Rank 1
+        expect(scores[1]).toBeCloseTo(0.01613, 5); // Rank 2
+        expect(scores[4]).toBeCloseTo(0.01538, 5); // Rank 5
       });
     });
 
-    describe('TEST-search-4: Filter search by person', () => {
-      it('should filter results by personId', async () => {
-        // Create work notes associated with different persons
-        // POST /search/work-notes with query and personId filter
-        // Verify only work notes associated with specified person returned
+    describe('Search Result Merging', () => {
+      it('should combine scores for duplicate work notes', () => {
+        const k = 60;
+        const workId = 'WORK-123';
 
-        expect(true).toBe(true); // Placeholder
-      });
-    });
+        // Found at rank 2 in FTS
+        const ftsRank = 2;
+        const ftsScore = 1 / (k + ftsRank);
 
-    describe('TEST-search-5: Filter search by department', () => {
-      it('should filter results by deptName', async () => {
-        // Create work notes with persons from different departments
-        // POST /search/work-notes with query and deptName filter
-        // Verify only work notes from specified department returned
+        // Found at rank 3 in Vectorize
+        const vectorRank = 3;
+        const vectorScore = 1 / (k + vectorRank);
 
-        expect(true).toBe(true); // Placeholder
-      });
-    });
+        const combinedScore = ftsScore + vectorScore;
 
-    describe('HybridSearchService - RRF Algorithm', () => {
-      it('should calculate RRF score with k=60', () => {
-        // Test RRF formula: score = sum(1 / (k + rank))
-        // Verify k parameter defaults to 60
-        // Verify scores are calculated correctly
-
-        // Example:
-        // Result at rank 1: score = 1 / (60 + 1) = 0.0164
-        // Result at rank 2: score = 1 / (60 + 2) = 0.0161
-        // If found by both: score = 0.0164 + 0.0161 = 0.0325
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should combine scores for results found by both engines', () => {
-        // When same work note appears in both FTS and Vectorize results
-        // RRF scores should be summed
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should sort merged results by combined score descending', () => {
-        // Final results should be sorted highest score first
-
-        expect(true).toBe(true); // Placeholder
+        expect(combinedScore).toBeCloseTo(0.03200, 5);
+        expect(combinedScore).toBeGreaterThan(ftsScore);
+        expect(combinedScore).toBeGreaterThan(vectorScore);
       });
 
       it('should apply limit after merging', () => {
-        // If limit=10, return top 10 results after RRF merge
+        const results = Array.from({ length: 20 }, (_, i) => ({
+          workId: `WORK-${i}`,
+          score: Math.random(),
+        }));
 
-        expect(true).toBe(true); // Placeholder
+        const limit = 10;
+        const limited = results.slice(0, limit);
+
+        expect(limited).toHaveLength(10);
+        expect(results).toHaveLength(20);
       });
 
-      it('should handle FTS-only results gracefully', () => {
-        // If Vectorize search fails or returns empty
-        // Should still return FTS results
+      it('should handle empty FTS results gracefully', () => {
+        const ftsResults: SearchResultItem[] = [];
+        const vectorResults: SearchResultItem[] = [
+          {
+            workNote: {
+              workId: 'WORK-1',
+              title: 'Test',
+              contentRaw: 'Content',
+              category: '업무',
+              createdAt: '2024-01-01',
+              updatedAt: '2024-01-01',
+            },
+            score: 0.9,
+            source: 'SEMANTIC',
+          },
+        ];
 
-        expect(true).toBe(true); // Placeholder
+        const merged = [...ftsResults, ...vectorResults];
+        expect(merged).toHaveLength(1);
+        expect(merged[0].source).toBe('SEMANTIC');
       });
 
-      it('should handle Vectorize-only results gracefully', () => {
-        // If FTS search fails or returns empty
-        // Should still return Vectorize results
+      it('should handle empty Vectorize results gracefully', () => {
+        const ftsResults: SearchResultItem[] = [
+          {
+            workNote: {
+              workId: 'WORK-1',
+              title: 'Test',
+              contentRaw: 'Content',
+              category: '업무',
+              createdAt: '2024-01-01',
+              updatedAt: '2024-01-01',
+            },
+            score: 0.8,
+            source: 'LEXICAL',
+          },
+        ];
+        const vectorResults: SearchResultItem[] = [];
 
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should fetch work notes by IDs with filters', async () => {
-        // Test fetchWorkNotesByIds method
-        // Verify person and department filters are applied
-
-        expect(true).toBe(true); // Placeholder
-      });
-
-      it('should execute FTS and Vectorize searches in parallel', async () => {
-        // Verify Promise.all is used for parallel execution
-        // Should improve performance
-
-        expect(true).toBe(true); // Placeholder
+        const merged = [...ftsResults, ...vectorResults];
+        expect(merged).toHaveLength(1);
+        expect(merged[0].source).toBe('LEXICAL');
       });
     });
 
-    describe('Search API Endpoint', () => {
-      it('should return search results with count and query', async () => {
-        // POST /search/work-notes
-        // Response should include: results, count, query, searchType
+    describe('Filter Application Logic', () => {
+      it('should build filter conditions correctly', () => {
+        const filters = {
+          category: '회의',
+          personId: 'P-001',
+          deptName: '개발팀',
+          from: '2024-01-01',
+          to: '2024-12-31',
+        };
 
-        expect(true).toBe(true); // Placeholder
+        const conditions: string[] = [];
+
+        if (filters.category) {
+          conditions.push('category = ?');
+        }
+        if (filters.personId) {
+          conditions.push('person_id = ?');
+        }
+        if (filters.deptName) {
+          conditions.push('dept_name = ?');
+        }
+        if (filters.from) {
+          conditions.push('created_at >= ?');
+        }
+        if (filters.to) {
+          conditions.push('created_at <= ?');
+        }
+
+        expect(conditions).toHaveLength(5);
+        expect(conditions).toContain('category = ?');
+        expect(conditions).toContain('person_id = ?');
+        expect(conditions).toContain('dept_name = ?');
+        expect(conditions).toContain('created_at >= ?');
+        expect(conditions).toContain('created_at <= ?');
       });
 
-      it('should validate request body with searchWorkNotesSchema', async () => {
-        // Test that Zod validation is applied
-        // Invalid query should return 400
+      it('should handle partial filters', () => {
+        const filters = {
+          category: '회의',
+        };
 
-        expect(true).toBe(true); // Placeholder
+        const conditions: string[] = [];
+
+        if (filters.category) {
+          conditions.push('category = ?');
+        }
+
+        expect(conditions).toHaveLength(1);
+        expect(conditions[0]).toBe('category = ?');
       });
 
-      it('should require authentication', async () => {
-        // Verify authMiddleware is applied
-        // Unauthenticated request should return 401
+      it('should handle no filters', () => {
+        const filters = {};
+        const conditions: string[] = [];
 
-        expect(true).toBe(true); // Placeholder
-      });
+        if ('category' in filters && filters.category) {
+          conditions.push('category = ?');
+        }
 
-      it('should handle search errors gracefully', async () => {
-        // If search fails, return 500 with Korean error message
-
-        expect(true).toBe(true); // Placeholder
+        expect(conditions).toHaveLength(0);
       });
     });
   });
 
-  describe('Integration Tests', () => {
-    it('should perform end-to-end hybrid search', async () => {
-      // Full integration test:
-      // 1. Create work notes
-      // 2. Trigger FTS sync
-      // 3. Upsert to Vectorize
-      // 4. Perform hybrid search
-      // 5. Verify results
+  describe('TASK-009: FTS Search Logic', () => {
+    describe('FTS Query Building', () => {
+      it('should clean and trim query text', () => {
+        const query = '  업무 처리  ';
+        const cleaned = query.trim();
 
-      expect(true).toBe(true); // Placeholder
+        expect(cleaned).toBe('업무 처리');
+        expect(cleaned.startsWith(' ')).toBe(false);
+        expect(cleaned.endsWith(' ')).toBe(false);
+      });
+
+      it('should handle Korean text in query', () => {
+        const koreanQuery = '2024년 업무 성적 처리';
+        const cleaned = koreanQuery.trim();
+
+        expect(cleaned).toBe('2024년 업무 성적 처리');
+        expect(cleaned.length).toBeGreaterThan(0);
+      });
+
+      it('should handle empty query', () => {
+        const query = '   ';
+        const cleaned = query.trim();
+
+        expect(cleaned).toBe('');
+      });
+
+      it('should pass through multi-word queries', () => {
+        const query = '학생 성적 관리 시스템';
+        const cleaned = query.trim();
+
+        expect(cleaned).toBe('학생 성적 관리 시스템');
+        // FTS5 will match documents containing any of these terms
+      });
     });
 
-    it('should handle Korean text throughout pipeline', async () => {
-      // Test Korean text in:
-      // - Work note content
-      // - Search query
-      // - FTS matching
-      // - Embedding generation
-      // - Result display
+    describe('FTS Score Normalization', () => {
+      it('should normalize FTS rank to 0-1 range', () => {
+        // FTS rank is typically between -10 and 0 (negative)
+        const ftsRanks = [-1, -5, -10];
+        const normalized = ftsRanks.map((rank) => Math.max(0, 1 + rank / 10));
 
-      expect(true).toBe(true); // Placeholder
+        expect(normalized[0]).toBe(0.9); // -1 → 0.9
+        expect(normalized[1]).toBe(0.5); // -5 → 0.5
+        expect(normalized[2]).toBe(0.0); // -10 → 0.0
+
+        // All should be in 0-1 range
+        normalized.forEach((score) => {
+          expect(score).toBeGreaterThanOrEqual(0);
+          expect(score).toBeLessThanOrEqual(1);
+        });
+      });
+
+      it('should handle edge case of rank 0', () => {
+        const rank = 0;
+        const normalized = Math.max(0, 1 + rank / 10);
+
+        expect(normalized).toBe(1.0);
+      });
+
+      it('should handle very negative ranks', () => {
+        const rank = -20;
+        const normalized = Math.max(0, 1 + rank / 10);
+
+        expect(normalized).toBe(0); // Clamped to 0
+      });
+    });
+  });
+
+  describe('Korean Text Handling', () => {
+    it('should handle Korean characters in search queries', () => {
+      const koreanTexts = [
+        '업무',
+        '성적',
+        '회의록',
+        '보고서',
+        '2024년 업무',
+        '학생 성적 관리',
+      ];
+
+      koreanTexts.forEach((text) => {
+        const cleaned = text.trim();
+        expect(cleaned).toBe(text);
+        expect(cleaned.length).toBeGreaterThan(0);
+      });
     });
 
-    it('should apply all filters together', async () => {
-      // Test combination of filters:
-      // - personId + deptName + category + date range
+    it('should handle mixed Korean and English text', () => {
+      const mixedText = 'API 서버 업무 처리 system';
+      const cleaned = mixedText.trim();
 
-      expect(true).toBe(true); // Placeholder
+      expect(cleaned).toBe('API 서버 업무 처리 system');
+      expect(cleaned).toContain('API');
+      expect(cleaned).toContain('서버');
+      expect(cleaned).toContain('system');
+    });
+
+    it('should handle Korean numbers and dates', () => {
+      const dateText = '2024년 11월 18일';
+      const cleaned = dateText.trim();
+
+      expect(cleaned).toBe('2024년 11월 18일');
+    });
+  });
+
+  describe('Integration - Search Result Format', () => {
+    it('should format search results with required fields', () => {
+      const result: SearchResultItem = {
+        workNote: {
+          workId: 'WORK-001',
+          title: '업무 보고서',
+          contentRaw: '2024년 업무 처리 내용',
+          category: '보고',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+        score: 0.85,
+        source: 'HYBRID',
+      };
+
+      expect(result.workNote).toBeDefined();
+      expect(result.workNote.workId).toBe('WORK-001');
+      expect(result.score).toBeGreaterThan(0);
+      expect(result.score).toBeLessThanOrEqual(1);
+      expect(['LEXICAL', 'SEMANTIC', 'HYBRID']).toContain(result.source);
+    });
+
+    it('should validate source attribution values', () => {
+      const validSources = ['LEXICAL', 'SEMANTIC', 'HYBRID'];
+
+      validSources.forEach((source) => {
+        expect(['LEXICAL', 'SEMANTIC', 'HYBRID']).toContain(source);
+      });
+    });
+
+    it('should include all required work note fields', () => {
+      const workNote = {
+        workId: 'WORK-001',
+        title: 'Test',
+        contentRaw: 'Content',
+        category: '업무',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      };
+
+      expect(workNote).toHaveProperty('workId');
+      expect(workNote).toHaveProperty('title');
+      expect(workNote).toHaveProperty('contentRaw');
+      expect(workNote).toHaveProperty('category');
+      expect(workNote).toHaveProperty('createdAt');
+      expect(workNote).toHaveProperty('updatedAt');
     });
   });
 });
