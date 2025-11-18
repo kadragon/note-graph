@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-1, TASK-004
+// Trace: SPEC-worknote-1, TASK-007
 /**
  * Work note management routes
  */
@@ -10,6 +10,9 @@ import { authMiddleware } from '../middleware/auth';
 import { validateBody, validateQuery } from '../utils/validation';
 import { createWorkNoteSchema, updateWorkNoteSchema, listWorkNotesQuerySchema } from '../schemas/work-note';
 import { createTodoSchema } from '../schemas/todo';
+import { WorkNoteRepository } from '../repositories/work-note-repository';
+import { TodoRepository } from '../repositories/todo-repository';
+import { DomainError } from '../types/errors';
 
 const workNotes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -20,102 +23,139 @@ workNotes.use('*', authMiddleware);
  * GET /work-notes - List work notes with filters
  */
 workNotes.get('/', async (c) => {
-  const query = validateQuery(c, listWorkNotesQuerySchema);
+  try {
+    const query = validateQuery(c, listWorkNotesQuerySchema);
+    const repository = new WorkNoteRepository(c.env.DB);
+    const results = await repository.findAll(query);
 
-  // TODO: Implement WorkNoteRepository.findAll(query) in TASK-007
-  return c.json({
-    message: 'List work notes endpoint (to be implemented in TASK-007)',
-    query,
-  });
+    return c.json(results);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error listing work notes:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * POST /work-notes - Create new work note
  */
 workNotes.post('/', async (c) => {
-  const data = await validateBody(c, createWorkNoteSchema);
+  try {
+    const data = await validateBody(c, createWorkNoteSchema);
+    const repository = new WorkNoteRepository(c.env.DB);
+    const workNote = await repository.create(data);
 
-  // TODO: Implement WorkNoteRepository.create(data) in TASK-007
-  return c.json(
-    {
-      message: 'Create work note endpoint (to be implemented in TASK-007)',
-      data,
-    },
-    201
-  );
+    return c.json(workNote, 201);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error creating work note:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * GET /work-notes/:workId - Get work note by ID
  */
 workNotes.get('/:workId', async (c) => {
-  const { workId } = c.req.param();
+  try {
+    const { workId } = c.req.param();
+    const repository = new WorkNoteRepository(c.env.DB);
+    const workNote = await repository.findByIdWithDetails(workId);
 
-  // TODO: Implement WorkNoteRepository.findById(workId) in TASK-007
-  return c.json({
-    message: 'Get work note endpoint (to be implemented in TASK-007)',
-    workId,
-  });
+    if (!workNote) {
+      return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
+    }
+
+    return c.json(workNote);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error getting work note:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * PUT /work-notes/:workId - Update work note
  */
 workNotes.put('/:workId', async (c) => {
-  const { workId } = c.req.param();
-  const data = await validateBody(c, updateWorkNoteSchema);
+  try {
+    const { workId } = c.req.param();
+    const data = await validateBody(c, updateWorkNoteSchema);
+    const repository = new WorkNoteRepository(c.env.DB);
+    const workNote = await repository.update(workId, data);
 
-  // TODO: Implement WorkNoteRepository.update(workId, data) in TASK-007
-  return c.json({
-    message: 'Update work note endpoint (to be implemented in TASK-007)',
-    workId,
-    data,
-  });
+    return c.json(workNote);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error updating work note:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * DELETE /work-notes/:workId - Delete work note
  */
 workNotes.delete('/:workId', async (c) => {
-  const { workId } = c.req.param();
+  try {
+    const { workId } = c.req.param();
+    const repository = new WorkNoteRepository(c.env.DB);
+    await repository.delete(workId);
 
-  // TODO: Implement WorkNoteRepository.delete(workId) in TASK-007
-  // For now, return 200 with message (will change to 204 with no content in actual implementation)
-  return c.json({
-    message: 'Delete work note endpoint (to be implemented in TASK-007)',
-    workId,
-  });
+    return c.body(null, 204);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error deleting work note:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * GET /work-notes/:workId/todos - Get todos for work note
  */
 workNotes.get('/:workId/todos', async (c) => {
-  const { workId } = c.req.param();
+  try {
+    const { workId } = c.req.param();
+    const repository = new TodoRepository(c.env.DB);
+    const todos = await repository.findByWorkId(workId);
 
-  // TODO: Implement TodoRepository.findByWorkId(workId) in TASK-008
-  return c.json({
-    message: 'Get work note todos endpoint (to be implemented in TASK-008)',
-    workId,
-  });
+    return c.json(todos);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error getting work note todos:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * POST /work-notes/:workId/todos - Create todo for work note
  */
 workNotes.post('/:workId/todos', async (c) => {
-  const { workId } = c.req.param();
-  const data = await validateBody(c, createTodoSchema);
+  try {
+    const { workId } = c.req.param();
+    const data = await validateBody(c, createTodoSchema);
+    const repository = new TodoRepository(c.env.DB);
+    const todo = await repository.create(workId, data);
 
-  // TODO: Implement TodoRepository.create(workId, data) in TASK-008
-  return c.json(
-    {
-      message: 'Create todo for work note endpoint (to be implemented in TASK-008)',
-      workId,
-      data,
-    },
-    201
-  );
+    return c.json(todo, 201);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error creating todo:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 export default workNotes;

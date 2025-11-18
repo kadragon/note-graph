@@ -4,5 +4,32 @@
 current_task: null
 
 notes: |
-  TASK-004 completed successfully.
-  Ready to start TASK-005: Implement Person repository and CRUD endpoints.
+  TASK-008 completed successfully.
+
+  Implemented:
+  - Todo type definitions (Todo, TodoWithWorkNote, TodoStatus, RepeatRule, RecurrenceType)
+  - TodoRepository with recurrence strategies (DUE_DATE, COMPLETION_DATE)
+  - POST /work-notes/:workId/todos - creates todo for work note
+  - GET /work-notes/:workId/todos - lists todos for work note
+  - GET /todos - lists todos with view filters (today, this_week, this_month, backlog, all)
+  - PATCH /todos/:todoId - updates todo with automatic recurrence generation
+
+  All endpoints implement proper error handling with domain errors.
+  Recurrence logic generates new instance when status changes to '완료'.
+  View filters correctly implement wait_until logic and date range filtering.
+  Backlog view shows overdue todos (due < now AND status != '완료').
+
+  Phase 2 (Entity Management) complete!
+
+  Performance Optimizations Applied (2025-11-18):
+  Based on Gemini Code Assist suggestions, optimized all repository methods:
+  - DepartmentRepository: Eliminated DB refetch in create() and update()
+  - PersonRepository: Eliminated DB refetch in create() and update()
+  - TodoRepository: Eliminated DB refetch in create() and update()
+  - WorkNoteRepository: Eliminated DB refetch in create() and update()
+  - WorkNoteRepository.findByIdWithDetails(): Parallelized queries with Promise.all
+
+  Benefits: 8 fewer DB roundtrips on create/update operations, improved query
+  performance via parallelization, reduced D1 load and API latency.
+
+  Ready to start Phase 3: Search & AI Features.
