@@ -103,6 +103,39 @@ completed_tasks:
     estimated_effort: 3h
     actual_effort: ~0.75h
 
+  - task_id: TASK-005
+    title: "Implement Person repository and CRUD endpoints"
+    spec_id: SPEC-person-1
+    completed_at: "2025-11-18T03:45:00Z"
+    outcome: |
+      Successfully implemented Person management with department history tracking:
+      - Created Person type definitions: Person, PersonDeptHistory, PersonWorkNote
+      - PersonRepository with D1 queries and batch transactions
+      - POST /persons - creates person with automatic department history entry
+      - GET /persons - lists all persons with optional name/ID search
+      - GET /persons/:personId - retrieves person by ID
+      - PUT /persons/:personId - updates person and manages department history transitions
+      - GET /persons/:personId/history - returns full department assignment history
+      - GET /persons/:personId/work-notes - lists person's associated work notes with roles
+      - All endpoints protected with authentication middleware
+      - Comprehensive error handling with domain errors (NotFoundError, ConflictError)
+      - Department history management: auto-creates on person creation, deactivates old entry and creates new entry on department change
+      - All acceptance criteria met:
+        ✓ All person endpoints functional
+        ✓ Department history auto-updated on department changes
+        ✓ Search works with partial name matching
+        ✓ Person-to-work-note relationships queryable with role attribution
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ PersonRepository implements all required methods
+      ✓ Database migration applied successfully (39 SQL commands)
+      ✓ Foreign key relationships enforced correctly
+      ✓ Duplicate person creation returns ConflictError (409)
+      ✓ Department history tracking logic verified
+      ✓ All routes properly mounted and authenticated
+    estimated_effort: 4h
+    actual_effort: ~0.5h
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"
