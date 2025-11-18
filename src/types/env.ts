@@ -1,0 +1,16 @@
+// Trace: TASK-001, TASK-009
+/**
+ * Cloudflare Workers environment bindings
+ */
+export interface Env {
+  DB: D1Database;
+  VECTORIZE: VectorizeIndex;
+  PDF_QUEUE: Queue;
+  PDF_TEMP_STORAGE: R2Bucket;
+  AI_GATEWAY: Fetcher;
+  ENVIRONMENT: string;
+  AI_GATEWAY_ID: string;
+  OPENAI_MODEL_CHAT: string;
+  OPENAI_MODEL_EMBEDDING: string;
+  OPENAI_API_KEY: string;
+}
