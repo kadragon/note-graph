@@ -4,19 +4,20 @@
 current_task: null
 
 notes: |
-  TASK-007 completed successfully.
+  TASK-008 completed successfully.
 
   Implemented:
-  - WorkNote type definitions (WorkNote, WorkNoteVersion, WorkNotePersonAssociation, WorkNoteRelation, WorkNoteDetail)
-  - WorkNoteRepository with automatic versioning (max 5 versions)
-  - POST /work-notes - creates work note with person associations and first version
-  - GET /work-notes - lists work notes with comprehensive filters (category, person, dept, date range, keyword)
-  - GET /work-notes/:workId - gets work note with all associations (persons, related notes)
-  - PUT /work-notes/:workId - updates work note, creates new version, prunes old versions
-  - DELETE /work-notes/:workId - deletes work note with cascade
+  - Todo type definitions (Todo, TodoWithWorkNote, TodoStatus, RepeatRule, RecurrenceType)
+  - TodoRepository with recurrence strategies (DUE_DATE, COMPLETION_DATE)
+  - POST /work-notes/:workId/todos - creates todo for work note
+  - GET /work-notes/:workId/todos - lists todos for work note
+  - GET /todos - lists todos with view filters (today, this_week, this_month, backlog, all)
+  - PATCH /todos/:todoId - updates todo with automatic recurrence generation
 
   All endpoints implement proper error handling with domain errors.
-  Versioning logic automatically prunes oldest versions when exceeding 5.
-  Person and related work note associations managed with batch transactions.
+  Recurrence logic generates new instance when status changes to '완료'.
+  View filters correctly implement wait_until logic and date range filtering.
+  Backlog view shows overdue todos (due < now AND status != '완료').
 
-  Ready to start TASK-008: Implement Todo repository with recurrence logic.
+  Phase 2 (Entity Management) complete!
+  Ready to start Phase 3: Search & AI Features.

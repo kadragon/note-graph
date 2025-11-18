@@ -11,6 +11,7 @@ import { validateBody, validateQuery } from '../utils/validation';
 import { createWorkNoteSchema, updateWorkNoteSchema, listWorkNotesQuerySchema } from '../schemas/work-note';
 import { createTodoSchema } from '../schemas/todo';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
+import { TodoRepository } from '../repositories/todo-repository';
 import { DomainError } from '../types/errors';
 
 const workNotes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -122,31 +123,39 @@ workNotes.delete('/:workId', async (c) => {
  * GET /work-notes/:workId/todos - Get todos for work note
  */
 workNotes.get('/:workId/todos', async (c) => {
-  const { workId } = c.req.param();
+  try {
+    const { workId } = c.req.param();
+    const repository = new TodoRepository(c.env.DB);
+    const todos = await repository.findByWorkId(workId);
 
-  // TODO: Implement TodoRepository.findByWorkId(workId) in TASK-008
-  return c.json({
-    message: 'Get work note todos endpoint (to be implemented in TASK-008)',
-    workId,
-  });
+    return c.json(todos);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error getting work note todos:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 /**
  * POST /work-notes/:workId/todos - Create todo for work note
  */
 workNotes.post('/:workId/todos', async (c) => {
-  const { workId } = c.req.param();
-  const data = await validateBody(c, createTodoSchema);
+  try {
+    const { workId } = c.req.param();
+    const data = await validateBody(c, createTodoSchema);
+    const repository = new TodoRepository(c.env.DB);
+    const todo = await repository.create(workId, data);
 
-  // TODO: Implement TodoRepository.create(workId, data) in TASK-008
-  return c.json(
-    {
-      message: 'Create todo for work note endpoint (to be implemented in TASK-008)',
-      workId,
-      data,
-    },
-    201
-  );
+    return c.json(todo, 201);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error creating todo:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
 });
 
 export default workNotes;

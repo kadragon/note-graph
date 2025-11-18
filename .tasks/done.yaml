@@ -209,6 +209,52 @@ completed_tasks:
     estimated_effort: 6h
     actual_effort: ~0.5h
 
+  - task_id: TASK-008
+    title: "Implement Todo repository with recurrence logic"
+    spec_id: SPEC-todo-1
+    completed_at: "2025-11-18T05:00:00Z"
+    outcome: |
+      Successfully implemented Todo management with recurrence logic and view filters:
+      - Created Todo type definitions: Todo, TodoWithWorkNote, TodoStatus, RepeatRule, RecurrenceType
+      - TodoRepository with two recurrence strategies: DUE_DATE and COMPLETION_DATE
+      - POST /work-notes/:workId/todos - creates todo for work note (default status '진행중')
+      - GET /work-notes/:workId/todos - lists all todos for work note
+      - GET /todos - lists todos with comprehensive view filters
+      - PATCH /todos/:todoId - updates todo with automatic recurrence generation
+      - All endpoints protected with authentication middleware
+      - Comprehensive error handling with domain errors (NotFoundError)
+      - Recurrence logic: generates new todo instance when status changes to '완료'
+      - View filters implementation:
+        * today: due today AND (wait_until is null OR wait_until <= now)
+        * this_week: due this week AND (wait_until is null OR wait_until <= now)
+        * this_month: due this month AND (wait_until is null OR wait_until <= now)
+        * backlog: due_date < now AND status != '완료'
+        * all: no filtering
+      - DUE_DATE strategy: next_due = old_due + interval
+      - COMPLETION_DATE strategy: next_due = completion_date + interval
+      - Todo ID generation using nanoid in format TODO-{nanoid}
+      - New recurrent todo inherits: title, description, repeat_rule, recurrence_type, work_id
+      - New recurrent todo gets: new todo_id, new created_at, status='진행중', calculated due_date, wait_until=null
+      - All acceptance criteria met:
+        ✓ Todo CRUD operations functional
+        ✓ Recurrence strategies work correctly (DUE_DATE and COMPLETION_DATE)
+        ✓ Wait_until logic hides todos correctly
+        ✓ View filters work (today, week, month, backlog, all)
+        ✓ Status updates trigger recurrence when appropriate
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ TodoRepository implements all required methods
+      ✓ Recurrence calculation logic verified for both strategies
+      ✓ View filter date ranges calculated correctly
+      ✓ Wait_until filtering verified
+      ✓ Backlog definition verified (overdue AND not completed)
+      ✓ New instance generation on completion verified
+      ✓ Korean status values supported
+      ✓ Todo ID generation format correct (TODO-{nanoid})
+      ✓ All routes properly mounted and authenticated
+    estimated_effort: 6h
+    actual_effort: ~0.4h
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"

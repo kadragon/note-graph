@@ -144,6 +144,31 @@
 - All endpoints implement proper error handling with domain errors
 - **Status**: WorkNote management complete, ready for Todo repository (TASK-008)
 
+### Session 9: Todo Repository with Recurrence (2025-11-18)
+- **TASK-008 Completed**: Implement Todo repository with recurrence logic
+- Created Todo type definitions: `Todo`, `TodoWithWorkNote`, `TodoStatus`, `RepeatRule`, `RecurrenceType`
+- Implemented TodoRepository with two recurrence strategies:
+  - DUE_DATE: next_due = old_due + interval (e.g., weekly meeting always on Mondays)
+  - COMPLETION_DATE: next_due = completion_date + interval (e.g., oil change every 3 months from last change)
+- Created 4 fully functional endpoints:
+  - POST /work-notes/:workId/todos (creates todo for work note, default status '진행중')
+  - GET /work-notes/:workId/todos (lists all todos for work note)
+  - GET /todos (list with view filters: today, this_week, this_month, backlog, all)
+  - PATCH /todos/:todoId (update with automatic recurrence generation)
+- View filters with intelligent date range calculation:
+  - today: due today AND (wait_until is null OR wait_until <= now)
+  - this_week: due this week AND (wait_until is null OR wait_until <= now)
+  - this_month: due this month AND (wait_until is null OR wait_until <= now)
+  - backlog: due_date < now AND status != '완료' (overdue todos)
+  - all: no filtering
+- Recurrence logic: automatically generates new todo instance when status changes to '완료'
+- New recurrent todo inherits: title, description, repeat_rule, recurrence_type, work_id
+- New recurrent todo gets: new todo_id, new created_at, status='진행중', calculated due_date, wait_until=null
+- Todo ID generation using nanoid in format TODO-{nanoid}
+- Korean status values supported: 진행중, 완료, 보류, 중단
+- All endpoints implement proper error handling with domain errors
+- **Status**: Phase 2 (Entity Management) complete! Ready for Phase 3 (Search & AI Features)
+
 ## Known Issues
 _None yet_
 
