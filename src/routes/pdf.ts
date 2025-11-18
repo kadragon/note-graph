@@ -15,6 +15,9 @@ import type {
   WorkNoteDraft,
 } from '../types/pdf.js';
 
+// Configuration constants
+const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
 const pdf = new Hono<{ Bindings: Env }>();
 
 /**
@@ -37,9 +40,8 @@ pdf.post('/', async (c) => {
     throw new BadRequestError('파일은 PDF 형식이어야 합니다');
   }
 
-  // Check file size (max 10MB)
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  if (fileBlob.size > MAX_FILE_SIZE) {
+  // Check file size
+  if (fileBlob.size > MAX_PDF_SIZE_BYTES) {
     return c.json(
       {
         error: 'PAYLOAD_TOO_LARGE',
@@ -59,7 +61,10 @@ pdf.post('/', async (c) => {
     metadata.category = category;
   }
   if (personIds && typeof personIds === 'string') {
-    metadata.personIds = personIds.split(',').map((id) => id.trim());
+    metadata.personIds = personIds
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean); // Remove empty strings
   }
   if (deptName && typeof deptName === 'string') {
     metadata.deptName = deptName;

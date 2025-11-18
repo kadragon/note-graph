@@ -172,10 +172,7 @@ export async function queue(
       console.log(`[PDF Queue] Extracting text from PDF`);
       const extractedText = await extractionService.extractText(pdfBuffer);
 
-      // Store extracted text temporarily
-      await repository.updateExtractedText(jobId, extractedText);
-
-      // Generate AI draft
+      // Generate AI draft (keep extracted text in memory, no DB write)
       console.log(`[PDF Queue] Generating AI draft`);
       const draft = await aiDraftService.generateDraftFromText(extractedText, {
         category: metadata.category,
@@ -205,24 +202,24 @@ export async function queue(
 
       try {
         await repository.updateStatusToError(jobId, errorMessage);
-
-        // Try to delete PDF from R2 on error
-        if (r2Key) {
-          try {
-            await env.PDF_TEMP_STORAGE.delete(r2Key);
-            console.log(`[PDF Queue] Cleaned up PDF from R2: ${r2Key}`);
-          } catch (deleteError) {
-            console.error(
-              `[PDF Queue] Failed to delete PDF from R2: ${r2Key}`,
-              deleteError
-            );
-          }
-        }
       } catch (updateError) {
         console.error(
           `[PDF Queue] Failed to update job status to ERROR:`,
           updateError
         );
+      }
+
+      // Always try to delete PDF from R2 on error (regardless of DB update success)
+      if (r2Key) {
+        try {
+          await env.PDF_TEMP_STORAGE.delete(r2Key);
+          console.log(`[PDF Queue] Cleaned up PDF from R2: ${r2Key}`);
+        } catch (deleteError) {
+          console.error(
+            `[PDF Queue] Failed to delete PDF from R2: ${r2Key}`,
+            deleteError
+          );
+        }
       }
 
       // Acknowledge message to prevent retry loop for unrecoverable errors

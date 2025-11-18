@@ -89,23 +89,6 @@ export class PdfJobRepository {
   }
 
   /**
-   * Update job with extracted text
-   */
-  async updateExtractedText(jobId: string, extractedText: string): Promise<void> {
-    const now = new Date().toISOString();
-    const result = await this.db
-      .prepare(
-        'UPDATE pdf_jobs SET extracted_text = ?, updated_at = ? WHERE job_id = ?'
-      )
-      .bind(extractedText, now, jobId)
-      .run();
-
-    if (result.meta.changes === 0) {
-      throw new NotFoundError('PDF job', jobId);
-    }
-  }
-
-  /**
    * Update job status to READY with draft
    */
   async updateStatusToReady(jobId: string, draft: WorkNoteDraft): Promise<void> {
@@ -115,7 +98,7 @@ export class PdfJobRepository {
     const result = await this.db
       .prepare(
         `UPDATE pdf_jobs
-         SET status = ?, draft_json = ?, extracted_text = NULL, r2_key = NULL, updated_at = ?
+         SET status = ?, draft_json = ?, r2_key = NULL, updated_at = ?
          WHERE job_id = ?`
       )
       .bind('READY', draftJson, now, jobId)
@@ -135,7 +118,7 @@ export class PdfJobRepository {
     const result = await this.db
       .prepare(
         `UPDATE pdf_jobs
-         SET status = ?, error_message = ?, extracted_text = NULL, r2_key = NULL, updated_at = ?
+         SET status = ?, error_message = ?, r2_key = NULL, updated_at = ?
          WHERE job_id = ?`
       )
       .bind('ERROR', errorMessage, now, jobId)

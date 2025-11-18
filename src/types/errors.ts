@@ -62,3 +62,39 @@ export class RateLimitError extends DomainError {
     super(message, 'RATE_LIMIT_EXCEEDED', 429);
   }
 }
+
+/**
+ * PDF-specific errors (400)
+ */
+export class PdfProcessingError extends DomainError {
+  constructor(message: string, details?: unknown) {
+    super(message, 'PDF_PROCESSING_ERROR', 400, details);
+  }
+}
+
+/**
+ * Encrypted PDF error (400)
+ */
+export class EncryptedPdfError extends DomainError {
+  constructor() {
+    super('지원하지 않는 PDF 형식입니다 (암호화된 PDF)', 'PDF_ENCRYPTED', 400, { type: 'encrypted' });
+  }
+}
+
+/**
+ * Corrupt PDF error (400)
+ */
+export class CorruptPdfError extends DomainError {
+  constructor() {
+    super('손상된 PDF 파일입니다', 'PDF_CORRUPT', 400, { type: 'corrupt' });
+  }
+}
+
+/**
+ * Empty PDF error (400)
+ */
+export class EmptyPdfError extends DomainError {
+  constructor() {
+    super('PDF에서 텍스트를 추출할 수 없습니다 (이미지 PDF일 수 있음)', 'PDF_EMPTY', 400, { type: 'empty' });
+  }
+}
