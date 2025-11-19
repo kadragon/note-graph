@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import AppLayout from '@/components/layout/AppLayout';
 
@@ -17,7 +18,13 @@ function App() {
   return (
     <>
       <AppLayout>
-        <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          }
+        >
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/work-notes" element={<WorkNotes />} />

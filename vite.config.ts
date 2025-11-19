@@ -56,6 +56,7 @@ export default defineConfig({
             '@radix-ui/react-slot',
             '@radix-ui/react-tabs',
             '@radix-ui/react-toast',
+            'cmdk',
           ],
           'markdown-vendor': [
             '@uiw/react-md-editor',
