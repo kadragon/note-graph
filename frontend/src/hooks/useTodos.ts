@@ -63,6 +63,7 @@ export function useToggleTodo() {
     onSuccess: () => {
       // Invalidate to ensure we have the latest data
       queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
     },
   });
 }

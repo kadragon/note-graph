@@ -6,11 +6,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { WorkNoteRow } from './WorkNoteRow';
-import type { WorkNote } from '@/types/api';
+import type { WorkNoteWithStats } from '@/types/api';
 
 interface WorkNotesTableProps {
-  workNotes: WorkNote[];
-  onView: (workNote: WorkNote) => void;
+  workNotes: WorkNoteWithStats[];
+  onView: (workNote: WorkNoteWithStats) => void;
   onDelete: (workNoteId: string) => void;
 }
 
@@ -33,6 +33,7 @@ export function WorkNotesTable({
         <TableRow>
           <TableHead>제목</TableHead>
           <TableHead>업무 구분</TableHead>
+          <TableHead>할일</TableHead>
           <TableHead>생성일</TableHead>
           <TableHead className="text-right">작업</TableHead>
         </TableRow>

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, FileText, FileEdit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,13 +13,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useWorkNotes, useDeleteWorkNote } from '@/hooks/useWorkNotes';
+import { useWorkNotesWithStats, useDeleteWorkNote } from '@/hooks/useWorkNotes';
 import { WorkNotesTable } from './components/WorkNotesTable';
 import { CreateWorkNoteDialog } from './components/CreateWorkNoteDialog';
 import { CreateFromPDFDialog } from './components/CreateFromPDFDialog';
 import { CreateFromTextDialog } from './components/CreateFromTextDialog';
 import { ViewWorkNoteDialog } from './components/ViewWorkNoteDialog';
-import type { WorkNote } from '@/types/api';
+import type { WorkNote, WorkNoteWithStats } from '@/types/api';
 
 export default function WorkNotes() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -30,9 +31,24 @@ export default function WorkNotes() {
     null
   );
   const [workNoteToDelete, setWorkNoteToDelete] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
 
-  const { data: workNotes = [], isLoading } = useWorkNotes();
+  const { data: workNotes = [], isLoading } = useWorkNotesWithStats();
   const deleteMutation = useDeleteWorkNote();
+
+  // Filter work notes by completion status
+  const { activeWorkNotes, completedWorkNotes } = useMemo(() => {
+    const active = workNotes.filter(
+      wn => wn.todoStats.total === 0 || wn.todoStats.remaining > 0
+    );
+    const completed = workNotes.filter(
+      wn => wn.todoStats.total > 0 && wn.todoStats.remaining === 0
+    );
+
+    return { activeWorkNotes: active, completedWorkNotes: completed };
+  }, [workNotes]);
+
+  const filteredWorkNotes = activeTab === 'completed' ? completedWorkNotes : activeWorkNotes;
 
   // Update selectedWorkNote when workNotes data changes (after edit/update)
   useEffect(() => {
@@ -101,11 +117,32 @@ export default function WorkNotes() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <WorkNotesTable
-              workNotes={workNotes}
-              onView={handleView}
-              onDelete={handleDeleteClick}
-            />
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'completed')}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="active">
+                  진행 중 ({activeWorkNotes.length})
+                </TabsTrigger>
+                <TabsTrigger value="completed">
+                  완료됨 ({completedWorkNotes.length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="active">
+                <WorkNotesTable
+                  workNotes={filteredWorkNotes}
+                  onView={handleView}
+                  onDelete={handleDeleteClick}
+                />
+              </TabsContent>
+
+              <TabsContent value="completed">
+                <WorkNotesTable
+                  workNotes={filteredWorkNotes}
+                  onView={handleView}
+                  onDelete={handleDeleteClick}
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </CardContent>
       </Card>

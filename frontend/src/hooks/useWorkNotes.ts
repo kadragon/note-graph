@@ -1,12 +1,50 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
 import { useToast } from './use-toast';
-import type { CreateWorkNoteRequest, UpdateWorkNoteRequest } from '@/types/api';
+import { TODO_STATUS } from '@/constants/todoStatus';
+import type { CreateWorkNoteRequest, UpdateWorkNoteRequest, WorkNoteWithStats } from '@/types/api';
 
 export function useWorkNotes() {
   return useQuery({
     queryKey: ['work-notes'],
     queryFn: () => API.getWorkNotes(),
+  });
+}
+
+export function useWorkNotesWithStats() {
+  return useQuery({
+    queryKey: ['work-notes-with-stats'],
+    queryFn: async () => {
+      const workNotes = await API.getWorkNotes();
+
+      // Fetch todos for all work notes in parallel
+      const workNotesWithStats = await Promise.all(
+        workNotes.map(async (workNote) => {
+          try {
+            const todos = await API.getWorkNoteTodos(workNote.id);
+            const total = todos.length;
+            const completed = todos.filter(todo => todo.status === TODO_STATUS.COMPLETED).length;
+            const remaining = total - completed;
+
+            return {
+              ...workNote,
+              todoStats: { total, completed, remaining }
+            } as WorkNoteWithStats;
+          } catch (error) {
+            // Log error for debugging
+            console.error(`Failed to fetch todos for work note ${workNote.id}:`, error);
+
+            // If there's an error fetching todos, return with zero stats
+            return {
+              ...workNote,
+              todoStats: { total: 0, completed: 0, remaining: 0 }
+            } as WorkNoteWithStats;
+          }
+        })
+      );
+
+      return workNotesWithStats;
+    },
   });
 }
 
@@ -18,6 +56,7 @@ export function useCreateWorkNote() {
     mutationFn: (data: CreateWorkNoteRequest) => API.createWorkNote(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       toast({
         title: '성공',
         description: '업무노트가 생성되었습니다.',
@@ -42,6 +81,7 @@ export function useUpdateWorkNote() {
       API.updateWorkNote(workId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       toast({
         title: '성공',
         description: '업무노트가 수정되었습니다.',
@@ -65,6 +105,7 @@ export function useDeleteWorkNote() {
     mutationFn: (workId: string) => API.deleteWorkNote(workId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       toast({
         title: '성공',
         description: '업무노트가 삭제되었습니다.',
