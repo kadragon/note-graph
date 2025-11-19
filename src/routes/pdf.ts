@@ -7,6 +7,7 @@ import type { Env } from '../types/env.js';
 import { PdfJobRepository } from '../repositories/pdf-job-repository.js';
 import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { AIDraftService } from '../services/ai-draft-service.js';
+import { WorkNoteService } from '../services/work-note-service.js';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
 import type {
   PdfJobResponse,
@@ -16,6 +17,8 @@ import type {
 
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const SIMILAR_NOTES_TOP_K = 3;
+const SIMILARITY_SCORE_THRESHOLD = 0.5;
 
 const pdf = new Hono<{ Bindings: Env }>();
 
@@ -96,14 +99,33 @@ pdf.post('/', async (c) => {
     console.log(`[PDF Processing] Extracting text from PDF: ${fileName}`);
     const extractedText = await extractionService.extractText(pdfBuffer);
 
-    // Generate AI draft
+    // Search for similar work notes using shared service
+    // eslint-disable-next-line no-console
+    console.log(`[PDF Processing] Searching for similar work notes for job ${jobId}`);
+    const workNoteService = new WorkNoteService(c.env);
+    const similarNotes = await workNoteService.findSimilarNotes(
+      extractedText,
+      SIMILAR_NOTES_TOP_K,
+      SIMILARITY_SCORE_THRESHOLD
+    );
+
+    // eslint-disable-next-line no-console
+    console.log(`[PDF Processing] Found ${similarNotes.length} similar work notes`);
+
+    // Generate AI draft with similar notes as context
     // eslint-disable-next-line no-console
     console.log(`[PDF Processing] Generating AI draft for job ${jobId}`);
-    const draft = await aiDraftService.generateDraftFromText(extractedText, {
-      category: metadata.category,
-      personIds: metadata.personIds,
-      deptName: metadata.deptName,
-    });
+    const draft = similarNotes.length > 0
+      ? await aiDraftService.generateDraftFromTextWithContext(extractedText, similarNotes, {
+          category: metadata.category,
+          personIds: metadata.personIds,
+          deptName: metadata.deptName,
+        })
+      : await aiDraftService.generateDraftFromText(extractedText, {
+          category: metadata.category,
+          personIds: metadata.personIds,
+          deptName: metadata.deptName,
+        });
 
     // Update job status to READY
     await repository.updateStatusToReady(jobId, draft);

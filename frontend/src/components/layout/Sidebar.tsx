@@ -49,11 +49,6 @@ const navItems = [
     label: 'AI 챗봇',
     icon: MessageSquare,
   },
-  {
-    path: '/pdf',
-    label: 'PDF 업로드',
-    icon: Paperclip,
-  },
 ];
 
 export default function Sidebar() {
