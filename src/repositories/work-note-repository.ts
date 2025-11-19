@@ -28,7 +28,7 @@ export class WorkNoteRepository {
   async findById(workId: string): Promise<WorkNote | null> {
     const result = await this.db
       .prepare(
-        `SELECT work_id as workId, title, content_raw as contentRaw,
+        `SELECT work_id as workId, work_id as id, title, content_raw as contentRaw,
                 category, created_at as createdAt, updated_at as updatedAt
          FROM work_notes
          WHERE work_id = ?`
@@ -94,7 +94,7 @@ export class WorkNoteRepository {
    */
   async findAll(query: ListWorkNotesQuery): Promise<WorkNote[]> {
     let sql = `
-      SELECT DISTINCT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
+      SELECT DISTINCT wn.work_id as workId, wn.work_id as id, wn.title, wn.content_raw as contentRaw,
              wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt
       FROM work_notes wn
     `;
@@ -157,7 +157,7 @@ export class WorkNoteRepository {
   /**
    * Create new work note with person associations and first version
    */
-  async create(data: CreateWorkNoteInput): Promise<WorkNote> {
+  async create(data: CreateWorkNoteInput): Promise<WorkNote & { id: string }> {
     const now = new Date().toISOString();
     const workId = this.generateWorkId();
 
@@ -226,6 +226,7 @@ export class WorkNoteRepository {
     // Return the created work note without extra DB roundtrip
     return {
       workId,
+      id: workId,
       title: data.title,
       contentRaw: data.contentRaw,
       category: data.category || null,
