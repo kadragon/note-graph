@@ -10,6 +10,9 @@ export function cn(...inputs: ClassValue[]) {
  * Format person display text based on available fields
  * Priority: dept/position/name > dept/name > name
  *
+ * Note: Position is only displayed when department is also present.
+ * This prevents orphaned position displays like "팀장/홍길동" without context.
+ *
  * @param person - Person object with name, currentDept, currentPosition
  * @returns Formatted string: dept/position/name or dept/name or name
  *
@@ -22,6 +25,9 @@ export function cn(...inputs: ClassValue[]) {
  *
  * formatPersonBadge({ name: '이영희', currentDept: null, currentPosition: null })
  * // returns '이영희'
+ *
+ * formatPersonBadge({ name: '박철수', currentDept: null, currentPosition: '팀장' })
+ * // returns '박철수' (position without dept is ignored)
  */
 export function formatPersonBadge(person: {
   name: string;
@@ -30,12 +36,14 @@ export function formatPersonBadge(person: {
 }): string {
   const parts: string[] = [];
 
+  // Only include department and position if department exists
   if (person.currentDept) {
     parts.push(person.currentDept);
-  }
 
-  if (person.currentPosition) {
-    parts.push(person.currentPosition);
+    // Position is only meaningful in the context of a department
+    if (person.currentPosition) {
+      parts.push(person.currentPosition);
+    }
   }
 
   parts.push(person.name);

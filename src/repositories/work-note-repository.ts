@@ -176,7 +176,7 @@ export class WorkNoteRepository {
     // Fetch all persons in a single query
     const personsResult = await this.db
       .prepare(
-        `SELECT wnp.work_id as workId, wnp.person_id as personId,
+        `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
                 wnp.role, p.name as personName, p.current_dept as currentDept,
                 p.current_position as currentPosition
          FROM work_note_person wnp
@@ -211,6 +211,8 @@ export class WorkNoteRepository {
         personId: person.personId,
         role: person.role,
         personName: person.personName,
+        currentDept: person.currentDept,
+        currentPosition: person.currentPosition,
       });
     }
 
