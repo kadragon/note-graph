@@ -26,19 +26,6 @@ index_name = "worknote-vectors"
 # Configure via CLI: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
 
 # ============================================================================
-# Queues
-# ============================================================================
-[[queues.producers]]
-binding = "PDF_QUEUE"
-queue = "pdf-processing-queue"
-
-[[queues.consumers]]
-queue = "pdf-processing-queue"
-max_batch_size = 10
-max_batch_timeout = 30
-max_retries = 3
-
-# ============================================================================
 # R2 Storage
 # ============================================================================
 [[r2_buckets]]
@@ -96,6 +83,5 @@ enabled = true
 # 1. Create D1 database: wrangler d1 create worknote-db
 # 2. Create Vectorize index: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
 # 3. Create R2 bucket: wrangler r2 bucket create worknote-pdf-temp
-# 4. Create Queue: wrangler queues create pdf-processing-queue
-# 5. Set secrets: wrangler secret put OPENAI_API_KEY
-# 6. Update account_id, database_id after creation
+# 4. Set secrets: wrangler secret put OPENAI_API_KEY
+# 5. Update account_id, database_id after creation
