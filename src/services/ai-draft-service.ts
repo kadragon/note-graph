@@ -7,6 +7,7 @@ import type { Env } from '../types/env';
 import type { WorkNoteDraft, AIDraftTodo } from '../types/search';
 import type { WorkNote } from '../types/work-note';
 import { RateLimitError } from '../types/errors';
+import { getAIGatewayHeaders } from '../utils/ai-gateway';
 
 /**
  * AI Draft Service
@@ -169,19 +170,9 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
       response_format: { type: 'json_object' }, // Ensure JSON response
     };
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
-    };
-
-    // Add Cloudflare AI Gateway authorization if configured
-    if (this.env.CF_AIG_AUTHORIZATION) {
-      headers['cf-aig-authorization'] = `Bearer ${this.env.CF_AIG_AUTHORIZATION}`;
-    }
-
     const response = await fetch(url, {
       method: 'POST',
-      headers,
+      headers: getAIGatewayHeaders(this.env),
       body: JSON.stringify(requestBody),
     });
 
