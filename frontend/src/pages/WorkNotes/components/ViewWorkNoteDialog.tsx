@@ -24,6 +24,9 @@ interface ViewWorkNoteDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Helper function to get today's date in YYYY-MM-DD format
+const getTodayString = (): string => new Date().toISOString().split('T')[0];
+
 export function ViewWorkNoteDialog({
   workNote,
   open,
@@ -33,10 +36,7 @@ export function ViewWorkNoteDialog({
   const [todoTitle, setTodoTitle] = useState('');
   const [todoDescription, setTodoDescription] = useState('');
   // Set default due date to today in YYYY-MM-DD format
-  const [todoDueDate, setTodoDueDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
+  const [todoDueDate, setTodoDueDate] = useState(getTodayString);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -58,7 +58,7 @@ export function ViewWorkNoteDialog({
       setTodoTitle('');
       setTodoDescription('');
       // Reset due date to today
-      setTodoDueDate(new Date().toISOString().split('T')[0]);
+      setTodoDueDate(getTodayString());
       setShowAddTodo(false);
       toast({
         title: '성공',
