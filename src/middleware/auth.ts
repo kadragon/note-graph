@@ -23,12 +23,18 @@ const CF_ACCESS_EMAIL_HEADER = 'cf-access-authenticated-user-email';
 const TEST_USER_EMAIL_HEADER = 'x-test-user-email';
 
 /**
+ * Default email for development environment when no headers are present
+ */
+const DEFAULT_DEV_USER_EMAIL = 'dev@localhost';
+
+/**
  * Authentication middleware
  *
  * Extracts user identity from Cloudflare Access headers and adds it to context.
  * In development mode, allows X-Test-User-Email header for testing.
+ * If no headers are present in development mode, uses a default test user.
  *
- * @throws AuthenticationError if no valid authentication header is found
+ * @throws AuthenticationError if no valid authentication header is found in production
  */
 export async function authMiddleware(
   c: Context<{ Bindings: Env; Variables: { user: AuthUser } }>,
@@ -37,9 +43,9 @@ export async function authMiddleware(
   // Try Cloudflare Access header first
   let email = c.req.header(CF_ACCESS_EMAIL_HEADER);
 
-  // In development, allow test header as fallback
+  // In development, allow test header or default user as fallback
   if (!email && c.env.ENVIRONMENT === 'development') {
-    email = c.req.header(TEST_USER_EMAIL_HEADER);
+    email = c.req.header(TEST_USER_EMAIL_HEADER) || DEFAULT_DEV_USER_EMAIL;
   }
 
   if (!email) {
