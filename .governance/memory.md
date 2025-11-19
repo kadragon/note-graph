@@ -353,6 +353,12 @@
   - Background processor support (for future Cron Triggers)
 - **Status**: Eventual consistency achieved! Embedding failures now automatically retry with exponential backoff
 
+### Session 20: AI Gateway Binding Update (2025-11-19)
+- **TASK-026 Completed**: Align AI Gateway binding/configuration
+- Updated `wrangler.toml` and `.governance/env.yaml` to point at the deployed AI Gateway ID `worknote-maker`, ensuring AI draft, RAG, and PDF draft flows remain consistent between docs and runtime
+- Added trace annotations referencing SPEC-ai-draft-1 / TASK-026 for future auditing
+- Config-only change; no automated test updates required
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

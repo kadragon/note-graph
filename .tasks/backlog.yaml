@@ -2,6 +2,20 @@
 # Tasks ordered by priority (highest first)
 
 tasks:
+  - task_id: TASK-026
+    spec_id: SPEC-ai-draft-1
+    title: "Align AI Gateway binding"
+    description: |
+      Update Wrangler configuration and governance docs so AI-powered features
+      (draft generation, RAG, PDF pipeline) point at the correct AI Gateway ID
+      `worknote-maker` used in production.
+    priority: 1
+    status: completed
+    estimated_effort: 0.25h
+    acceptance_criteria:
+      - "wrangler.toml sets AI_GATEWAY_ID=worknote-maker"
+      - ".governance/env.yaml documents the new ID"
+
   - task_id: TASK-022
     spec_id: SPEC-dept-1
     title: "Fix department creation errors in frontend"
