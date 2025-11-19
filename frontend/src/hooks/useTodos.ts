@@ -22,15 +22,26 @@ export function useToggleTodo() {
       await queryClient.cancelQueries({ queryKey: ['todos'] });
 
       // Snapshot the previous value
-      const previousTodos = queryClient.getQueriesData({ queryKey: ['todos'] });
+      const previousTodos = queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ['todos'] })
+        .map((query) => ({
+          queryKey: query.queryKey,
+          data: query.state.data,
+        }));
 
       // Optimistically update all todo queries
-      queryClient.setQueriesData<Todo[]>({ queryKey: ['todos'] }, (old) => {
-        if (!old) return old;
-        return old.map((todo) =>
-          todo.id === id ? { ...todo, status } : todo
-        );
-      });
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ['todos'] })
+        .forEach((query) => {
+          queryClient.setQueryData<Todo[]>(query.queryKey, (old) => {
+            if (!old) return old;
+            return old.map((todo) =>
+              todo.id === id ? { ...todo, status } : todo
+            );
+          });
+        });
 
       // Return context with the previous value
       return { previousTodos };
@@ -38,7 +49,7 @@ export function useToggleTodo() {
     onError: (error, _variables, context) => {
       // Rollback to previous value on error
       if (context?.previousTodos) {
-        context.previousTodos.forEach(([queryKey, data]) => {
+        context.previousTodos.forEach(({ queryKey, data }) => {
           queryClient.setQueryData(queryKey, data);
         });
       }

@@ -30,8 +30,8 @@ class APIClient {
       ...options.headers,
     };
 
-    // In development (localhost only), use test auth header
-    if (window.location.hostname === 'localhost') {
+    // In development, use test auth header
+    if (import.meta.env.DEV) {
       (headers as Record<string, string>)['X-Test-User-Email'] =
         'test@example.com';
     }
@@ -71,8 +71,8 @@ class APIClient {
 
     const headers: HeadersInit = {};
 
-    // In development (localhost only), use test auth header
-    if (window.location.hostname === 'localhost') {
+    // In development, use test auth header
+    if (import.meta.env.DEV) {
       (headers as Record<string, string>)['X-Test-User-Email'] =
         'test@example.com';
     }
