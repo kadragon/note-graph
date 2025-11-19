@@ -37,15 +37,18 @@ export default function WorkNotes() {
   const deleteMutation = useDeleteWorkNote();
 
   // Filter work notes by completion status
-  const filteredWorkNotes = useMemo(() => {
-    if (activeTab === 'completed') {
-      // Show only work notes where all todos are completed (and there's at least 1 todo)
-      return workNotes.filter(wn => wn.todoStats.total > 0 && wn.todoStats.remaining === 0);
-    } else {
-      // Show work notes that have remaining todos or no todos at all
-      return workNotes.filter(wn => wn.todoStats.total === 0 || wn.todoStats.remaining > 0);
-    }
-  }, [workNotes, activeTab]);
+  const { activeWorkNotes, completedWorkNotes } = useMemo(() => {
+    const active = workNotes.filter(
+      wn => wn.todoStats.total === 0 || wn.todoStats.remaining > 0
+    );
+    const completed = workNotes.filter(
+      wn => wn.todoStats.total > 0 && wn.todoStats.remaining === 0
+    );
+
+    return { activeWorkNotes: active, completedWorkNotes: completed };
+  }, [workNotes]);
+
+  const filteredWorkNotes = activeTab === 'completed' ? completedWorkNotes : activeWorkNotes;
 
   // Update selectedWorkNote when workNotes data changes (after edit/update)
   useEffect(() => {
@@ -109,44 +112,38 @@ export default function WorkNotes() {
           <CardTitle>업무노트 목록</CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'completed')}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="active">
-                진행 중 ({workNotes.filter(wn => wn.todoStats.total === 0 || wn.todoStats.remaining > 0).length})
-              </TabsTrigger>
-              <TabsTrigger value="completed">
-                완료됨 ({workNotes.filter(wn => wn.todoStats.total > 0 && wn.todoStats.remaining === 0).length})
-              </TabsTrigger>
-            </TabsList>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'completed')}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="active">
+                  진행 중 ({activeWorkNotes.length})
+                </TabsTrigger>
+                <TabsTrigger value="completed">
+                  완료됨 ({completedWorkNotes.length})
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="active">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : (
+              <TabsContent value="active">
                 <WorkNotesTable
                   workNotes={filteredWorkNotes}
                   onView={handleView}
                   onDelete={handleDeleteClick}
                 />
-              )}
-            </TabsContent>
+              </TabsContent>
 
-            <TabsContent value="completed">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : (
+              <TabsContent value="completed">
                 <WorkNotesTable
                   workNotes={filteredWorkNotes}
                   onView={handleView}
                   onDelete={handleDeleteClick}
                 />
-              )}
-            </TabsContent>
-          </Tabs>
+              </TabsContent>
+            </Tabs>
+          )}
         </CardContent>
       </Card>
 
