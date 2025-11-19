@@ -32,7 +32,11 @@ export function ViewWorkNoteDialog({
   const [showAddTodo, setShowAddTodo] = useState(false);
   const [todoTitle, setTodoTitle] = useState('');
   const [todoDescription, setTodoDescription] = useState('');
-  const [todoDueDate, setTodoDueDate] = useState('');
+  // Set default due date to today in YYYY-MM-DD format
+  const [todoDueDate, setTodoDueDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -53,7 +57,8 @@ export function ViewWorkNoteDialog({
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       setTodoTitle('');
       setTodoDescription('');
-      setTodoDueDate('');
+      // Reset due date to today
+      setTodoDueDate(new Date().toISOString().split('T')[0]);
       setShowAddTodo(false);
       toast({
         title: '성공',
