@@ -22,10 +22,21 @@ const proxyConfig = proxyPaths.reduce(
     config[path] = {
       target: 'http://localhost:8787',
       changeOrigin: true,
+      // Bypass proxy for HTML requests (direct browser navigation)
+      // Only proxy API requests (application/json)
+      bypass: (req, _res, _options) => {
+        const accept = req.headers.accept || '';
+        // If browser is requesting HTML (direct navigation/refresh), don't proxy
+        if (accept.includes('text/html')) {
+          return '/index.html';
+        }
+        // Otherwise, proxy to backend (API requests)
+        return null;
+      },
     };
     return config;
   },
-  {} as Record<string, { target: string; changeOrigin: boolean }>
+  {} as Record<string, { target: string; changeOrigin: boolean; bypass?: (req: any, res: any, options: any) => string | null | undefined | void | false }>
 );
 
 export default defineConfig({
