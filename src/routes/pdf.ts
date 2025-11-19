@@ -7,12 +7,14 @@ import type { Env } from '../types/env.js';
 import { PdfJobRepository } from '../repositories/pdf-job-repository.js';
 import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { AIDraftService } from '../services/ai-draft-service.js';
+import { EmbeddingService, VectorizeService } from '../services/embedding-service.js';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
 import type {
   PdfJobResponse,
   PdfUploadMetadata,
   WorkNoteDraft,
 } from '../types/pdf.js';
+import type { WorkNote } from '../types/work-note.js';
 
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -96,14 +98,59 @@ pdf.post('/', async (c) => {
     console.log(`[PDF Processing] Extracting text from PDF: ${fileName}`);
     const extractedText = await extractionService.extractText(pdfBuffer);
 
-    // Generate AI draft
+    // Search for similar work notes using vectorize
+    // eslint-disable-next-line no-console
+    console.log(`[PDF Processing] Searching for similar work notes for job ${jobId}`);
+    const embeddingService = new EmbeddingService(c.env);
+    const vectorizeService = new VectorizeService(c.env.VECTORIZE, embeddingService);
+
+    let similarNotes: Array<{ title: string; content: string; category?: string }> = [];
+    try {
+      // Search for similar work notes (top 3)
+      const similarResults = await vectorizeService.search(extractedText, 3);
+
+      // Fetch work note details from D1
+      for (const result of similarResults) {
+        const [workId] = result.id.split('#'); // Handle chunk IDs
+        const workNote = await c.env.DB
+          .prepare(
+            `SELECT work_id as workId, title, content_raw as contentRaw, category
+             FROM work_notes
+             WHERE work_id = ?`
+          )
+          .bind(workId)
+          .first<WorkNote>();
+
+        if (workNote && result.score >= 0.5) {
+          similarNotes.push({
+            title: workNote.title,
+            content: workNote.contentRaw,
+            category: workNote.category || undefined,
+          });
+        }
+      }
+
+      // eslint-disable-next-line no-console
+      console.log(`[PDF Processing] Found ${similarNotes.length} similar work notes`);
+    } catch (error) {
+      // Log error but continue with draft generation without context
+      console.error(`[PDF Processing] Error searching for similar notes:`, error);
+    }
+
+    // Generate AI draft with similar notes as context
     // eslint-disable-next-line no-console
     console.log(`[PDF Processing] Generating AI draft for job ${jobId}`);
-    const draft = await aiDraftService.generateDraftFromText(extractedText, {
-      category: metadata.category,
-      personIds: metadata.personIds,
-      deptName: metadata.deptName,
-    });
+    const draft = similarNotes.length > 0
+      ? await aiDraftService.generateDraftFromTextWithContext(extractedText, similarNotes, {
+          category: metadata.category,
+          personIds: metadata.personIds,
+          deptName: metadata.deptName,
+        })
+      : await aiDraftService.generateDraftFromText(extractedText, {
+          category: metadata.category,
+          personIds: metadata.personIds,
+          deptName: metadata.deptName,
+        });
 
     // Update job status to READY
     await repository.updateStatusToReady(jobId, draft);

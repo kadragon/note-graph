@@ -52,6 +52,42 @@ export class AIDraftService {
   }
 
   /**
+   * Generate work note draft from unstructured text with similar work notes as context
+   *
+   * @param inputText - Unstructured text about work
+   * @param similarNotes - Similar work notes to use as reference
+   * @param options - Optional hints (category, personIds, deptName)
+   * @returns Work note draft with title, content, category, and todo suggestions
+   */
+  async generateDraftFromTextWithContext(
+    inputText: string,
+    similarNotes: Array<{ title: string; content: string; category?: string }>,
+    options?: {
+      category?: string;
+      personIds?: string[];
+      deptName?: string;
+    }
+  ): Promise<WorkNoteDraft> {
+    const prompt = this.constructDraftPromptWithContext(inputText, similarNotes, options);
+    const response = await this.callGPT(prompt);
+
+    // Parse JSON response from GPT
+    try {
+      const draft = JSON.parse(response) as WorkNoteDraft;
+
+      // Validate required fields
+      if (!draft.title || !draft.content) {
+        throw new Error('Invalid draft: missing title or content');
+      }
+
+      return draft;
+    } catch (error) {
+      console.error('Error parsing draft response:', error);
+      throw new Error('Failed to parse AI response. Please try again.');
+    }
+  }
+
+  /**
    * Generate todo suggestions for existing work note
    *
    * @param workNote - Existing work note
@@ -103,6 +139,64 @@ ${inputText}${categoryHint}${deptHint}
 2. 잘 정리된 내용 (한국어, 마크다운 포맷 사용)
 3. 제안 카테고리 (수업성적, KORUS, 기획, 행정 중 하나 또는 새로운 카테고리 추론)
 4. 3-5개의 관련 할 일 항목과 제안 기한
+
+JSON 형식으로 반환:
+{
+  "title": "...",
+  "content": "...",
+  "category": "...",
+  "todos": [
+    {
+      "title": "...",
+      "description": "...",
+      "dueDateSuggestion": "YYYY-MM-DD" 또는 null
+    }
+  ]
+}
+
+JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
+  }
+
+  /**
+   * Construct prompt for draft generation from text with similar work notes as context
+   */
+  private constructDraftPromptWithContext(
+    inputText: string,
+    similarNotes: Array<{ title: string; content: string; category?: string }>,
+    options?: {
+      category?: string;
+      personIds?: string[];
+      deptName?: string;
+    }
+  ): string {
+    const categoryHint = options?.category ? `\n\n카테고리 힌트: ${options.category}` : '';
+    const deptHint = options?.deptName ? `\n\n부서 컨텍스트: ${options.deptName}` : '';
+
+    // Build context from similar notes
+    const contextText = similarNotes.length > 0
+      ? `\n\n참고할 유사한 업무노트들:\n${similarNotes
+          .map(
+            (note, idx) => `
+[참고 노트 ${idx + 1}]
+제목: ${note.title}
+카테고리: ${note.category || '없음'}
+내용 요약: ${note.content.slice(0, 200)}...
+`
+          )
+          .join('\n')}`
+      : '';
+
+    return `당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.
+
+사용자가 다음과 같은 업무에 대한 비구조화된 텍스트를 제공했습니다:
+
+${inputText}${categoryHint}${deptHint}${contextText}
+
+위의 유사한 업무노트들을 참고하여 일관된 형식과 카테고리를 사용하면서, 다음과 같은 구조화된 업무노트를 작성해주세요:
+1. 간결한 제목 (한국어, 유사 노트의 제목 스타일 참고)
+2. 잘 정리된 내용 (한국어, 마크다운 포맷 사용, 유사 노트의 구조 참고)
+3. 제안 카테고리 (유사 노트에서 사용된 카테고리 우선 고려, 또는 새로운 카테고리 추론)
+4. 3-5개의 관련 할 일 항목과 제안 기한 (유사 노트의 할일 패턴 참고)
 
 JSON 형식으로 반환:
 {
