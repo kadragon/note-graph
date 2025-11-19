@@ -325,6 +325,11 @@ class APIClient {
       body: JSON.stringify(data),
     });
 
+    // Validate response structure
+    if (!response || !Array.isArray(response.results)) {
+      throw new Error('Invalid search response from server');
+    }
+
     // Transform backend response to frontend SearchResult format
     return response.results.map((item) => ({
       id: item.workNote.workId,
