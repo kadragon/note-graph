@@ -242,6 +242,32 @@ describe('AIDraftService', () => {
         })
       );
     });
+
+    it('should use max_completion_tokens instead of max_tokens', async () => {
+      // Arrange
+      const inputText = '텍스트';
+      const mockDraft = {
+        title: '제목',
+        content: '내용',
+        category: '업무',
+        todos: [],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      // Act
+      await service.generateDraftFromText(inputText);
+
+      // Assert
+      const callBody = mockFetch.mock.calls[0][1].body;
+      expect(callBody).toContain('"max_completion_tokens":3000');
+      expect(callBody).not.toContain('"max_tokens"');
+    });
   });
 
   describe('generateTodoSuggestions()', () => {

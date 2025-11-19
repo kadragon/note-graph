@@ -28,6 +28,12 @@ export class RagService {
   /** Default number of chunks to retrieve */
   private readonly DEFAULT_TOP_K = 5;
 
+  /**
+   * Maximum number of completion tokens for GPT API calls
+   * Set to 1000 for concise RAG answers
+   */
+  private static readonly GPT_MAX_COMPLETION_TOKENS = 1000;
+
   constructor(env: Env) {
     this.env = env;
     this.db = env.DB;
@@ -244,7 +250,7 @@ ${contextText}
         },
       ],
       temperature: 0.7,
-      max_tokens: 500,
+      max_completion_tokens: RagService.GPT_MAX_COMPLETION_TOKENS,
     };
 
     const response = await fetch(url, {
