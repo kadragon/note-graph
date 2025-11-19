@@ -260,7 +260,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
         },
       ],
       temperature: 0.7,
-      max_tokens: 1000,
+      max_completion_tokens: 3000,
       response_format: { type: 'json_object' }, // Ensure JSON response
     };
 
