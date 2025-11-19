@@ -95,10 +95,16 @@ export default function Search() {
                       <TableCell>
                         <Badge
                           variant={
-                            result.source === 'semantic' ? 'default' : 'outline'
+                            result.source === 'semantic' || result.source === 'hybrid'
+                              ? 'default'
+                              : 'outline'
                           }
                         >
-                          {result.source === 'semantic' ? '의미' : '키워드'}
+                          {result.source === 'semantic'
+                            ? '의미'
+                            : result.source === 'hybrid'
+                            ? '하이브리드'
+                            : '키워드'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">

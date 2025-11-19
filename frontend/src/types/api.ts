@@ -148,7 +148,7 @@ export interface SearchResult {
   title: string;
   category: string;
   score: number;
-  source: 'lexical' | 'semantic';
+  source: 'lexical' | 'semantic' | 'hybrid';
   createdAt: string;
 }
 
