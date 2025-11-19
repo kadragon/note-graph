@@ -9,6 +9,7 @@ const proxyPaths = [
   '/work-notes',
   '/persons',
   '/departments',
+  '/task-categories',
   '/todos',
   '/search',
   '/rag',

@@ -9,6 +9,7 @@
 export interface Department {
   deptName: string; // Department name (serves as primary key)
   description: string | null;
+  isActive: boolean; // Whether the department is currently active (true) or closed/disbanded (false)
   createdAt: string; // ISO 8601 timestamp
 }
 

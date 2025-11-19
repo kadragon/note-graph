@@ -42,6 +42,7 @@ export function CreatePersonDialog({
   const [name, setName] = useState('');
   const [personId, setPersonId] = useState('');
   const [currentDept, setCurrentDept] = useState('');
+  const [currentPosition, setCurrentPosition] = useState('');
   const [deptOpen, setDeptOpen] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
 
@@ -61,10 +62,12 @@ export function CreatePersonDialog({
         name: name.trim(),
         personId: personId.trim(),
         currentDept: currentDept || undefined,
+        currentPosition: currentPosition.trim() || undefined,
       });
       setName('');
       setPersonId('');
       setCurrentDept('');
+      setCurrentPosition('');
       onOpenChange(false);
     } catch (error) {
       // Error handled by mutation hook
@@ -193,6 +196,16 @@ export function CreatePersonDialog({
                   </Command>
                 </PopoverContent>
               </Popover>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="currentPosition">직책 (선택)</Label>
+              <Input
+                id="currentPosition"
+                value={currentPosition}
+                onChange={(e) => setCurrentPosition(e.target.value)}
+                placeholder="예: 팀장, 대리, 과장"
+              />
             </div>
           </div>
 
