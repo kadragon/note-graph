@@ -49,8 +49,8 @@ export class RagService {
     const vectorFilter = this.buildVectorFilter(filters);
 
     // Retrieve relevant chunks via vector search
-    // For PERSON scope, retrieve more results for post-filtering
-    const searchLimit = filters.scope === 'PERSON' ? topK * 3 : topK;
+    // For person scope, retrieve more results for post-filtering
+    const searchLimit = filters.scope === 'person' ? topK * 3 : topK;
     const vectorResults = await this.vectorizeService.search(query, searchLimit, vectorFilter);
 
     // Filter chunks by similarity threshold
@@ -86,30 +86,30 @@ export class RagService {
     const vectorFilter: Record<string, string> = {};
 
     switch (filters.scope) {
-      case 'WORK':
+      case 'work':
         if (!filters.workId) {
-          throw new Error('workId is required for WORK scope');
+          throw new Error('workId is required for work scope');
         }
         vectorFilter.work_id = filters.workId;
         break;
 
-      case 'PERSON':
+      case 'person':
         if (!filters.personId) {
-          throw new Error('personId is required for PERSON scope');
+          throw new Error('personId is required for person scope');
         }
         // Note: person_ids is a comma-separated string in metadata
         // Vectorize doesn't support partial string matching, so we'll filter post-retrieval
         // For now, we retrieve more results and filter in buildContextSnippets
         break;
 
-      case 'DEPARTMENT':
+      case 'department':
         if (!filters.deptName) {
-          throw new Error('deptName is required for DEPARTMENT scope');
+          throw new Error('deptName is required for department scope');
         }
         vectorFilter.dept_name = filters.deptName;
         break;
 
-      case 'GLOBAL':
+      case 'global':
       default:
         // No scope filter - search across all work notes
         break;
@@ -132,8 +132,8 @@ export class RagService {
 
     for (const result of vectorResults) {
       try {
-        // Apply PERSON scope post-filtering
-        if (filters.scope === 'PERSON' && filters.personId) {
+        // Apply person scope post-filtering
+        if (filters.scope === 'person' && filters.personId) {
           const personIds = result.metadata.person_ids?.split(',') || [];
           if (!personIds.includes(filters.personId)) {
             continue; // Skip chunks not associated with this person

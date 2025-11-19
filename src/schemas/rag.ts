@@ -6,7 +6,7 @@ import { z } from 'zod';
  */
 export const RagQueryRequestSchema = z.object({
   query: z.string().min(1, 'Query is required'),
-  scope: z.enum(['GLOBAL', 'PERSON', 'DEPARTMENT', 'WORK']).default('GLOBAL'),
+  scope: z.enum(['global', 'person', 'department', 'work']).default('global'),
   personId: z.string().optional(),
   deptName: z.string().optional(),
   workId: z.string().optional(),

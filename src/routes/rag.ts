@@ -22,14 +22,14 @@ app.post('/query', async (c) => {
   const body = await validateBody(c, RagQueryRequestSchema);
 
   // Validate scope-specific requirements
-  if (body.scope === 'PERSON' && !body.personId) {
-    throw new BadRequestError('personId is required for PERSON scope');
+  if (body.scope === 'person' && !body.personId) {
+    throw new BadRequestError('personId is required for person scope');
   }
-  if (body.scope === 'DEPARTMENT' && !body.deptName) {
-    throw new BadRequestError('deptName is required for DEPARTMENT scope');
+  if (body.scope === 'department' && !body.deptName) {
+    throw new BadRequestError('deptName is required for department scope');
   }
-  if (body.scope === 'WORK' && !body.workId) {
-    throw new BadRequestError('workId is required for WORK scope');
+  if (body.scope === 'work' && !body.workId) {
+    throw new BadRequestError('workId is required for work scope');
   }
 
   // Execute RAG query

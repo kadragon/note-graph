@@ -31,7 +31,7 @@ export function ChatMessage({ role, content, sources }: ChatMessageProps) {
                     variant="outline"
                     className="ml-2 text-[10px] h-4 px-1"
                   >
-                    {(source.similarity * 100).toFixed(0)}%
+                    {(source.score * 100).toFixed(0)}%
                   </Badge>
                 </div>
               ))}
