@@ -1,4 +1,4 @@
-// Trace: TASK-024, SPEC-worknote-1
+// Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2
 import { useState, useEffect, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
+import { formatPersonBadge } from '@/lib/utils';
 import type { WorkNote, CreateTodoRequest, TodoStatus } from '@/types/api';
 
 interface ViewWorkNoteDialogProps {
@@ -297,7 +298,11 @@ export function ViewWorkNoteDialog({
                 {workNote.persons && workNote.persons.length > 0 ? (
                   workNote.persons.map((person) => (
                     <Badge key={person.personId} variant="outline">
-                      {person.personName}
+                      {formatPersonBadge({
+                        name: person.personName,
+                        currentDept: person.currentDept,
+                        currentPosition: person.currentPosition,
+                      })}
                       {person.role === 'OWNER' && (
                         <span className="ml-1 text-xs">(담당)</span>
                       )}
