@@ -12,7 +12,7 @@ import type { RAGScope, RAGResponse } from '@/types/api';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  sources?: RAGResponse['sources'];
+  contexts?: RAGResponse['contexts'];
 }
 
 export default function RAG() {
@@ -51,7 +51,7 @@ export default function RAG() {
         {
           role: 'assistant',
           content: response.answer,
-          sources: response.sources,
+          contexts: response.contexts,
         },
       ]);
     } catch (error) {
@@ -90,7 +90,7 @@ export default function RAG() {
                           key={idx}
                           role={message.role}
                           content={message.content}
-                          sources={message.sources}
+                          contexts={message.contexts}
                         />
                       ))}
                       {ragMutation.isPending && (
