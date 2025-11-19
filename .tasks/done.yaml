@@ -678,7 +678,7 @@ completed_tasks:
     estimated_effort: 2h
     actual_effort: ~0.5h
 
-  - task_id: TASK-022
+  - task_id: TASK-023
     title: "Implement Retry Mechanism for Embedding Failures"
     spec_id: SPEC-rag-2
     completed_at: "2025-11-18T13:37:00Z"
