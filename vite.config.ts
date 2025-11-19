@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
@@ -36,7 +36,7 @@ const proxyConfig = proxyPaths.reduce(
     };
     return config;
   },
-  {} as Record<string, { target: string; changeOrigin: boolean; bypass?: (req: any, res: any, options: any) => string | null | undefined | void | false }>
+  {} as Record<string, ProxyOptions>
 );
 
 export default defineConfig({
