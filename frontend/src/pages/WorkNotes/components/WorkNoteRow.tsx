@@ -17,7 +17,17 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
     <TableRow>
       <TableCell className="font-medium">{workNote.title}</TableCell>
       <TableCell>
-        <Badge variant="secondary">{workNote.category}</Badge>
+        {workNote.categories && workNote.categories.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {workNote.categories.map((category) => (
+              <Badge key={category.categoryId} variant="secondary">
+                {category.name}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">-</span>
+        )}
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">
         {format(parseISO(workNote.createdAt), 'yyyy-MM-dd HH:mm', { locale: ko })}
