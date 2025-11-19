@@ -6,6 +6,7 @@ import type { WorkNote } from '../types/work-note';
 import { EmbeddingService, VectorizeService } from './embedding-service';
 import { ChunkingService } from './chunking-service';
 import { RateLimitError } from '../types/errors';
+import { getAIGatewayHeaders } from '../utils/ai-gateway';
 
 /**
  * RAG (Retrieval-Augmented Generation) service
@@ -248,10 +249,7 @@ ${contextText}
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
-      },
+      headers: getAIGatewayHeaders(this.env),
       body: JSON.stringify(requestBody),
     });
 
