@@ -1,6 +1,7 @@
 // Trace: SPEC-search-1, TASK-010
 import type { Env } from '../types/env';
 import type { ChunkMetadata } from '../types/search';
+import { getAIGatewayHeaders } from '../utils/ai-gateway';
 
 /**
  * Embedding service using OpenAI text-embedding-3-small via AI Gateway
@@ -56,10 +57,7 @@ export class EmbeddingService {
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
-      },
+      headers: getAIGatewayHeaders(this.env),
       body: JSON.stringify(requestBody),
     });
 
