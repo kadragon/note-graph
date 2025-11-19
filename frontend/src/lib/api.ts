@@ -192,6 +192,7 @@ class APIClient {
     return {
       id: backendTodo.todoId,
       workNoteId: backendTodo.workId,
+      workTitle: backendTodo.workTitle,
       title: backendTodo.title,
       description: backendTodo.description,
       status: backendTodo.status,

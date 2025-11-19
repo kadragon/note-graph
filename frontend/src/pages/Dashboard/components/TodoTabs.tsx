@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { TodoList } from './TodoList';
+import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDialog';
 import { useTodos } from '@/hooks/useTodos';
-import type { TodoView } from '@/types/api';
+import { API } from '@/lib/api';
+import type { TodoView, Todo, WorkNote } from '@/types/api';
 
 const TODO_VIEWS: { value: TodoView; label: string }[] = [
   { value: 'today', label: '오늘' },
@@ -15,27 +18,61 @@ const TODO_VIEWS: { value: TodoView; label: string }[] = [
 
 export function TodoTabs() {
   const [currentView, setCurrentView] = useState<TodoView>('today');
+  const [selectedWorkNoteId, setSelectedWorkNoteId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const { data: todos = [], isLoading } = useTodos(currentView);
 
-  return (
-    <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as TodoView)}>
-      <TabsList className="w-full justify-start">
-        {TODO_VIEWS.map((view) => (
-          <TabsTrigger key={view.value} value={view.value}>
-            {view.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
+  // Fetch work note when a todo is clicked
+  const { data: selectedWorkNote } = useQuery({
+    queryKey: ['work-note', selectedWorkNoteId],
+    queryFn: async () => {
+      if (!selectedWorkNoteId) return null;
+      const workNotes = await API.getWorkNotes();
+      return workNotes.find((wn) => wn.id === selectedWorkNoteId) || null;
+    },
+    enabled: !!selectedWorkNoteId,
+  });
 
-      {TODO_VIEWS.map((view) => (
-        <TabsContent key={view.value} value={view.value}>
-          <Card>
-            <CardContent className="p-0">
-              <TodoList todos={todos} isLoading={isLoading} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      ))}
-    </Tabs>
+  const handleTodoClick = (todo: Todo) => {
+    if (todo.workNoteId) {
+      setSelectedWorkNoteId(todo.workNoteId);
+      setIsDialogOpen(true);
+    }
+  };
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    // Keep selectedWorkNoteId to avoid refetch on reopen
+  };
+
+  return (
+    <>
+      <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as TodoView)}>
+        <TabsList className="w-full justify-start">
+          {TODO_VIEWS.map((view) => (
+            <TabsTrigger key={view.value} value={view.value}>
+              {view.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {TODO_VIEWS.map((view) => (
+          <TabsContent key={view.value} value={view.value}>
+            <Card>
+              <CardContent className="p-0">
+                <TodoList todos={todos} isLoading={isLoading} onTodoClick={handleTodoClick} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
+
+      <ViewWorkNoteDialog
+        workNote={selectedWorkNote || null}
+        open={isDialogOpen}
+        onOpenChange={handleDialogClose}
+      />
+    </>
   );
 }
