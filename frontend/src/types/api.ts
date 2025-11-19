@@ -56,6 +56,13 @@ export interface CreatePersonRequest {
   currentRoleDesc?: string;
 }
 
+export interface UpdatePersonRequest {
+  name?: string;
+  currentDept?: string;
+  currentPosition?: string;
+  currentRoleDesc?: string;
+}
+
 // Department types
 export interface Department {
   deptName: string;
