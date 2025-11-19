@@ -1,6 +1,7 @@
 // Trace: SPEC-search-1, TASK-010
 import type { Env } from '../types/env';
 import type { ChunkMetadata } from '../types/search';
+import { getAIGatewayHeaders } from '../utils/ai-gateway';
 
 /**
  * Embedding service using OpenAI text-embedding-3-small via AI Gateway
@@ -54,19 +55,9 @@ export class EmbeddingService {
       encoding_format: 'float',
     };
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
-    };
-
-    // Add Cloudflare AI Gateway authorization if configured
-    if (this.env.CF_AIG_AUTHORIZATION) {
-      headers['cf-aig-authorization'] = `Bearer ${this.env.CF_AIG_AUTHORIZATION}`;
-    }
-
     const response = await fetch(url, {
       method: 'POST',
-      headers,
+      headers: getAIGatewayHeaders(this.env),
       body: JSON.stringify(requestBody),
     });
 
