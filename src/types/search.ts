@@ -40,7 +40,7 @@ export interface RagContextSnippet {
 /**
  * RAG query scope
  */
-export type RagScope = 'GLOBAL' | 'PERSON' | 'DEPARTMENT' | 'WORK';
+export type RagScope = 'global' | 'person' | 'department' | 'work';
 
 /**
  * RAG query filters

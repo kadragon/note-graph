@@ -115,18 +115,22 @@ export type RAGScope = 'global' | 'person' | 'department' | 'work';
 export interface RAGQueryRequest {
   query: string;
   scope: RAGScope;
-  scopeId?: string;
+  personId?: string;
+  deptName?: string;
+  workId?: string;
+  topK?: number;
 }
 
 export interface RAGSource {
-  workNoteId: string;
+  workId: string;
   title: string;
-  similarity: number;
+  snippet: string;
+  score: number;
 }
 
 export interface RAGResponse {
   answer: string;
-  sources: RAGSource[];
+  contexts: RAGSource[];
 }
 
 // AI Draft types
