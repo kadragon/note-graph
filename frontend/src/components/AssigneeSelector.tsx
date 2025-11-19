@@ -1,5 +1,5 @@
 // Trace: TASK-024, SPEC-worknote-1
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,20 +36,29 @@ export function AssigneeSelector({
 }: AssigneeSelectorProps) {
   const [open, setOpen] = useState(false);
 
-  const selectedPersons = persons.filter((p) =>
-    selectedPersonIds.includes(p.personId)
+  // Memoize selected persons to avoid recalculating on every render
+  const selectedPersons = useMemo(
+    () => persons.filter((p) => selectedPersonIds.includes(p.personId)),
+    [persons, selectedPersonIds]
   );
 
-  const togglePerson = (personId: string) => {
-    const newSelection = selectedPersonIds.includes(personId)
-      ? selectedPersonIds.filter((id) => id !== personId)
-      : [...selectedPersonIds, personId];
-    onSelectionChange(newSelection);
-  };
+  // Stabilize callback references for performance
+  const togglePerson = useCallback(
+    (personId: string) => {
+      const newSelection = selectedPersonIds.includes(personId)
+        ? selectedPersonIds.filter((id) => id !== personId)
+        : [...selectedPersonIds, personId];
+      onSelectionChange(newSelection);
+    },
+    [selectedPersonIds, onSelectionChange]
+  );
 
-  const removePerson = (personId: string) => {
-    onSelectionChange(selectedPersonIds.filter((id) => id !== personId));
-  };
+  const removePerson = useCallback(
+    (personId: string) => {
+      onSelectionChange(selectedPersonIds.filter((id) => id !== personId));
+    },
+    [selectedPersonIds, onSelectionChange]
+  );
 
   return (
     <div className="grid gap-2">
@@ -71,9 +80,10 @@ export function AssigneeSelector({
                   removePerson(person.personId);
                 }}
                 disabled={disabled}
+                aria-label={`${person.name} 제거`}
               >
                 <X className="h-3 w-3" />
-                <span className="sr-only">제거</span>
+                <span className="sr-only">{person.name} 제거</span>
               </button>
             </Badge>
           ))}
