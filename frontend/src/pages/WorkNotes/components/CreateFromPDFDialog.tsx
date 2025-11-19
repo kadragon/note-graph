@@ -264,15 +264,23 @@ export function CreateFromPDFDialog({
                 />
               </div>
 
-              {job.draft.suggestedTodos && job.draft.suggestedTodos.length > 0 && (
+              {job.draft.todos && job.draft.todos.length > 0 && (
                 <div className="grid gap-2">
                   <Label>제안된 할일 (참고용)</Label>
                   <Card className="p-3">
-                    <ul className="space-y-1 text-sm">
-                      {job.draft.suggestedTodos.map((todo, idx) => (
+                    <ul className="space-y-2 text-sm">
+                      {job.draft.todos.map((todo, idx) => (
                         <li key={idx} className="flex items-start">
                           <span className="mr-2">•</span>
-                          <span>{todo}</span>
+                          <div className="flex-1">
+                            <div className="font-medium">{todo.title}</div>
+                            {todo.description && (
+                              <div className="text-muted-foreground text-xs mt-0.5">{todo.description}</div>
+                            )}
+                            {todo.dueDate && (
+                              <div className="text-muted-foreground text-xs mt-0.5">마감: {todo.dueDate}</div>
+                            )}
+                          </div>
                         </li>
                       ))}
                     </ul>
