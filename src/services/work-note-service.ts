@@ -274,4 +274,54 @@ export class WorkNoteService {
     // Get first person's department via repository
     return this.repository.getDeptNameForPerson(personIds[0]);
   }
+
+  /**
+   * Find similar work notes based on input text
+   *
+   * Searches for similar work notes using vector similarity and returns
+   * basic information (title, content, category) suitable for AI context.
+   *
+   * @param inputText - Text to find similar notes for
+   * @param topK - Number of similar notes to return (default: 3)
+   * @param scoreThreshold - Minimum similarity score (default: 0.5)
+   * @returns Array of similar notes with title, content, and category
+   */
+  async findSimilarNotes(
+    inputText: string,
+    topK: number = 3,
+    scoreThreshold: number = 0.5
+  ): Promise<Array<{ title: string; content: string; category?: string }>> {
+    try {
+      // Search for similar work notes
+      const similarResults = await this.vectorizeService.search(inputText, topK);
+
+      // Filter by similarity threshold and extract work IDs
+      const relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);
+      const workIds = [...new Set(relevantResults.map((r) => r.id.split('#')[0]))]; // Handle chunk IDs, deduplicate
+
+      if (workIds.length === 0) {
+        return [];
+      }
+
+      // Batch fetch work notes (solves N+1 query problem)
+      const workNotes = await this.repository.findByIds(workIds);
+
+      // Map results maintaining similarity order
+      const workNoteMap = new Map(
+        workNotes.map((note) => [note.workId, note])
+      );
+
+      return workIds
+        .map((id) => workNoteMap.get(id))
+        .filter((note): note is WorkNote => note !== undefined)
+        .map((note) => ({
+          title: note.title,
+          content: note.contentRaw,
+          category: note.category || undefined,
+        }));
+    } catch (error) {
+      console.error('[WorkNoteService] Error finding similar notes:', error);
+      return [];
+    }
+  }
 }
