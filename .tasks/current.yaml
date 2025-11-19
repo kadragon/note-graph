@@ -2,7 +2,6 @@
 # Only one task should be active at a time
 
 current_task: null
-
 notes: |
-  TASK-021 completed. Department search UX improved with loading/error feedback,
-  keyboard navigation, and 5-item suggestion cap.
+  TASK-022 completed. Fixed department creation payload/key issues in the
+  frontend and aligned person/department typing with backend contracts.

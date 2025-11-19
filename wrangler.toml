@@ -23,6 +23,7 @@ migrations_dir = "migrations"
 [[vectorize]]
 binding = "VECTORIZE"
 index_name = "worknote-vectors"
+remote = true
 # Configure via CLI: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
 
 # ============================================================================
@@ -30,6 +31,7 @@ index_name = "worknote-vectors"
 # ============================================================================
 [ai]
 binding = "AI_GATEWAY"
+remote = true
 
 # ============================================================================
 # Environment Variables (Development)

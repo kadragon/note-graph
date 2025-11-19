@@ -34,31 +34,33 @@ export interface UpdateWorkNoteRequest {
 
 // Person types
 export interface Person {
-  id: string;
+  personId: string;
   name: string;
-  employeeId: string;
-  departmentId?: string;
-  departmentName?: string;
+  currentDept?: string | null;
+  currentPosition?: string | null;
+  currentRoleDesc?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreatePersonRequest {
+  personId: string;
   name: string;
-  employeeId: string;
-  departmentId?: string;
+  currentDept?: string;
+  currentPosition?: string;
+  currentRoleDesc?: string;
 }
 
 // Department types
 export interface Department {
-  id: string;
-  name: string;
+  deptName: string;
+  description?: string | null;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface CreateDepartmentRequest {
-  name: string;
+  deptName: string;
+  description?: string;
 }
 
 // Task Category types

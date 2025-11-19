@@ -1,3 +1,4 @@
+// Trace: SPEC-dept-1, TASK-022
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -55,8 +56,8 @@ export default function Departments() {
               </TableHeader>
               <TableBody>
                 {departments.map((dept) => (
-                  <TableRow key={dept.id}>
-                    <TableCell className="font-medium">{dept.name}</TableCell>
+                  <TableRow key={dept.deptName}>
+                    <TableCell className="font-medium">{dept.deptName}</TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {format(parseISO(dept.createdAt), 'yyyy-MM-dd HH:mm', {
                         locale: ko,
