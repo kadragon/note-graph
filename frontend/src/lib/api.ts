@@ -360,6 +360,16 @@ class APIClient {
     );
   }
 
+  generateDraftWithSimilar(data: AIGenerateDraftRequest) {
+    return this.request<AIGenerateDraftResponse>(
+      '/ai/work-notes/draft-from-text-with-similar',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
   // PDF Jobs
   uploadPDF(file: File) {
     return this.uploadFile<PDFJob>('/pdf-jobs', file);
