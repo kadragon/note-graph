@@ -5,7 +5,7 @@ import Dashboard from '@/pages/Dashboard';
 import WorkNotes from '@/pages/WorkNotes';
 import Persons from '@/pages/Persons';
 import Departments from '@/pages/Departments';
-import TaskCategories from '@/pages/TaskCategories';
+import TaskCategories from '@/pages/TaskCategories/TaskCategories';
 import Search from '@/pages/Search';
 import RAG from '@/pages/RAG';
 import PDFUpload from '@/pages/PDFUpload';

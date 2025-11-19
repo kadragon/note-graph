@@ -1,3 +1,4 @@
+// Trace: TASK-024, SPEC-worknote-1
 import { useState } from 'react';
 import {
   Dialog,
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AssigneeSelector } from '@/components/AssigneeSelector';
 import { useCreateWorkNote } from '@/hooks/useWorkNotes';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
@@ -42,11 +44,6 @@ export function CreateWorkNoteDialog({
     );
   };
 
-  const handlePersonToggle = (personId: string) => {
-    setSelectedPersonIds((prev) =>
-      prev.includes(personId) ? prev.filter((id) => id !== personId) : [...prev, personId]
-    );
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,30 +125,17 @@ export function CreateWorkNoteDialog({
 
             <div className="grid gap-2">
               <Label>담당자 (선택사항)</Label>
-              {personsLoading ? (
-                <p className="text-sm text-muted-foreground">로딩 중...</p>
-              ) : persons.length === 0 ? (
+              {persons.length === 0 && !personsLoading ? (
                 <p className="text-sm text-muted-foreground">
                   등록된 사람이 없습니다. 먼저 사람을 추가해주세요.
                 </p>
               ) : (
-                <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto border rounded-md p-3">
-                  {persons.map((person) => (
-                    <div key={person.personId} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`person-${person.personId}`}
-                        checked={selectedPersonIds.includes(person.personId)}
-                        onCheckedChange={() => handlePersonToggle(person.personId)}
-                      />
-                      <label
-                        htmlFor={`person-${person.personId}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {person.name}
-                      </label>
-                    </div>
-                  ))}
-                </div>
+                <AssigneeSelector
+                  persons={persons}
+                  selectedPersonIds={selectedPersonIds}
+                  onSelectionChange={setSelectedPersonIds}
+                  isLoading={personsLoading}
+                />
               )}
             </div>
 

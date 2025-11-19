@@ -95,6 +95,7 @@ beforeAll(async () => {
       title TEXT NOT NULL,
       description TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       due_date TEXT,
       wait_until TEXT,
       status TEXT NOT NULL DEFAULT '진행중' CHECK (status IN ('진행중', '완료', '보류')),
