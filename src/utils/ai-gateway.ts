@@ -28,3 +28,22 @@ export function getAIGatewayHeaders(env: Env): Record<string, string> {
 
   return headers;
 }
+
+/**
+ * Get AI Gateway URL for OpenAI API endpoints
+ *
+ * Constructs the full URL for OpenAI API calls through Cloudflare AI Gateway.
+ * Format: https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openai/{endpoint}
+ *
+ * @param env - Cloudflare Workers environment
+ * @param endpoint - OpenAI API endpoint (e.g., 'chat/completions', 'embeddings')
+ * @returns Full AI Gateway URL
+ *
+ * @example
+ * getAIGatewayUrl(env, 'chat/completions')
+ * // Returns: https://gateway.ai.cloudflare.com/v1/abc123/my-gateway/openai/chat/completions
+ */
+export function getAIGatewayUrl(env: Env, endpoint: string): string {
+  const baseUrl = `https://gateway.ai.cloudflare.com/v1/${env.CLOUDFLARE_ACCOUNT_ID}/${env.AI_GATEWAY_ID}/openai`;
+  return `${baseUrl}/${endpoint}`;
+}

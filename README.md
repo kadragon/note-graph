@@ -151,13 +151,34 @@ npm run dev
 
 ### Configuration
 
-1. Update `wrangler.toml` with your account ID and resource IDs
-2. Set up Cloudflare Access for Google OAuth
-3. Configure AI Gateway
-4. Set secrets:
+#### Development Environment
+
+1. Copy `.dev.vars.example` to `.dev.vars`:
    ```bash
-   wrangler secret put OPENAI_API_KEY
+   cp .dev.vars.example .dev.vars
    ```
+
+2. Update `.dev.vars` with your Cloudflare Account ID:
+   ```bash
+   # .dev.vars
+   CLOUDFLARE_ACCOUNT_ID=your-actual-cloudflare-account-id
+   ```
+   Find your account ID at: https://dash.cloudflare.com/?to=/:account/workers
+
+3. Update `wrangler.toml` with resource IDs:
+   - Update `database_id` in `[[d1_databases]]` section
+   - Update `AI_GATEWAY_ID` with your gateway name
+
+4. Set up Cloudflare Access for Google OAuth
+
+#### Production Environment
+
+Set secrets using Wrangler CLI:
+```bash
+wrangler secret put CLOUDFLARE_ACCOUNT_ID
+wrangler secret put OPENAI_API_KEY
+wrangler secret put CF_AIG_AUTHORIZATION  # Optional, if AI Gateway requires auth
+```
 
 ## Testing
 

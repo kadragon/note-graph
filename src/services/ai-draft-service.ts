@@ -7,7 +7,7 @@ import type { Env } from '../types/env';
 import type { WorkNoteDraft, AIDraftTodo } from '../types/search';
 import type { WorkNote } from '../types/work-note';
 import { RateLimitError } from '../types/errors';
-import { getAIGatewayHeaders } from '../utils/ai-gateway';
+import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
 
 /**
  * AI Draft Service
@@ -155,7 +155,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
    * @returns GPT response text
    */
   private async callGPT(prompt: string): Promise<string> {
-    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.AI_GATEWAY_ID}/openai/chat/completions`;
+    const url = getAIGatewayUrl(this.env, 'chat/completions');
 
     const requestBody = {
       model: this.env.OPENAI_MODEL_CHAT,
