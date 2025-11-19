@@ -6,7 +6,7 @@ import type { WorkNote } from '../types/work-note';
 import { EmbeddingService, VectorizeService } from './embedding-service';
 import { ChunkingService } from './chunking-service';
 import { RateLimitError } from '../types/errors';
-import { getAIGatewayHeaders } from '../utils/ai-gateway';
+import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
 
 /**
  * RAG (Retrieval-Augmented Generation) service
@@ -233,7 +233,7 @@ ${contextText}
    * Call GPT-4.5 via AI Gateway
    */
   private async callGPT(prompt: string): Promise<string> {
-    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.CLOUDFLARE_ACCOUNT_ID}/${this.env.AI_GATEWAY_ID}/openai/chat/completions`;
+    const url = getAIGatewayUrl(this.env, 'chat/completions');
 
     const requestBody = {
       model: this.env.OPENAI_MODEL_CHAT,
