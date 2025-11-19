@@ -1,4 +1,4 @@
-// Trace: TASK-024, SPEC-worknote-1
+// Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2
 import { useState, useEffect, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
+import { formatPersonBadge } from '@/lib/utils';
 import type { WorkNote, CreateTodoRequest, TodoStatus } from '@/types/api';
 
 interface ViewWorkNoteDialogProps {
@@ -202,7 +203,7 @@ export function ViewWorkNoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right">
         <DialogHeader>
           <div className="flex items-start justify-between gap-4">
             {isEditing ? (
@@ -297,7 +298,11 @@ export function ViewWorkNoteDialog({
                 {workNote.persons && workNote.persons.length > 0 ? (
                   workNote.persons.map((person) => (
                     <Badge key={person.personId} variant="outline">
-                      {person.personName}
+                      {formatPersonBadge({
+                        name: person.personName,
+                        currentDept: person.currentDept,
+                        currentPosition: person.currentPosition,
+                      })}
                       {person.role === 'OWNER' && (
                         <span className="ml-1 text-xs">(담당)</span>
                       )}

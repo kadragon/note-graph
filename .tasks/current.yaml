@@ -1,8 +1,6 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task: TASK-025
+current_task: null
 notes: |
-  TASK-025: Add edit person feature to allow users to modify existing
-  person information by clicking on table rows. Reuses the PersonDialog
-  component for both create and edit operations.
+  No active task. TASK-025 completed.
