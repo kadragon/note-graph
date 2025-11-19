@@ -297,7 +297,11 @@ export class WorkNoteService {
 
       // Filter by similarity threshold and extract work IDs
       const relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);
-      const workIds = [...new Set(relevantResults.map((r) => r.id.split('#')[0]))]; // Handle chunk IDs, deduplicate
+      const workIds = [...new Set(
+        relevantResults
+          .map((r) => r.id?.split('#')[0])
+          .filter((id): id is string => id !== undefined)
+      )]; // Handle chunk IDs, deduplicate
 
       if (workIds.length === 0) {
         return [];
