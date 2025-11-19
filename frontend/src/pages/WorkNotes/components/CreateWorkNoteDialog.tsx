@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCreateWorkNote } from '@/hooks/useWorkNotes';
+import { useTaskCategories } from '@/hooks/useTaskCategories';
 
 interface CreateWorkNoteDialogProps {
   open: boolean;
@@ -23,28 +25,37 @@ export function CreateWorkNoteDialog({
   onOpenChange,
 }: CreateWorkNoteDialogProps) {
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
 
   const createMutation = useCreateWorkNote();
+  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
+
+  const handleCategoryToggle = (categoryId: string) => {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title.trim() || !category.trim() || !content.trim()) {
+    if (!title.trim() || !content.trim()) {
       return;
     }
 
     try {
       await createMutation.mutateAsync({
         title: title.trim(),
-        category: category.trim(),
         content: content.trim(),
+        categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
       });
 
       // Reset form and close dialog
       setTitle('');
-      setCategory('');
+      setSelectedCategoryIds([]);
       setContent('');
       onOpenChange(false);
     } catch (error) {
@@ -76,14 +87,32 @@ export function CreateWorkNoteDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="category">카테고리</Label>
-              <Input
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="예: 회의, 개발, 기획"
-                required
-              />
+              <Label>업무 구분 (선택사항)</Label>
+              {categoriesLoading ? (
+                <p className="text-sm text-muted-foreground">로딩 중...</p>
+              ) : taskCategories.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  등록된 업무 구분이 없습니다. 먼저 업무 구분을 추가해주세요.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto border rounded-md p-3">
+                  {taskCategories.map((category) => (
+                    <div key={category.categoryId} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`category-${category.categoryId}`}
+                        checked={selectedCategoryIds.includes(category.categoryId)}
+                        onCheckedChange={() => handleCategoryToggle(category.categoryId)}
+                      />
+                      <label
+                        htmlFor={`category-${category.categoryId}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {category.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="grid gap-2">
