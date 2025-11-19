@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
 import { useToast } from './use-toast';
+import { TODO_STATUS } from '@/constants/todoStatus';
 import type { CreateWorkNoteRequest, UpdateWorkNoteRequest, WorkNoteWithStats } from '@/types/api';
 
 export function useWorkNotes() {
@@ -22,7 +23,7 @@ export function useWorkNotesWithStats() {
           try {
             const todos = await API.getWorkNoteTodos(workNote.id);
             const total = todos.length;
-            const completed = todos.filter(todo => todo.status === '완료').length;
+            const completed = todos.filter(todo => todo.status === TODO_STATUS.COMPLETED).length;
             const remaining = total - completed;
 
             return {
@@ -30,6 +31,9 @@ export function useWorkNotesWithStats() {
               todoStats: { total, completed, remaining }
             } as WorkNoteWithStats;
           } catch (error) {
+            // Log error for debugging
+            console.error(`Failed to fetch todos for work note ${workNote.id}:`, error);
+
             // If there's an error fetching todos, return with zero stats
             return {
               ...workNote,
