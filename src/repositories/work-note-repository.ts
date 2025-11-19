@@ -157,7 +157,7 @@ export class WorkNoteRepository {
   /**
    * Create new work note with person associations and first version
    */
-  async create(data: CreateWorkNoteInput): Promise<WorkNote> {
+  async create(data: CreateWorkNoteInput): Promise<WorkNote & { id: string }> {
     const now = new Date().toISOString();
     const workId = this.generateWorkId();
 
@@ -232,7 +232,7 @@ export class WorkNoteRepository {
       category: data.category || null,
       createdAt: now,
       updatedAt: now,
-    } as any;
+    };
   }
 
   /**

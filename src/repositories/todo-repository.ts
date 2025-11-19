@@ -201,7 +201,7 @@ export class TodoRepository {
   /**
    * Create new todo for a work note
    */
-  async create(workId: string, data: CreateTodoInput): Promise<Todo> {
+  async create(workId: string, data: CreateTodoInput): Promise<Todo & { id: string; workNoteId: string }> {
     const now = new Date().toISOString();
     const todoId = this.generateTodoId();
 
@@ -238,7 +238,7 @@ export class TodoRepository {
       status: '진행중',
       repeatRule: data.repeatRule,
       recurrenceType: data.recurrenceType || null,
-    } as any;
+    };
   }
 
   /**
