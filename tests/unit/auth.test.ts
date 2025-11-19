@@ -84,6 +84,19 @@ describe('Authentication Middleware', () => {
       expect(data.user.email).toBe(email);
     });
 
+    it('should use default test user when no headers are provided in development mode', async () => {
+      // Arrange
+      const devEnv = { ...testEnv, ENVIRONMENT: 'development' };
+
+      // Act
+      const response = await app.request('/test', {}, devEnv);
+
+      // Assert
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.user.email).toBe('dev@localhost');
+    });
+
     it('should reject when no authentication header is provided', async () => {
       // Act
       const response = await app.request('/test', {}, testEnv);
