@@ -10,6 +10,11 @@ export interface WorkNote {
   content: string;
   category: string;
   categories?: TaskCategory[];
+  persons?: Array<{
+    personId: string;
+    personName: string;
+    role: 'OWNER' | 'RELATED';
+  }>;
   createdAt: string;
   updatedAt: string;
 }
