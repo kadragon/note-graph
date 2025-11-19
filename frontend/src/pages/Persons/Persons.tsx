@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, TASK-022
+// Trace: SPEC-person-1, SPEC-person-2, TASK-022, TASK-025
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -15,11 +15,19 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { usePersons } from '@/hooks/usePersons';
-import { CreatePersonDialog } from './components/CreatePersonDialog';
+import { PersonDialog } from './components/PersonDialog';
+import type { Person } from '@/types/api';
 
 export default function Persons() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const { data: persons = [], isLoading } = usePersons();
+
+  const handleRowClick = (person: Person) => {
+    setSelectedPerson(person);
+    setEditDialogOpen(true);
+  };
 
   return (
     <div className="p-6">
@@ -60,7 +68,11 @@ export default function Persons() {
               </TableHeader>
                 <TableBody>
                   {persons.map((person) => (
-                    <TableRow key={person.personId}>
+                    <TableRow
+                      key={person.personId}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleRowClick(person)}
+                    >
                       <TableCell className="font-medium">{person.name}</TableCell>
                       <TableCell>
                       <Badge variant="outline">{person.personId}</Badge>
@@ -92,9 +104,17 @@ export default function Persons() {
         </CardContent>
       </Card>
 
-      <CreatePersonDialog
+      <PersonDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
+        mode="create"
+      />
+
+      <PersonDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        mode="edit"
+        initialData={selectedPerson}
       />
     </div>
   );
