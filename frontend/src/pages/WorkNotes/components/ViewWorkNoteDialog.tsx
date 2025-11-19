@@ -1,3 +1,4 @@
+// Trace: TASK-024, SPEC-worknote-1
 import { useState, useEffect, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -15,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AssigneeSelector } from '@/components/AssigneeSelector';
 import { API } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
@@ -164,11 +166,6 @@ export function ViewWorkNoteDialog({
     );
   };
 
-  const handlePersonToggle = (personId: string) => {
-    setEditPersonIds((prev) =>
-      prev.includes(personId) ? prev.filter((id) => id !== personId) : [...prev, personId]
-    );
-  };
 
   const handleSaveEdit = async () => {
     if (!workNote || !editTitle.trim() || !editContent.trim()) {
@@ -285,28 +282,15 @@ export function ViewWorkNoteDialog({
           <div>
             <Label className="text-sm font-medium mb-2 block">담당자</Label>
             {isEditing ? (
-              personsLoading ? (
-                <p className="text-sm text-muted-foreground">로딩 중...</p>
-              ) : persons.length === 0 ? (
+              persons.length === 0 && !personsLoading ? (
                 <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
               ) : (
-                <div className="grid grid-cols-2 gap-3 max-h-[150px] overflow-y-auto border rounded-md p-3">
-                  {persons.map((person) => (
-                    <div key={person.personId} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`edit-person-${person.personId}`}
-                        checked={editPersonIds.includes(person.personId)}
-                        onCheckedChange={() => handlePersonToggle(person.personId)}
-                      />
-                      <label
-                        htmlFor={`edit-person-${person.personId}`}
-                        className="text-sm font-medium leading-none cursor-pointer"
-                      >
-                        {person.name}
-                      </label>
-                    </div>
-                  ))}
-                </div>
+                <AssigneeSelector
+                  persons={persons}
+                  selectedPersonIds={editPersonIds}
+                  onSelectionChange={setEditPersonIds}
+                  isLoading={personsLoading}
+                />
               )
             ) : (
               <div className="flex flex-wrap gap-1">
