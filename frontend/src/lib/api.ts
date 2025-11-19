@@ -43,6 +43,24 @@ interface BackendWorkNote {
   updatedAt: string;
 }
 
+/**
+ * Backend todo response format
+ * Maps to D1 database schema
+ */
+interface BackendTodo {
+  todoId: string;
+  workId: string;
+  title: string;
+  description?: string;
+  status: TodoStatus;
+  dueDate?: string;
+  waitUntil?: string;
+  repeatRule?: RepeatRule;
+  recurrenceType?: RecurrenceType;
+  createdAt: string;
+  workTitle?: string;
+}
+
 class APIClient {
   private baseURL = '';
 
@@ -169,6 +187,22 @@ class APIClient {
     };
   }
 
+  private transformTodoFromBackend(backendTodo: BackendTodo): Todo {
+    return {
+      id: backendTodo.todoId,
+      workNoteId: backendTodo.workId,
+      title: backendTodo.title,
+      description: backendTodo.description,
+      status: backendTodo.status,
+      dueDate: backendTodo.dueDate,
+      waitUntil: backendTodo.waitUntil,
+      repeatRule: backendTodo.repeatRule,
+      recurrenceType: backendTodo.recurrenceType,
+      createdAt: backendTodo.createdAt,
+      updatedAt: backendTodo.createdAt, // Backend doesn't have updatedAt for todos
+    };
+  }
+
   // Persons
   getPersons() {
     return this.request<Person[]>('/persons');
@@ -233,27 +267,31 @@ class APIClient {
   }
 
   // Todos
-  getTodos(view: TodoView = 'all') {
-    return this.request<Todo[]>(`/todos?view=${view}`);
+  async getTodos(view: TodoView = 'all') {
+    const response = await this.request<BackendTodo[]>(`/todos?view=${view}`);
+    return response.map(this.transformTodoFromBackend.bind(this));
   }
 
-  updateTodo(todoId: string, data: UpdateTodoRequest) {
-    return this.request<Todo>(`/todos/${todoId}`, {
+  async updateTodo(todoId: string, data: UpdateTodoRequest) {
+    const response = await this.request<BackendTodo>(`/todos/${todoId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+    return this.transformTodoFromBackend(response);
   }
 
   // Work Note Todos
-  getWorkNoteTodos(workId: string) {
-    return this.request<Todo[]>(`/work-notes/${workId}/todos`);
+  async getWorkNoteTodos(workId: string) {
+    const response = await this.request<BackendTodo[]>(`/work-notes/${workId}/todos`);
+    return response.map(this.transformTodoFromBackend.bind(this));
   }
 
-  createWorkNoteTodo(workId: string, data: CreateTodoRequest) {
-    return this.request<Todo>(`/work-notes/${workId}/todos`, {
+  async createWorkNoteTodo(workId: string, data: CreateTodoRequest) {
+    const response = await this.request<BackendTodo>(`/work-notes/${workId}/todos`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    return this.transformTodoFromBackend(response);
   }
 
   // Search
