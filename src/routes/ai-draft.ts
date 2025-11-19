@@ -15,6 +15,10 @@ import { EmbeddingService, VectorizeService } from '../services/embedding-servic
 import { RateLimitError, NotFoundError } from '../types/errors';
 import type { WorkNote } from '../types/work-note';
 
+// Configuration constants
+const SIMILAR_NOTES_TOP_K = 3;
+const SIMILARITY_SCORE_THRESHOLD = 0.5;
+
 type Variables = {
   user: AuthUser;
 };
@@ -62,42 +66,16 @@ app.post('/work-notes/draft-from-text-with-similar', async (c) => {
   try {
     const body = await validateBody(c, DraftFromTextRequestSchema);
 
-    // Search for similar work notes using vectorize
-    const embeddingService = new EmbeddingService(c.env);
-    const vectorizeService = new VectorizeService(c.env.VECTORIZE, embeddingService);
+    // Search for similar work notes using shared service
+    const workNoteService = new WorkNoteService(c.env);
+    const similarNotes = await workNoteService.findSimilarNotes(
+      body.inputText,
+      SIMILAR_NOTES_TOP_K,
+      SIMILARITY_SCORE_THRESHOLD
+    );
 
-    let similarNotes: Array<{ title: string; content: string; category?: string }> = [];
-    try {
-      // Search for similar work notes (top 3)
-      const similarResults = await vectorizeService.search(body.inputText, 3);
-
-      // Fetch work note details from D1
-      for (const result of similarResults) {
-        const [workId] = result.id.split('#'); // Handle chunk IDs
-        const workNote = await c.env.DB
-          .prepare(
-            `SELECT work_id as workId, title, content_raw as contentRaw, category
-             FROM work_notes
-             WHERE work_id = ?`
-          )
-          .bind(workId)
-          .first<WorkNote>();
-
-        if (workNote && result.score >= 0.5) {
-          similarNotes.push({
-            title: workNote.title,
-            content: workNote.contentRaw,
-            category: workNote.category || undefined,
-          });
-        }
-      }
-
-      // eslint-disable-next-line no-console
-      console.log(`[AI Draft] Found ${similarNotes.length} similar work notes for text input`);
-    } catch (error) {
-      // Log error but continue with draft generation without context
-      console.error(`[AI Draft] Error searching for similar notes:`, error);
-    }
+    // eslint-disable-next-line no-console
+    console.log(`[AI Draft] Found ${similarNotes.length} similar work notes for text input`);
 
     // Generate AI draft with similar notes as context
     const aiDraftService = new AIDraftService(c.env);

@@ -50,9 +50,9 @@ export function CreateFromPDFDialog({
   const { data: persons = [], isLoading: personsLoading } = usePersons();
   const { toast } = useToast();
 
-  // Update form when draft is ready
+  // Update form when draft is ready (only if user hasn't edited yet)
   useEffect(() => {
-    if (job?.status === 'completed' && job.draft) {
+    if (job?.status === 'completed' && job.draft && title === '' && content === '') {
       setTitle(job.draft.title);
       setContent(job.draft.content);
       // Try to find matching category
@@ -63,7 +63,7 @@ export function CreateFromPDFDialog({
         setSelectedCategoryIds([matchingCategory.categoryId]);
       }
     }
-  }, [job, taskCategories]);
+  }, [job, taskCategories, title, content]);
 
   const handleFileSelect = async (file: File) => {
     if (file.size > 10 * 1024 * 1024) {
@@ -133,6 +133,17 @@ export function CreateFromPDFDialog({
     resetForm();
     onOpenChange(false);
   };
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      // Add a small delay to allow close animation to complete
+      const timer = setTimeout(() => {
+        resetForm();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -91,6 +91,28 @@ export class WorkNoteRepository {
   }
 
   /**
+   * Find multiple work notes by IDs (batch fetch)
+   */
+  async findByIds(workIds: string[]): Promise<WorkNote[]> {
+    if (workIds.length === 0) {
+      return [];
+    }
+
+    const placeholders = workIds.map(() => '?').join(',');
+    const result = await this.db
+      .prepare(
+        `SELECT work_id as workId, title, content_raw as contentRaw,
+                category, created_at as createdAt, updated_at as updatedAt
+         FROM work_notes
+         WHERE work_id IN (${placeholders})`
+      )
+      .bind(...workIds)
+      .all<WorkNote>();
+
+    return result.results || [];
+  }
+
+  /**
    * Find all work notes with filters
    */
   async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
