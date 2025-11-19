@@ -181,11 +181,17 @@ export interface AIGenerateDraftRequest {
   text: string;
 }
 
+export interface AIDraftTodo {
+  title: string;
+  description?: string;
+  dueDate?: string;
+}
+
 export interface AIGenerateDraftResponse {
   title: string;
   category: string;
   content: string;
-  suggestedTodos: string[];
+  todos: AIDraftTodo[];
 }
 
 // PDF types
