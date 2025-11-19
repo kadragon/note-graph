@@ -303,11 +303,42 @@ class APIClient {
   }
 
   // Search
-  search(data: SearchRequest) {
-    return this.request<SearchResult[]>('/search/work-notes', {
+  async search(data: SearchRequest) {
+    interface SearchResponse {
+      results: Array<{
+        workNote: {
+          workId: string;
+          title: string;
+          category: string | null;
+          createdAt: string;
+        };
+        score: number;
+        source: 'LEXICAL' | 'SEMANTIC' | 'HYBRID';
+      }>;
+      count: number;
+      query: string;
+      searchType: string;
+    }
+
+    const response = await this.request<SearchResponse>('/search/work-notes', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+
+    // Validate response structure
+    if (!response || !Array.isArray(response.results)) {
+      throw new Error('Invalid search response from server');
+    }
+
+    // Transform backend response to frontend SearchResult format
+    return response.results.map((item) => ({
+      id: item.workNote.workId,
+      title: item.workNote.title,
+      category: item.workNote.category || '',
+      score: item.score,
+      source: item.source.toLowerCase() as 'lexical' | 'semantic' | 'hybrid',
+      createdAt: item.workNote.createdAt,
+    }));
   }
 
   // RAG
