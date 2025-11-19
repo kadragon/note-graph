@@ -4,9 +4,10 @@ import type { Todo } from '@/types/api';
 interface TodoListProps {
   todos: Todo[];
   isLoading: boolean;
+  onTodoClick?: (todo: Todo) => void;
 }
 
-export function TodoList({ todos, isLoading }: TodoListProps) {
+export function TodoList({ todos, isLoading, onTodoClick }: TodoListProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -26,7 +27,7 @@ export function TodoList({ todos, isLoading }: TodoListProps) {
   return (
     <div className="divide-y divide-gray-100">
       {todos.map((todo) => (
-        <TodoItem key={todo.id} todo={todo} />
+        <TodoItem key={todo.id} todo={todo} onTodoClick={onTodoClick} />
       ))}
     </div>
   );
