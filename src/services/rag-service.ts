@@ -81,32 +81,27 @@ export class RagService {
 
   /**
    * Build Vectorize metadata filter based on RAG query filters
+   * Note: Scope-specific parameter validation is handled at the route level
    */
   private buildVectorFilter(filters: RagQueryFilters): Record<string, string> | undefined {
     const vectorFilter: Record<string, string> = {};
 
     switch (filters.scope) {
       case 'work':
-        if (!filters.workId) {
-          throw new Error('workId is required for work scope');
-        }
-        vectorFilter.work_id = filters.workId;
+        // workId is guaranteed to exist due to route-level validation
+        vectorFilter.work_id = filters.workId!;
         break;
 
       case 'person':
-        if (!filters.personId) {
-          throw new Error('personId is required for person scope');
-        }
+        // personId is guaranteed to exist due to route-level validation
         // Note: person_ids is a comma-separated string in metadata
         // Vectorize doesn't support partial string matching, so we'll filter post-retrieval
         // For now, we retrieve more results and filter in buildContextSnippets
         break;
 
       case 'department':
-        if (!filters.deptName) {
-          throw new Error('deptName is required for department scope');
-        }
-        vectorFilter.dept_name = filters.deptName;
+        // deptName is guaranteed to exist due to route-level validation
+        vectorFilter.dept_name = filters.deptName!;
         break;
 
       case 'global':
