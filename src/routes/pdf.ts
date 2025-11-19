@@ -7,17 +7,18 @@ import type { Env } from '../types/env.js';
 import { PdfJobRepository } from '../repositories/pdf-job-repository.js';
 import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { AIDraftService } from '../services/ai-draft-service.js';
-import { EmbeddingService, VectorizeService } from '../services/embedding-service.js';
+import { WorkNoteService } from '../services/work-note-service.js';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
 import type {
   PdfJobResponse,
   PdfUploadMetadata,
   WorkNoteDraft,
 } from '../types/pdf.js';
-import type { WorkNote } from '../types/work-note.js';
 
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const SIMILAR_NOTES_TOP_K = 3;
+const SIMILARITY_SCORE_THRESHOLD = 0.5;
 
 const pdf = new Hono<{ Bindings: Env }>();
 
@@ -98,44 +99,18 @@ pdf.post('/', async (c) => {
     console.log(`[PDF Processing] Extracting text from PDF: ${fileName}`);
     const extractedText = await extractionService.extractText(pdfBuffer);
 
-    // Search for similar work notes using vectorize
+    // Search for similar work notes using shared service
     // eslint-disable-next-line no-console
     console.log(`[PDF Processing] Searching for similar work notes for job ${jobId}`);
-    const embeddingService = new EmbeddingService(c.env);
-    const vectorizeService = new VectorizeService(c.env.VECTORIZE, embeddingService);
+    const workNoteService = new WorkNoteService(c.env);
+    const similarNotes = await workNoteService.findSimilarNotes(
+      extractedText,
+      SIMILAR_NOTES_TOP_K,
+      SIMILARITY_SCORE_THRESHOLD
+    );
 
-    let similarNotes: Array<{ title: string; content: string; category?: string }> = [];
-    try {
-      // Search for similar work notes (top 3)
-      const similarResults = await vectorizeService.search(extractedText, 3);
-
-      // Fetch work note details from D1
-      for (const result of similarResults) {
-        const [workId] = result.id.split('#'); // Handle chunk IDs
-        const workNote = await c.env.DB
-          .prepare(
-            `SELECT work_id as workId, title, content_raw as contentRaw, category
-             FROM work_notes
-             WHERE work_id = ?`
-          )
-          .bind(workId)
-          .first<WorkNote>();
-
-        if (workNote && result.score >= 0.5) {
-          similarNotes.push({
-            title: workNote.title,
-            content: workNote.contentRaw,
-            category: workNote.category || undefined,
-          });
-        }
-      }
-
-      // eslint-disable-next-line no-console
-      console.log(`[PDF Processing] Found ${similarNotes.length} similar work notes`);
-    } catch (error) {
-      // Log error but continue with draft generation without context
-      console.error(`[PDF Processing] Error searching for similar notes:`, error);
-    }
+    // eslint-disable-next-line no-console
+    console.log(`[PDF Processing] Found ${similarNotes.length} similar work notes`);
 
     // Generate AI draft with similar notes as context
     // eslint-disable-next-line no-console

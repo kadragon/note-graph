@@ -129,6 +129,17 @@ export function CreateFromTextDialog({
     onOpenChange(false);
   };
 
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      // Add a small delay to allow close animation to complete
+      const timer = setTimeout(() => {
+        resetForm();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
