@@ -53,7 +53,8 @@ export class WorkNoteRepository {
       this.db
         .prepare(
           `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                  wnp.role, p.name as personName
+                  wnp.role, p.name as personName, p.current_dept as currentDept,
+                  p.current_position as currentPosition
            FROM work_note_person wnp
            INNER JOIN persons p ON wnp.person_id = p.person_id
            WHERE wnp.work_id = ?`
@@ -175,8 +176,9 @@ export class WorkNoteRepository {
     // Fetch all persons in a single query
     const personsResult = await this.db
       .prepare(
-        `SELECT wnp.work_id as workId, wnp.person_id as personId,
-                wnp.role, p.name as personName
+        `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
+                wnp.role, p.name as personName, p.current_dept as currentDept,
+                p.current_position as currentPosition
          FROM work_note_person wnp
          INNER JOIN persons p ON wnp.person_id = p.person_id
          WHERE wnp.work_id IN (${placeholders})`
@@ -209,6 +211,8 @@ export class WorkNoteRepository {
         personId: person.personId,
         role: person.role,
         personName: person.personName,
+        currentDept: person.currentDept,
+        currentPosition: person.currentPosition,
       });
     }
 

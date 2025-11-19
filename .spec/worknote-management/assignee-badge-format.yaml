@@ -1,0 +1,84 @@
+spec_id: SPEC-worknote-2
+title: "Assignee Badge Display Format"
+description: >
+  Display assignee badges in work notes with department/position/name format.
+  If position is not available, show department/name format.
+
+given_when_then:
+  - given: "Person has department and position"
+    when: "Person is displayed as assignee badge"
+    then: "Badge shows format: 소속/직책/이름 (e.g., 개발팀/팀장/홍길동)"
+
+  - given: "Person has department but no position"
+    when: "Person is displayed as assignee badge"
+    then: "Badge shows format: 소속/이름 (e.g., 개발팀/홍길동)"
+
+  - given: "Person has no department and no position"
+    when: "Person is displayed as assignee badge"
+    then: "Badge shows only name (e.g., 홍길동)"
+
+  - given: "Multiple assignees in work note"
+    when: "User views work note detail"
+    then: "All assignee badges show consistent formatting with department/position/name"
+
+  - given: "User searches for assignee in selector dropdown"
+    when: "Assignee selector dropdown is opened"
+    then: "Each person shows department and position information for context"
+
+acceptance_tests:
+  - id: TEST-badge-1
+    desc: "Badge shows dept/position/name when all fields available"
+    steps:
+      - "Create person with currentDept='개발팀', currentPosition='팀장', name='홍길동'"
+      - "Assign person to work note"
+      - "View work note detail"
+      - "Verify badge displays: 개발팀/팀장/홍길동"
+
+  - id: TEST-badge-2
+    desc: "Badge shows dept/name when position is null"
+    steps:
+      - "Create person with currentDept='기획팀', currentPosition=null, name='김철수'"
+      - "Assign person to work note"
+      - "View work note detail"
+      - "Verify badge displays: 기획팀/김철수"
+
+  - id: TEST-badge-3
+    desc: "Badge shows only name when dept and position are null"
+    steps:
+      - "Create person with currentDept=null, currentPosition=null, name='이영희'"
+      - "Assign person to work note"
+      - "View work note detail"
+      - "Verify badge displays: 이영희"
+
+  - id: TEST-badge-4
+    desc: "Selector badges show consistent format"
+    steps:
+      - "Open AssigneeSelector in CreateWorkNoteDialog"
+      - "Select person with dept and position"
+      - "Verify selected badge shows dept/position/name"
+
+dependencies:
+  governance:
+    - "Person data model includes currentDept, currentPosition, name"
+    - "Badge component supports custom text content"
+
+linked_tasks:
+  - TASK-025
+
+technical_notes:
+  - "Backend changes: Enhanced API to include dept/position in WorkNotePersonAssociation"
+  - "Frontend changes: Created formatPersonBadge utility and updated components"
+  - "Person type already includes currentDept, currentPosition fields"
+  - "Badge format logic should be reusable across components"
+  - "Should maintain (담당) suffix for OWNER role in ViewWorkNoteDialog"
+  - "Position only displays when department is present (no orphaned positions)"
+
+affected_components:
+  - frontend/src/components/AssigneeSelector.tsx
+  - frontend/src/pages/WorkNotes/components/ViewWorkNoteDialog.tsx
+
+format_rules:
+  - "Priority: dept/position/name > dept/name > name"
+  - "Separator: forward slash (/)"
+  - "No spaces around separator"
+  - "Role suffix (담당) appears after formatted name for OWNER role"

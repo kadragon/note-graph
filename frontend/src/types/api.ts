@@ -14,6 +14,8 @@ export interface WorkNote {
     personId: string;
     personName: string;
     role: 'OWNER' | 'RELATED';
+    currentDept?: string | null;
+    currentPosition?: string | null;
   }>;
   createdAt: string;
   updatedAt: string;
