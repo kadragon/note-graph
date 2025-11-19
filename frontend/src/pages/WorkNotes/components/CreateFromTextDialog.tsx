@@ -1,5 +1,5 @@
 // Trace: TASK-027, SPEC-worknote-1
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileEdit, Sparkles } from 'lucide-react';
 import {
   Dialog,
