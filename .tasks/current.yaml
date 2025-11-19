@@ -1,8 +1,6 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task: TASK-024
+current_task: null
 notes: |
-  TASK-024: Replace checkbox-based assignee selector with searchable
-  autocomplete component using Command UI. This improves UX when there are
-  many persons in the system.
+  No active task. TASK-025 completed.

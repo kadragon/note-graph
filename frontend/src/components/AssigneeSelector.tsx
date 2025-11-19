@@ -1,4 +1,4 @@
-// Trace: TASK-024, SPEC-worknote-1
+// Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2
 import { useState, useMemo, useCallback } from 'react';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { cn, formatPersonBadge } from '@/lib/utils';
 import type { Person } from '@/types/api';
 
 interface AssigneeSelectorProps {
@@ -71,7 +71,7 @@ export function AssigneeSelector({
               variant="secondary"
               className="gap-1 pr-1"
             >
-              <span>{person.name}</span>
+              <span>{formatPersonBadge(person)}</span>
               <button
                 type="button"
                 className="ml-1 rounded-full hover:bg-secondary-foreground/20"
