@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-1, TASK-007
+// Trace: SPEC-worknote-1, TASK-007, TASK-003
 /**
  * Work note repository for D1 database operations
  */
@@ -7,6 +7,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { nanoid } from 'nanoid';
 import type { WorkNote, WorkNoteDetail, WorkNoteVersion, WorkNotePersonAssociation, WorkNoteRelation } from '../types/work-note';
 import type { CreateWorkNoteInput, UpdateWorkNoteInput, ListWorkNotesQuery } from '../schemas/work-note';
+import type { TaskCategory } from '../types/task-category';
 import { NotFoundError } from '../types/errors';
 
 const MAX_VERSIONS = 5;
@@ -47,8 +48,8 @@ export class WorkNoteRepository {
       return null;
     }
 
-    // Get associated persons and related work notes in parallel
-    const [personsResult, relationsResult] = await Promise.all([
+    // Get associated persons, related work notes, and categories in parallel
+    const [personsResult, relationsResult, categoriesResult] = await Promise.all([
       this.db
         .prepare(
           `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
@@ -69,12 +70,22 @@ export class WorkNoteRepository {
         )
         .bind(workId)
         .all<WorkNoteRelation>(),
+      this.db
+        .prepare(
+          `SELECT tc.category_id as categoryId, tc.name, tc.created_at as createdAt
+           FROM task_categories tc
+           INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+           WHERE wntc.work_id = ?`
+        )
+        .bind(workId)
+        .all<TaskCategory>(),
     ]);
 
     return {
       ...workNote,
       persons: personsResult.results || [],
       relatedWorkNotes: relationsResult.results || [],
+      categories: categoriesResult.results || [],
     };
   }
 
@@ -192,6 +203,20 @@ export class WorkNoteRepository {
                VALUES (?, ?)`
             )
             .bind(workId, relatedWorkId)
+        );
+      }
+    }
+
+    // Add task category associations
+    if (data.categoryIds && data.categoryIds.length > 0) {
+      for (const categoryId of data.categoryIds) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT INTO work_note_task_category (work_id, category_id)
+               VALUES (?, ?)`
+            )
+            .bind(workId, categoryId)
         );
       }
     }
@@ -326,6 +351,26 @@ export class WorkNoteRepository {
                VALUES (?, ?)`
             )
             .bind(workId, relatedWorkId)
+        );
+      }
+    }
+
+    // Update task category associations if provided
+    if (data.categoryIds !== undefined) {
+      // Delete existing category associations
+      statements.push(
+        this.db.prepare(`DELETE FROM work_note_task_category WHERE work_id = ?`).bind(workId)
+      );
+
+      // Add new category associations
+      for (const categoryId of data.categoryIds) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT INTO work_note_task_category (work_id, category_id)
+               VALUES (?, ?)`
+            )
+            .bind(workId, categoryId)
         );
       }
     }

@@ -5,6 +5,7 @@ import {
   FileText,
   User,
   Building2,
+  FolderKanban,
   Search,
   MessageSquare,
   Paperclip,
@@ -32,6 +33,11 @@ const navItems = [
     path: '/departments',
     label: '부서 관리',
     icon: Building2,
+  },
+  {
+    path: '/task-categories',
+    label: '업무 구분 관리',
+    icon: FolderKanban,
   },
   {
     path: '/search',

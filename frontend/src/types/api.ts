@@ -9,6 +9,7 @@ export interface WorkNote {
   title: string;
   content: string;
   category: string;
+  categories?: TaskCategory[];
   createdAt: string;
   updatedAt: string;
 }
@@ -16,7 +17,17 @@ export interface WorkNote {
 export interface CreateWorkNoteRequest {
   title: string;
   content: string;
-  category: string;
+  category?: string;
+  categoryIds?: string[];
+  relatedPersonIds?: string[];
+  relatedDepartmentIds?: string[];
+}
+
+export interface UpdateWorkNoteRequest {
+  title?: string;
+  content?: string;
+  category?: string;
+  categoryIds?: string[];
   relatedPersonIds?: string[];
   relatedDepartmentIds?: string[];
 }
@@ -47,6 +58,21 @@ export interface Department {
 }
 
 export interface CreateDepartmentRequest {
+  name: string;
+}
+
+// Task Category types
+export interface TaskCategory {
+  categoryId: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface CreateTaskCategoryRequest {
+  name: string;
+}
+
+export interface UpdateTaskCategoryRequest {
   name: string;
 }
 
