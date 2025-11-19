@@ -11,6 +11,7 @@ import { validateBody } from '../utils/validation';
 import { DraftFromTextRequestSchema, TodoSuggestionsRequestSchema } from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
 import { WorkNoteService } from '../services/work-note-service';
+import { TaskCategoryRepository } from '../repositories/task-category-repository';
 import { RateLimitError, NotFoundError } from '../types/errors';
 
 // Configuration constants
@@ -34,11 +35,17 @@ app.post('/work-notes/draft-from-text', async (c) => {
   try {
     const body = await validateBody(c, DraftFromTextRequestSchema);
 
+    // Fetch active categories for AI suggestion
+    const categoryRepo = new TaskCategoryRepository(c.env.DB);
+    const activeCategories = await categoryRepo.findAll(undefined, 100, true);
+    const activeCategoryNames = activeCategories.map(cat => cat.name);
+
     const aiDraftService = new AIDraftService(c.env);
     const draft = await aiDraftService.generateDraftFromText(body.inputText, {
       category: body.category,
       personIds: body.personIds,
       deptName: body.deptName,
+      activeCategories: activeCategoryNames,
     });
 
     return c.json(draft);
@@ -64,6 +71,11 @@ app.post('/work-notes/draft-from-text-with-similar', async (c) => {
   try {
     const body = await validateBody(c, DraftFromTextRequestSchema);
 
+    // Fetch active categories for AI suggestion
+    const categoryRepo = new TaskCategoryRepository(c.env.DB);
+    const activeCategories = await categoryRepo.findAll(undefined, 100, true);
+    const activeCategoryNames = activeCategories.map(cat => cat.name);
+
     // Search for similar work notes using shared service
     const workNoteService = new WorkNoteService(c.env);
     const similarNotes = await workNoteService.findSimilarNotes(
@@ -82,11 +94,13 @@ app.post('/work-notes/draft-from-text-with-similar', async (c) => {
           category: body.category,
           personIds: body.personIds,
           deptName: body.deptName,
+          activeCategories: activeCategoryNames,
         })
       : await aiDraftService.generateDraftFromText(body.inputText, {
           category: body.category,
           personIds: body.personIds,
           deptName: body.deptName,
+          activeCategories: activeCategoryNames,
         });
 
     return c.json(draft);
