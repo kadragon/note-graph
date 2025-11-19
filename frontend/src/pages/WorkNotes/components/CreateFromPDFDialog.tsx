@@ -270,7 +270,7 @@ export function CreateFromPDFDialog({
                   <Card className="p-3">
                     <ul className="space-y-2 text-sm">
                       {job.draft.todos.map((todo, idx) => (
-                        <li key={idx} className="flex items-start">
+                        <li key={`${todo.title}-${idx}`} className="flex items-start">
                           <span className="mr-2">•</span>
                           <div className="flex-1">
                             <div className="font-medium">{todo.title}</div>
