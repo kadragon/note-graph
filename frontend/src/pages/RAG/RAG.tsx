@@ -12,7 +12,7 @@ import type { RAGScope, RAGResponse } from '@/types/api';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  sources?: RAGResponse['sources'];
+  sources?: RAGResponse['contexts'];
 }
 
 export default function RAG() {
@@ -51,7 +51,7 @@ export default function RAG() {
         {
           role: 'assistant',
           content: response.answer,
-          sources: response.sources,
+          sources: response.contexts,
         },
       ]);
     } catch (error) {
