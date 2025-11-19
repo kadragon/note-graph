@@ -95,10 +95,14 @@ export default function Search() {
                       <TableCell>
                         <Badge
                           variant={
-                            result.source === 'semantic' ? 'default' : 'outline'
+                            result.source === 'lexical' ? 'outline' : 'default'
                           }
                         >
-                          {result.source === 'semantic' ? '의미' : '키워드'}
+                          {{
+                            semantic: '의미',
+                            hybrid: '하이브리드',
+                            lexical: '키워드',
+                          }[result.source]}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
