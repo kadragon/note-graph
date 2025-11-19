@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, FileText, FileEdit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +33,18 @@ export default function WorkNotes() {
 
   const { data: workNotes = [], isLoading } = useWorkNotes();
   const deleteMutation = useDeleteWorkNote();
+
+  // Update selectedWorkNote when workNotes data changes (after edit/update)
+  useEffect(() => {
+    if (selectedWorkNote && workNotes.length > 0) {
+      const updatedWorkNote = workNotes.find(
+        (wn) => wn.id === selectedWorkNote.id
+      );
+      if (updatedWorkNote) {
+        setSelectedWorkNote(updatedWorkNote);
+      }
+    }
+  }, [workNotes, selectedWorkNote?.id]);
 
   const handleView = (workNote: WorkNote) => {
     setSelectedWorkNote(workNote);
