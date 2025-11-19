@@ -112,8 +112,13 @@ export function CreateFromTextDialog({
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
       });
 
+      // Validate that work note was created with an ID
+      if (!workNote?.id) {
+        throw new Error('업무노트 생성에 실패했거나, 서버에서 잘못된 데이터를 반환했습니다.');
+      }
+
       // Create todos if any suggested todos exist
-      if (suggestedTodos.length > 0 && workNote?.id) {
+      if (suggestedTodos.length > 0) {
         const todoPromises = suggestedTodos.map((todo) =>
           API.createWorkNoteTodo(workNote.id, {
             title: todo.title,
@@ -125,8 +130,7 @@ export function CreateFromTextDialog({
 
         await Promise.all(todoPromises);
 
-        // Invalidate both work-notes and todos queries
-        queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+        // Invalidate todos query when todos are created
         queryClient.invalidateQueries({ queryKey: ['todos'] });
 
         toast({
@@ -134,14 +138,14 @@ export function CreateFromTextDialog({
           description: `업무노트와 ${suggestedTodos.length}개의 할일이 저장되었습니다.`,
         });
       } else {
-        // Invalidate work-notes query
-        queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-
         toast({
           title: '성공',
           description: '업무노트가 생성되었습니다.',
         });
       }
+
+      // Always invalidate work-notes query
+      queryClient.invalidateQueries({ queryKey: ['work-notes'] });
 
       // Reset form and close dialog
       resetForm();
