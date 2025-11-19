@@ -92,7 +92,7 @@ export class WorkNoteRepository {
   /**
    * Find all work notes with filters
    */
-  async findAll(query: ListWorkNotesQuery): Promise<WorkNote[]> {
+  async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
     let sql = `
       SELECT DISTINCT wn.work_id as workId, wn.work_id as id, wn.title, wn.content_raw as contentRaw,
              wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt
@@ -151,7 +151,74 @@ export class WorkNoteRepository {
     const stmt = this.db.prepare(sql);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<WorkNote>();
 
-    return result.results || [];
+    const workNotes = result.results || [];
+
+    // Batch fetch categories and persons for all work notes to avoid N+1 queries
+    const workIds = workNotes.map((wn) => wn.workId);
+
+    if (workIds.length === 0) {
+      return [];
+    }
+
+    // Fetch all categories in a single query
+    const placeholders = workIds.map(() => '?').join(',');
+    const categoriesResult = await this.db
+      .prepare(
+        `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.created_at as createdAt
+         FROM task_categories tc
+         INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+         WHERE wntc.work_id IN (${placeholders})`
+      )
+      .bind(...workIds)
+      .all<TaskCategory & { workId: string }>();
+
+    // Fetch all persons in a single query
+    const personsResult = await this.db
+      .prepare(
+        `SELECT wnp.work_id as workId, wnp.person_id as personId,
+                wnp.role, p.name as personName
+         FROM work_note_person wnp
+         INNER JOIN persons p ON wnp.person_id = p.person_id
+         WHERE wnp.work_id IN (${placeholders})`
+      )
+      .bind(...workIds)
+      .all<WorkNotePersonAssociation & { workId: string }>();
+
+    // Group categories and persons by workId
+    const categoriesByWorkId = new Map<string, TaskCategory[]>();
+    const personsByWorkId = new Map<string, WorkNotePersonAssociation[]>();
+
+    for (const cat of categoriesResult.results || []) {
+      if (!categoriesByWorkId.has(cat.workId)) {
+        categoriesByWorkId.set(cat.workId, []);
+      }
+      categoriesByWorkId.get(cat.workId)!.push({
+        categoryId: cat.categoryId,
+        name: cat.name,
+        createdAt: cat.createdAt,
+      });
+    }
+
+    for (const person of personsResult.results || []) {
+      if (!personsByWorkId.has(person.workId)) {
+        personsByWorkId.set(person.workId, []);
+      }
+      personsByWorkId.get(person.workId)!.push({
+        id: person.id,
+        workId: person.workId,
+        personId: person.personId,
+        role: person.role,
+        personName: person.personName,
+      });
+    }
+
+    // Map results to work notes
+    return workNotes.map((workNote) => ({
+      ...workNote,
+      persons: personsByWorkId.get(workNote.workId) || [],
+      relatedWorkNotes: [],
+      categories: categoriesByWorkId.get(workNote.workId) || [],
+    }));
   }
 
   /**

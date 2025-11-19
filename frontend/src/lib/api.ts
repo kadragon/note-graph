@@ -24,6 +24,25 @@ import type {
   PDFJob,
 } from '@/types/api';
 
+/**
+ * Backend work note response format
+ * Maps to D1 database schema
+ */
+interface BackendWorkNote {
+  workId: string;
+  title: string;
+  contentRaw: string;
+  category: string | null;
+  categories?: TaskCategory[];
+  persons?: Array<{
+    personId: string;
+    personName: string;
+    role: 'OWNER' | 'RELATED';
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 class APIClient {
   private baseURL = '';
 
@@ -105,33 +124,49 @@ class APIClient {
   }
 
   // Work Notes
-  getWorkNotes() {
-    return this.request<WorkNote[]>('/work-notes');
+  async getWorkNotes() {
+    const response = await this.request<BackendWorkNote[]>('/work-notes');
+    return response.map(this.transformWorkNoteFromBackend);
   }
 
-  createWorkNote(data: CreateWorkNoteRequest) {
+  async createWorkNote(data: CreateWorkNoteRequest) {
     // Transform content to contentRaw for backend
     const { content, ...rest } = data;
-    return this.request<WorkNote>('/work-notes', {
+    const response = await this.request<BackendWorkNote>('/work-notes', {
       method: 'POST',
       body: JSON.stringify({ ...rest, contentRaw: content }),
     });
+    return this.transformWorkNoteFromBackend(response);
   }
 
-  updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
+  async updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
     // Transform content to contentRaw for backend if present
     const { content, ...rest } = data;
     const payload = content !== undefined ? { ...rest, contentRaw: content } : rest;
-    return this.request<WorkNote>(`/work-notes/${workId}`, {
+    const response = await this.request<BackendWorkNote>(`/work-notes/${workId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
+    return this.transformWorkNoteFromBackend(response);
   }
 
   deleteWorkNote(workId: string) {
     return this.request<void>(`/work-notes/${workId}`, {
       method: 'DELETE',
     });
+  }
+
+  private transformWorkNoteFromBackend(backendWorkNote: BackendWorkNote): WorkNote {
+    return {
+      id: backendWorkNote.workId,
+      title: backendWorkNote.title,
+      content: backendWorkNote.contentRaw,
+      category: backendWorkNote.category || '',
+      categories: backendWorkNote.categories || [],
+      persons: backendWorkNote.persons || [],
+      createdAt: backendWorkNote.createdAt,
+      updatedAt: backendWorkNote.updatedAt,
+    };
   }
 
   // Persons

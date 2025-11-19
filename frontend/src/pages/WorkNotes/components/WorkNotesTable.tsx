@@ -32,7 +32,7 @@ export function WorkNotesTable({
       <TableHeader>
         <TableRow>
           <TableHead>제목</TableHead>
-          <TableHead>카테고리</TableHead>
+          <TableHead>업무 구분</TableHead>
           <TableHead>생성일</TableHead>
           <TableHead className="text-right">작업</TableHead>
         </TableRow>
