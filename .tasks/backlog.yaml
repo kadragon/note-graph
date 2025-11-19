@@ -2,6 +2,38 @@
 # Tasks ordered by priority (highest first)
 
 tasks:
+  - task_id: TASK-022
+    spec_id: SPEC-dept-1
+    title: "Fix department creation errors in frontend"
+    description: |
+      Resolve 400 Bad Request and React key warnings when adding a department
+      from the UI. Ensure API payload matches backend contract and list items
+      render with stable keys.
+    priority: 1
+    status: completed
+    estimated_effort: 2h
+    test_refs:
+      - TEST-dept-1
+    acceptance_criteria:
+      - "Department creation succeeds without 400 errors"
+      - "Department list renders with unique keys"
+      - "Regression covered by frontend tests"
+
+  - task_id: TASK-023
+    spec_id: SPEC-dept-1
+    title: "Add stable department IDs (post-review follow-up)"
+    description: |
+      Address code review feedback suggesting a dedicated stable department ID
+      instead of using deptName as the primary key/identifier. Design migration
+      and API contract changes, and update frontend to consume the new ID while
+      preserving backwards compatibility or adding a data migration.
+    priority: 2
+    status: pending
+    estimated_effort: 4h
+    acceptance_criteria:
+      - "Backend supports separate deptId while keeping deptName human-readable"
+      - "Frontend uses deptId for keys/selection"
+      - "Data migration/backfill documented and tested"
   # ============================================================================
   # PHASE 1: Infrastructure & Core Setup
   # ============================================================================

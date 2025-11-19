@@ -1,3 +1,4 @@
+// Trace: SPEC-person-1, TASK-022
 import { useState } from 'react';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import {
@@ -27,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useCreatePerson } from '@/hooks/usePersons';
 import { useDepartments, useCreateDepartment } from '@/hooks/useDepartments';
+import { toCreateDepartmentRequest } from '@/lib/mappers/department';
 
 interface CreatePersonDialogProps {
   open: boolean;
@@ -38,8 +40,8 @@ export function CreatePersonDialog({
   onOpenChange,
 }: CreatePersonDialogProps) {
   const [name, setName] = useState('');
-  const [employeeId, setEmployeeId] = useState('');
-  const [departmentId, setDepartmentId] = useState('');
+  const [personId, setPersonId] = useState('');
+  const [currentDept, setCurrentDept] = useState('');
   const [deptOpen, setDeptOpen] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
 
@@ -47,22 +49,22 @@ export function CreatePersonDialog({
   const { data: departments = [] } = useDepartments();
   const createDeptMutation = useCreateDepartment();
 
-  const selectedDept = departments.find((d) => d.id === departmentId);
+  const selectedDept = departments.find((d) => d.deptName === currentDept);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !employeeId.trim()) return;
+    if (!name.trim() || !personId.trim()) return;
 
     try {
       await createPersonMutation.mutateAsync({
         name: name.trim(),
-        employeeId: employeeId.trim(),
-        departmentId: departmentId || undefined,
+        personId: personId.trim(),
+        currentDept: currentDept || undefined,
       });
       setName('');
-      setEmployeeId('');
-      setDepartmentId('');
+      setPersonId('');
+      setCurrentDept('');
       onOpenChange(false);
     } catch (error) {
       // Error handled by mutation hook
@@ -73,10 +75,10 @@ export function CreatePersonDialog({
     if (!newDeptName.trim()) return;
 
     try {
-      const dept = await createDeptMutation.mutateAsync({
-        name: newDeptName.trim(),
-      });
-      setDepartmentId(dept.id);
+      const dept = await createDeptMutation.mutateAsync(
+        toCreateDepartmentRequest(newDeptName)
+      );
+      setCurrentDept(dept.deptName);
       setNewDeptName('');
       setDeptOpen(false);
     } catch (error) {
@@ -108,11 +110,11 @@ export function CreatePersonDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="employeeId">사번</Label>
+              <Label htmlFor="personId">사번</Label>
               <Input
-                id="employeeId"
-                value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
+                id="personId"
+                value={personId}
+                onChange={(e) => setPersonId(e.target.value)}
                 placeholder="6자리 사번"
                 maxLength={6}
                 required
@@ -129,7 +131,7 @@ export function CreatePersonDialog({
                     aria-expanded={deptOpen}
                     className="justify-between"
                   >
-                    {selectedDept ? selectedDept.name : '부서를 선택하세요'}
+                    {selectedDept ? selectedDept.deptName : '부서를 선택하세요'}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -168,22 +170,22 @@ export function CreatePersonDialog({
                       <CommandGroup>
                         {departments.map((dept) => (
                           <CommandItem
-                            key={dept.id}
-                            value={dept.name}
+                            key={dept.deptName}
+                            value={dept.deptName}
                             onSelect={() => {
-                              setDepartmentId(dept.id);
+                              setCurrentDept(dept.deptName);
                               setDeptOpen(false);
                             }}
                           >
                             <Check
                               className={cn(
                                 'mr-2 h-4 w-4',
-                                departmentId === dept.id
+                                currentDept === dept.deptName
                                   ? 'opacity-100'
                                   : 'opacity-0'
                               )}
                             />
-                            {dept.name}
+                            {dept.deptName}
                           </CommandItem>
                         ))}
                       </CommandGroup>

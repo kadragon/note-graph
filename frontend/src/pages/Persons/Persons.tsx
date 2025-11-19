@@ -1,3 +1,4 @@
+// Trace: SPEC-person-1, TASK-022
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -56,16 +57,16 @@ export default function Persons() {
                   <TableHead>생성일</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {persons.map((person) => (
-                  <TableRow key={person.id}>
-                    <TableCell className="font-medium">{person.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{person.employeeId}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {person.departmentName ? (
-                        <Badge variant="secondary">{person.departmentName}</Badge>
+                <TableBody>
+                  {persons.map((person) => (
+                    <TableRow key={person.personId}>
+                      <TableCell className="font-medium">{person.name}</TableCell>
+                      <TableCell>
+                      <Badge variant="outline">{person.personId}</Badge>
+                      </TableCell>
+                      <TableCell>
+                      {person.currentDept ? (
+                        <Badge variant="secondary">{person.currentDept}</Badge>
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
