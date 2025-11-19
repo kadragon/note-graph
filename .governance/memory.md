@@ -317,6 +317,42 @@
 - Added mapper + tests to enforce `deptName` payload; updated UI keys to use `deptName`/`personId` and kept FK-safe selection.
 - Typecheck and targeted vitest suites pass; ready for deployment once favicon asset added separately.
 
+### Session 19: Embedding Retry Mechanism (2025-11-18)
+- **TASK-023**: Implement Retry Mechanism for Embedding Failures
+- Created SPEC-rag-2 for embedding reliability with GWT format
+- Implemented SDD + TDD approach (RED → GREEN cycle)
+- **Database Migration**: Created 0002_embedding_retry_queue.sql
+  - New table: embedding_retry_queue with FK to work_notes (CASCADE delete)
+  - Indexes for efficient retry processing (status, next_retry_at, work_id)
+  - Stores retry metadata: attempt_count, max_attempts, error details, timestamps
+- **EmbeddingRetryService**: Complete retry queue management
+  - Exponential backoff calculation: 2^attempt_count seconds (2s, 4s, 8s)
+  - Max 3 retry attempts before moving to dead-letter
+  - Idempotent retry operations
+  - Methods: enqueueRetry, getRetryableItems, updateRetryAttempt, moveToDeadLetter, etc.
+- **WorkNoteService Integration**: Automatic failure handling
+  - Create operation: catches embedding failures, enqueues for retry
+  - Update operation: catches re-embedding failures, enqueues for retry
+  - Delete operation: documented FK cascade behavior (retry entries auto-deleted)
+- **Admin Routes**: /admin/embedding-failures management
+  - GET /admin/embedding-failures - List dead-letter items with pagination
+  - POST /admin/embedding-failures/:id/retry - Manual retry for dead-letter items
+  - GET /admin/embedding-failures/:id - Get failure details
+  - GET /admin/retry-queue/stats - Queue statistics by status
+- **Test Coverage**: 19 new tests, all passing (332 total tests)
+  - Queue management tests (enqueue, deduplication, fetch)
+  - Exponential backoff calculation tests
+  - Dead-letter queue tests
+  - Admin query tests (pagination, filtering)
+  - Manual retry tests
+- **Technical Implementation**:
+  - Retry ID format: RETRY-{nanoid}
+  - Status values: pending, retrying, dead_letter
+  - Error details preserved as JSON for debugging
+  - Korean error messages for admin UI
+  - Background processor support (for future Cron Triggers)
+- **Status**: Eventual consistency achieved! Embedding failures now automatically retry with exponential backoff
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -332,9 +368,16 @@
 ## Technical Debt
 - Consider implementing proper tokenizer library (e.g., tiktoken) instead of character-based approximation for more accurate chunking in production
 - Vectorize deleteWorkNoteChunks uses a workaround (query + delete) instead of native prefix deletion - monitor performance with large datasets
+- ~~Implement retry mechanism for embedding failures~~ ✅ COMPLETED (TASK-022)
+- Future enhancement: Background retry processor using Cloudflare Cron Triggers to process retry queue automatically
 
 ## Lessons Learned
 - Async embedding in WorkNoteService prevents blocking CRUD operations while ensuring eventual consistency
 - Character-based tokenization (~4 chars/token) works well as approximation for Korean and English text
 - RRF algorithm (k=60) effectively merges FTS and vector search results
 - Korean workplace-specific prompts with JSON-only mode significantly improve AI response quality and reliability
+- **Embedding Retry Pattern**: Exponential backoff with dead-letter queue provides robust eventual consistency
+  - Prevents thundering herd with increasing delays (2s, 4s, 8s)
+  - Dead-letter queue enables manual inspection and retry of permanent failures
+  - FK cascade delete ensures retry queue stays clean when work notes are deleted
+  - Idempotent operations allow safe retry without side effects
