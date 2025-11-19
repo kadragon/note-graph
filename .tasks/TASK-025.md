@@ -40,25 +40,23 @@ We'll use **Option B** to follow DRY principle and maintain consistency with TAS
 
 **Features**:
 - Single dialog component for both create and edit modes
-- Mode detection via `personId` prop (undefined = create, defined = edit)
-- Pre-populate fields in edit mode
+- Explicit mode prop: `'create' | 'edit'`
+- Pre-populate fields in edit mode with initialData
+- Form validation with user-friendly error messages
 - Different dialog titles: "새 사람 추가" vs "사람 정보 수정"
 - Different button labels: "저장" vs "수정"
 - Supports all person fields: name, personId, currentDept, currentPosition
+- Person ID field disabled in edit mode
 - Uses Command + Popover for department selection (same as create)
+- Real-time error clearing when user corrects input
 
 **Props**:
 ```typescript
 interface PersonDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  personId?: string; // If provided, edit mode; otherwise create mode
-  initialData?: {
-    name: string;
-    personId: string;
-    currentDept?: string;
-    currentPosition?: string;
-  };
+  mode: 'create' | 'edit'; // Explicit mode prop
+  initialData?: Person | null; // Person data for edit mode
 }
 ```
 
@@ -73,7 +71,7 @@ export function useUpdatePerson() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ personId, data }: { personId: string; data: Partial<CreatePersonRequest> }) =>
+    mutationFn: ({ personId, data }: { personId: string; data: UpdatePersonRequest }) =>
       API.updatePerson(personId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persons'] });

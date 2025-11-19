@@ -38,6 +38,13 @@ interface PersonDialogProps {
   initialData?: Person | null;
 }
 
+interface ValidationErrors {
+  name?: string;
+  personId?: string;
+  currentDept?: string;
+  currentPosition?: string;
+}
+
 export function PersonDialog({
   open,
   onOpenChange,
@@ -50,6 +57,7 @@ export function PersonDialog({
   const [currentPosition, setCurrentPosition] = useState('');
   const [deptOpen, setDeptOpen] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
+  const [errors, setErrors] = useState<ValidationErrors>({});
 
   const createPersonMutation = useCreatePerson();
   const updatePersonMutation = useUpdatePerson();
@@ -61,6 +69,13 @@ export function PersonDialog({
 
   const selectedDept = departments.find((d) => d.deptName === currentDept);
 
+  // Reset errors when dialog opens or closes
+  useEffect(() => {
+    if (open) {
+      setErrors({});
+    }
+  }, [open]);
+
   // Pre-fill form fields in edit mode
   useEffect(() => {
     if (isEditMode && initialData) {
@@ -68,19 +83,57 @@ export function PersonDialog({
       setPersonId(initialData.personId);
       setCurrentDept(initialData.currentDept || '');
       setCurrentPosition(initialData.currentPosition || '');
-    } else if (!isEditMode) {
-      // Reset form in create mode
+      setErrors({});
+    } else if (!isEditMode && open) {
+      // Reset form in create mode when dialog opens
       setName('');
       setPersonId('');
       setCurrentDept('');
       setCurrentPosition('');
+      setErrors({});
     }
   }, [isEditMode, initialData, open]);
+
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {};
+
+    // Validate name
+    if (!name.trim()) {
+      newErrors.name = '이름을 입력하세요';
+    } else if (name.trim().length > 100) {
+      newErrors.name = '이름은 100자 이하여야 합니다';
+    }
+
+    // Validate personId (only in create mode)
+    if (!isEditMode) {
+      if (!personId.trim()) {
+        newErrors.personId = '사번을 입력하세요';
+      } else if (!/^\d{6}$/.test(personId.trim())) {
+        newErrors.personId = '사번은 6자리 숫자여야 합니다';
+      }
+    }
+
+    // Validate currentDept (optional, but if provided must be within limits)
+    if (currentDept && currentDept.length > 100) {
+      newErrors.currentDept = '부서명은 100자 이하여야 합니다';
+    }
+
+    // Validate currentPosition (optional, but if provided must be within limits)
+    if (currentPosition.trim().length > 100) {
+      newErrors.currentPosition = '직책은 100자 이하여야 합니다';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || (!isEditMode && !personId.trim())) return;
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
 
     try {
       if (isEditMode && initialData) {
@@ -103,14 +156,15 @@ export function PersonDialog({
         });
       }
 
-      // Reset form and close dialog
+      // Reset form, errors and close dialog on success
       setName('');
       setPersonId('');
       setCurrentDept('');
       setCurrentPosition('');
+      setErrors({});
       onOpenChange(false);
     } catch (error) {
-      // Error handled by mutation hook
+      // Error handled by mutation hook (toast notification)
     }
   };
 
@@ -150,10 +204,19 @@ export function PersonDialog({
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  // Clear error when user starts typing
+                  if (errors.name) {
+                    setErrors((prev) => ({ ...prev, name: undefined }));
+                  }
+                }}
                 placeholder="이름을 입력하세요"
-                required
+                className={cn(errors.name && 'border-destructive')}
               />
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name}</p>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -161,13 +224,24 @@ export function PersonDialog({
               <Input
                 id="personId"
                 value={personId}
-                onChange={(e) => setPersonId(e.target.value)}
+                onChange={(e) => {
+                  setPersonId(e.target.value);
+                  // Clear error when user starts typing
+                  if (errors.personId) {
+                    setErrors((prev) => ({ ...prev, personId: undefined }));
+                  }
+                }}
                 placeholder="6자리 사번"
                 maxLength={6}
-                required={!isEditMode}
                 disabled={isEditMode}
-                className={cn(isEditMode && 'bg-muted cursor-not-allowed')}
+                className={cn(
+                  isEditMode && 'bg-muted cursor-not-allowed',
+                  errors.personId && 'border-destructive'
+                )}
               />
+              {errors.personId && (
+                <p className="text-sm text-destructive">{errors.personId}</p>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -178,7 +252,10 @@ export function PersonDialog({
                     variant="outline"
                     role="combobox"
                     aria-expanded={deptOpen}
-                    className="justify-between"
+                    className={cn(
+                      'justify-between',
+                      errors.currentDept && 'border-destructive'
+                    )}
                     type="button"
                   >
                     {selectedDept ? selectedDept.deptName : '부서를 선택하세요'}
@@ -225,6 +302,13 @@ export function PersonDialog({
                             onSelect={() => {
                               setCurrentDept(dept.deptName);
                               setDeptOpen(false);
+                              // Clear error when user selects a dept
+                              if (errors.currentDept) {
+                                setErrors((prev) => ({
+                                  ...prev,
+                                  currentDept: undefined,
+                                }));
+                              }
                             }}
                           >
                             <Check
@@ -243,6 +327,9 @@ export function PersonDialog({
                   </Command>
                 </PopoverContent>
               </Popover>
+              {errors.currentDept && (
+                <p className="text-sm text-destructive">{errors.currentDept}</p>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -250,9 +337,24 @@ export function PersonDialog({
               <Input
                 id="currentPosition"
                 value={currentPosition}
-                onChange={(e) => setCurrentPosition(e.target.value)}
+                onChange={(e) => {
+                  setCurrentPosition(e.target.value);
+                  // Clear error when user starts typing
+                  if (errors.currentPosition) {
+                    setErrors((prev) => ({
+                      ...prev,
+                      currentPosition: undefined,
+                    }));
+                  }
+                }}
                 placeholder="예: 팀장, 대리, 과장"
+                className={cn(errors.currentPosition && 'border-destructive')}
               />
+              {errors.currentPosition && (
+                <p className="text-sm text-destructive">
+                  {errors.currentPosition}
+                </p>
+              )}
             </div>
           </div>
 
@@ -260,7 +362,10 @@ export function PersonDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => {
+                setErrors({});
+                onOpenChange(false);
+              }}
               disabled={mutation.isPending}
             >
               취소

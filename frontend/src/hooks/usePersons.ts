@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
 import { useToast } from './use-toast';
-import type { CreatePersonRequest } from '@/types/api';
+import type { CreatePersonRequest, UpdatePersonRequest } from '@/types/api';
 
 export function usePersons() {
   return useQuery({
@@ -39,7 +39,7 @@ export function useUpdatePerson() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ personId, data }: { personId: string; data: Partial<CreatePersonRequest> }) =>
+    mutationFn: ({ personId, data }: { personId: string; data: UpdatePersonRequest }) =>
       API.updatePerson(personId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persons'] });
