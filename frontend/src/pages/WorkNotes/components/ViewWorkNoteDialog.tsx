@@ -24,6 +24,9 @@ interface ViewWorkNoteDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Helper function to get today's date in YYYY-MM-DD format
+const getTodayString = (): string => new Date().toISOString().split('T')[0];
+
 export function ViewWorkNoteDialog({
   workNote,
   open,
@@ -32,7 +35,8 @@ export function ViewWorkNoteDialog({
   const [showAddTodo, setShowAddTodo] = useState(false);
   const [todoTitle, setTodoTitle] = useState('');
   const [todoDescription, setTodoDescription] = useState('');
-  const [todoDueDate, setTodoDueDate] = useState('');
+  // Set default due date to today in YYYY-MM-DD format
+  const [todoDueDate, setTodoDueDate] = useState(getTodayString);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -53,7 +57,8 @@ export function ViewWorkNoteDialog({
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       setTodoTitle('');
       setTodoDescription('');
-      setTodoDueDate('');
+      // Reset due date to today
+      setTodoDueDate(getTodayString());
       setShowAddTodo(false);
       toast({
         title: '성공',
@@ -105,6 +110,11 @@ export function ViewWorkNoteDialog({
   };
 
   const handleToggleTodoStatus = (todoId: string, currentStatus: TodoStatus) => {
+    // Only allow toggling between '진행중' and '완료'
+    // '보류' and '중단' states should be managed separately
+    if (currentStatus === '보류' || currentStatus === '중단') {
+      return;
+    }
     const newStatus: TodoStatus = currentStatus === '완료' ? '진행중' : '완료';
     updateTodoMutation.mutate({ todoId, status: newStatus });
   };
@@ -199,17 +209,20 @@ export function ViewWorkNoteDialog({
               <p className="text-sm text-muted-foreground">등록된 할일이 없습니다.</p>
             ) : (
               <div className="space-y-2">
-                {todos.map((todo) => (
-                  <div
-                    key={todo.id}
-                    className="flex items-start gap-3 p-3 border rounded-md hover:bg-accent/50 transition-colors"
-                  >
-                    <Checkbox
-                      checked={todo.status === '완료'}
-                      onCheckedChange={() => handleToggleTodoStatus(todo.id, todo.status)}
-                      disabled={updateTodoMutation.isPending}
-                      className="mt-0.5"
-                    />
+                {todos.map((todo) => {
+                  const isNonToggleableStatus = todo.status === '보류' || todo.status === '중단';
+                  return (
+                    <div
+                      key={todo.id}
+                      className="flex items-start gap-3 p-3 border rounded-md hover:bg-accent/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={todo.status === '완료'}
+                        onCheckedChange={() => handleToggleTodoStatus(todo.id, todo.status)}
+                        disabled={updateTodoMutation.isPending || isNonToggleableStatus}
+                        title={isNonToggleableStatus ? '보류/중단 상태는 체크박스로 변경할 수 없습니다' : undefined}
+                        className="mt-0.5"
+                      />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium ${todo.status === '완료' ? 'line-through text-muted-foreground' : ''}`}>
                         {todo.title}
@@ -229,7 +242,8 @@ export function ViewWorkNoteDialog({
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

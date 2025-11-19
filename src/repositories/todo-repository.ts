@@ -57,9 +57,10 @@ export class TodoRepository {
   async findById(todoId: string): Promise<Todo | null> {
     const result = await this.db
       .prepare(
-        `SELECT todo_id as todoId, work_id as workId, title, description,
-                created_at as createdAt, due_date as dueDate, wait_until as waitUntil,
-                status, repeat_rule as repeatRule, recurrence_type as recurrenceType
+        `SELECT todo_id as todoId, todo_id as id, work_id as workId, work_id as workNoteId,
+                title, description, created_at as createdAt, due_date as dueDate,
+                wait_until as waitUntil, status, repeat_rule as repeatRule,
+                recurrence_type as recurrenceType
          FROM todos
          WHERE todo_id = ?`
       )
@@ -75,9 +76,10 @@ export class TodoRepository {
   async findByWorkId(workId: string): Promise<Todo[]> {
     const result = await this.db
       .prepare(
-        `SELECT todo_id as todoId, work_id as workId, title, description,
-                created_at as createdAt, due_date as dueDate, wait_until as waitUntil,
-                status, repeat_rule as repeatRule, recurrence_type as recurrenceType
+        `SELECT todo_id as todoId, todo_id as id, work_id as workId, work_id as workNoteId,
+                title, description, created_at as createdAt, due_date as dueDate,
+                wait_until as waitUntil, status, repeat_rule as repeatRule,
+                recurrence_type as recurrenceType
          FROM todos
          WHERE work_id = ?
          ORDER BY created_at DESC`
@@ -94,10 +96,10 @@ export class TodoRepository {
   async findAll(query: ListTodosQuery): Promise<TodoWithWorkNote[]> {
     const now = new Date().toISOString();
     let sql = `
-      SELECT t.todo_id as todoId, t.work_id as workId, t.title, t.description,
-             t.created_at as createdAt, t.due_date as dueDate, t.wait_until as waitUntil,
-             t.status, t.repeat_rule as repeatRule, t.recurrence_type as recurrenceType,
-             w.title as workTitle
+      SELECT t.todo_id as todoId, t.todo_id as id, t.work_id as workId, t.work_id as workNoteId,
+             t.title, t.description, t.created_at as createdAt, t.due_date as dueDate,
+             t.wait_until as waitUntil, t.status, t.repeat_rule as repeatRule,
+             t.recurrence_type as recurrenceType, w.title as workTitle
       FROM todos t
       LEFT JOIN work_notes w ON t.work_id = w.work_id
     `;
@@ -199,7 +201,7 @@ export class TodoRepository {
   /**
    * Create new todo for a work note
    */
-  async create(workId: string, data: CreateTodoInput): Promise<Todo> {
+  async create(workId: string, data: CreateTodoInput): Promise<Todo & { id: string; workNoteId: string }> {
     const now = new Date().toISOString();
     const todoId = this.generateTodoId();
 
@@ -225,7 +227,9 @@ export class TodoRepository {
     // Return the created todo without extra DB roundtrip
     return {
       todoId,
+      id: todoId,
       workId,
+      workNoteId: workId,
       title: data.title,
       description: data.description || null,
       createdAt: now,
