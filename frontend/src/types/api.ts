@@ -105,6 +105,7 @@ export interface Todo {
   repeatRule?: RepeatRule;
   recurrenceType?: RecurrenceType;
   workNoteId?: string;
+  workTitle?: string;
   createdAt: string;
   updatedAt: string;
 }
