@@ -11,4 +11,5 @@ export interface Env {
   OPENAI_MODEL_CHAT: string;
   OPENAI_MODEL_EMBEDDING: string;
   OPENAI_API_KEY: string;
+  CF_AIG_AUTHORIZATION?: string;
 }

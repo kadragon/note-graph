@@ -169,12 +169,19 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
       response_format: { type: 'json_object' }, // Ensure JSON response
     };
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
+    };
+
+    // Add Cloudflare AI Gateway authorization if configured
+    if (this.env.CF_AIG_AUTHORIZATION) {
+      headers['cf-aig-authorization'] = `Bearer ${this.env.CF_AIG_AUTHORIZATION}`;
+    }
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
-      },
+      headers,
       body: JSON.stringify(requestBody),
     });
 
