@@ -1,0 +1,309 @@
+spec_id: SPEC-person-2
+title: "Edit Person Feature"
+description: >
+  Allow users to edit existing person information through a clickable
+  table row interface. Reuse the person dialog component for both
+  create and edit operations.
+parent_spec: SPEC-person-1
+task_id: TASK-025
+
+given_when_then:
+  - given: "User is viewing the person list page"
+    when: "User clicks on a person row"
+    then: "Edit person dialog opens with pre-filled data"
+
+  - given: "Edit person dialog is open with existing person data"
+    when: "User modifies the name and saves"
+    then: >
+      Person is updated with new name,
+      person list refreshes showing updated data,
+      success toast appears
+
+  - given: "Edit person dialog is open"
+    when: "User attempts to modify the person ID field"
+    then: "Person ID field is disabled and cannot be modified"
+
+  - given: "Person has department A"
+    when: "User changes department to B in edit dialog and saves"
+    then: >
+      Person's current department is updated to B,
+      department history is updated (dept A marked inactive, dept B marked active),
+      person list shows new department
+
+  - given: "Edit person dialog is open with valid data"
+    when: "User clears required fields and attempts to save"
+    then: "Form validation prevents submission with error message"
+
+  - given: "Person table row is hovered"
+    when: "Mouse cursor is over the row"
+    then: "Row shows hover background color and cursor changes to pointer"
+
+acceptance_tests:
+  - id: TEST-person-edit-1
+    desc: "Click person row opens edit dialog"
+    steps:
+      - "Navigate to /persons page"
+      - "Click on first person row"
+      - "Verify edit dialog opens"
+      - "Verify dialog title is '사람 정보 수정'"
+      - "Verify form fields are pre-filled with person data"
+
+  - id: TEST-person-edit-2
+    desc: "Edit person name successfully"
+    steps:
+      - "Open edit dialog for person '홍길동'"
+      - "Change name to '홍길순'"
+      - "Click save button"
+      - "Verify PUT /persons/{personId} API called"
+      - "Verify success toast appears"
+      - "Verify dialog closes"
+      - "Verify person list shows '홍길순'"
+
+  - id: TEST-person-edit-3
+    desc: "Edit person department triggers history update"
+    steps:
+      - "Create person with dept '개발팀'"
+      - "Open edit dialog"
+      - "Change department to '기획팀'"
+      - "Save changes"
+      - "Verify PUT /persons/{personId} called with currentDept='기획팀'"
+      - "Verify backend updates department history"
+      - "Verify person list shows new department"
+
+  - id: TEST-person-edit-4
+    desc: "Person ID field is disabled in edit mode"
+    steps:
+      - "Open edit dialog for existing person"
+      - "Verify personId input field has disabled attribute"
+      - "Attempt to type in personId field"
+      - "Verify field value does not change"
+
+  - id: TEST-person-edit-5
+    desc: "Form validation works in edit mode"
+    steps:
+      - "Open edit dialog"
+      - "Clear name field (required)"
+      - "Click save button"
+      - "Verify form validation error appears"
+      - "Verify API is not called"
+
+  - id: TEST-person-edit-6
+    desc: "Department selection works in edit mode"
+    steps:
+      - "Open edit dialog"
+      - "Click department selector"
+      - "Verify popover opens with department list"
+      - "Search for department"
+      - "Select different department"
+      - "Verify department field updates"
+
+  - id: TEST-person-edit-7
+    desc: "Edit dialog cancel button works"
+    steps:
+      - "Open edit dialog"
+      - "Modify person name"
+      - "Click cancel button"
+      - "Verify dialog closes"
+      - "Verify no API call was made"
+      - "Verify person list unchanged"
+
+  - id: TEST-person-edit-8
+    desc: "Hover state on person rows"
+    steps:
+      - "Navigate to /persons page"
+      - "Hover over person row"
+      - "Verify row background changes (hover:bg-muted/50)"
+      - "Verify cursor changes to pointer"
+
+  - id: TEST-person-edit-9
+    desc: "Multiple edits in sequence"
+    steps:
+      - "Edit person A"
+      - "Save changes"
+      - "Wait for dialog to close"
+      - "Edit person B"
+      - "Verify dialog shows person B data (not person A)"
+
+  - id: TEST-person-edit-10
+    desc: "Edit error handling"
+    steps:
+      - "Open edit dialog"
+      - "Modify person data"
+      - "Mock API to return 400 error"
+      - "Click save"
+      - "Verify error toast appears"
+      - "Verify dialog remains open"
+      - "Verify person list unchanged"
+
+dependencies:
+  backend_apis:
+    - "PUT /persons/{personId}" # Already implemented
+
+  frontend_components:
+    - "Dialog component" # Already exists
+    - "Command component" # Already exists
+    - "Popover component" # Already exists
+    - "usePersons hook" # Already exists
+
+  new_components:
+    - "PersonDialog (refactored from CreatePersonDialog)"
+    - "useUpdatePerson hook"
+
+linked_tasks:
+  - TASK-025
+
+technical_notes:
+  - "Reuse CreatePersonDialog by adding mode prop (create/edit)"
+  - "Person ID field should be disabled in edit mode (cannot change PK)"
+  - "Department change triggers backend history update automatically"
+  - "Use same form validation as create mode"
+  - "useUpdatePerson hook follows same pattern as useCreatePerson"
+  - "Table row click handler needs to prevent event bubbling"
+
+frontend_changes:
+  components:
+    - path: "frontend/src/pages/Persons/components/CreatePersonDialog.tsx"
+      action: "Refactor to PersonDialog.tsx with mode support"
+      changes:
+        - "Add mode prop: 'create' | 'edit'"
+        - "Add initialData prop for edit mode"
+        - "Conditionally disable personId field in edit mode"
+        - "Change dialog title based on mode"
+        - "Change button text based on mode"
+        - "Use useCreatePerson or useUpdatePerson based on mode"
+
+    - path: "frontend/src/pages/Persons/Persons.tsx"
+      action: "Add edit functionality"
+      changes:
+        - "Add state: editDialogOpen, selectedPerson"
+        - "Add handleRowClick function"
+        - "Add onClick and className to TableRow"
+        - "Add EditPersonDialog component"
+
+  hooks:
+    - path: "frontend/src/hooks/usePersons.ts"
+      action: "Add useUpdatePerson hook"
+      changes:
+        - "Export useUpdatePerson mutation hook"
+        - "Call API.updatePerson"
+        - "Invalidate persons query on success"
+        - "Show toast notifications"
+
+ui_components:
+  PersonDialog:
+    props:
+      - name: "open"
+        type: "boolean"
+        required: true
+      - name: "onOpenChange"
+        type: "(open: boolean) => void"
+        required: true
+      - name: "mode"
+        type: "'create' | 'edit'"
+        required: true
+      - name: "initialData"
+        type: "Person | null"
+        required: false
+        desc: "Pre-fill data for edit mode"
+
+    behavior:
+      create_mode:
+        - "Empty form fields"
+        - "Person ID field enabled"
+        - "Title: '새 사람 추가'"
+        - "Button: '저장'"
+        - "Calls useCreatePerson on submit"
+
+      edit_mode:
+        - "Pre-filled form fields from initialData"
+        - "Person ID field disabled"
+        - "Title: '사람 정보 수정'"
+        - "Button: '수정'"
+        - "Calls useUpdatePerson on submit"
+
+validation_rules:
+  name:
+    - required: true
+    - min_length: 1
+    - max_length: 100
+    - message: "이름을 입력하세요"
+
+  personId:
+    - required: true # Only in create mode
+    - pattern: "^\\d{6}$"
+    - message: "6자리 사번을 입력하세요"
+    - disabled_in_edit: true
+
+  currentDept:
+    - required: false
+    - max_length: 100
+
+  currentPosition:
+    - required: false
+    - max_length: 100
+
+api_integration:
+  update_person:
+    endpoint: "PUT /persons/{personId}"
+    request_body:
+      name: "string (optional)"
+      currentDept: "string (optional)"
+      currentPosition: "string (optional)"
+      currentRoleDesc: "string (optional)"
+
+    response:
+      personId: "string"
+      name: "string"
+      currentDept: "string | null"
+      currentPosition: "string | null"
+      currentRoleDesc: "string | null"
+      createdAt: "string (ISO 8601)"
+      updatedAt: "string (ISO 8601)"
+
+    error_codes:
+      - 400: "Validation error"
+      - 404: "Person not found"
+      - 500: "Server error"
+
+styling:
+  table_row_hover:
+    className: "cursor-pointer hover:bg-muted/50"
+
+  disabled_input:
+    className: "bg-muted cursor-not-allowed"
+    attributes:
+      - "disabled"
+
+test_coverage:
+  unit_tests:
+    - "useUpdatePerson hook"
+    - "PersonDialog component (create mode)"
+    - "PersonDialog component (edit mode)"
+    - "Form validation logic"
+
+  integration_tests:
+    - "Persons page with edit functionality"
+    - "PersonDialog with API integration"
+    - "Department selection in edit mode"
+
+  e2e_tests:
+    - "Full edit workflow"
+    - "Error handling"
+    - "Multiple sequential edits"
+
+accessibility:
+  - "Table rows have cursor-pointer to indicate clickability"
+  - "Dialog has proper ARIA labels"
+  - "Disabled inputs have aria-disabled attribute"
+  - "Form validation errors are announced"
+  - "Success/error toasts are announced"
+
+performance:
+  - "Query invalidation triggers single refetch"
+  - "Dialog state is local (no global state pollution)"
+  - "Form validation is client-side (instant feedback)"
+
+security:
+  - "Person ID cannot be changed (primary key protection)"
+  - "Form data sanitization handled by API layer"
+  - "XSS prevention via React's built-in escaping"

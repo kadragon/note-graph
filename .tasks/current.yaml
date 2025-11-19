@@ -1,8 +1,8 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task: TASK-024
+current_task: TASK-025
 notes: |
-  TASK-024: Replace checkbox-based assignee selector with searchable
-  autocomplete component using Command UI. This improves UX when there are
-  many persons in the system.
+  TASK-025: Add edit person feature to allow users to modify existing
+  person information by clicking on table rows. Reuses the PersonDialog
+  component for both create and edit operations.
