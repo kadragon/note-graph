@@ -7,6 +7,7 @@ import type { Env } from '../types/env';
 import type { WorkNoteDraft, AIDraftTodo } from '../types/search';
 import type { WorkNote } from '../types/work-note';
 import { RateLimitError } from '../types/errors';
+import { getAIGatewayHeaders } from '../utils/ai-gateway';
 
 /**
  * AI Draft Service
@@ -171,10 +172,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
-      },
+      headers: getAIGatewayHeaders(this.env),
       body: JSON.stringify(requestBody),
     });
 
