@@ -9,8 +9,9 @@ export function toCreateDepartmentRequest(
 ): CreateDepartmentRequest {
   const payload: CreateDepartmentRequest = { deptName: name.trim() };
 
-  if (description && description.trim()) {
-    payload.description = description.trim();
+  const trimmedDescription = description?.trim();
+  if (trimmedDescription) {
+    payload.description = trimmedDescription;
   }
 
   return payload;
