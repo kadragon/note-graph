@@ -148,6 +148,11 @@ class APIClient {
     return response.map(this.transformWorkNoteFromBackend);
   }
 
+  async getWorkNote(workId: string) {
+    const response = await this.request<BackendWorkNote>(`/work-notes/${workId}`);
+    return this.transformWorkNoteFromBackend(response);
+  }
+
   async createWorkNote(data: CreateWorkNoteRequest) {
     // Transform content to contentRaw for backend
     const { content, ...rest } = data;
