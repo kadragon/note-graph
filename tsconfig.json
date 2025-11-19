@@ -1,65 +1,7 @@
 {
-  "compilerOptions": {
-    // Language and Environment
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "ES2022",
-    "moduleResolution": "bundler",
-
-    // Type Checking
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitReturns": true,
-    "noImplicitOverride": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": false,
-
-    // Emit
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "removeComments": false,
-
-    // Interop Constraints
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-    "verbatimModuleSyntax": false,
-
-    // Output
-    "outDir": "./dist",
-    "rootDir": "./src",
-
-    // Path Mapping
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@/types/*": ["./src/types/*"],
-      "@/services/*": ["./src/services/*"],
-      "@/handlers/*": ["./src/handlers/*"],
-      "@/utils/*": ["./src/utils/*"]
-    },
-
-    // Cloudflare Workers Types
-    "types": [
-      "@cloudflare/workers-types"
-    ],
-
-    // Skip lib check for faster compilation
-    "skipLibCheck": true
-  },
-
-  "include": [
-    "src/**/*"
-  ],
-
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts"
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.backend.json" },
+    { "path": "./tsconfig.app.json" }
   ]
 }
