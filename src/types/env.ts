@@ -5,7 +5,6 @@
 export interface Env {
   DB: D1Database;
   VECTORIZE: VectorizeIndex;
-  PDF_TEMP_STORAGE: R2Bucket;
   AI_GATEWAY: Fetcher;
   ENVIRONMENT: string;
   AI_GATEWAY_ID: string;

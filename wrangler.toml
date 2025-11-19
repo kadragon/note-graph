@@ -26,13 +26,6 @@ index_name = "worknote-vectors"
 # Configure via CLI: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
 
 # ============================================================================
-# R2 Storage
-# ============================================================================
-[[r2_buckets]]
-binding = "PDF_TEMP_STORAGE"
-bucket_name = "worknote-pdf-temp"
-
-# ============================================================================
 # AI Gateway (for OpenAI API)
 # ============================================================================
 [ai]
@@ -82,6 +75,5 @@ enabled = true
 # ============================================================================
 # 1. Create D1 database: wrangler d1 create worknote-db
 # 2. Create Vectorize index: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
-# 3. Create R2 bucket: wrangler r2 bucket create worknote-pdf-temp
-# 4. Set secrets: wrangler secret put OPENAI_API_KEY
-# 5. Update account_id, database_id after creation
+# 3. Set secrets: wrangler secret put OPENAI_API_KEY
+# 4. Update account_id, database_id after creation
