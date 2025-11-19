@@ -21,6 +21,14 @@ export interface WorkNote {
   updatedAt: string;
 }
 
+export interface WorkNoteWithStats extends WorkNote {
+  todoStats: {
+    total: number;
+    completed: number;
+    remaining: number;
+  };
+}
+
 export interface CreateWorkNoteRequest {
   title: string;
   content: string; // Will be sent as contentRaw to backend
