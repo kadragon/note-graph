@@ -21,6 +21,7 @@ import { useCreateWorkNote } from '@/hooks/useWorkNotes';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { useToast } from '@/hooks/use-toast';
+import type { AIDraftTodo } from '@/types/api';
 
 interface CreateFromTextDialogProps {
   open: boolean;
@@ -37,7 +38,7 @@ export function CreateFromTextDialog({
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
-  const [suggestedTodos, setSuggestedTodos] = useState<string[]>([]);
+  const [suggestedTodos, setSuggestedTodos] = useState<AIDraftTodo[]>([]);
 
   const generateMutation = useGenerateDraftWithSimilar();
   const createMutation = useCreateWorkNote();
@@ -62,7 +63,7 @@ export function CreateFromTextDialog({
 
       setTitle(result.title);
       setContent(result.content);
-      setSuggestedTodos(result.suggestedTodos || []);
+      setSuggestedTodos(result.todos || []);
 
       // Try to find matching category
       const matchingCategory = taskCategories.find(
@@ -261,11 +262,19 @@ export function CreateFromTextDialog({
                 <div className="grid gap-2">
                   <Label>제안된 할일 (참고용)</Label>
                   <Card className="p-3">
-                    <ul className="space-y-1 text-sm">
+                    <ul className="space-y-2 text-sm">
                       {suggestedTodos.map((todo, idx) => (
-                        <li key={idx} className="flex items-start">
+                        <li key={`${todo.title}-${idx}`} className="flex items-start">
                           <span className="mr-2">•</span>
-                          <span>{todo}</span>
+                          <div className="flex-1">
+                            <div className="font-medium">{todo.title}</div>
+                            {todo.description && (
+                              <div className="text-muted-foreground text-xs mt-0.5">{todo.description}</div>
+                            )}
+                            {todo.dueDate && (
+                              <div className="text-muted-foreground text-xs mt-0.5">마감: {todo.dueDate}</div>
+                            )}
+                          </div>
                         </li>
                       ))}
                     </ul>
