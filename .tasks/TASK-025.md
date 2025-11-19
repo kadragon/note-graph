@@ -123,27 +123,38 @@ export interface WorkNote {
 
 #### Solution Options
 
-**Option A: Backend Enhancement (Not preferred for this task)**
+**Option A: Backend Enhancement (SELECTED)**
 - Modify backend API to include dept/position in work note response
-- Requires backend changes, migrations, tests
+- Update SQL queries in WorkNoteRepository to join person data
+- Update TypeScript types to include new fields
+- Provides cleaner API contract and better performance
+- **Selected because:** More efficient than frontend joins, cleaner data model
 
-**Option B: Frontend Join (Recommended)**
+**Option B: Frontend Join (Not selected)**
 - Fetch persons list separately (already done via usePersons hook)
 - Join data in frontend to enrich person info with dept/position
 - No backend changes needed
+- **Not selected because:** Less efficient, requires additional client-side processing
 
 ### 5. Implementation Plan
 
-#### Step 1: Create Utility Function
-- Add `formatPersonBadge` utility in `frontend/src/lib/utils.ts` or create new `frontend/src/lib/formatters.ts`
+#### Step 1: Update Backend (Actual Implementation)
+- Enhance `WorkNotePersonAssociation` type with `currentDept` and `currentPosition`
+- Update SQL queries in `findByIdWithDetails` to join person department/position
+- Update SQL queries in `findAll` to include person organizational info in batch fetch
 
-#### Step 2: Update AssigneeSelector
+#### Step 2: Create Utility Function
+- Add `formatPersonBadge` utility in `frontend/src/lib/utils.ts`
+- Implement logic: position only displays when department is present
+
+#### Step 3: Update AssigneeSelector
 - Import utility function
 - Replace `{person.name}` with `{formatPersonBadge(person)}`
 - Person object already has all required fields
 
-#### Step 3: Update ViewWorkNoteDialog
-- Enrich work note persons with full person data from persons list
+#### Step 4: Update ViewWorkNoteDialog
+- Import utility function
+- Update frontend types to include dept/position fields
 - Use utility function to format display
 - Maintain role suffix
 

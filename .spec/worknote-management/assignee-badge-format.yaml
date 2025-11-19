@@ -66,10 +66,12 @@ linked_tasks:
   - TASK-025
 
 technical_notes:
-  - "Frontend-only change, no backend modifications needed"
+  - "Backend changes: Enhanced API to include dept/position in WorkNotePersonAssociation"
+  - "Frontend changes: Created formatPersonBadge utility and updated components"
   - "Person type already includes currentDept, currentPosition fields"
   - "Badge format logic should be reusable across components"
   - "Should maintain (담당) suffix for OWNER role in ViewWorkNoteDialog"
+  - "Position only displays when department is present (no orphaned positions)"
 
 affected_components:
   - frontend/src/components/AssigneeSelector.tsx
