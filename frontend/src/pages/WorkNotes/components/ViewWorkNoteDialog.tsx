@@ -54,6 +54,9 @@ export function ViewWorkNoteDialog({
   // Set default due date to today in YYYY-MM-DD format
   const [todoDueDate, setTodoDueDate] = useState(getTodayString);
 
+  // Detect system theme preference
+  const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const updateMutation = useUpdateWorkNote();
@@ -90,6 +93,24 @@ export function ViewWorkNoteDialog({
       setIsEditing(false);
     }
   }, [open]);
+
+  // Detect and sync with system theme preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateColorMode = (e: MediaQueryListEvent | MediaQueryList) => {
+      setColorMode(e.matches ? 'dark' : 'light');
+    };
+
+    // Set initial value
+    updateColorMode(mediaQuery);
+
+    // Listen for changes
+    mediaQuery.addEventListener('change', updateColorMode);
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateColorMode);
+    };
+  }, []);
 
   // Create todo mutation
   const createTodoMutation = useMutation({
@@ -338,7 +359,7 @@ export function ViewWorkNoteDialog({
           <div className="border-t pt-4">
             <h3 className="font-semibold mb-2">내용</h3>
             {isEditing ? (
-              <div data-color-mode="light">
+              <div data-color-mode={colorMode}>
                 <MDEditor
                   value={editContent}
                   onChange={(value) => setEditContent(value || '')}
@@ -348,7 +369,7 @@ export function ViewWorkNoteDialog({
                 />
               </div>
             ) : (
-              <div className="prose prose-sm max-w-none border rounded-md p-4 bg-gray-50" data-color-mode="light">
+              <div className="prose prose-sm max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800" data-color-mode={colorMode}>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeSanitize]}

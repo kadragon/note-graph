@@ -42,6 +42,10 @@ export default function WorkNotes() {
       );
       if (updatedWorkNote) {
         setSelectedWorkNote(updatedWorkNote);
+      } else {
+        // Clear selection if note was deleted
+        setSelectedWorkNote(null);
+        setViewDialogOpen(false);
       }
     }
   }, [workNotes, selectedWorkNote?.id]);
