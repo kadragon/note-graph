@@ -18,6 +18,7 @@ export const createDepartmentSchema = z.object({
  */
 export const updateDepartmentSchema = z.object({
   description: z.string().max(500).optional(),
+  isActive: z.boolean().optional(),
 });
 
 /**

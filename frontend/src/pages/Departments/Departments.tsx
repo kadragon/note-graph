@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -13,12 +14,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useDepartments } from '@/hooks/useDepartments';
+import { useDepartments, useUpdateDepartment } from '@/hooks/useDepartments';
 import { CreateDepartmentDialog } from './components/CreateDepartmentDialog';
 
 export default function Departments() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { data: departments = [], isLoading } = useDepartments();
+  const updateDepartmentMutation = useUpdateDepartment();
+
+  const handleToggleStatus = (deptName: string, currentStatus: boolean) => {
+    updateDepartmentMutation.mutate({
+      deptName,
+      data: { isActive: !currentStatus },
+    });
+  };
 
   return (
     <div className="p-6">
@@ -51,17 +60,34 @@ export default function Departments() {
               <TableHeader>
                 <TableRow>
                   <TableHead>부서명</TableHead>
+                  <TableHead>상태</TableHead>
                   <TableHead>생성일</TableHead>
+                  <TableHead>작업</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {departments.map((dept) => (
-                  <TableRow key={dept.deptName}>
+                  <TableRow key={dept.deptName} className={!dept.isActive ? 'opacity-60' : ''}>
                     <TableCell className="font-medium">{dept.deptName}</TableCell>
+                    <TableCell>
+                      <Badge variant={dept.isActive ? 'default' : 'secondary'}>
+                        {dept.isActive ? '운영중' : '폐지됨'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {format(parseISO(dept.createdAt), 'yyyy-MM-dd HH:mm', {
                         locale: ko,
                       })}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleToggleStatus(dept.deptName, dept.isActive)}
+                        disabled={updateDepartmentMutation.isPending}
+                      >
+                        {dept.isActive ? '폐지' : '재개'}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

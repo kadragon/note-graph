@@ -7,11 +7,13 @@ import type {
   CreatePersonRequest,
   Department,
   CreateDepartmentRequest,
+  UpdateDepartmentRequest,
   TaskCategory,
   CreateTaskCategoryRequest,
   UpdateTaskCategoryRequest,
   Todo,
   TodoView,
+  CreateTodoRequest,
   UpdateTodoRequest,
   SearchRequest,
   SearchResult,
@@ -108,16 +110,21 @@ class APIClient {
   }
 
   createWorkNote(data: CreateWorkNoteRequest) {
+    // Transform content to contentRaw for backend
+    const { content, ...rest } = data;
     return this.request<WorkNote>('/work-notes', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...rest, contentRaw: content }),
     });
   }
 
   updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
+    // Transform content to contentRaw for backend if present
+    const { content, ...rest } = data;
+    const payload = content !== undefined ? { ...rest, contentRaw: content } : rest;
     return this.request<WorkNote>(`/work-notes/${workId}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   }
 
@@ -158,6 +165,13 @@ class APIClient {
     });
   }
 
+  updateDepartment(deptName: string, data: UpdateDepartmentRequest) {
+    return this.request<Department>(`/departments/${deptName}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Task Categories
   getTaskCategories() {
     return this.request<TaskCategory[]>('/task-categories');
@@ -191,6 +205,18 @@ class APIClient {
   updateTodo(todoId: string, data: UpdateTodoRequest) {
     return this.request<Todo>(`/todos/${todoId}`, {
       method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Work Note Todos
+  getWorkNoteTodos(workId: string) {
+    return this.request<Todo[]>(`/work-notes/${workId}/todos`);
+  }
+
+  createWorkNoteTodo(workId: string, data: CreateTodoRequest) {
+    return this.request<Todo>(`/work-notes/${workId}/todos`, {
+      method: 'POST',
       body: JSON.stringify(data),
     });
   }
