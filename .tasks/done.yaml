@@ -680,6 +680,21 @@ completed_tasks:
       - Dark mode theme
       - PWA features
 
+  - task_id: TASK-022
+    title: "Fix department creation errors in frontend"
+    spec_id: SPEC-dept-1
+    completed_at: "2025-11-19T13:16:00Z"
+    outcome: |
+      Aligned frontend department/person types with backend contracts to stop
+      400 errors during department creation and eliminated React key warnings
+      by using stable identifiers (deptName/personId). Added payload mapper and
+      tests to ensure department creation sends deptName.
+    test_results: |
+      ✓ npm test -- frontend/src/lib/api.test.ts frontend/src/lib/mappers/department.test.ts
+      ✓ npm run typecheck
+    estimated_effort: 2h
+    actual_effort: ~0.5h
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"

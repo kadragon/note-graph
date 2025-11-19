@@ -312,6 +312,11 @@
 - Suggestions render via custom dropdown with arrow/enter/escape controls; inline add stays compatible
 - Kept debounced async search; limited results to mitigate large lists
 
+### Session 18: Department Creation Contract Fix (2025-11-19)
+- **TASK-022 Completed**: Aligned frontend department/person models with backend (`deptName`, `personId`, `currentDept`) to resolve 400 errors when adding departments and remove React key warnings.
+- Added mapper + tests to enforce `deptName` payload; updated UI keys to use `deptName`/`personId` and kept FK-safe selection.
+- Typecheck and targeted vitest suites pass; ready for deployment once favicon asset added separately.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
