@@ -1,72 +1,15 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>업무노트 관리 시스템</title>
-  <link rel="stylesheet" href="/css/styles.css">
-</head>
-<body>
-  <!-- App Container -->
-  <div id="app">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1>📝 업무노트</h1>
-        <div class="user-info" id="user-info">
-          <span class="user-email">Loading...</span>
-        </div>
-      </div>
-
-      <nav class="sidebar-nav">
-        <a href="#/" class="nav-item active" data-page="dashboard">
-          <span class="nav-icon">📊</span>
-          <span class="nav-label">대시보드</span>
-        </a>
-        <a href="#/work-notes" class="nav-item" data-page="work-notes">
-          <span class="nav-icon">📄</span>
-          <span class="nav-label">업무노트</span>
-        </a>
-        <a href="#/persons" class="nav-item" data-page="persons">
-          <span class="nav-icon">👤</span>
-          <span class="nav-label">사람 관리</span>
-        </a>
-        <a href="#/departments" class="nav-item" data-page="departments">
-          <span class="nav-icon">🏢</span>
-          <span class="nav-label">부서 관리</span>
-        </a>
-        <a href="#/search" class="nav-item" data-page="search">
-          <span class="nav-icon">🔍</span>
-          <span class="nav-label">검색</span>
-        </a>
-        <a href="#/rag" class="nav-item" data-page="rag">
-          <span class="nav-icon">💬</span>
-          <span class="nav-label">AI 챗봇</span>
-        </a>
-        <a href="#/pdf" class="nav-item" data-page="pdf">
-          <span class="nav-icon">📎</span>
-          <span class="nav-label">PDF 업로드</span>
-        </a>
-      </nav>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <div id="page-container">
-        <!-- Dynamic content will be rendered here -->
-      </div>
-    </main>
-  </div>
-
-  <!-- Loading Overlay -->
-  <div id="loading-overlay" class="loading-overlay hidden">
-    <div class="spinner"></div>
-  </div>
-
-  <!-- Toast Notifications -->
-  <div id="toast-container" class="toast-container"></div>
-
-  <!-- JavaScript -->
-  <script src="/js/app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>업무노트 관리 시스템</title>
+    <script type="module" crossorigin src="/assets/index-BqWUo-eL.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-b_qKjUZX.js">
+    <link rel="modulepreload" crossorigin href="/assets/query-vendor-BGzLAxl-.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-LjoXkmYs.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
