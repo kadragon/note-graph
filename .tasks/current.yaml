@@ -1,7 +1,8 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task: null
+current_task: TASK-024
 notes: |
-  TASK-022 completed. Fixed department creation payload/key issues in the
-  frontend and aligned person/department typing with backend contracts.
+  TASK-024: Replace checkbox-based assignee selector with searchable
+  autocomplete component using Command UI. This improves UX when there are
+  many persons in the system.
