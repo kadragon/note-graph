@@ -58,6 +58,7 @@ interface BackendTodo {
   repeatRule?: RepeatRule;
   recurrenceType?: RecurrenceType;
   createdAt: string;
+  updatedAt: string;
   workTitle?: string;
 }
 
@@ -199,7 +200,7 @@ class APIClient {
       repeatRule: backendTodo.repeatRule,
       recurrenceType: backendTodo.recurrenceType,
       createdAt: backendTodo.createdAt,
-      updatedAt: backendTodo.createdAt, // Backend doesn't have updatedAt for todos
+      updatedAt: backendTodo.updatedAt,
     };
   }
 
