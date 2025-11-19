@@ -16,7 +16,7 @@ export interface WorkNote {
 
 export interface CreateWorkNoteRequest {
   title: string;
-  content: string;
+  content: string; // Will be sent as contentRaw to backend
   category?: string;
   categoryIds?: string[];
   relatedPersonIds?: string[];
@@ -55,12 +55,18 @@ export interface CreatePersonRequest {
 export interface Department {
   deptName: string;
   description?: string | null;
+  isActive: boolean;
   createdAt: string;
 }
 
 export interface CreateDepartmentRequest {
   deptName: string;
   description?: string;
+}
+
+export interface UpdateDepartmentRequest {
+  description?: string;
+  isActive?: boolean;
 }
 
 // Task Category types
@@ -79,22 +85,42 @@ export interface UpdateTaskCategoryRequest {
 }
 
 // Todo types
-export type TodoStatus = 'pending' | 'completed';
-export type TodoView = 'today' | 'week' | 'month' | 'backlog' | 'all';
+export type TodoStatus = '진행중' | '완료' | '보류' | '중단';
+export type TodoView = 'today' | 'this_week' | 'this_month' | 'backlog' | 'all';
+export type RepeatRule = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type RecurrenceType = 'DUE_DATE' | 'COMPLETION_DATE';
 
 export interface Todo {
   id: string;
   title: string;
+  description?: string;
   status: TodoStatus;
   dueDate?: string;
-  recurrence?: string;
+  waitUntil?: string;
+  repeatRule?: RepeatRule;
+  recurrenceType?: RecurrenceType;
   workNoteId?: string;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface CreateTodoRequest {
+  title: string;
+  description?: string;
+  dueDate?: string;
+  waitUntil?: string;
+  repeatRule?: RepeatRule;
+  recurrenceType?: RecurrenceType;
+}
+
 export interface UpdateTodoRequest {
+  title?: string;
+  description?: string;
   status?: TodoStatus;
+  dueDate?: string;
+  waitUntil?: string;
+  repeatRule?: RepeatRule;
+  recurrenceType?: RecurrenceType;
 }
 
 // Search types

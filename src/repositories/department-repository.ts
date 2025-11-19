@@ -17,7 +17,7 @@ export class DepartmentRepository {
   async findByName(deptName: string): Promise<Department | null> {
     const result = await this.db
       .prepare(
-        `SELECT dept_name as deptName, description, created_at as createdAt
+        `SELECT dept_name as deptName, description, is_active as isActive, created_at as createdAt
          FROM departments
          WHERE dept_name = ?`
       )
@@ -31,7 +31,7 @@ export class DepartmentRepository {
    * Find all departments
    */
   async findAll(searchQuery?: string, limit: number = 100): Promise<Department[]> {
-    let sql = `SELECT dept_name as deptName, description, created_at as createdAt
+    let sql = `SELECT dept_name as deptName, description, is_active as isActive, created_at as createdAt
                FROM departments`;
     const params: string[] = [];
 
@@ -40,7 +40,7 @@ export class DepartmentRepository {
       params.push(`%${searchQuery}%`);
     }
 
-    sql += ` ORDER BY dept_name ASC LIMIT ?`;
+    sql += ` ORDER BY is_active DESC, dept_name ASC LIMIT ?`;
     params.push(String(limit));
 
     const stmt = this.db.prepare(sql);
@@ -63,8 +63,8 @@ export class DepartmentRepository {
 
     await this.db
       .prepare(
-        `INSERT INTO departments (dept_name, description, created_at)
-         VALUES (?, ?, ?)`
+        `INSERT INTO departments (dept_name, description, is_active, created_at)
+         VALUES (?, ?, 1, ?)`
       )
       .bind(data.deptName, data.description || null, now)
       .run();
@@ -73,6 +73,7 @@ export class DepartmentRepository {
     return {
       deptName: data.deptName,
       description: data.description || null,
+      isActive: true,
       createdAt: now,
     };
   }
@@ -86,15 +87,30 @@ export class DepartmentRepository {
       throw new NotFoundError('Department', deptName);
     }
 
-    // Only update if description is provided
+    // Build update query dynamically based on provided fields
+    const updates: string[] = [];
+    const params: any[] = [];
+
     if (data.description !== undefined) {
+      updates.push('description = ?');
+      params.push(data.description || null);
+    }
+
+    if (data.isActive !== undefined) {
+      updates.push('is_active = ?');
+      params.push(data.isActive ? 1 : 0);
+    }
+
+    // Only run update if there are fields to update
+    if (updates.length > 0) {
+      params.push(deptName);
       await this.db
         .prepare(
           `UPDATE departments
-           SET description = ?
+           SET ${updates.join(', ')}
            WHERE dept_name = ?`
         )
-        .bind(data.description || null, deptName)
+        .bind(...params)
         .run();
     }
 
@@ -102,6 +118,7 @@ export class DepartmentRepository {
     return {
       ...existing,
       description: data.description !== undefined ? data.description || null : existing.description,
+      isActive: data.isActive !== undefined ? data.isActive : existing.isActive,
     };
   }
 
