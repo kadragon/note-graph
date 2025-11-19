@@ -39,6 +39,8 @@ export interface WorkNotePersonAssociation {
   personId: string;
   role: 'OWNER' | 'RELATED';
   personName?: string; // Joined from persons table
+  currentDept?: string | null; // Joined from persons table
+  currentPosition?: string | null; // Joined from persons table
 }
 
 /**

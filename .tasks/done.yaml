@@ -718,6 +718,39 @@ completed_tasks:
     estimated_effort: 2h
     actual_effort: ~0.5h
 
+  - task_id: TASK-025
+    title: "Assignee Badge Display Format"
+    spec_id: SPEC-worknote-2
+    completed_at: "2025-11-19T08:00:00Z"
+    outcome: |
+      Updated assignee badge display format to show department/position/name
+      (or dept/name if position is null). Enhanced backend API to include
+      currentDept and currentPosition in WorkNotePersonAssociation responses.
+      Created reusable formatPersonBadge utility function. Updated AssigneeSelector
+      and ViewWorkNoteDialog to use the new format. All badges now consistently
+      display organizational context.
+    test_results: |
+      ✓ npm run typecheck (all types pass)
+      ✓ npm run build (frontend built successfully)
+    estimated_effort: 2h
+    actual_effort: ~1.5h
+    implementation_details: |
+      Backend changes:
+      - Updated WorkNotePersonAssociation type to include currentDept and currentPosition
+      - Modified SQL queries in findByIdWithDetails and findAll to join person data
+
+      Frontend changes:
+      - Updated WorkNote persons type to include dept/position fields
+      - Created formatPersonBadge() utility in lib/utils.ts
+      - Updated AssigneeSelector to use formatPersonBadge for selected badges
+      - Updated ViewWorkNoteDialog to use formatPersonBadge for person display
+      - Maintained OWNER role "(담당)" suffix
+
+      Format rules:
+      - dept/position/name (all fields present)
+      - dept/name (position null)
+      - name (both dept and position null)
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"
