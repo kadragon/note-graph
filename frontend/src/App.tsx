@@ -2,17 +2,9 @@ import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import AppLayout from '@/components/layout/AppLayout';
 import Dashboard from '@/pages/Dashboard';
+import WorkNotes from '@/pages/WorkNotes';
 
 // Placeholder pages - will be implemented in next steps
-
-function WorkNotes() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">업무노트</h1>
-      <p className="text-muted-foreground">업무노트 관리 페이지입니다.</p>
-    </div>
-  );
-}
 
 function Persons() {
   return (
