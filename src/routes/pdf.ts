@@ -1,16 +1,15 @@
 // Trace: SPEC-pdf-1, TASK-014
-// PDF upload and job status routes
+// PDF upload route with synchronous processing
 
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import type { Env } from '../types/env.js';
 import { PdfJobRepository } from '../repositories/pdf-job-repository.js';
+import { PdfExtractionService } from '../services/pdf-extraction-service.js';
+import { AIDraftService } from '../services/ai-draft-service.js';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
-import { validateParams } from '../utils/validation.js';
-import { getPdfJobParamsSchema } from '../schemas/pdf.js';
 import type {
   PdfJobResponse,
-  PdfQueueMessage,
   PdfUploadMetadata,
   WorkNoteDraft,
 } from '../types/pdf.js';
@@ -22,7 +21,10 @@ const pdf = new Hono<{ Bindings: Env }>();
 
 /**
  * POST /pdf-jobs
- * Upload PDF file, create job, send to queue
+ * Upload PDF file and process synchronously
+ * - Validates and extracts text from PDF
+ * - Generates AI draft using OpenAI
+ * - Returns draft immediately
  */
 pdf.post('/', async (c) => {
   const formData = await c.req.formData();
@@ -70,85 +72,92 @@ pdf.post('/', async (c) => {
     metadata.deptName = deptName;
   }
 
-  // Generate job ID and R2 key
+  // Generate job ID
   const jobId = `PDF-${nanoid()}`;
-  const timestamp = Date.now();
   const fileName = (fileBlob as File).name || 'upload.pdf';
-  const r2Key = `pdfs/${jobId}/${timestamp}-${fileName}`;
 
-  // Upload PDF to R2
-  const arrayBuffer = await fileBlob.arrayBuffer();
-  await c.env.PDF_TEMP_STORAGE.put(r2Key, arrayBuffer, {
-    customMetadata: {
-      jobId,
-      originalName: fileName,
-      uploadedAt: new Date().toISOString(),
-    },
-  });
+  // Get PDF buffer
+  const pdfBuffer = await fileBlob.arrayBuffer();
 
-  // Create job in database
+  // Initialize services
+  const extractionService = new PdfExtractionService();
+  const aiDraftService = new AIDraftService(c.env);
   const repository = new PdfJobRepository(c.env.DB);
-  const job = await repository.create(jobId, r2Key, metadata);
 
-  // Send message to queue
-  const queueMessage: PdfQueueMessage = {
-    jobId,
-    r2Key,
-    metadata,
-  };
+  // Create job with PENDING status before processing
+  await repository.create(jobId, fileName, metadata);
 
-  await c.env.PDF_QUEUE.send(queueMessage);
+  try {
+    // Validate PDF
+    extractionService.validatePdfBuffer(pdfBuffer);
 
-  // Return job response
-  const response: PdfJobResponse = {
-    jobId: job.jobId,
-    status: job.status,
-    createdAt: job.createdAt,
-    updatedAt: job.updatedAt,
-  };
+    // Extract text
+    // eslint-disable-next-line no-console
+    console.log(`[PDF Processing] Extracting text from PDF: ${fileName}`);
+    const extractedText = await extractionService.extractText(pdfBuffer);
 
-  return c.json(response, 202);
-});
+    // Generate AI draft
+    // eslint-disable-next-line no-console
+    console.log(`[PDF Processing] Generating AI draft for job ${jobId}`);
+    const draft = await aiDraftService.generateDraftFromText(extractedText, {
+      category: metadata.category,
+      personIds: metadata.personIds,
+      deptName: metadata.deptName,
+    });
 
-/**
- * GET /pdf-jobs/:jobId
- * Poll job status and get draft when ready
- */
-pdf.get('/:jobId', async (c) => {
-  const { jobId } = validateParams(c, getPdfJobParamsSchema);
+    // Update job status to READY
+    await repository.updateStatusToReady(jobId, draft);
 
-  const repository = new PdfJobRepository(c.env.DB);
-  const job = await repository.getById(jobId);
+    // eslint-disable-next-line no-console
+    console.log(`[PDF Processing] Job ${jobId} completed successfully`);
 
-  if (!job) {
-    throw new NotFoundError('PDF job', jobId);
-  }
-
-  // Build response
-  const response: PdfJobResponse = {
-    jobId: job.jobId,
-    status: job.status,
-    createdAt: job.createdAt,
-    updatedAt: job.updatedAt,
-  };
-
-  // Add error message if status is ERROR
-  if (job.status === 'ERROR' && job.errorMessage) {
-    response.errorMessage = job.errorMessage;
-  }
-
-  // Add draft if status is READY
-  if (job.status === 'READY' && job.draftJson) {
-    try {
-      const draft: WorkNoteDraft = JSON.parse(job.draftJson);
-      response.draft = draft;
-    } catch (error) {
-      console.error('Failed to parse draft JSON:', error);
-      response.errorMessage = 'Failed to parse draft data';
+    // Fetch actual job record with accurate timestamps
+    const job = await repository.getById(jobId);
+    if (!job) {
+      throw new NotFoundError('PDF job', jobId);
     }
-  }
 
-  return c.json(response);
+    // Return successful response with draft from DB
+    const response: PdfJobResponse = {
+      jobId: job.jobId,
+      status: job.status,
+      draft: job.draftJson ? (JSON.parse(job.draftJson) as WorkNoteDraft) : undefined,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+    };
+
+    return c.json(response, 200);
+  } catch (error) {
+    console.error(`[PDF Processing] Error processing job ${jobId}:`, error);
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'PDF 처리 중 알 수 없는 오류가 발생했습니다';
+
+    // Update job status to ERROR
+    try {
+      await repository.updateStatusToError(jobId, errorMessage);
+    } catch (dbError) {
+      console.error(`[PDF Processing] Failed to update error state:`, dbError);
+    }
+
+    // Fetch job record for accurate error response
+    const job = await repository.getById(jobId);
+
+    // Return error response
+    return c.json(
+      {
+        error: 'PDF_PROCESSING_ERROR',
+        message: errorMessage,
+        jobId,
+        status: job?.status || 'ERROR',
+        createdAt: job?.createdAt || new Date().toISOString(),
+        updatedAt: job?.updatedAt || new Date().toISOString(),
+      },
+      500
+    );
+  }
 });
 
 export default pdf;
