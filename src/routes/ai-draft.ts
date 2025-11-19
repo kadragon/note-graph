@@ -11,9 +11,7 @@ import { validateBody } from '../utils/validation';
 import { DraftFromTextRequestSchema, TodoSuggestionsRequestSchema } from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
 import { WorkNoteService } from '../services/work-note-service';
-import { EmbeddingService, VectorizeService } from '../services/embedding-service';
 import { RateLimitError, NotFoundError } from '../types/errors';
-import type { WorkNote } from '../types/work-note';
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;

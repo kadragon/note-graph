@@ -4,6 +4,10 @@ import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Edit2, Save, X } from 'lucide-react';
+import MDEditor from '@uiw/react-md-editor';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AssigneeSelector } from '@/components/AssigneeSelector';
 import { API } from '@/lib/api';
@@ -335,15 +338,23 @@ export function ViewWorkNoteDialog({
           <div className="border-t pt-4">
             <h3 className="font-semibold mb-2">내용</h3>
             {isEditing ? (
-              <Textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                placeholder="업무노트 내용을 입력하세요"
-                className="min-h-[200px]"
-              />
+              <div data-color-mode="light">
+                <MDEditor
+                  value={editContent}
+                  onChange={(value) => setEditContent(value || '')}
+                  preview="edit"
+                  height={400}
+                  visibleDragbar={false}
+                />
+              </div>
             ) : (
-              <div className="prose prose-sm max-w-none">
-                <p className="whitespace-pre-wrap text-sm">{workNote.content}</p>
+              <div className="prose prose-sm max-w-none border rounded-md p-4 bg-gray-50" data-color-mode="light">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeSanitize]}
+                >
+                  {workNote.content}
+                </ReactMarkdown>
               </div>
             )}
           </div>
