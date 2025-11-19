@@ -1,16 +1,9 @@
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import AppLayout from '@/components/layout/AppLayout';
+import Dashboard from '@/pages/Dashboard';
 
 // Placeholder pages - will be implemented in next steps
-function Dashboard() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">대시보드</h1>
-      <p className="text-muted-foreground">Todo 관리 페이지입니다.</p>
-    </div>
-  );
-}
 
 function WorkNotes() {
   return (
