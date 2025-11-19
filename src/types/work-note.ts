@@ -1,7 +1,9 @@
-// Trace: SPEC-worknote-1, TASK-007
+// Trace: SPEC-worknote-1, TASK-007, TASK-003
 /**
  * Type definitions for WorkNote and related entities
  */
+
+import type { TaskCategory } from './task-category';
 
 /**
  * Work note entity
@@ -55,5 +57,6 @@ export interface WorkNoteRelation {
 export interface WorkNoteDetail extends WorkNote {
   persons: WorkNotePersonAssociation[];
   relatedWorkNotes: WorkNoteRelation[];
+  categories: TaskCategory[];
   versions?: WorkNoteVersion[];
 }

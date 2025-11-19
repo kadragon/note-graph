@@ -2,10 +2,14 @@ import type {
   User,
   WorkNote,
   CreateWorkNoteRequest,
+  UpdateWorkNoteRequest,
   Person,
   CreatePersonRequest,
   Department,
   CreateDepartmentRequest,
+  TaskCategory,
+  CreateTaskCategoryRequest,
+  UpdateTaskCategoryRequest,
   Todo,
   TodoView,
   UpdateTodoRequest,
@@ -110,7 +114,7 @@ class APIClient {
     });
   }
 
-  updateWorkNote(workId: string, data: Partial<CreateWorkNoteRequest>) {
+  updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
     return this.request<WorkNote>(`/work-notes/${workId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -151,6 +155,31 @@ class APIClient {
     return this.request<Department>('/departments', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  // Task Categories
+  getTaskCategories() {
+    return this.request<TaskCategory[]>('/task-categories');
+  }
+
+  createTaskCategory(data: CreateTaskCategoryRequest) {
+    return this.request<TaskCategory>('/task-categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  updateTaskCategory(categoryId: string, data: UpdateTaskCategoryRequest) {
+    return this.request<TaskCategory>(`/task-categories/${categoryId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteTaskCategory(categoryId: string) {
+    return this.request<void>(`/task-categories/${categoryId}`, {
+      method: 'DELETE',
     });
   }
 

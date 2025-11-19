@@ -15,6 +15,7 @@ import { getMeHandler } from './handlers/auth';
 // Route imports
 import persons from './routes/persons';
 import departments from './routes/departments';
+import taskCategories from './routes/task-categories';
 import workNotes from './routes/work-notes';
 import todos from './routes/todos';
 import search from './routes/search';
@@ -65,6 +66,7 @@ app.get('/me', authMiddleware, getMeHandler);
 
 app.route('/persons', persons);
 app.route('/departments', departments);
+app.route('/task-categories', taskCategories);
 app.route('/work-notes', workNotes);
 app.route('/todos', todos);
 app.route('/search', search);
