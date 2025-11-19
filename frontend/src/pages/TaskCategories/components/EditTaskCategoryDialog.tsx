@@ -10,30 +10,40 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCreateTaskCategory } from '@/hooks/useTaskCategories';
+import { useUpdateTaskCategory } from '@/hooks/useTaskCategories';
+import type { TaskCategory } from '@/types/api';
 
-interface CreateTaskCategoryDialogProps {
+interface EditTaskCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  category: TaskCategory | null;
 }
 
-export function CreateTaskCategoryDialog({
+export function EditTaskCategoryDialog({
   open,
   onOpenChange,
-}: CreateTaskCategoryDialogProps) {
-  const [name, setName] = useState('');
-  const createMutation = useCreateTaskCategory();
+  category,
+}: EditTaskCategoryDialogProps) {
+  const [name, setName] = useState(category?.name || '');
+  const updateMutation = useUpdateTaskCategory();
+
+  // Update local state when category changes
+  if (category && name !== category.name && !updateMutation.isPending) {
+    setName(category.name);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) return;
+    if (!category || !name.trim()) return;
 
-    createMutation.mutate(
-      { name: name.trim() },
+    updateMutation.mutate(
+      {
+        categoryId: category.categoryId,
+        data: { name: name.trim() },
+      },
       {
         onSuccess: () => {
-          setName('');
           onOpenChange(false);
         },
       }
@@ -45,17 +55,17 @@ export function CreateTaskCategoryDialog({
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>새 업무 구분 추가</DialogTitle>
+            <DialogTitle>업무 구분 수정</DialogTitle>
             <DialogDescription>
-              새로운 업무 구분을 추가합니다.
+              업무 구분을 수정합니다.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">업무 구분</Label>
+              <Label htmlFor="edit-name">업무 구분</Label>
               <Input
-                id="name"
+                id="edit-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="예: KORUS, 수업/성적, 등록, 장학"
@@ -69,12 +79,12 @@ export function CreateTaskCategoryDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={createMutation.isPending}
+              disabled={updateMutation.isPending}
             >
               취소
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? '저장 중...' : '저장'}
+            <Button type="submit" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? '저장 중...' : '저장'}
             </Button>
           </DialogFooter>
         </form>

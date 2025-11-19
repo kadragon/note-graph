@@ -73,26 +73,28 @@ export class TaskCategoryRepository {
     const now = new Date().toISOString();
     const categoryId = `CAT-${nanoid(10)}`;
 
-    // Check if category with same name already exists
-    const existing = await this.findByName(data.name);
-    if (existing) {
-      throw new ConflictError(`Task category already exists: ${data.name}`);
+    try {
+      await this.db
+        .prepare(
+          `INSERT INTO task_categories (category_id, name, created_at)
+           VALUES (?, ?, ?)`
+        )
+        .bind(categoryId, data.name, now)
+        .run();
+
+      // Return the created category without extra DB roundtrip
+      return {
+        categoryId,
+        name: data.name,
+        createdAt: now,
+      };
+    } catch (error) {
+      // Handle unique constraint violation on name
+      if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+        throw new ConflictError(`Task category already exists: ${data.name}`);
+      }
+      throw error;
     }
-
-    await this.db
-      .prepare(
-        `INSERT INTO task_categories (category_id, name, created_at)
-         VALUES (?, ?, ?)`
-      )
-      .bind(categoryId, data.name, now)
-      .run();
-
-    // Return the created category without extra DB roundtrip
-    return {
-      categoryId,
-      name: data.name,
-      createdAt: now,
-    };
   }
 
   /**
@@ -104,21 +106,23 @@ export class TaskCategoryRepository {
       throw new NotFoundError('TaskCategory', categoryId);
     }
 
-    // Check if new name conflicts with another category
     if (data.name) {
-      const nameConflict = await this.findByName(data.name);
-      if (nameConflict && nameConflict.categoryId !== categoryId) {
-        throw new ConflictError(`Task category already exists: ${data.name}`);
+      try {
+        await this.db
+          .prepare(
+            `UPDATE task_categories
+             SET name = ?
+             WHERE category_id = ?`
+          )
+          .bind(data.name, categoryId)
+          .run();
+      } catch (error) {
+        // Handle unique constraint violation on name
+        if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+          throw new ConflictError(`Task category already exists: ${data.name}`);
+        }
+        throw error;
       }
-
-      await this.db
-        .prepare(
-          `UPDATE task_categories
-           SET name = ?
-           WHERE category_id = ?`
-        )
-        .bind(data.name, categoryId)
-        .run();
     }
 
     // Return the updated category without extra DB roundtrip

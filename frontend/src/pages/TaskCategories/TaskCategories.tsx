@@ -23,21 +23,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
   useTaskCategories,
-  useUpdateTaskCategory,
   useDeleteTaskCategory,
 } from '@/hooks/useTaskCategories';
 import { CreateTaskCategoryDialog } from './components/CreateTaskCategoryDialog';
+import { EditTaskCategoryDialog } from './components/EditTaskCategoryDialog';
 import type { TaskCategory } from '@/types/api';
 
 export default function TaskCategories() {
@@ -45,15 +35,12 @@ export default function TaskCategories() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<TaskCategory | null>(null);
-  const [editName, setEditName] = useState('');
 
   const { data: categories = [], isLoading } = useTaskCategories();
-  const updateMutation = useUpdateTaskCategory();
   const deleteMutation = useDeleteTaskCategory();
 
   const handleEdit = (category: TaskCategory) => {
     setSelectedCategory(category);
-    setEditName(category.name);
     setEditDialogOpen(true);
   };
 
@@ -62,33 +49,15 @@ export default function TaskCategories() {
     setDeleteDialogOpen(true);
   };
 
-  const handleUpdateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCategory || !editName.trim()) return;
-
-    try {
-      await updateMutation.mutateAsync({
-        categoryId: selectedCategory.categoryId,
-        data: { name: editName.trim() },
-      });
-      setEditDialogOpen(false);
-      setSelectedCategory(null);
-      setEditName('');
-    } catch (error) {
-      // Error handled by mutation hook
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = () => {
     if (!selectedCategory) return;
 
-    try {
-      await deleteMutation.mutateAsync(selectedCategory.categoryId);
-      setDeleteDialogOpen(false);
-      setSelectedCategory(null);
-    } catch (error) {
-      // Error handled by mutation hook
-    }
+    deleteMutation.mutate(selectedCategory.categoryId, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        setSelectedCategory(null);
+      },
+    });
   };
 
   return (
@@ -164,46 +133,11 @@ export default function TaskCategories() {
         onOpenChange={setCreateDialogOpen}
       />
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleUpdateSubmit}>
-            <DialogHeader>
-              <DialogTitle>업무 구분 수정</DialogTitle>
-              <DialogDescription>
-                업무 구분을 수정합니다.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-name">업무 구분</Label>
-                <Input
-                  id="edit-name"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder="예: KORUS, 수업/성적, 등록, 장학"
-                  required
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditDialogOpen(false)}
-                disabled={updateMutation.isPending}
-              >
-                취소
-              </Button>
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? '저장 중...' : '저장'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EditTaskCategoryDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        category={selectedCategory}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
