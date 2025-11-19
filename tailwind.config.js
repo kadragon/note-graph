@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      spacing: {
+        sidebar: '16rem', // 256px, same as w-64
+      },
       fontFamily: {
         sans: [
           '-apple-system',

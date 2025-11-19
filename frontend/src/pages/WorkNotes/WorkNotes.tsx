@@ -2,6 +2,16 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useWorkNotes, useDeleteWorkNote } from '@/hooks/useWorkNotes';
 import { WorkNotesTable } from './components/WorkNotesTable';
 import { CreateWorkNoteDialog } from './components/CreateWorkNoteDialog';
@@ -11,9 +21,11 @@ import type { WorkNote } from '@/types/api';
 export default function WorkNotes() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedWorkNote, setSelectedWorkNote] = useState<WorkNote | null>(
     null
   );
+  const [workNoteToDelete, setWorkNoteToDelete] = useState<string | null>(null);
 
   const { data: workNotes = [], isLoading } = useWorkNotes();
   const deleteMutation = useDeleteWorkNote();
@@ -23,9 +35,16 @@ export default function WorkNotes() {
     setViewDialogOpen(true);
   };
 
-  const handleDelete = async (workNoteId: string) => {
-    if (confirm('정말 이 업무노트를 삭제하시겠습니까?')) {
-      await deleteMutation.mutateAsync(workNoteId);
+  const handleDeleteClick = (workNoteId: string) => {
+    setWorkNoteToDelete(workNoteId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (workNoteToDelete) {
+      await deleteMutation.mutateAsync(workNoteToDelete);
+      setDeleteDialogOpen(false);
+      setWorkNoteToDelete(null);
     }
   };
 
@@ -55,7 +74,7 @@ export default function WorkNotes() {
             <WorkNotesTable
               workNotes={workNotes}
               onView={handleView}
-              onDelete={handleDelete}
+              onDelete={handleDeleteClick}
             />
           )}
         </CardContent>
@@ -71,6 +90,26 @@ export default function WorkNotes() {
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>업무노트 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말 이 업무노트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

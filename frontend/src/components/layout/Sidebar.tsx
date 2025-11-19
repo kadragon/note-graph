@@ -8,6 +8,7 @@ import {
   Search,
   MessageSquare,
   Paperclip,
+  Notebook,
 } from 'lucide-react';
 import { API } from '@/lib/api';
 
@@ -56,10 +57,13 @@ export default function Sidebar() {
   });
 
   return (
-    <aside className="fixed top-0 left-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col">
+    <aside className="fixed top-0 left-0 h-screen w-sidebar bg-white border-r border-gray-200 flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-gray-900 mb-3">📝 업무노트</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <Notebook className="w-6 h-6" />
+          업무노트
+        </h1>
         <div className="px-3 py-2 bg-gray-100 rounded-lg">
           <span className="text-sm text-gray-600">
             {user?.email || 'Loading...'}

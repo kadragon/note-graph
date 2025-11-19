@@ -3,6 +3,30 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
+const proxyPaths = [
+  '/api',
+  '/me',
+  '/work-notes',
+  '/persons',
+  '/departments',
+  '/todos',
+  '/search',
+  '/rag',
+  '/ai',
+  '/pdf-jobs',
+];
+
+const proxyConfig = proxyPaths.reduce(
+  (config, path) => {
+    config[path] = {
+      target: 'http://localhost:8787',
+      changeOrigin: true,
+    };
+    return config;
+  },
+  {} as Record<string, { target: string; changeOrigin: boolean }>
+);
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -25,47 +49,6 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/me': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/work-notes': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/persons': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/departments': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/todos': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/search': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/rag': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/ai': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/pdf-jobs': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-    },
+    proxy: proxyConfig,
   },
 });
