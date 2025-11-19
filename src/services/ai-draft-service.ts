@@ -15,6 +15,12 @@ import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
  * Generates work note drafts and todo suggestions using GPT-4.5 via AI Gateway
  */
 export class AIDraftService {
+  /**
+   * Maximum number of completion tokens for GPT API calls
+   * Set to 3000 to allow comprehensive responses for work note drafts
+   */
+  private static readonly GPT_MAX_COMPLETION_TOKENS = 3000;
+
   constructor(private env: Env) {}
 
   /**
@@ -260,7 +266,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
         },
       ],
       temperature: 0.7,
-      max_completion_tokens: 3000,
+      max_completion_tokens: AIDraftService.GPT_MAX_COMPLETION_TOKENS,
       response_format: { type: 'json_object' }, // Ensure JSON response
     };
 
