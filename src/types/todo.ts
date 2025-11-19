@@ -27,6 +27,7 @@ export interface Todo {
   title: string;
   description: string | null;
   createdAt: string; // ISO 8601 timestamp
+  updatedAt: string; // ISO 8601 timestamp
   dueDate: string | null; // ISO 8601 timestamp
   waitUntil: string | null; // ISO 8601 timestamp
   status: TodoStatus;
