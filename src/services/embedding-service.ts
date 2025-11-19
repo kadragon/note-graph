@@ -1,7 +1,7 @@
 // Trace: SPEC-search-1, TASK-010
 import type { Env } from '../types/env';
 import type { ChunkMetadata } from '../types/search';
-import { getAIGatewayHeaders } from '../utils/ai-gateway';
+import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
 
 /**
  * Embedding service using OpenAI text-embedding-3-small via AI Gateway
@@ -47,7 +47,7 @@ export class EmbeddingService {
   private async callOpenAI(inputs: string[]): Promise<{
     data: Array<{ embedding: number[]; index: number }>;
   }> {
-    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.AI_GATEWAY_ID}/openai/embeddings`;
+    const url = getAIGatewayUrl(this.env, 'embeddings');
 
     const requestBody = {
       model: this.env.OPENAI_MODEL_EMBEDDING,
