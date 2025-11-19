@@ -1,233 +1,332 @@
-# TASK-025: Assignee Badge Display Format
+# TASK-025: Add Edit Person Feature
+
+**Status**: 🚧 In Progress
+**Priority**: 3 (UI Enhancement)
+**Estimated Effort**: 4h
+**Spec ID**: SPEC-person-1
 
 ## Objective
-Update assignee badge display format to show department/position/name (or dept/name if position is null).
 
-## Spec Reference
-- SPEC-worknote-2 (assignee-badge-format.yaml)
+Enable editing existing persons in the person list by clicking on a person row. This allows users to update person information (name, department, position) using a dialog similar to the create person dialog.
 
-## Design Document (SDD)
+## Problem Statement
 
-### 1. Problem Statement
-Currently, assignee badges only show the person's name, which doesn't provide enough context about who the person is, especially their organizational role and department.
+Current implementation only allows creating new persons:
+- Person list is read-only (no edit functionality)
+- Users cannot modify person information after creation
+- No visual indication that rows are clickable
+- User requested the ability to edit existing persons
 
-Users need to see:
-- Department (소속)
-- Position (직책) - if available
-- Name (이름)
+## Solution
 
-### 2. Requirements
+Implement person editing functionality:
+- Make person table rows clickable
+- Reuse the person dialog component for both create and edit modes
+- Add `useUpdatePerson` hook for API integration
+- Show visual feedback on hover to indicate clickability
+- Pre-populate form fields with existing person data in edit mode
 
-#### Functional Requirements
-1. Badge format should follow this priority:
-   - If dept AND position exist: `소속/직책/이름`
-   - If only dept exists: `소속/이름`
-   - If neither exist: `이름`
+## Implementation Details
 
-2. Format should be consistent across:
-   - AssigneeSelector selected badges
-   - ViewWorkNoteDialog assignee display
+### 1. Create/Update EditPersonDialog Component
 
-3. Maintain existing OWNER role indicator `(담당)` suffix
+**Option A: Create New Component**
+**Location**: `frontend/src/pages/Persons/components/EditPersonDialog.tsx`
 
-#### Non-Functional Requirements
-1. No backend changes required
-2. Reusable formatting logic
-3. Maintain existing styling and layout
+**Option B: Refactor Existing Component (Recommended)**
+**Location**: Rename `CreatePersonDialog.tsx` to `PersonDialog.tsx`
 
-### 3. Solution Design
+We'll use **Option B** to follow DRY principle and maintain consistency with TASK-024 pattern.
 
-#### 3.1 Utility Function
-Create a reusable utility function to format person display text:
+**Features**:
+- Single dialog component for both create and edit modes
+- Explicit mode prop: `'create' | 'edit'`
+- Pre-populate fields in edit mode with initialData
+- Form validation with user-friendly error messages
+- Different dialog titles: "새 사람 추가" vs "사람 정보 수정"
+- Different button labels: "저장" vs "수정"
+- Supports all person fields: name, personId, currentDept, currentPosition
+- Person ID field disabled in edit mode
+- Uses Command + Popover for department selection (same as create)
+- Real-time error clearing when user corrects input
 
+**Props**:
 ```typescript
-/**
- * Format person display text based on available fields
- * @param person - Person object with name, currentDept, currentPosition
- * @returns Formatted string: dept/position/name or dept/name or name
- */
-function formatPersonBadge(person: {
-  name: string;
-  currentDept?: string | null;
-  currentPosition?: string | null;
-}): string {
-  const parts: string[] = [];
-
-  if (person.currentDept) {
-    parts.push(person.currentDept);
-  }
-
-  if (person.currentPosition) {
-    parts.push(person.currentPosition);
-  }
-
-  parts.push(person.name);
-
-  return parts.join('/');
+interface PersonDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mode: 'create' | 'edit'; // Explicit mode prop
+  initialData?: Person | null; // Person data for edit mode
 }
 ```
 
-#### 3.2 Component Changes
+### 2. Add useUpdatePerson Hook
 
-##### AssigneeSelector.tsx (Line 74)
-**Before:**
+**File**: `frontend/src/hooks/usePersons.ts`
+
+**Implementation**:
 ```typescript
-<span>{person.name}</span>
-```
+export function useUpdatePerson() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-**After:**
-```typescript
-<span>{formatPersonBadge(person)}</span>
-```
-
-##### ViewWorkNoteDialog.tsx (Line 300)
-**Before:**
-```typescript
-{person.personName}
-{person.role === 'OWNER' && (
-  <span className="ml-1 text-xs">(담당)</span>
-)}
-```
-
-**After:**
-```typescript
-{formatPersonBadge({
-  name: person.personName,
-  currentDept: person.currentDept,
-  currentPosition: person.currentPosition
-})}
-{person.role === 'OWNER' && (
-  <span className="ml-1 text-xs">(담당)</span>
-)}
-```
-
-**Note:** ViewWorkNoteDialog needs person data with dept/position. Check if API response includes this data.
-
-### 4. Data Flow Analysis
-
-#### Current API Response Structure
-From `frontend/src/types/api.ts`:
-
-```typescript
-export interface WorkNote {
-  // ...
-  persons?: Array<{
-    personId: string;
-    personName: string;
-    role: 'OWNER' | 'RELATED';
-  }>;
+  return useMutation({
+    mutationFn: ({ personId, data }: { personId: string; data: UpdatePersonRequest }) =>
+      API.updatePerson(personId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['persons'] });
+      toast({
+        title: '성공',
+        description: '사람 정보가 수정되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error.message || '사람 정보를 수정할 수 없습니다.',
+      });
+    },
+  });
 }
 ```
 
-**Issue:** The WorkNote persons array does NOT include `currentDept` or `currentPosition`.
+### 3. Update Persons.tsx
 
-#### Solution Options
+**File**: `frontend/src/pages/Persons/Persons.tsx`
 
-**Option A: Backend Enhancement (SELECTED)**
-- Modify backend API to include dept/position in work note response
-- Update SQL queries in WorkNoteRepository to join person data
-- Update TypeScript types to include new fields
-- Provides cleaner API contract and better performance
-- **Selected because:** More efficient than frontend joins, cleaner data model
-
-**Option B: Frontend Join (Not selected)**
-- Fetch persons list separately (already done via usePersons hook)
-- Join data in frontend to enrich person info with dept/position
-- No backend changes needed
-- **Not selected because:** Less efficient, requires additional client-side processing
-
-### 5. Implementation Plan
-
-#### Step 1: Update Backend (Actual Implementation)
-- Enhance `WorkNotePersonAssociation` type with `currentDept` and `currentPosition`
-- Update SQL queries in `findByIdWithDetails` to join person department/position
-- Update SQL queries in `findAll` to include person organizational info in batch fetch
-
-#### Step 2: Create Utility Function
-- Add `formatPersonBadge` utility in `frontend/src/lib/utils.ts`
-- Implement logic: position only displays when department is present
-
-#### Step 3: Update AssigneeSelector
-- Import utility function
-- Replace `{person.name}` with `{formatPersonBadge(person)}`
-- Person object already has all required fields
-
-#### Step 4: Update ViewWorkNoteDialog
-- Import utility function
-- Update frontend types to include dept/position fields
-- Use utility function to format display
-- Maintain role suffix
-
-#### Step 4: Testing
-- Test with person having all fields
-- Test with person missing position
-- Test with person missing both dept and position
-- Verify OWNER role suffix still displays correctly
-
-### 6. Test Cases (Manual UI Testing)
-
-```gherkin
-Scenario: Display badge with dept, position, and name
-  Given a person with currentDept="개발팀", currentPosition="팀장", name="홍길동"
-  When the person is assigned to a work note
-  And I view the work note
-  Then the badge should display "개발팀/팀장/홍길동"
-
-Scenario: Display badge with dept and name only
-  Given a person with currentDept="기획팀", currentPosition=null, name="김철수"
-  When the person is assigned to a work note
-  And I view the work note
-  Then the badge should display "기획팀/김철수"
-
-Scenario: Display badge with name only
-  Given a person with currentDept=null, currentPosition=null, name="이영희"
-  When the person is assigned to a work note
-  And I view the work note
-  Then the badge should display "이영희"
-
-Scenario: OWNER role indicator preserved
-  Given a person with full dept/position/name information
-  When the person is assigned as OWNER to a work note
-  And I view the work note
-  Then the badge should display dept/position/name followed by "(담당)"
+**Changes**:
+1. Add state for edit dialog and selected person:
+```typescript
+const [editDialogOpen, setEditDialogOpen] = useState(false);
+const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
 ```
 
-### 7. Files to Modify
+2. Add click handler for table rows:
+```typescript
+const handleRowClick = (person: Person) => {
+  setSelectedPerson(person);
+  setEditDialogOpen(true);
+};
+```
 
-1. `frontend/src/lib/utils.ts` or create `frontend/src/lib/formatters.ts`
-   - Add `formatPersonBadge()` function
+3. Update TableRow to be clickable:
+```typescript
+<TableRow
+  key={person.personId}
+  className="cursor-pointer hover:bg-muted/50"
+  onClick={() => handleRowClick(person)}
+>
+```
 
-2. `frontend/src/components/AssigneeSelector.tsx`
-   - Import and use `formatPersonBadge()`
-   - Update line 74
+4. Replace CreatePersonDialog with PersonDialog (supports both modes):
+```typescript
+<PersonDialog
+  open={createDialogOpen}
+  onOpenChange={setCreateDialogOpen}
+  mode="create"
+/>
 
-3. `frontend/src/pages/WorkNotes/components/ViewWorkNoteDialog.tsx`
-   - Import and use `formatPersonBadge()`
-   - Enrich person data with full person info
-   - Update line 300
+<PersonDialog
+  open={editDialogOpen}
+  onOpenChange={setEditDialogOpen}
+  mode="edit"
+  initialData={selectedPerson}
+/>
+```
 
-### 8. Rollout Plan
+### 4. Update API Types (if needed)
 
-1. Implement changes in development
-2. Manual UI testing with test data
-3. Build frontend (`npm run build`)
-4. Commit with trace comment: `// Trace: SPEC-worknote-2, TASK-025`
-5. Update .tasks/done.yaml
+**File**: `frontend/src/types/api.ts`
 
-### 9. Rollback Plan
+Verify `UpdatePersonRequest` type exists:
+```typescript
+export interface UpdatePersonRequest {
+  name?: string;
+  currentDept?: string;
+  currentPosition?: string;
+  currentRoleDesc?: string;
+}
+```
 
-If issues arise:
-1. Revert commits
-2. Frontend change only - no data migration needed
-3. Low risk - visual display only
+## UI/UX Design
 
-## Status
-- [x] SDD Created
-- [ ] Implementation
-- [ ] Testing
-- [ ] Documentation Update
+### Person List with Clickable Rows
 
-## Notes
-- Frontend-only change
-- No backend API modifications needed
-- Reusable utility function for future badge formatting
+```
+┌──────────────────────────────────────────────────────────┐
+│ 사람 목록                                    [+ 새 사람]  │
+├──────────────────────────────────────────────────────────┤
+│ 이름    사번      부서         직책        생성일        │
+├──────────────────────────────────────────────────────────┤
+│ 홍길동  310170   개발팀       팀장    2024-01-15        │ ← Hover bg
+│ 김철수  310171   기획팀       대리    2024-01-16        │
+│ ...                                                      │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Edit Person Dialog
+
+```
+┌────────────────────────────────────────┐
+│ 사람 정보 수정                    [×]  │
+├────────────────────────────────────────┤
+│                                        │
+│ 이름                                   │
+│ [홍길동                           ]    │
+│                                        │
+│ 사번 (수정 불가)                       │
+│ [310170                           ]    │ ← Disabled
+│                                        │
+│ 부서 (선택)                            │
+│ [개발팀                        ▼]      │ ← Searchable
+│                                        │
+│ 직책 (선택)                            │
+│ [팀장                             ]    │
+│                                        │
+│                    [취소]  [수정]      │
+└────────────────────────────────────────┘
+```
+
+### Behavior
+
+1. **Click Row**: Opens edit dialog with pre-filled data
+2. **Person ID Field**: Disabled in edit mode (cannot change primary key)
+3. **Department Selection**: Same searchable popover as create mode
+4. **Form Validation**: Same as create mode
+5. **Save**: Calls updatePerson API
+6. **Success**: Toast message, closes dialog, refreshes list
+7. **Error**: Toast message, keeps dialog open
+
+## Technical Decisions
+
+### Why Refactor Instead of Creating New Component?
+
+- **DRY Principle**: Avoid duplicating form logic
+- **Consistency**: Same UX for create and edit
+- **Maintainability**: Single source of truth for person form
+- **Pattern**: Matches TASK-024 approach (AssigneeSelector)
+
+### Why Disable Person ID in Edit Mode?
+
+- **Data Integrity**: Person ID is the primary key
+- **Backend Constraint**: Changing person ID would break relationships
+- **User Safety**: Prevents accidental data corruption
+
+### Why Click Row Instead of Edit Button?
+
+- **Simplicity**: Cleaner UI, fewer visual elements
+- **Common Pattern**: Standard UX pattern for editable lists
+- **Efficiency**: Fewer clicks for users
+
+## Testing Checklist
+
+### Unit Tests
+- [ ] useUpdatePerson hook calls API correctly
+- [ ] useUpdatePerson invalidates query cache on success
+- [ ] useUpdatePerson shows toast on success/error
+
+### Integration Tests
+- [ ] PersonDialog renders in create mode (no personId)
+- [ ] PersonDialog renders in edit mode (with personId)
+- [ ] PersonDialog pre-fills form fields in edit mode
+- [ ] PersonDialog disables personId field in edit mode
+- [ ] PersonDialog shows correct title/button text per mode
+- [ ] Form validation works in both modes
+- [ ] Department selection works in both modes
+
+### E2E Tests
+- [ ] Click person row opens edit dialog
+- [ ] Edit dialog shows existing person data
+- [ ] Can change name in edit dialog
+- [ ] Can change department in edit dialog
+- [ ] Can change position in edit dialog
+- [ ] Cannot change person ID
+- [ ] Save button updates person
+- [ ] Success toast appears after save
+- [ ] Person list refreshes with updated data
+- [ ] Hover state shows on table rows
+
+## Acceptance Criteria
+
+✅ **Edit functionality**: Users can edit existing persons by clicking table rows
+✅ **Visual feedback**: Hover state indicates clickability
+✅ **Data preservation**: Person ID cannot be changed
+✅ **UX consistency**: Same dialog component for create and edit
+✅ **Form validation**: Same validation rules as create mode
+✅ **API integration**: Uses existing PUT /persons/:personId endpoint
+✅ **No backend changes**: API remains unchanged
+
+## Files Changed
+
+1. `frontend/src/pages/Persons/components/CreatePersonDialog.tsx` → `PersonDialog.tsx` - Refactored
+2. `frontend/src/pages/Persons/Persons.tsx` - Updated with click handlers
+3. `frontend/src/hooks/usePersons.ts` - Added useUpdatePerson hook
+4. `frontend/src/types/api.ts` - Verify UpdatePersonRequest type exists
+
+## Dependencies
+
+**Frontend**:
+- `@tanstack/react-query` (already installed) - Data fetching
+- `cmdk` (already installed) - Command component
+- `@radix-ui/react-popover` (already installed) - Popover
+- `lucide-react` (already installed) - Icons
+
+**Backend**: No changes required (PUT /persons/:personId already exists)
+
+## References
+
+- Person API: `PUT /persons/{personId}` (backend already implemented)
+- Spec: SPEC-person-1 (person-management/spec.yaml)
+- Similar pattern: TASK-024 (AssigneeSelector with edit mode)
+- Dialog component: `frontend/src/components/ui/dialog.tsx`
+- Command component: `frontend/src/components/ui/command.tsx`
+
+## Backend API Reference
+
+The backend already supports person updates:
+
+**Endpoint**: `PUT /persons/:personId`
+
+**Request Body**:
+```json
+{
+  "name": "홍길동",
+  "currentDept": "개발팀",
+  "currentPosition": "팀장",
+  "currentRoleDesc": "백엔드 개발 담당"
+}
+```
+
+**Response**:
+```json
+{
+  "personId": "310170",
+  "name": "홍길동",
+  "currentDept": "개발팀",
+  "currentPosition": "팀장",
+  "currentRoleDesc": "백엔드 개발 담당",
+  "createdAt": "2024-01-15T00:00:00Z",
+  "updatedAt": "2024-11-19T10:30:00Z"
+}
+```
+
+**Validation**:
+- All fields optional (partial update)
+- name: 1-100 characters if provided
+- currentDept: 0-100 characters if provided
+- currentPosition: 0-100 characters if provided
+- currentRoleDesc: 0-500 characters if provided
+
+**Business Logic**:
+- If currentDept changes, department history is automatically updated:
+  - Previous dept history entry: `is_active=false`, `end_date` set
+  - New dept history entry: `is_active=true`, `start_date` set
+
+## Trace
+
+```typescript
+// Trace: TASK-025, SPEC-person-1
+```
+
+All code changes will include this trace identifier.

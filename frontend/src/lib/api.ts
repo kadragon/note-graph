@@ -5,6 +5,7 @@ import type {
   UpdateWorkNoteRequest,
   Person,
   CreatePersonRequest,
+  UpdatePersonRequest,
   Department,
   CreateDepartmentRequest,
   UpdateDepartmentRequest,
@@ -222,7 +223,7 @@ class APIClient {
     });
   }
 
-  updatePerson(personId: string, data: Partial<CreatePersonRequest>) {
+  updatePerson(personId: string, data: UpdatePersonRequest) {
     return this.request<Person>(`/persons/${personId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
