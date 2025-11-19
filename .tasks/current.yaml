@@ -1,7 +1,14 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task: null
+current_task: TASK-024
+
+task_details:
+  task_id: TASK-024
+  title: "Replace checkbox-based assignee selector with searchable autocomplete"
+  description: |
+    Replace checkbox-based assignee selector with searchable autocomplete component
+    using Command UI. This improves UX when there are many persons in the system.
 
 notes: |
   TASK-021 completed. Department search UX improved with loading/error feedback,
@@ -12,3 +19,6 @@ notes: |
   TASK-023 completed: Implemented embedding retry mechanism with exponential backoff.
   Automatic retry for failed embedding operations ensures eventual consistency between
   D1 and Vectorize. All 421 tests passing (100%).
+
+  TASK-024 started: Replace checkbox-based assignee selector with searchable
+  autocomplete component using Command UI.
