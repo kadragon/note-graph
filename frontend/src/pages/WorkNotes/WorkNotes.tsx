@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -15,11 +15,13 @@ import {
 import { useWorkNotes, useDeleteWorkNote } from '@/hooks/useWorkNotes';
 import { WorkNotesTable } from './components/WorkNotesTable';
 import { CreateWorkNoteDialog } from './components/CreateWorkNoteDialog';
+import { CreateFromPDFDialog } from './components/CreateFromPDFDialog';
 import { ViewWorkNoteDialog } from './components/ViewWorkNoteDialog';
 import type { WorkNote } from '@/types/api';
 
 export default function WorkNotes() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedWorkNote, setSelectedWorkNote] = useState<WorkNote | null>(
@@ -55,10 +57,16 @@ export default function WorkNotes() {
           <h1 className="text-2xl font-bold text-gray-900">업무노트</h1>
           <p className="text-gray-600 mt-1">업무노트를 관리하세요</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          새 업무노트
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setPdfDialogOpen(true)}>
+            <FileText className="h-4 w-4 mr-2" />
+            PDF로 만들기
+          </Button>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            새 업무노트
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -83,6 +91,11 @@ export default function WorkNotes() {
       <CreateWorkNoteDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
+      />
+
+      <CreateFromPDFDialog
+        open={pdfDialogOpen}
+        onOpenChange={setPdfDialogOpen}
       />
 
       <ViewWorkNoteDialog
