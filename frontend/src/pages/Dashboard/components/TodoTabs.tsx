@@ -26,11 +26,7 @@ export function TodoTabs() {
   // Fetch work note when a todo is clicked
   const { data: selectedWorkNote } = useQuery({
     queryKey: ['work-note', selectedWorkNoteId],
-    queryFn: async () => {
-      if (!selectedWorkNoteId) return null;
-      const workNotes = await API.getWorkNotes();
-      return workNotes.find((wn) => wn.id === selectedWorkNoteId) || null;
-    },
+    queryFn: () => (selectedWorkNoteId ? API.getWorkNote(selectedWorkNoteId) : Promise.resolve(null)),
     enabled: !!selectedWorkNoteId,
   });
 
@@ -39,11 +35,6 @@ export function TodoTabs() {
       setSelectedWorkNoteId(todo.workNoteId);
       setIsDialogOpen(true);
     }
-  };
-
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    // Keep selectedWorkNoteId to avoid refetch on reopen
   };
 
   return (
@@ -71,7 +62,7 @@ export function TodoTabs() {
       <ViewWorkNoteDialog
         workNote={selectedWorkNote || null}
         open={isDialogOpen}
-        onOpenChange={handleDialogClose}
+        onOpenChange={setIsDialogOpen}
       />
     </>
   );
