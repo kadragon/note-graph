@@ -1,3 +1,4 @@
+// Trace: SPEC-dept-1, TASK-022
 import { useState } from 'react';
 import {
   Dialog,
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateDepartment } from '@/hooks/useDepartments';
+import { toCreateDepartmentRequest } from '@/lib/mappers/department';
 
 interface CreateDepartmentDialogProps {
   open: boolean;
@@ -30,7 +32,9 @@ export function CreateDepartmentDialog({
     if (!name.trim()) return;
 
     try {
-      await createMutation.mutateAsync({ name: name.trim() });
+      const payload = toCreateDepartmentRequest(name);
+
+      await createMutation.mutateAsync(payload);
       setName('');
       onOpenChange(false);
     } catch (error) {

@@ -2,6 +2,22 @@
 # Tasks ordered by priority (highest first)
 
 tasks:
+  - task_id: TASK-022
+    spec_id: SPEC-dept-1
+    title: "Fix department creation errors in frontend"
+    description: |
+      Resolve 400 Bad Request and React key warnings when adding a department
+      from the UI. Ensure API payload matches backend contract and list items
+      render with stable keys.
+    priority: 1
+    status: completed
+    estimated_effort: 2h
+    test_refs:
+      - TEST-dept-1
+    acceptance_criteria:
+      - "Department creation succeeds without 400 errors"
+      - "Department list renders with unique keys"
+      - "Regression covered by frontend tests"
   # ============================================================================
   # PHASE 1: Infrastructure & Core Setup
   # ============================================================================
