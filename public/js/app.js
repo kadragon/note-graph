@@ -760,20 +760,67 @@ const App = {
   },
 
   showCreateWorkNoteModal() {
-    const modal = prompt('새 업무노트 제목을 입력하세요:');
-    if (!modal) return;
+    // Create modal with form
+    const modal = this.createModal('업무노트 추가', `
+      <form id="create-work-note-form">
+        <div class="form-group">
+          <label class="form-label">제목 *</label>
+          <input type="text" class="form-input" id="work-note-title-input" required>
+        </div>
 
-    const category = prompt('카테고리를 입력하세요 (예: 회의, 프로젝트, 보고):') || '기타';
-    const content = prompt('내용을 입력하세요:') || '';
+        <div class="form-group">
+          <label class="form-label">카테고리</label>
+          <input type="text" class="form-input" id="work-note-category-input" placeholder="예: 회의, 프로젝트, 보고">
+          <small style="color: var(--gray-600);">선택 사항. 비워두면 '기타'로 저장됩니다.</small>
+        </div>
 
-    UI.showLoading();
-    API.createWorkNote({ title: modal, category, content })
-      .then(() => {
+        <div class="form-group">
+          <label class="form-label">내용</label>
+          <textarea class="form-input" id="work-note-content-input" rows="5"></textarea>
+        </div>
+
+        <div class="flex-gap mt-3">
+          <button type="submit" class="btn btn-primary">저장</button>
+          <button type="button" class="btn btn-secondary modal-close">취소</button>
+        </div>
+      </form>
+    `);
+
+    document.body.appendChild(modal);
+
+    // Handle form submission
+    const form = modal.querySelector('#create-work-note-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const title = modal.querySelector('#work-note-title-input').value.trim();
+      const category = modal.querySelector('#work-note-category-input').value.trim() || '기타';
+      const content = modal.querySelector('#work-note-content-input').value.trim();
+
+      if (!title) {
+        UI.showToast('제목을 입력하세요', 'error');
+        return;
+      }
+
+      UI.showLoading();
+      try {
+        await API.createWorkNote({ title, category, content });
         UI.showToast('업무노트가 생성되었습니다', 'success');
-        return this.loadWorkNotes();
-      })
-      .catch(error => UI.showToast('생성 실패: ' + error.message, 'error'))
-      .finally(() => UI.hideLoading());
+        modal.remove();
+        await this.loadWorkNotes();
+      } catch (error) {
+        UI.showToast('생성 실패: ' + error.message, 'error');
+      } finally {
+        UI.hideLoading();
+      }
+    });
+
+    // Handle modal close
+    modal.querySelectorAll('.modal-close').forEach(btn => {
+      btn.addEventListener('click', () => modal.remove());
+    });
+
+    modal.querySelector('.modal-backdrop').addEventListener('click', () => modal.remove());
   },
 
   async viewWorkNote(workId) {
@@ -1148,19 +1195,61 @@ const App = {
   },
 
   showCreateDepartmentModal() {
-    const deptName = prompt('부서명을 입력하세요:');
-    if (!deptName) return;
+    // Create modal with form
+    const modal = this.createModal('부서 추가', `
+      <form id="create-department-form">
+        <div class="form-group">
+          <label class="form-label">부서명 *</label>
+          <input type="text" class="form-input" id="dept-name-input" required>
+        </div>
 
-    const description = prompt('설명을 입력하세요 (선택):') || null;
+        <div class="form-group">
+          <label class="form-label">설명</label>
+          <textarea class="form-input" id="dept-description-input" rows="3"></textarea>
+          <small style="color: var(--gray-600);">선택 사항</small>
+        </div>
 
-    UI.showLoading();
-    API.createDepartment({ dept_name: deptName, description })
-      .then(() => {
+        <div class="flex-gap mt-3">
+          <button type="submit" class="btn btn-primary">저장</button>
+          <button type="button" class="btn btn-secondary modal-close">취소</button>
+        </div>
+      </form>
+    `);
+
+    document.body.appendChild(modal);
+
+    // Handle form submission
+    const form = modal.querySelector('#create-department-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const deptName = modal.querySelector('#dept-name-input').value.trim();
+      const description = modal.querySelector('#dept-description-input').value.trim() || null;
+
+      if (!deptName) {
+        UI.showToast('부서명을 입력하세요', 'error');
+        return;
+      }
+
+      UI.showLoading();
+      try {
+        await API.createDepartment({ dept_name: deptName, description });
         UI.showToast('부서가 추가되었습니다', 'success');
-        return this.loadDepartments();
-      })
-      .catch(error => UI.showToast('추가 실패: ' + error.message, 'error'))
-      .finally(() => UI.hideLoading());
+        modal.remove();
+        await this.loadDepartments();
+      } catch (error) {
+        UI.showToast('추가 실패: ' + error.message, 'error');
+      } finally {
+        UI.hideLoading();
+      }
+    });
+
+    // Handle modal close
+    modal.querySelectorAll('.modal-close').forEach(btn => {
+      btn.addEventListener('click', () => modal.remove());
+    });
+
+    modal.querySelector('.modal-backdrop').addEventListener('click', () => modal.remove());
   },
 
   // Search

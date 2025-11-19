@@ -7,6 +7,8 @@ notes: |
   TASK-021 completed. Department search UX improved with loading/error feedback,
   keyboard navigation, and 5-item suggestion cap.
 
-  TASK-022 completed: Implemented embedding retry mechanism with exponential backoff.
+  TASK-022 completed (main branch): Department creation fix with payload alignment.
+
+  TASK-023 completed: Implemented embedding retry mechanism with exponential backoff.
   Automatic retry for failed embedding operations ensures eventual consistency between
-  D1 and Vectorize. All 332 tests passing (100%).
+  D1 and Vectorize. All 421 tests passing (100%).

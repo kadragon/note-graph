@@ -318,7 +318,7 @@
 - Typecheck and targeted vitest suites pass; ready for deployment once favicon asset added separately.
 
 ### Session 19: Embedding Retry Mechanism (2025-11-18)
-- **TASK-022 (Branch)**: Implement Retry Mechanism for Embedding Failures
+- **TASK-023**: Implement Retry Mechanism for Embedding Failures
 - Created SPEC-rag-2 for embedding reliability with GWT format
 - Implemented SDD + TDD approach (RED → GREEN cycle)
 - **Database Migration**: Created 0002_embedding_retry_queue.sql
