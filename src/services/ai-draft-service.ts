@@ -27,7 +27,7 @@ export class AIDraftService {
    * Generate work note draft from unstructured text input
    *
    * @param inputText - Unstructured text about work
-   * @param options - Optional hints (category, personIds, deptName)
+   * @param options - Optional hints (category, personIds, deptName, activeCategories)
    * @returns Work note draft with title, content, category, and todo suggestions
    */
   async generateDraftFromText(
@@ -36,6 +36,7 @@ export class AIDraftService {
       category?: string;
       personIds?: string[];
       deptName?: string;
+      activeCategories?: string[];
     }
   ): Promise<WorkNoteDraft> {
     const prompt = this.constructDraftPrompt(inputText, options);
@@ -62,7 +63,7 @@ export class AIDraftService {
    *
    * @param inputText - Unstructured text about work
    * @param similarNotes - Similar work notes to use as reference
-   * @param options - Optional hints (category, personIds, deptName)
+   * @param options - Optional hints (category, personIds, deptName, activeCategories)
    * @returns Work note draft with title, content, category, and todo suggestions
    */
   async generateDraftFromTextWithContext(
@@ -72,6 +73,7 @@ export class AIDraftService {
       category?: string;
       personIds?: string[];
       deptName?: string;
+      activeCategories?: string[];
     }
   ): Promise<WorkNoteDraft> {
     const prompt = this.constructDraftPromptWithContext(inputText, similarNotes, options);
@@ -129,10 +131,20 @@ export class AIDraftService {
       category?: string;
       personIds?: string[];
       deptName?: string;
+      activeCategories?: string[];
     }
   ): string {
     const categoryHint = options?.category ? `\n\n카테고리 힌트: ${options.category}` : '';
     const deptHint = options?.deptName ? `\n\n부서 컨텍스트: ${options.deptName}` : '';
+
+    // Build category selection instruction
+    let categoryInstruction: string;
+    if (options?.activeCategories && options.activeCategories.length > 0) {
+      const categoryList = options.activeCategories.join(', ');
+      categoryInstruction = `3. 제안 카테고리 (다음 중에서 가장 적합한 1개를 선택: ${categoryList})`;
+    } else {
+      categoryInstruction = '3. 제안 카테고리 (수업성적, KORUS, 기획, 행정 중 하나 또는 새로운 카테고리 추론)';
+    }
 
     return `당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.
 
@@ -143,7 +155,7 @@ ${inputText}${categoryHint}${deptHint}
 이를 분석하여 다음과 같은 구조화된 업무노트를 작성해주세요:
 1. 간결한 제목 (한국어)
 2. 잘 정리된 내용 (한국어, 마크다운 포맷 사용)
-3. 제안 카테고리 (수업성적, KORUS, 기획, 행정 중 하나 또는 새로운 카테고리 추론)
+${categoryInstruction}
 4. 3-5개의 관련 할 일 항목과 제안 기한
 
 JSON 형식으로 반환:
@@ -173,6 +185,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
       category?: string;
       personIds?: string[];
       deptName?: string;
+      activeCategories?: string[];
     }
   ): string {
     const categoryHint = options?.category ? `\n\n카테고리 힌트: ${options.category}` : '';
@@ -192,6 +205,15 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
           .join('\n')}`
       : '';
 
+    // Build category selection instruction
+    let categoryInstruction: string;
+    if (options?.activeCategories && options.activeCategories.length > 0) {
+      const categoryList = options.activeCategories.join(', ');
+      categoryInstruction = `3. 제안 카테고리 (다음 중에서 가장 적합한 1개를 선택: ${categoryList})`;
+    } else {
+      categoryInstruction = '3. 제안 카테고리 (유사 노트에서 사용된 카테고리 우선 고려, 또는 새로운 카테고리 추론)';
+    }
+
     return `당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.
 
 사용자가 다음과 같은 업무에 대한 비구조화된 텍스트를 제공했습니다:
@@ -201,7 +223,7 @@ ${inputText}${categoryHint}${deptHint}${contextText}
 위의 유사한 업무노트들을 참고하여 일관된 형식과 카테고리를 사용하면서, 다음과 같은 구조화된 업무노트를 작성해주세요:
 1. 간결한 제목 (한국어, 유사 노트의 제목 스타일 참고)
 2. 잘 정리된 내용 (한국어, 마크다운 포맷 사용, 유사 노트의 구조 참고)
-3. 제안 카테고리 (유사 노트에서 사용된 카테고리 우선 고려, 또는 새로운 카테고리 추론)
+${categoryInstruction}
 4. 3-5개의 관련 할 일 항목과 제안 기한 (유사 노트의 할일 패턴 참고)
 
 JSON 형식으로 반환:
