@@ -153,29 +153,72 @@ export class WorkNoteRepository {
 
     const workNotes = result.results || [];
 
-    // Fetch categories for each work note
-    const workNotesWithCategories = await Promise.all(
-      workNotes.map(async (workNote) => {
-        const categoriesResult = await this.db
-          .prepare(
-            `SELECT tc.category_id as categoryId, tc.name, tc.created_at as createdAt
-             FROM task_categories tc
-             INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
-             WHERE wntc.work_id = ?`
-          )
-          .bind(workNote.workId)
-          .all<TaskCategory>();
+    // Batch fetch categories and persons for all work notes to avoid N+1 queries
+    const workIds = workNotes.map((wn) => wn.workId);
 
-        return {
-          ...workNote,
-          persons: [],
-          relatedWorkNotes: [],
-          categories: categoriesResult.results || [],
-        };
-      })
-    );
+    if (workIds.length === 0) {
+      return [];
+    }
 
-    return workNotesWithCategories;
+    // Fetch all categories in a single query
+    const placeholders = workIds.map(() => '?').join(',');
+    const categoriesResult = await this.db
+      .prepare(
+        `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.created_at as createdAt
+         FROM task_categories tc
+         INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+         WHERE wntc.work_id IN (${placeholders})`
+      )
+      .bind(...workIds)
+      .all<TaskCategory & { workId: string }>();
+
+    // Fetch all persons in a single query
+    const personsResult = await this.db
+      .prepare(
+        `SELECT wnp.work_id as workId, wnp.person_id as personId,
+                wnp.role, p.name as personName
+         FROM work_note_person wnp
+         INNER JOIN persons p ON wnp.person_id = p.person_id
+         WHERE wnp.work_id IN (${placeholders})`
+      )
+      .bind(...workIds)
+      .all<WorkNotePersonAssociation & { workId: string }>();
+
+    // Group categories and persons by workId
+    const categoriesByWorkId = new Map<string, TaskCategory[]>();
+    const personsByWorkId = new Map<string, WorkNotePersonAssociation[]>();
+
+    for (const cat of categoriesResult.results || []) {
+      if (!categoriesByWorkId.has(cat.workId)) {
+        categoriesByWorkId.set(cat.workId, []);
+      }
+      categoriesByWorkId.get(cat.workId)!.push({
+        categoryId: cat.categoryId,
+        name: cat.name,
+        createdAt: cat.createdAt,
+      });
+    }
+
+    for (const person of personsResult.results || []) {
+      if (!personsByWorkId.has(person.workId)) {
+        personsByWorkId.set(person.workId, []);
+      }
+      personsByWorkId.get(person.workId)!.push({
+        id: person.id,
+        workId: person.workId,
+        personId: person.personId,
+        role: person.role,
+        personName: person.personName,
+      });
+    }
+
+    // Map results to work notes
+    return workNotes.map((workNote) => ({
+      ...workNote,
+      persons: personsByWorkId.get(workNote.workId) || [],
+      relatedWorkNotes: [],
+      categories: categoriesByWorkId.get(workNote.workId) || [],
+    }));
   }
 
   /**

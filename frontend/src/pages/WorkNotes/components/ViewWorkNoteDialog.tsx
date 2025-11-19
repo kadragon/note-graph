@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -57,17 +57,22 @@ export function ViewWorkNoteDialog({
     enabled: !!workNote && open,
   });
 
-  // Initialize edit form when work note changes
-  useEffect(() => {
-    if (workNote && open) {
+  // Reset form with current work note data
+  const resetForm = useCallback(() => {
+    if (workNote) {
       setEditTitle(workNote.title);
       setEditContent(workNote.content);
       setEditCategoryIds(workNote.categories?.map((c) => c.categoryId) || []);
-      // Note: We need to fetch persons associated with this work note
-      // For now, we'll initialize with empty array
-      setEditPersonIds([]);
+      setEditPersonIds(workNote.persons?.map((p) => p.personId) || []);
     }
-  }, [workNote, open]);
+  }, [workNote]);
+
+  // Initialize edit form when work note changes
+  useEffect(() => {
+    if (workNote && open) {
+      resetForm();
+    }
+  }, [workNote, open, resetForm]);
 
   // Reset editing state when dialog closes
   useEffect(() => {
@@ -182,12 +187,7 @@ export function ViewWorkNoteDialog({
   };
 
   const handleCancelEdit = () => {
-    if (workNote) {
-      setEditTitle(workNote.title);
-      setEditContent(workNote.content);
-      setEditCategoryIds(workNote.categories?.map((c) => c.categoryId) || []);
-      setEditPersonIds([]);
-    }
+    resetForm();
     setIsEditing(false);
   };
 
@@ -272,10 +272,10 @@ export function ViewWorkNoteDialog({
           </div>
 
           {/* Assignees Section */}
-          {isEditing && (
-            <div>
-              <Label className="text-sm font-medium mb-2 block">담당자</Label>
-              {personsLoading ? (
+          <div>
+            <Label className="text-sm font-medium mb-2 block">담당자</Label>
+            {isEditing ? (
+              personsLoading ? (
                 <p className="text-sm text-muted-foreground">로딩 중...</p>
               ) : persons.length === 0 ? (
                 <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
@@ -297,9 +297,24 @@ export function ViewWorkNoteDialog({
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
+              )
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {workNote.persons && workNote.persons.length > 0 ? (
+                  workNote.persons.map((person) => (
+                    <Badge key={person.personId} variant="outline">
+                      {person.personName}
+                      {person.role === 'OWNER' && (
+                        <span className="ml-1 text-xs">(담당)</span>
+                      )}
+                    </Badge>
+                  ))
+                ) : (
+                  <Badge variant="outline">담당자 없음</Badge>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Dates */}
           <div className="text-sm text-muted-foreground space-y-1">
