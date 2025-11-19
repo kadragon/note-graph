@@ -78,6 +78,9 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "overrides": {
+    "react-markdown": "^10.1.0"
+  },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
       "eslint --fix",
