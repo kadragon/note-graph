@@ -29,6 +29,7 @@ beforeAll(async () => {
     `CREATE TABLE IF NOT EXISTS departments (
       dept_name TEXT PRIMARY KEY,
       description TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`
   ).run();
@@ -131,6 +132,23 @@ beforeAll(async () => {
       updated_at TEXT DEFAULT (datetime('now')),
       dead_letter_at TEXT,
       FOREIGN KEY (work_id) REFERENCES work_notes(work_id) ON DELETE CASCADE
+    )`
+  ).run();
+
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS task_categories (
+      category_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`
+  ).run();
+
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS work_note_task_category (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      work_id TEXT NOT NULL REFERENCES work_notes(work_id) ON DELETE CASCADE,
+      category_id TEXT NOT NULL REFERENCES task_categories(category_id) ON DELETE CASCADE,
+      UNIQUE(work_id, category_id)
     )`
   ).run();
 
