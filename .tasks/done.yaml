@@ -2,6 +2,20 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-026
+    title: "Align AI Gateway binding"
+    spec_id: SPEC-ai-draft-1
+    completed_at: "2025-11-19T15:10:00Z"
+    outcome: |
+      Updated Wrangler vars and environment documentation so AI-powered
+      features (draft generation, RAG, PDF draft pipeline) use the new Cloudflare
+      AI Gateway ID `worknote-maker`. Added trace annotations to keep the
+      configuration change linked to SPEC-ai-draft-1 / TASK-026.
+    test_results: |
+      - Configuration-only change; no automated tests required.
+    estimated_effort: 0.25h
+    actual_effort: ~0.1h
+
   - task_id: TASK-001
     title: "Initialize Cloudflare Workers project with Wrangler"
     spec_id: SPEC-auth-1
