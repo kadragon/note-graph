@@ -92,7 +92,7 @@ export class WorkNoteRepository {
   /**
    * Find all work notes with filters
    */
-  async findAll(query: ListWorkNotesQuery): Promise<WorkNote[]> {
+  async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
     let sql = `
       SELECT DISTINCT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
              wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt
@@ -151,7 +151,31 @@ export class WorkNoteRepository {
     const stmt = this.db.prepare(sql);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<WorkNote>();
 
-    return result.results || [];
+    const workNotes = result.results || [];
+
+    // Fetch categories for each work note
+    const workNotesWithCategories = await Promise.all(
+      workNotes.map(async (workNote) => {
+        const categoriesResult = await this.db
+          .prepare(
+            `SELECT tc.category_id as categoryId, tc.name, tc.created_at as createdAt
+             FROM task_categories tc
+             INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+             WHERE wntc.work_id = ?`
+          )
+          .bind(workNote.workId)
+          .all<TaskCategory>();
+
+        return {
+          ...workNote,
+          persons: [],
+          relatedWorkNotes: [],
+          categories: categoriesResult.results || [],
+        };
+      })
+    );
+
+    return workNotesWithCategories;
   }
 
   /**

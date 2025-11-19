@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Edit2, Save, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { API } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
+import { useTaskCategories } from '@/hooks/useTaskCategories';
+import { usePersons } from '@/hooks/usePersons';
 import type { WorkNote, CreateTodoRequest, TodoStatus } from '@/types/api';
 
 interface ViewWorkNoteDialogProps {
@@ -29,6 +33,12 @@ export function ViewWorkNoteDialog({
   open,
   onOpenChange,
 }: ViewWorkNoteDialogProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
+  const [editPersonIds, setEditPersonIds] = useState<string[]>([]);
+
   const [showAddTodo, setShowAddTodo] = useState(false);
   const [todoTitle, setTodoTitle] = useState('');
   const [todoDescription, setTodoDescription] = useState('');
@@ -36,6 +46,9 @@ export function ViewWorkNoteDialog({
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const updateMutation = useUpdateWorkNote();
+  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
+  const { data: persons = [], isLoading: personsLoading } = usePersons();
 
   // Fetch todos for this work note
   const { data: todos = [], isLoading: todosLoading } = useQuery({
@@ -43,6 +56,25 @@ export function ViewWorkNoteDialog({
     queryFn: () => (workNote ? API.getWorkNoteTodos(workNote.id) : Promise.resolve([])),
     enabled: !!workNote && open,
   });
+
+  // Initialize edit form when work note changes
+  useEffect(() => {
+    if (workNote && open) {
+      setEditTitle(workNote.title);
+      setEditContent(workNote.content);
+      setEditCategoryIds(workNote.categories?.map((c) => c.categoryId) || []);
+      // Note: We need to fetch persons associated with this work note
+      // For now, we'll initialize with empty array
+      setEditPersonIds([]);
+    }
+  }, [workNote, open]);
+
+  // Reset editing state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setIsEditing(false);
+    }
+  }, [open]);
 
   // Create todo mutation
   const createTodoMutation = useMutation({
@@ -109,19 +141,167 @@ export function ViewWorkNoteDialog({
     updateTodoMutation.mutate({ todoId, status: newStatus });
   };
 
+  const handleCategoryToggle = (categoryId: string) => {
+    setEditCategoryIds((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const handlePersonToggle = (personId: string) => {
+    setEditPersonIds((prev) =>
+      prev.includes(personId) ? prev.filter((id) => id !== personId) : [...prev, personId]
+    );
+  };
+
+  const handleSaveEdit = async () => {
+    if (!workNote || !editTitle.trim() || !editContent.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '제목과 내용을 입력해주세요.',
+      });
+      return;
+    }
+
+    try {
+      await updateMutation.mutateAsync({
+        workId: workNote.id,
+        data: {
+          title: editTitle.trim(),
+          content: editContent.trim(),
+          categoryIds: editCategoryIds.length > 0 ? editCategoryIds : undefined,
+          relatedPersonIds: editPersonIds.length > 0 ? editPersonIds : undefined,
+        },
+      });
+      setIsEditing(false);
+    } catch (error) {
+      // Error is handled by the mutation hook
+    }
+  };
+
+  const handleCancelEdit = () => {
+    if (workNote) {
+      setEditTitle(workNote.title);
+      setEditContent(workNote.content);
+      setEditCategoryIds(workNote.categories?.map((c) => c.categoryId) || []);
+      setEditPersonIds([]);
+    }
+    setIsEditing(false);
+  };
+
   if (!workNote) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between gap-4">
-            <DialogTitle className="text-xl">{workNote.title}</DialogTitle>
-            <Badge variant="secondary">{workNote.category}</Badge>
+            {isEditing ? (
+              <div className="flex-1">
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="제목"
+                  className="text-xl font-semibold"
+                />
+              </div>
+            ) : (
+              <DialogTitle className="text-xl">{workNote.title}</DialogTitle>
+            )}
+            <div className="flex items-center gap-2">
+              {!isEditing && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Edit2 className="h-4 w-4" />
+                  <span className="sr-only">수정</span>
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Categories Section */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">업무 구분</Label>
+            {isEditing ? (
+              categoriesLoading ? (
+                <p className="text-sm text-muted-foreground">로딩 중...</p>
+              ) : taskCategories.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  등록된 업무 구분이 없습니다.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 max-h-[150px] overflow-y-auto border rounded-md p-3">
+                  {taskCategories.map((category) => (
+                    <div key={category.categoryId} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-category-${category.categoryId}`}
+                        checked={editCategoryIds.includes(category.categoryId)}
+                        onCheckedChange={() => handleCategoryToggle(category.categoryId)}
+                      />
+                      <label
+                        htmlFor={`edit-category-${category.categoryId}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {category.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {workNote.categories && workNote.categories.length > 0 ? (
+                  workNote.categories.map((category) => (
+                    <Badge key={category.categoryId} variant="secondary">
+                      {category.name}
+                    </Badge>
+                  ))
+                ) : (
+                  <Badge variant="outline">업무 구분 없음</Badge>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Assignees Section */}
+          {isEditing && (
+            <div>
+              <Label className="text-sm font-medium mb-2 block">담당자</Label>
+              {personsLoading ? (
+                <p className="text-sm text-muted-foreground">로딩 중...</p>
+              ) : persons.length === 0 ? (
+                <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 max-h-[150px] overflow-y-auto border rounded-md p-3">
+                  {persons.map((person) => (
+                    <div key={person.personId} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-person-${person.personId}`}
+                        checked={editPersonIds.includes(person.personId)}
+                        onCheckedChange={() => handlePersonToggle(person.personId)}
+                      />
+                      <label
+                        htmlFor={`edit-person-${person.personId}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {person.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Dates */}
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
               생성일:{' '}
@@ -137,13 +317,42 @@ export function ViewWorkNoteDialog({
             </p>
           </div>
 
+          {/* Content */}
           <div className="border-t pt-4">
             <h3 className="font-semibold mb-2">내용</h3>
-            <div className="prose prose-sm max-w-none">
-              <p className="whitespace-pre-wrap text-sm">{workNote.content}</p>
-            </div>
+            {isEditing ? (
+              <Textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                placeholder="업무노트 내용을 입력하세요"
+                className="min-h-[200px]"
+              />
+            ) : (
+              <div className="prose prose-sm max-w-none">
+                <p className="whitespace-pre-wrap text-sm">{workNote.content}</p>
+              </div>
+            )}
           </div>
 
+          {/* Edit Actions */}
+          {isEditing && (
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <Button
+                variant="outline"
+                onClick={handleCancelEdit}
+                disabled={updateMutation.isPending}
+              >
+                <X className="h-4 w-4 mr-2" />
+                취소
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+                <Save className="h-4 w-4 mr-2" />
+                {updateMutation.isPending ? '저장 중...' : '저장'}
+              </Button>
+            </div>
+          )}
+
+          {/* Todos Section */}
           <div className="border-t pt-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">할일 목록</h3>

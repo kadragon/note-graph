@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCreateWorkNote } from '@/hooks/useWorkNotes';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
+import { usePersons } from '@/hooks/usePersons';
 
 interface CreateWorkNoteDialogProps {
   open: boolean;
@@ -26,16 +27,24 @@ export function CreateWorkNoteDialog({
 }: CreateWorkNoteDialogProps) {
   const [title, setTitle] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
 
   const createMutation = useCreateWorkNote();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
+  const { data: persons = [], isLoading: personsLoading } = usePersons();
 
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategoryIds((prev) =>
       prev.includes(categoryId)
         ? prev.filter((id) => id !== categoryId)
         : [...prev, categoryId]
+    );
+  };
+
+  const handlePersonToggle = (personId: string) => {
+    setSelectedPersonIds((prev) =>
+      prev.includes(personId) ? prev.filter((id) => id !== personId) : [...prev, personId]
     );
   };
 
@@ -51,11 +60,13 @@ export function CreateWorkNoteDialog({
         title: title.trim(),
         content: content.trim(),
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+        relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
       });
 
       // Reset form and close dialog
       setTitle('');
       setSelectedCategoryIds([]);
+      setSelectedPersonIds([]);
       setContent('');
       onOpenChange(false);
     } catch (error) {
@@ -65,7 +76,7 @@ export function CreateWorkNoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>새 업무노트 작성</DialogTitle>
@@ -108,6 +119,35 @@ export function CreateWorkNoteDialog({
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                       >
                         {category.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label>담당자 (선택사항)</Label>
+              {personsLoading ? (
+                <p className="text-sm text-muted-foreground">로딩 중...</p>
+              ) : persons.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  등록된 사람이 없습니다. 먼저 사람을 추가해주세요.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto border rounded-md p-3">
+                  {persons.map((person) => (
+                    <div key={person.personId} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`person-${person.personId}`}
+                        checked={selectedPersonIds.includes(person.personId)}
+                        onCheckedChange={() => handlePersonToggle(person.personId)}
+                      />
+                      <label
+                        htmlFor={`person-${person.personId}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {person.name}
                       </label>
                     </div>
                   ))}

@@ -105,33 +105,48 @@ class APIClient {
   }
 
   // Work Notes
-  getWorkNotes() {
-    return this.request<WorkNote[]>('/work-notes');
+  async getWorkNotes() {
+    const response = await this.request<any[]>('/work-notes');
+    return response.map(this.transformWorkNoteFromBackend);
   }
 
-  createWorkNote(data: CreateWorkNoteRequest) {
+  async createWorkNote(data: CreateWorkNoteRequest) {
     // Transform content to contentRaw for backend
     const { content, ...rest } = data;
-    return this.request<WorkNote>('/work-notes', {
+    const response = await this.request<any>('/work-notes', {
       method: 'POST',
       body: JSON.stringify({ ...rest, contentRaw: content }),
     });
+    return this.transformWorkNoteFromBackend(response);
   }
 
-  updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
+  async updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
     // Transform content to contentRaw for backend if present
     const { content, ...rest } = data;
     const payload = content !== undefined ? { ...rest, contentRaw: content } : rest;
-    return this.request<WorkNote>(`/work-notes/${workId}`, {
+    const response = await this.request<any>(`/work-notes/${workId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
+    return this.transformWorkNoteFromBackend(response);
   }
 
   deleteWorkNote(workId: string) {
     return this.request<void>(`/work-notes/${workId}`, {
       method: 'DELETE',
     });
+  }
+
+  private transformWorkNoteFromBackend(backendWorkNote: any): WorkNote {
+    return {
+      id: backendWorkNote.workId,
+      title: backendWorkNote.title,
+      content: backendWorkNote.contentRaw,
+      category: backendWorkNote.category || '',
+      categories: backendWorkNote.categories || [],
+      createdAt: backendWorkNote.createdAt,
+      updatedAt: backendWorkNote.updatedAt,
+    };
   }
 
   // Persons

@@ -49,7 +49,7 @@ export class WorkNoteService {
   /**
    * Find all work notes with filters
    */
-  async findAll(query: ListWorkNotesQuery): Promise<WorkNote[]> {
+  async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
     return this.repository.findAll(query);
   }
 
