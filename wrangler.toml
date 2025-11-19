@@ -38,7 +38,10 @@ remote = true
 # ============================================================================
 [vars]
 ENVIRONMENT = "development"
-AI_GATEWAY_ID = "worknote-ai-gateway"
+# AI_GATEWAY_ID format: {account_id}/{gateway_name}
+# Find your account ID at: https://dash.cloudflare.com/?to=/:account/workers
+# Example: "1234567890abcdef/worknote-ai-gateway"
+AI_GATEWAY_ID = "your-account-id/worknote-ai-gateway"
 OPENAI_MODEL_CHAT = "gpt-5.1"
 OPENAI_MODEL_EMBEDDING = "text-embedding-3-small"
 
@@ -77,5 +80,8 @@ enabled = true
 # ============================================================================
 # 1. Create D1 database: wrangler d1 create worknote-db
 # 2. Create Vectorize index: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
-# 3. Set secrets: wrangler secret put OPENAI_API_KEY
-# 4. Update account_id, database_id after creation
+# 3. Create AI Gateway in Cloudflare Dashboard: https://dash.cloudflare.com/?to=/:account/ai/ai-gateway
+# 4. Update AI_GATEWAY_ID with format: {account_id}/{gateway_name}
+# 5. Set secrets: wrangler secret put OPENAI_API_KEY
+# 6. (Optional) Set CF_AIG_AUTHORIZATION if gateway requires authentication: wrangler secret put CF_AIG_AUTHORIZATION
+# 7. Update account_id, database_id after creation
