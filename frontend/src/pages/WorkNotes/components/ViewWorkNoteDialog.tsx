@@ -4,6 +4,10 @@ import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Edit2, Save, X } from 'lucide-react';
+import MDEditor from '@uiw/react-md-editor';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AssigneeSelector } from '@/components/AssigneeSelector';
 import { API } from '@/lib/api';
@@ -50,6 +53,9 @@ export function ViewWorkNoteDialog({
   const [todoDescription, setTodoDescription] = useState('');
   // Set default due date to today in YYYY-MM-DD format
   const [todoDueDate, setTodoDueDate] = useState(getTodayString);
+
+  // Detect system theme preference
+  const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -87,6 +93,24 @@ export function ViewWorkNoteDialog({
       setIsEditing(false);
     }
   }, [open]);
+
+  // Detect and sync with system theme preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateColorMode = (e: MediaQueryListEvent | MediaQueryList) => {
+      setColorMode(e.matches ? 'dark' : 'light');
+    };
+
+    // Set initial value
+    updateColorMode(mediaQuery);
+
+    // Listen for changes
+    mediaQuery.addEventListener('change', updateColorMode);
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateColorMode);
+    };
+  }, []);
 
   // Create todo mutation
   const createTodoMutation = useMutation({
@@ -335,15 +359,23 @@ export function ViewWorkNoteDialog({
           <div className="border-t pt-4">
             <h3 className="font-semibold mb-2">내용</h3>
             {isEditing ? (
-              <Textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                placeholder="업무노트 내용을 입력하세요"
-                className="min-h-[200px]"
-              />
+              <div data-color-mode={colorMode}>
+                <MDEditor
+                  value={editContent}
+                  onChange={(value) => setEditContent(value || '')}
+                  preview="edit"
+                  height={400}
+                  visibleDragbar={false}
+                />
+              </div>
             ) : (
-              <div className="prose prose-sm max-w-none">
-                <p className="whitespace-pre-wrap text-sm">{workNote.content}</p>
+              <div className="prose prose-sm max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800" data-color-mode={colorMode}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeSanitize]}
+                >
+                  {workNote.content}
+                </ReactMarkdown>
               </div>
             )}
           </div>
