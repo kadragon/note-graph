@@ -38,8 +38,6 @@ remote = true
 # ============================================================================
 [vars]
 ENVIRONMENT = "development"
-# Find your account ID at: https://dash.cloudflare.com/?to=/:account/workers
-CLOUDFLARE_ACCOUNT_ID = "your-cloudflare-account-id"
 # AI Gateway name (created in Cloudflare Dashboard)
 AI_GATEWAY_ID = "worknote-ai-gateway"
 OPENAI_MODEL_CHAT = "gpt-5.1"
@@ -48,7 +46,9 @@ OPENAI_MODEL_EMBEDDING = "text-embedding-3-small"
 # ============================================================================
 # Production Environment Variables (use wrangler secret for sensitive data)
 # ============================================================================
+# CLOUDFLARE_ACCOUNT_ID - Set via: wrangler secret put CLOUDFLARE_ACCOUNT_ID
 # OPENAI_API_KEY - Set via: wrangler secret put OPENAI_API_KEY
+# CF_AIG_AUTHORIZATION - (Optional) Set via: wrangler secret put CF_AIG_AUTHORIZATION
 
 # ============================================================================
 # Development Settings
@@ -78,11 +78,17 @@ enabled = true
 # ============================================================================
 # IMPORTANT NOTES
 # ============================================================================
-# 1. Create D1 database: wrangler d1 create worknote-db
-# 2. Create Vectorize index: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
-# 3. Create AI Gateway in Cloudflare Dashboard: https://dash.cloudflare.com/?to=/:account/ai/ai-gateway
-# 4. Update CLOUDFLARE_ACCOUNT_ID with your account ID (find at: https://dash.cloudflare.com/?to=/:account/workers)
-# 5. Update AI_GATEWAY_ID with your gateway name (created in step 3)
-# 6. Set secrets: wrangler secret put OPENAI_API_KEY
-# 7. (Optional) Set CF_AIG_AUTHORIZATION if gateway requires authentication: wrangler secret put CF_AIG_AUTHORIZATION
-# 8. Update database_id in [[d1_databases]] section after creation
+# Development Setup:
+# 1. Copy .dev.vars.example to .dev.vars
+# 2. Update .dev.vars with your CLOUDFLARE_ACCOUNT_ID
+# 3. Create D1 database: wrangler d1 create worknote-db
+# 4. Create Vectorize index: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
+# 5. Create AI Gateway in Cloudflare Dashboard: https://dash.cloudflare.com/?to=/:account/ai/ai-gateway
+# 6. Update AI_GATEWAY_ID in [vars] section with your gateway name
+# 7. Update database_id in [[d1_databases]] section after creation
+#
+# Production Setup:
+# 1. Set secrets:
+#    - wrangler secret put CLOUDFLARE_ACCOUNT_ID
+#    - wrangler secret put OPENAI_API_KEY
+#    - wrangler secret put CF_AIG_AUTHORIZATION (optional, if gateway requires auth)

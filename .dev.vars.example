@@ -1,0 +1,7 @@
+# Development Environment Variables
+# Copy this file to .dev.vars and fill in your actual values
+# .dev.vars is gitignored and will not be committed to the repository
+
+# Cloudflare Account ID
+# Find at: https://dash.cloudflare.com/?to=/:account/workers
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
