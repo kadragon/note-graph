@@ -1,6 +1,7 @@
 // Trace: TASK-027, SPEC-worknote-1
 import { useState, useEffect } from 'react';
 import { FileEdit, Sparkles } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -17,10 +18,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { AssigneeSelector } from '@/components/AssigneeSelector';
 import { useGenerateDraftWithSimilar } from '@/hooks/useAIDraft';
-import { useCreateWorkNote } from '@/hooks/useWorkNotes';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { useToast } from '@/hooks/use-toast';
+import { API } from '@/lib/api';
 import type { AIDraftTodo } from '@/types/api';
 
 interface CreateFromTextDialogProps {
@@ -39,9 +40,10 @@ export function CreateFromTextDialog({
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
   const [suggestedTodos, setSuggestedTodos] = useState<AIDraftTodo[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const generateMutation = useGenerateDraftWithSimilar();
-  const createMutation = useCreateWorkNote();
+  const queryClient = useQueryClient();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
   const { data: persons = [], isLoading: personsLoading } = usePersons();
   const { toast } = useToast();
@@ -99,19 +101,59 @@ export function CreateFromTextDialog({
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      await createMutation.mutateAsync({
+      // Create work note first
+      const workNote = await API.createWorkNote({
         title: title.trim(),
         content: content.trim(),
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
       });
 
+      // Create todos if any suggested todos exist
+      if (suggestedTodos.length > 0 && workNote?.id) {
+        const todoPromises = suggestedTodos.map((todo) =>
+          API.createWorkNoteTodo(workNote.id, {
+            title: todo.title,
+            description: todo.description,
+            dueDate: todo.dueDate,
+            repeatRule: 'NONE',
+          })
+        );
+
+        await Promise.all(todoPromises);
+
+        // Invalidate both work-notes and todos queries
+        queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+        queryClient.invalidateQueries({ queryKey: ['todos'] });
+
+        toast({
+          title: '성공',
+          description: `업무노트와 ${suggestedTodos.length}개의 할일이 저장되었습니다.`,
+        });
+      } else {
+        // Invalidate work-notes query
+        queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+
+        toast({
+          title: '성공',
+          description: '업무노트가 생성되었습니다.',
+        });
+      }
+
       // Reset form and close dialog
       resetForm();
       onOpenChange(false);
     } catch (error) {
-      // Error is handled by the mutation hook
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -287,7 +329,7 @@ export function CreateFromTextDialog({
                   type="button"
                   variant="outline"
                   onClick={() => setDraftGenerated(false)}
-                  disabled={createMutation.isPending}
+                  disabled={isSubmitting}
                 >
                   다시 입력
                 </Button>
@@ -295,12 +337,12 @@ export function CreateFromTextDialog({
                   type="button"
                   variant="outline"
                   onClick={handleClose}
-                  disabled={createMutation.isPending}
+                  disabled={isSubmitting}
                 >
                   취소
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? '저장 중...' : '업무노트 저장'}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? '저장 중...' : '업무노트 저장'}
                 </Button>
               </DialogFooter>
             </form>
