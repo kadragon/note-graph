@@ -19,7 +19,8 @@ export const workNotePersonSchema = z.object({
 export const createWorkNoteSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   contentRaw: z.string().min(1, 'Content is required'),
-  category: z.string().max(50).optional(),
+  category: z.string().max(50).optional(), // Deprecated: use categoryIds instead
+  categoryIds: z.array(z.string()).optional(),
   persons: z.array(workNotePersonSchema).optional(),
   relatedWorkIds: z.array(z.string()).optional(),
 });
@@ -30,7 +31,8 @@ export const createWorkNoteSchema = z.object({
 export const updateWorkNoteSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   contentRaw: z.string().min(1).optional(),
-  category: z.string().max(50).optional(),
+  category: z.string().max(50).optional(), // Deprecated: use categoryIds instead
+  categoryIds: z.array(z.string()).optional(),
   persons: z.array(workNotePersonSchema).optional(),
   relatedWorkIds: z.array(z.string()).optional(),
 });
