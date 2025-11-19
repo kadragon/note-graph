@@ -47,7 +47,7 @@ export class EmbeddingService {
   private async callOpenAI(inputs: string[]): Promise<{
     data: Array<{ embedding: number[]; index: number }>;
   }> {
-    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.AI_GATEWAY_ID}/openai/embeddings`;
+    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.CLOUDFLARE_ACCOUNT_ID}/${this.env.AI_GATEWAY_ID}/openai/embeddings`;
 
     const requestBody = {
       model: this.env.OPENAI_MODEL_EMBEDDING,

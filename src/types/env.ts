@@ -7,6 +7,7 @@ export interface Env {
   VECTORIZE: VectorizeIndex;
   AI_GATEWAY: Fetcher;
   ENVIRONMENT: string;
+  CLOUDFLARE_ACCOUNT_ID: string;
   AI_GATEWAY_ID: string;
   OPENAI_MODEL_CHAT: string;
   OPENAI_MODEL_EMBEDDING: string;

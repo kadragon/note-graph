@@ -155,7 +155,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
    * @returns GPT response text
    */
   private async callGPT(prompt: string): Promise<string> {
-    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.AI_GATEWAY_ID}/openai/chat/completions`;
+    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.CLOUDFLARE_ACCOUNT_ID}/${this.env.AI_GATEWAY_ID}/openai/chat/completions`;
 
     const requestBody = {
       model: this.env.OPENAI_MODEL_CHAT,

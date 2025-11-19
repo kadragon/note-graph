@@ -233,7 +233,7 @@ ${contextText}
    * Call GPT-4.5 via AI Gateway
    */
   private async callGPT(prompt: string): Promise<string> {
-    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.AI_GATEWAY_ID}/openai/chat/completions`;
+    const url = `https://gateway.ai.cloudflare.com/v1/${this.env.CLOUDFLARE_ACCOUNT_ID}/${this.env.AI_GATEWAY_ID}/openai/chat/completions`;
 
     const requestBody = {
       model: this.env.OPENAI_MODEL_CHAT,
