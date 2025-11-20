@@ -70,7 +70,6 @@ export default defineConfig({
             'cmdk',
           ],
           'markdown-vendor': [
-            '@uiw/react-md-editor',
             'react-markdown',
             'remark-gfm',
             'rehype-sanitize',
