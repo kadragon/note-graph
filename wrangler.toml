@@ -42,6 +42,7 @@ ENVIRONMENT = "development"
 AI_GATEWAY_ID = "worknote-maker"
 OPENAI_MODEL_CHAT = "gpt-5.1"
 OPENAI_MODEL_EMBEDDING = "text-embedding-3-small"
+OPENAI_MODEL_LIGHTWEIGHT = "gpt-5-mini"
 
 # ============================================================================
 # Production Environment Variables (use wrangler secret for sensitive data)
