@@ -187,13 +187,13 @@ export class WorkNoteRepository {
     const placeholders = workIds.map(() => '?').join(',');
     const categoriesResult = await this.db
       .prepare(
-        `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.created_at as createdAt
+        `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
          FROM task_categories tc
          INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
          WHERE wntc.work_id IN (${placeholders})`
       )
       .bind(...workIds)
-      .all<TaskCategory & { workId: string }>();
+      .all<{ workId: string; categoryId: string; name: string; isActive: number; createdAt: string }>();
 
     // Fetch all persons in a single query
     const personsResult = await this.db
@@ -219,6 +219,7 @@ export class WorkNoteRepository {
       categoriesByWorkId.get(cat.workId)!.push({
         categoryId: cat.categoryId,
         name: cat.name,
+        isActive: cat.isActive === 1,
         createdAt: cat.createdAt,
       });
     }

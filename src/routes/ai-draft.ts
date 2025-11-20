@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import type { Context, Next } from 'hono';
 import type { Env } from '../types/env';
 import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
@@ -11,6 +12,7 @@ import { validateBody } from '../utils/validation';
 import { DraftFromTextRequestSchema, TodoSuggestionsRequestSchema } from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
 import { WorkNoteService } from '../services/work-note-service';
+import { TaskCategoryRepository } from '../repositories/task-category-repository';
 import { RateLimitError, NotFoundError } from '../types/errors';
 
 // Configuration constants
@@ -19,6 +21,7 @@ const SIMILARITY_SCORE_THRESHOLD = 0.5;
 
 type Variables = {
   user: AuthUser;
+  activeCategoryNames: string[];
 };
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -27,18 +30,34 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 app.use('*', authMiddleware);
 
 /**
+ * Middleware to fetch active categories for AI suggestion
+ * Attaches activeCategoryNames to context for draft generation routes
+ */
+const activeCategoriesMiddleware = async (
+  c: Context<{ Bindings: Env; Variables: Variables }>,
+  next: Next
+) => {
+  const categoryRepo = new TaskCategoryRepository(c.env.DB);
+  const activeCategories = await categoryRepo.findAll(undefined, 100, true);
+  c.set('activeCategoryNames', activeCategories.map(cat => cat.name));
+  await next();
+};
+
+/**
  * POST /ai/work-notes/draft-from-text
  * Generate work note draft from unstructured text
  */
-app.post('/work-notes/draft-from-text', async (c) => {
+app.post('/work-notes/draft-from-text', activeCategoriesMiddleware, async (c) => {
   try {
     const body = await validateBody(c, DraftFromTextRequestSchema);
+    const activeCategoryNames = c.get('activeCategoryNames');
 
     const aiDraftService = new AIDraftService(c.env);
     const draft = await aiDraftService.generateDraftFromText(body.inputText, {
       category: body.category,
       personIds: body.personIds,
       deptName: body.deptName,
+      activeCategories: activeCategoryNames,
     });
 
     return c.json(draft);
@@ -60,9 +79,10 @@ app.post('/work-notes/draft-from-text', async (c) => {
  * POST /ai/work-notes/draft-from-text-with-similar
  * Generate work note draft from unstructured text with similar work notes as context
  */
-app.post('/work-notes/draft-from-text-with-similar', async (c) => {
+app.post('/work-notes/draft-from-text-with-similar', activeCategoriesMiddleware, async (c) => {
   try {
     const body = await validateBody(c, DraftFromTextRequestSchema);
+    const activeCategoryNames = c.get('activeCategoryNames');
 
     // Search for similar work notes using shared service
     const workNoteService = new WorkNoteService(c.env);
@@ -82,11 +102,13 @@ app.post('/work-notes/draft-from-text-with-similar', async (c) => {
           category: body.category,
           personIds: body.personIds,
           deptName: body.deptName,
+          activeCategories: activeCategoryNames,
         })
       : await aiDraftService.generateDraftFromText(body.inputText, {
           category: body.category,
           personIds: body.personIds,
           deptName: body.deptName,
+          activeCategories: activeCategoryNames,
         });
 
     return c.json(draft);

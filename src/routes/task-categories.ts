@@ -19,12 +19,16 @@ taskCategories.use('*', authMiddleware);
 
 /**
  * GET /task-categories - List all task categories
+ * Query params:
+ *   - q: search query
+ *   - limit: max results
+ *   - activeOnly: if 'true', only return active categories
  */
 taskCategories.get('/', async (c) => {
   try {
     const query = validateQuery(c, listTaskCategoriesQuerySchema);
     const repository = new TaskCategoryRepository(c.env.DB);
-    const results = await repository.findAll(query.q, query.limit);
+    const results = await repository.findAll(query.q, query.limit, query.activeOnly);
 
     return c.json(results);
   } catch (error) {
