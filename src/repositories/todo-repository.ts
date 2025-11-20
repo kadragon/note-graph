@@ -116,24 +116,25 @@ export class TodoRepository {
     // Apply view filters
     switch (query.view) {
       case 'today': {
-        // wait_until <= now (or null) + due_date from past to today
+        // wait_until <= now (or null) + due_date from yearStart to today
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
+        // Use the earlier of todayEnd and yearEnd as the effective end date
+        const effectiveEnd = new Date(Math.min(todayEnd.getTime(), yearEnd.getTime()));
 
         conditions.push(
           `t.status != ?`,
           `(t.wait_until IS NULL OR t.wait_until <= ?)`,
           `t.due_date IS NOT NULL`,
-          `t.due_date <= ?`,
           `t.due_date >= ?`,
           `t.due_date <= ?`
         );
-        params.push('완료', now, todayEnd.toISOString(), yearStart.toISOString(), yearEnd.toISOString());
+        params.push('완료', now, yearStart.toISOString(), effectiveEnd.toISOString());
         break;
       }
 
       case 'week': {
-        // wait_until <= now (or null) + due_date from past to this week Friday
+        // wait_until <= now (or null) + due_date from yearStart to this week Friday
         const today = new Date();
         const dayOfWeek = today.getDay();
         // Calculate days until Friday (5)
@@ -141,33 +142,35 @@ export class TodoRepository {
         const weekEnd = new Date(today);
         weekEnd.setDate(today.getDate() + daysUntilFriday);
         weekEnd.setHours(23, 59, 59, 999);
+        // Use the earlier of weekEnd and yearEnd as the effective end date
+        const effectiveEnd = new Date(Math.min(weekEnd.getTime(), yearEnd.getTime()));
 
         conditions.push(
           `t.status != ?`,
           `(t.wait_until IS NULL OR t.wait_until <= ?)`,
           `t.due_date IS NOT NULL`,
-          `t.due_date <= ?`,
           `t.due_date >= ?`,
           `t.due_date <= ?`
         );
-        params.push('완료', now, weekEnd.toISOString(), yearStart.toISOString(), yearEnd.toISOString());
+        params.push('완료', now, yearStart.toISOString(), effectiveEnd.toISOString());
         break;
       }
 
       case 'month': {
-        // wait_until <= now (or null) + due_date from past to end of this month
+        // wait_until <= now (or null) + due_date from yearStart to end of this month
         const today = new Date();
         const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+        // Use the earlier of monthEnd and yearEnd as the effective end date
+        const effectiveEnd = new Date(Math.min(monthEnd.getTime(), yearEnd.getTime()));
 
         conditions.push(
           `t.status != ?`,
           `(t.wait_until IS NULL OR t.wait_until <= ?)`,
           `t.due_date IS NOT NULL`,
-          `t.due_date <= ?`,
           `t.due_date >= ?`,
           `t.due_date <= ?`
         );
-        params.push('완료', now, monthEnd.toISOString(), yearStart.toISOString(), yearEnd.toISOString());
+        params.push('완료', now, yearStart.toISOString(), effectiveEnd.toISOString());
         break;
       }
 
