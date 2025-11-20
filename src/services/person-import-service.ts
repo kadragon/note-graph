@@ -7,6 +7,7 @@ import type { Env } from '../types/env';
 import { parsedPersonDataSchema, type ParsedPersonData } from '../schemas/person';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
+import { ZodError } from 'zod';
 
 /**
  * Person Import Service
@@ -54,8 +55,21 @@ export class PersonImportService {
     // Parse and validate JSON response using Zod schema
     try {
       const parsedJson = JSON.parse(response);
-      return parsedPersonDataSchema.parse(parsedJson);
+
+      // Convert null values to undefined for Zod optional fields
+      // GPT may return null for missing fields, but Zod expects undefined
+      const sanitizedJson = Object.fromEntries(
+        Object.entries(parsedJson).filter(([, value]) => value !== null)
+      );
+
+      return parsedPersonDataSchema.parse(sanitizedJson);
     } catch (error) {
+      if (error instanceof ZodError) {
+        const details = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+        console.error('Zod validation error:', details);
+        console.error('GPT response was:', response);
+        throw new Error(`사람 정보 파싱에 실패했습니다: ${details}`);
+      }
       console.error('Error parsing person response:', error);
       throw new Error('사람 정보 파싱에 실패했습니다. 입력 형식을 확인해주세요.');
     }
