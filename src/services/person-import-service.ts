@@ -58,9 +58,12 @@ export class PersonImportService {
 
       // Convert null values to undefined for Zod optional fields
       // GPT may return null for missing fields, but Zod expects undefined
-      const sanitizedJson = Object.fromEntries(
-        Object.entries(parsedJson).filter(([, value]) => value !== null)
-      );
+      const sanitizedJson: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(parsedJson)) {
+        if (value !== null) {
+          sanitizedJson[key] = value;
+        }
+      }
 
       return parsedPersonDataSchema.parse(sanitizedJson);
     } catch (error) {
@@ -71,7 +74,9 @@ export class PersonImportService {
         throw new Error(`사람 정보 파싱에 실패했습니다: ${details}`);
       }
       console.error('Error parsing person response:', error);
-      throw new Error('사람 정보 파싱에 실패했습니다. 입력 형식을 확인해주세요.');
+      throw new Error(
+        `사람 정보 파싱에 실패했습니다: ${error instanceof Error ? error.message : '입력 형식을 확인해주세요.'}`
+      );
     }
   }
 
