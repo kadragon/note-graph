@@ -18,6 +18,9 @@ import type {
   UpdateTaskCategoryRequest,
   Todo,
   TodoView,
+  TodoStatus,
+  RepeatRule,
+  RecurrenceType,
   CreateTodoRequest,
   UpdateTodoRequest,
   SearchRequest,
@@ -327,8 +330,13 @@ class APIClient {
   }
 
   // Todos
-  async getTodos(view: TodoView = 'all') {
-    const response = await this.request<BackendTodo[]>(`/todos?view=${view}`);
+  async getTodos(view: TodoView = 'today', year?: number) {
+    const params = new URLSearchParams();
+    params.set('view', view);
+    if (year) {
+      params.set('year', year.toString());
+    }
+    const response = await this.request<BackendTodo[]>(`/todos?${params.toString()}`);
     return response.map(this.transformTodoFromBackend.bind(this));
   }
 

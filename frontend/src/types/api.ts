@@ -149,7 +149,7 @@ export interface UpdateTaskCategoryRequest {
 
 // Todo types
 export type TodoStatus = '진행중' | '완료' | '보류' | '중단';
-export type TodoView = 'today' | 'this_week' | 'this_month' | 'backlog' | 'all';
+export type TodoView = 'today' | 'week' | 'month' | 'remaining' | 'completed';
 export type RepeatRule = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
 export type RecurrenceType = 'DUE_DATE' | 'COMPLETION_DATE';
 
