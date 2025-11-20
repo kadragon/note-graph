@@ -8,6 +8,30 @@ import type { WorkNoteDraft, AIDraftTodo } from '../types/search';
 import type { WorkNote } from '../types/work-note';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
+import { getTodayDateUTC } from '../utils/date';
+
+/**
+ * Raw todo structure returned by LLM
+ */
+interface RawAIDraftTodo {
+  title: string;
+  description: string;
+  dueDateSuggestion?: string | null;
+  repeatRule?: {
+    interval: number;
+    unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
+  } | null;
+}
+
+/**
+ * Raw draft structure returned by LLM
+ */
+interface RawWorkNoteDraft {
+  title: string;
+  content: string;
+  category: string;
+  todos: RawAIDraftTodo[];
+}
 
 /**
  * AI Draft Service
@@ -22,6 +46,31 @@ export class AIDraftService {
   private static readonly GPT_MAX_COMPLETION_TOKENS = 3000;
 
   constructor(private env: Env) {}
+
+  /**
+   * Transform raw LLM todo to proper AIDraftTodo format
+   * Defaults null/undefined due dates to today's date (UTC)
+   */
+  private transformTodo(rawTodo: RawAIDraftTodo): AIDraftTodo {
+    return {
+      title: rawTodo.title,
+      description: rawTodo.description,
+      dueDate: rawTodo.dueDateSuggestion || getTodayDateUTC(),
+      repeatRule: rawTodo.repeatRule,
+    };
+  }
+
+  /**
+   * Transform raw LLM draft to proper WorkNoteDraft format
+   */
+  private transformDraft(rawDraft: RawWorkNoteDraft): WorkNoteDraft {
+    return {
+      title: rawDraft.title,
+      content: rawDraft.content,
+      category: rawDraft.category,
+      todos: rawDraft.todos.map((todo) => this.transformTodo(todo)),
+    };
+  }
 
   /**
    * Generate work note draft from unstructured text input
@@ -44,14 +93,15 @@ export class AIDraftService {
 
     // Parse JSON response from GPT
     try {
-      const draft = JSON.parse(response) as WorkNoteDraft;
+      const rawDraft = JSON.parse(response) as RawWorkNoteDraft;
 
       // Validate required fields
-      if (!draft.title || !draft.content) {
+      if (!rawDraft.title || !rawDraft.content) {
         throw new Error('Invalid draft: missing title or content');
       }
 
-      return draft;
+      // Transform to proper format with default due dates
+      return this.transformDraft(rawDraft);
     } catch (error) {
       console.error('Error parsing draft response:', error);
       throw new Error('Failed to parse AI response. Please try again.');
@@ -81,14 +131,15 @@ export class AIDraftService {
 
     // Parse JSON response from GPT
     try {
-      const draft = JSON.parse(response) as WorkNoteDraft;
+      const rawDraft = JSON.parse(response) as RawWorkNoteDraft;
 
       // Validate required fields
-      if (!draft.title || !draft.content) {
+      if (!rawDraft.title || !rawDraft.content) {
         throw new Error('Invalid draft: missing title or content');
       }
 
-      return draft;
+      // Transform to proper format with default due dates
+      return this.transformDraft(rawDraft);
     } catch (error) {
       console.error('Error parsing draft response:', error);
       throw new Error('Failed to parse AI response. Please try again.');
@@ -108,14 +159,15 @@ export class AIDraftService {
 
     // Parse JSON response from GPT
     try {
-      const todos = JSON.parse(response) as AIDraftTodo[];
+      const rawTodos = JSON.parse(response) as RawAIDraftTodo[];
 
       // Validate array
-      if (!Array.isArray(todos)) {
+      if (!Array.isArray(rawTodos)) {
         throw new Error('Invalid response: expected array of todos');
       }
 
-      return todos;
+      // Transform to proper format with default due dates
+      return rawTodos.map((todo) => this.transformTodo(todo));
     } catch (error) {
       console.error('Error parsing todo suggestions:', error);
       throw new Error('Failed to parse AI response. Please try again.');

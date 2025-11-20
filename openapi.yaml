@@ -289,13 +289,14 @@ components:
         description:
           type: string
           nullable: true
-        dueDateSuggestion:
+        dueDate:
           type: string
-          format: date-time
-          nullable: true
+          format: date
+          description: Due date in YYYY-MM-DD format. Defaults to today if not inferred by LLM.
         repeatRule:
           $ref: '#/components/schemas/TodoRepeatRule'
           nullable: true
+      required: [title, description, dueDate]
 
     WorkNoteDraft:
       type: object
