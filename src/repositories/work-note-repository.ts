@@ -273,16 +273,41 @@ export class WorkNoteRepository {
         .bind(workId, data.title, data.contentRaw, data.category || null, now),
     ];
 
-    // Add person associations
+    // Add person associations with snapshot of current department and position
     if (data.persons && data.persons.length > 0) {
+      // Fetch current department and position for all persons
+      const personIds = data.persons.map((p) => p.personId);
+      const placeholders = personIds.map(() => '?').join(', ');
+      const personsInfo = await this.db
+        .prepare(
+          `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
+        )
+        .bind(...personIds)
+        .all<{ person_id: string; current_dept: string | null; current_position: string | null }>();
+
+      const personInfoMap = new Map<string, { currentDept: string | null; currentPosition: string | null }>();
+      for (const info of personsInfo.results || []) {
+        personInfoMap.set(info.person_id, {
+          currentDept: info.current_dept,
+          currentPosition: info.current_position,
+        });
+      }
+
       for (const person of data.persons) {
+        const info = personInfoMap.get(person.personId);
         statements.push(
           this.db
             .prepare(
-              `INSERT INTO work_note_person (work_id, person_id, role)
-               VALUES (?, ?, ?)`
+              `INSERT INTO work_note_person (work_id, person_id, role, dept_at_time, position_at_time)
+               VALUES (?, ?, ?, ?, ?)`
             )
-            .bind(workId, person.personId, person.role)
+            .bind(
+              workId,
+              person.personId,
+              person.role,
+              info?.currentDept || null,
+              info?.currentPosition || null
+            )
         );
       }
     }
@@ -416,16 +441,43 @@ export class WorkNoteRepository {
         this.db.prepare(`DELETE FROM work_note_person WHERE work_id = ?`).bind(workId)
       );
 
-      // Add new associations
-      for (const person of data.persons) {
-        statements.push(
-          this.db
-            .prepare(
-              `INSERT INTO work_note_person (work_id, person_id, role)
-               VALUES (?, ?, ?)`
-            )
-            .bind(workId, person.personId, person.role)
-        );
+      // Add new associations with snapshot of current department and position
+      if (data.persons.length > 0) {
+        // Fetch current department and position for all persons
+        const personIds = data.persons.map((p) => p.personId);
+        const placeholders = personIds.map(() => '?').join(', ');
+        const personsInfo = await this.db
+          .prepare(
+            `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
+          )
+          .bind(...personIds)
+          .all<{ person_id: string; current_dept: string | null; current_position: string | null }>();
+
+        const personInfoMap = new Map<string, { currentDept: string | null; currentPosition: string | null }>();
+        for (const info of personsInfo.results || []) {
+          personInfoMap.set(info.person_id, {
+            currentDept: info.current_dept,
+            currentPosition: info.current_position,
+          });
+        }
+
+        for (const person of data.persons) {
+          const info = personInfoMap.get(person.personId);
+          statements.push(
+            this.db
+              .prepare(
+                `INSERT INTO work_note_person (work_id, person_id, role, dept_at_time, position_at_time)
+                 VALUES (?, ?, ?, ?, ?)`
+              )
+              .bind(
+                workId,
+                person.personId,
+                person.role,
+                info?.currentDept || null,
+                info?.currentPosition || null
+              )
+          );
+        }
       }
     }
 
