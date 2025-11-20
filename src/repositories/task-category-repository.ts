@@ -9,8 +9,30 @@ import type { CreateTaskCategoryInput, UpdateTaskCategoryInput } from '../schema
 import { NotFoundError, ConflictError } from '../types/errors';
 import { nanoid } from 'nanoid';
 
+/**
+ * Database row type for task category
+ */
+interface TaskCategoryRow {
+  categoryId: string;
+  name: string;
+  isActive: number;
+  createdAt: string;
+}
+
 export class TaskCategoryRepository {
   constructor(private db: D1Database) {}
+
+  /**
+   * Convert database row to TaskCategory entity
+   */
+  private toTaskCategory(row: TaskCategoryRow): TaskCategory {
+    return {
+      categoryId: row.categoryId,
+      name: row.name,
+      isActive: row.isActive === 1,
+      createdAt: row.createdAt,
+    };
+  }
 
   /**
    * Find task category by ID
@@ -23,14 +45,9 @@ export class TaskCategoryRepository {
          WHERE category_id = ?`
       )
       .bind(categoryId)
-      .first<{ categoryId: string; name: string; isActive: number; createdAt: string }>();
+      .first<TaskCategoryRow>();
 
-    if (!result) return null;
-
-    return {
-      ...result,
-      isActive: result.isActive === 1,
-    };
+    return result ? this.toTaskCategory(result) : null;
   }
 
   /**
@@ -44,14 +61,9 @@ export class TaskCategoryRepository {
          WHERE name = ?`
       )
       .bind(name)
-      .first<{ categoryId: string; name: string; isActive: number; createdAt: string }>();
+      .first<TaskCategoryRow>();
 
-    if (!result) return null;
-
-    return {
-      ...result,
-      isActive: result.isActive === 1,
-    };
+    return result ? this.toTaskCategory(result) : null;
   }
 
   /**
@@ -80,17 +92,9 @@ export class TaskCategoryRepository {
     params.push(limit);
 
     const stmt = this.db.prepare(sql);
-    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<{
-      categoryId: string;
-      name: string;
-      isActive: number;
-      createdAt: string;
-    }>();
+    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<TaskCategoryRow>();
 
-    return (result.results || []).map(row => ({
-      ...row,
-      isActive: row.isActive === 1,
-    }));
+    return (result.results || []).map(row => this.toTaskCategory(row));
   }
 
   /**
@@ -267,11 +271,8 @@ export class TaskCategoryRepository {
          ORDER BY tc.name ASC`
       )
       .bind(workId)
-      .all<{ categoryId: string; name: string; isActive: number; createdAt: string }>();
+      .all<TaskCategoryRow>();
 
-    return (result.results || []).map(row => ({
-      ...row,
-      isActive: row.isActive === 1,
-    }));
+    return (result.results || []).map(row => this.toTaskCategory(row));
   }
 }

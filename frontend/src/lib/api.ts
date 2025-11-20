@@ -251,8 +251,10 @@ class APIClient {
 
   // Task Categories
   getTaskCategories(activeOnly?: boolean) {
-    const params = activeOnly ? '?activeOnly=true' : '';
-    return this.request<TaskCategory[]>(`/task-categories${params}`);
+    const params = new URLSearchParams();
+    if (activeOnly) params.set('activeOnly', 'true');
+    const queryString = params.toString();
+    return this.request<TaskCategory[]>(`/task-categories${queryString ? `?${queryString}` : ''}`);
   }
 
   getActiveTaskCategories() {

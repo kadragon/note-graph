@@ -123,6 +123,19 @@ export class AIDraftService {
   }
 
   /**
+   * Build category instruction for AI prompt
+   * @param activeCategories - List of active category names, or undefined
+   * @param fallback - Fallback instruction when no active categories
+   */
+  private buildCategoryInstruction(activeCategories?: string[], fallback?: string): string {
+    if (activeCategories && activeCategories.length > 0) {
+      const categoryList = activeCategories.join(', ');
+      return `3. 제안 카테고리 (다음 중에서 가장 적합한 1개를 선택: ${categoryList})`;
+    }
+    return fallback || '3. 제안 카테고리 (수업성적, KORUS, 기획, 행정 중 하나 또는 새로운 카테고리 추론)';
+  }
+
+  /**
    * Construct prompt for draft generation from text
    */
   private constructDraftPrompt(
@@ -136,15 +149,7 @@ export class AIDraftService {
   ): string {
     const categoryHint = options?.category ? `\n\n카테고리 힌트: ${options.category}` : '';
     const deptHint = options?.deptName ? `\n\n부서 컨텍스트: ${options.deptName}` : '';
-
-    // Build category selection instruction
-    let categoryInstruction: string;
-    if (options?.activeCategories && options.activeCategories.length > 0) {
-      const categoryList = options.activeCategories.join(', ');
-      categoryInstruction = `3. 제안 카테고리 (다음 중에서 가장 적합한 1개를 선택: ${categoryList})`;
-    } else {
-      categoryInstruction = '3. 제안 카테고리 (수업성적, KORUS, 기획, 행정 중 하나 또는 새로운 카테고리 추론)';
-    }
+    const categoryInstruction = this.buildCategoryInstruction(options?.activeCategories);
 
     return `당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.
 
@@ -205,14 +210,10 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
           .join('\n')}`
       : '';
 
-    // Build category selection instruction
-    let categoryInstruction: string;
-    if (options?.activeCategories && options.activeCategories.length > 0) {
-      const categoryList = options.activeCategories.join(', ');
-      categoryInstruction = `3. 제안 카테고리 (다음 중에서 가장 적합한 1개를 선택: ${categoryList})`;
-    } else {
-      categoryInstruction = '3. 제안 카테고리 (유사 노트에서 사용된 카테고리 우선 고려, 또는 새로운 카테고리 추론)';
-    }
+    const categoryInstruction = this.buildCategoryInstruction(
+      options?.activeCategories,
+      '3. 제안 카테고리 (유사 노트에서 사용된 카테고리 우선 고려, 또는 새로운 카테고리 추론)'
+    );
 
     return `당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.
 
