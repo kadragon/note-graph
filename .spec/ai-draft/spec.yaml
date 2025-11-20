@@ -79,7 +79,8 @@ technical_notes:
   - "Client responsible for presenting draft UI and handling save"
   - "Rate limits tracked via AI Gateway, no custom counter needed"
   - "Suggest 3-5 todos per draft, user can add/remove"
-  - "Due date suggestions based on content analysis (if mentioned) or defaults"
+  - "Due date is required: if LLM cannot infer from text, default to today's date (YYYY-MM-DD)"
+  - "Response uses dueDate field (not dueDateSuggestion) for cleaner frontend consumption"
 
 prompt_templates:
   draft_from_text: |
@@ -143,7 +144,7 @@ api_endpoints:
       array of AIDraftTodo:
         title: string
         description: string
-        dueDateSuggestion: date-time (nullable)
+        dueDate: date (required, defaults to today if not inferred)
         repeatRule: TodoRepeatRule (nullable)
 
 error_handling:
