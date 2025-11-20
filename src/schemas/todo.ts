@@ -20,13 +20,27 @@ export const repeatRuleSchema = z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']);
  */
 export const recurrenceTypeSchema = z.enum(['DUE_DATE', 'COMPLETION_DATE']);
 
+// ISO 8601 date format: YYYY-MM-DD
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+// ISO 8601 datetime format
+const DATETIME_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/;
+
+/**
+ * Date or datetime schema
+ * Accepts both ISO 8601 date (YYYY-MM-DD) and datetime (YYYY-MM-DDTHH:mm:ssZ) formats
+ */
+const dateOrDatetimeSchema = z.string().refine(
+  (val) => DATE_REGEX.test(val) || DATETIME_REGEX.test(val),
+  { message: 'Must be a valid ISO 8601 date (YYYY-MM-DD) or datetime string' }
+);
+
 /**
  * Create todo request schema
  */
 export const createTodoSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(1000).optional(),
-  dueDate: z.string().datetime({ message: 'dueDate must be a valid ISO 8601 date-time string' }).optional(),
+  dueDate: dateOrDatetimeSchema.optional(),
   waitUntil: z.string().datetime({ message: 'waitUntil must be a valid ISO 8601 date-time string' }).optional(),
   repeatRule: repeatRuleSchema.default('NONE'),
   recurrenceType: recurrenceTypeSchema.optional(),
@@ -39,7 +53,7 @@ export const updateTodoSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(1000).optional(),
   status: todoStatusSchema.optional(),
-  dueDate: z.string().datetime({ message: 'dueDate must be a valid ISO 8601 date-time string' }).optional(),
+  dueDate: dateOrDatetimeSchema.optional(),
   waitUntil: z.string().datetime({ message: 'waitUntil must be a valid ISO 8601 date-time string' }).optional(),
   repeatRule: repeatRuleSchema.optional(),
   recurrenceType: recurrenceTypeSchema.optional(),
