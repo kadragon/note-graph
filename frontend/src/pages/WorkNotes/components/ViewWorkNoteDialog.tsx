@@ -41,6 +41,10 @@ import { formatPersonBadge } from '@/lib/utils';
 import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
 import type { WorkNote, CreateTodoRequest, TodoStatus, Todo } from '@/types/api';
 
+// Markdown plugin configurations
+const remarkPlugins = [remarkGfm];
+const rehypePlugins = [rehypeSanitize, rehypeHighlight];
+
 interface ViewWorkNoteDialogProps {
   workNote: WorkNote | null;
   open: boolean;
@@ -378,8 +382,8 @@ export function ViewWorkNoteDialog({
             ) : (
               <div className="prose prose-sm max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800" data-color-mode={colorMode}>
                 <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeSanitize, rehypeHighlight]}
+                  remarkPlugins={remarkPlugins}
+                  rehypePlugins={rehypePlugins}
                 >
                   {workNote.content}
                 </ReactMarkdown>
@@ -482,8 +486,8 @@ export function ViewWorkNoteDialog({
                       {todo.description && (
                         <div className="prose prose-xs max-w-none mt-1 text-muted-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                           <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeSanitize, rehypeHighlight]}
+                            remarkPlugins={remarkPlugins}
+                            rehypePlugins={rehypePlugins}
                           >
                             {todo.description}
                           </ReactMarkdown>
