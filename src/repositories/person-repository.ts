@@ -62,7 +62,7 @@ export class PersonRepository {
     }
 
     // Sort by department (nulls last) then name
-    query += ` ORDER BY CASE WHEN current_dept IS NULL THEN 1 ELSE 0 END, current_dept ASC, name ASC`;
+    query += ` ORDER BY current_dept ASC NULLS LAST, name ASC`;
 
     const stmt = this.db.prepare(query);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<Person>();
