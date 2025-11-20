@@ -4,10 +4,29 @@
 
 name = "note-graph"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-01-01"
+
+# Disable workers.dev subdomain (using custom domain instead)
+workers_dev = false
+
+# Disable preview URLs
+preview_urls = false
 
 # Account ID - Replace with your Cloudflare account ID
 # account_id = "your-account-id-here"
+
+# ============================================================================
+# Custom Domain Routes
+# ============================================================================
+routes = [
+  { pattern = "note.kadragon.work", custom_domain = true }
+]
+
+# ============================================================================
+# Smart Placement
+# ============================================================================
+[placement]
+mode = "smart"
 
 # ============================================================================
 # D1 Database
@@ -75,6 +94,11 @@ binding = "ASSETS"
 # ============================================================================
 [observability]
 enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 0.1
 
 # ============================================================================
 # IMPORTANT NOTES
