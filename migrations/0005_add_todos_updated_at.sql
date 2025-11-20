@@ -1,4 +1,4 @@
--- Migration: 0004_add_todos_updated_at
+-- Migration: 0005_add_todos_updated_at
 -- Description: Add updated_at column to todos table for tracking modification timestamps
 -- Trace: PR-30 review feedback
 

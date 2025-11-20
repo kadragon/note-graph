@@ -1,4 +1,4 @@
--- Migration: 0002_embedding_retry_queue
+-- Migration: 0003_embedding_retry_queue
 -- Purpose: Add embedding retry queue for eventual consistency between D1 and Vectorize
 -- Spec: SPEC-rag-2
 -- Task: TASK-022

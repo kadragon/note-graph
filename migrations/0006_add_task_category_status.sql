@@ -1,4 +1,4 @@
--- Migration: 0004_add_task_category_status
+-- Migration: 0006_add_task_category_status
 -- Description: Add is_active status to task_categories table for filtering suggestions
 -- Trace: User request - task category active/inactive feature
 
