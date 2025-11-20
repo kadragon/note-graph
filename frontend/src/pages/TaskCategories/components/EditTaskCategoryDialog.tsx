@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,13 +24,15 @@ export function EditTaskCategoryDialog({
   onOpenChange,
   category,
 }: EditTaskCategoryDialogProps) {
-  const [name, setName] = useState(category?.name || '');
+  const [name, setName] = useState('');
   const updateMutation = useUpdateTaskCategory();
 
-  // Update local state when category changes
-  if (category && name !== category.name && !updateMutation.isPending) {
-    setName(category.name);
-  }
+  // Update local state when category or dialog state changes
+  useEffect(() => {
+    if (category && open) {
+      setName(category.name);
+    }
+  }, [category, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
