@@ -368,6 +368,14 @@
 - Benefits: Superior Korean typography, variable font performance, unified visual appearance
 - Build and tests pass without font-related issues
 
+### Session 22: Test Schema Sync for Workers Pool (2025-11-20)
+- **TASK-028 Completed** (SPEC-devx-1): Aligned Vitest Workers D1 schema with migrations.
+- Rebuilt `tests/setup.ts` with consolidated DDL including employment_status,
+  dept_at_time/position_at_time, todos.updated_at, retry queue, task categories, and FTS table.
+- Relaxed work_note_person role CHECK to allow PARTICIPANT to match legacy fixtures.
+- Repository tests now free of missing-column errors; overall `npm test` results: 425 passed / 3 failed (auth tests expect prod-mode 401 but dev fallback returns 200).
+- Coverage still blocked in Workers pool because @vitest/coverage-v8 pulls `node:inspector` (unsupported by workerd).
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

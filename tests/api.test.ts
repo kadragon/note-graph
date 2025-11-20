@@ -36,11 +36,18 @@ describe('API Integration Tests', () => {
 
   describe('Authentication', () => {
     it('should require authentication for /me endpoint', async () => {
-      const response = await SELF.fetch('http://localhost/me');
-      expect(response.status).toBe(401);
+      const originalEnv = env.ENVIRONMENT;
+      (env as unknown as Env).ENVIRONMENT = 'production';
 
-      const data = await response.json<{ code: string; message: string }>();
-      expect(data.code).toBe('UNAUTHORIZED');
+      try {
+        const response = await SELF.fetch('http://localhost/me');
+        expect(response.status).toBe(401);
+
+        const data = await response.json<{ code: string; message: string }>();
+        expect(data.code).toBe('UNAUTHORIZED');
+      } finally {
+        (env as unknown as Env).ENVIRONMENT = originalEnv;
+      }
     });
 
     it('should accept authenticated requests with Cloudflare Access headers', async () => {

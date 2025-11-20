@@ -2,6 +2,24 @@
 # Tasks ordered by priority (highest first)
 
 tasks:
+  - task_id: TASK-028
+    spec_id: SPEC-devx-1
+    title: "Align test DB schema with migrations"
+    description: |
+      Update Cloudflare Workers Vitest setup to apply all SQL migrations so the
+      in-memory D1 schema matches production (adds columns like
+      employment_status, dept_at_time, position_at_time). Resolves missing
+      column failures in repository tests and enables coverage runs.
+    priority: 1
+    status: completed
+    estimated_effort: 1h
+    test_refs:
+      - TEST-devx-1
+      - TEST-devx-2
+    acceptance_criteria:
+      - "tests/setup.ts loads migrations before any test executes"
+      - "No D1 missing-column errors in repository test suites"
+
   - task_id: TASK-026
     spec_id: SPEC-ai-draft-1
     title: "Align AI Gateway binding"
