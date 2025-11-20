@@ -3,10 +3,10 @@ import { API } from '@/lib/api';
 import { useToast } from './use-toast';
 import type { Todo, TodoView, TodoStatus, UpdateTodoRequest } from '@/types/api';
 
-export function useTodos(view: TodoView = 'all') {
+export function useTodos(view: TodoView = 'today', year?: number) {
   return useQuery({
-    queryKey: ['todos', view],
-    queryFn: () => API.getTodos(view),
+    queryKey: ['todos', view, year],
+    queryFn: () => API.getTodos(view, year),
   });
 }
 
