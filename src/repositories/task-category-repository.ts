@@ -9,8 +9,30 @@ import type { CreateTaskCategoryInput, UpdateTaskCategoryInput } from '../schema
 import { NotFoundError, ConflictError } from '../types/errors';
 import { nanoid } from 'nanoid';
 
+/**
+ * Database row type for task category
+ */
+interface TaskCategoryRow {
+  categoryId: string;
+  name: string;
+  isActive: number;
+  createdAt: string;
+}
+
 export class TaskCategoryRepository {
   constructor(private db: D1Database) {}
+
+  /**
+   * Convert database row to TaskCategory entity
+   */
+  private toTaskCategory(row: TaskCategoryRow): TaskCategory {
+    return {
+      categoryId: row.categoryId,
+      name: row.name,
+      isActive: row.isActive === 1,
+      createdAt: row.createdAt,
+    };
+  }
 
   /**
    * Find task category by ID
@@ -18,14 +40,14 @@ export class TaskCategoryRepository {
   async findById(categoryId: string): Promise<TaskCategory | null> {
     const result = await this.db
       .prepare(
-        `SELECT category_id as categoryId, name, created_at as createdAt
+        `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
          FROM task_categories
          WHERE category_id = ?`
       )
       .bind(categoryId)
-      .first<TaskCategory>();
+      .first<TaskCategoryRow>();
 
-    return result || null;
+    return result ? this.toTaskCategory(result) : null;
   }
 
   /**
@@ -34,36 +56,45 @@ export class TaskCategoryRepository {
   async findByName(name: string): Promise<TaskCategory | null> {
     const result = await this.db
       .prepare(
-        `SELECT category_id as categoryId, name, created_at as createdAt
+        `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
          FROM task_categories
          WHERE name = ?`
       )
       .bind(name)
-      .first<TaskCategory>();
+      .first<TaskCategoryRow>();
 
-    return result || null;
+    return result ? this.toTaskCategory(result) : null;
   }
 
   /**
    * Find all task categories
    */
-  async findAll(searchQuery?: string, limit: number = 100): Promise<TaskCategory[]> {
-    let sql = `SELECT category_id as categoryId, name, created_at as createdAt
+  async findAll(searchQuery?: string, limit: number = 100, activeOnly?: boolean): Promise<TaskCategory[]> {
+    let sql = `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
                FROM task_categories`;
-    const params: string[] = [];
+    const params: (string | number)[] = [];
+    const conditions: string[] = [];
 
     if (searchQuery) {
-      sql += ` WHERE name LIKE ?`;
+      conditions.push(`name LIKE ?`);
       params.push(`%${searchQuery}%`);
     }
 
+    if (activeOnly) {
+      conditions.push(`is_active = 1`);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ${conditions.join(' AND ')}`;
+    }
+
     sql += ` ORDER BY name ASC LIMIT ?`;
-    params.push(String(limit));
+    params.push(limit);
 
     const stmt = this.db.prepare(sql);
-    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<TaskCategory>();
+    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<TaskCategoryRow>();
 
-    return result.results || [];
+    return (result.results || []).map(row => this.toTaskCategory(row));
   }
 
   /**
@@ -76,8 +107,8 @@ export class TaskCategoryRepository {
     try {
       await this.db
         .prepare(
-          `INSERT INTO task_categories (category_id, name, created_at)
-           VALUES (?, ?, ?)`
+          `INSERT INTO task_categories (category_id, name, is_active, created_at)
+           VALUES (?, ?, 1, ?)`
         )
         .bind(categoryId, data.name, now)
         .run();
@@ -86,6 +117,7 @@ export class TaskCategoryRepository {
       return {
         categoryId,
         name: data.name,
+        isActive: true,
         createdAt: now,
       };
     } catch (error) {
@@ -106,15 +138,29 @@ export class TaskCategoryRepository {
       throw new NotFoundError('TaskCategory', categoryId);
     }
 
-    if (data.name) {
+    const updates: string[] = [];
+    const params: (string | number)[] = [];
+
+    if (data.name !== undefined) {
+      updates.push('name = ?');
+      params.push(data.name);
+    }
+
+    if (data.isActive !== undefined) {
+      updates.push('is_active = ?');
+      params.push(data.isActive ? 1 : 0);
+    }
+
+    if (updates.length > 0) {
+      params.push(categoryId);
       try {
         await this.db
           .prepare(
             `UPDATE task_categories
-             SET name = ?
+             SET ${updates.join(', ')}
              WHERE category_id = ?`
           )
-          .bind(data.name, categoryId)
+          .bind(...params)
           .run();
       } catch (error) {
         // Handle unique constraint violation on name
@@ -128,7 +174,8 @@ export class TaskCategoryRepository {
     // Return the updated category without extra DB roundtrip
     return {
       ...existing,
-      name: data.name || existing.name,
+      name: data.name ?? existing.name,
+      isActive: data.isActive ?? existing.isActive,
     };
   }
 
@@ -216,6 +263,7 @@ export class TaskCategoryRepository {
         `SELECT
           tc.category_id as categoryId,
           tc.name,
+          tc.is_active as isActive,
           tc.created_at as createdAt
          FROM task_categories tc
          INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
@@ -223,8 +271,8 @@ export class TaskCategoryRepository {
          ORDER BY tc.name ASC`
       )
       .bind(workId)
-      .all<TaskCategory>();
+      .all<TaskCategoryRow>();
 
-    return result.results || [];
+    return (result.results || []).map(row => this.toTaskCategory(row));
   }
 }

@@ -140,6 +140,7 @@ beforeAll(async () => {
     `CREATE TABLE IF NOT EXISTS task_categories (
       category_id TEXT PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
+      is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`
   ).run();

@@ -95,6 +95,7 @@ export interface UpdateDepartmentRequest {
 export interface TaskCategory {
   categoryId: string;
   name: string;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -103,7 +104,8 @@ export interface CreateTaskCategoryRequest {
 }
 
 export interface UpdateTaskCategoryRequest {
-  name: string;
+  name?: string;
+  isActive?: boolean;
 }
 
 // Todo types

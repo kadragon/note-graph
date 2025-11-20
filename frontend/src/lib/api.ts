@@ -250,8 +250,15 @@ class APIClient {
   }
 
   // Task Categories
-  getTaskCategories() {
-    return this.request<TaskCategory[]>('/task-categories');
+  getTaskCategories(activeOnly?: boolean) {
+    const params = new URLSearchParams();
+    if (activeOnly) params.set('activeOnly', 'true');
+    const queryString = params.toString();
+    return this.request<TaskCategory[]>(`/task-categories${queryString ? `?${queryString}` : ''}`);
+  }
+
+  getActiveTaskCategories() {
+    return this.getTaskCategories(true);
   }
 
   createTaskCategory(data: CreateTaskCategoryRequest) {
@@ -266,6 +273,10 @@ class APIClient {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  }
+
+  toggleTaskCategoryActive(categoryId: string, isActive: boolean) {
+    return this.updateTaskCategory(categoryId, { isActive });
   }
 
   deleteTaskCategory(categoryId: string) {
