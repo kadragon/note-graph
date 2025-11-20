@@ -15,7 +15,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "worknote-db"
-database_id = "your-d1-database-id-here"  # Replace after creating database
+database_id = "04d814ad-5e61-4502-9e1d-85cfcdd1bea9"
 migrations_dir = "migrations"
 
 # ============================================================================
