@@ -1,7 +1,12 @@
-// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-027
+// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-027, TASK-LLM-IMPORT
 /**
  * Type definitions for Person and related entities
  */
+
+/**
+ * Employment status type
+ */
+export type EmploymentStatus = '재직' | '휴직' | '퇴직';
 
 /**
  * Person entity
@@ -9,10 +14,11 @@
 export interface Person {
   personId: string; // 6-digit string
   name: string;
-  phoneExt: string | null; // 4-digit internal phone extension (e.g., '3346')
+  phoneExt: string | null; // Up to 15 chars phone number (e.g., '043-123-4567')
   currentDept: string | null;
   currentPosition: string | null;
   currentRoleDesc: string | null;
+  employmentStatus: EmploymentStatus; // 재직, 휴직, 퇴직
   createdAt: string; // ISO 8601 timestamp
   updatedAt: string; // ISO 8601 timestamp
 }
