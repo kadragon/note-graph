@@ -13,7 +13,7 @@ export default defineWorkersConfig({
           d1Databases: { DB: "worknote-db" },
           d1Persist: false,
           bindings: {
-            ENVIRONMENT: "development",
+            ENVIRONMENT: "production",
           },
         },
       },
