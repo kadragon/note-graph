@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, SPEC-person-2, TASK-022, TASK-025
+// Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -61,6 +61,7 @@ export default function Persons() {
                 <TableRow>
                   <TableHead>이름</TableHead>
                   <TableHead>사번</TableHead>
+                  <TableHead>연락처</TableHead>
                   <TableHead>부서</TableHead>
                   <TableHead>직책</TableHead>
                   <TableHead>생성일</TableHead>
@@ -75,15 +76,22 @@ export default function Persons() {
                     >
                       <TableCell className="font-medium">{person.name}</TableCell>
                       <TableCell>
-                      <Badge variant="outline">{person.personId}</Badge>
+                        <Badge variant="outline">{person.personId}</Badge>
                       </TableCell>
                       <TableCell>
-                      {person.currentDept ? (
-                        <Badge variant="secondary">{person.currentDept}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
+                        {person.phoneExt ? (
+                          <span className="text-sm font-mono">{person.phoneExt}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {person.currentDept ? (
+                          <Badge variant="secondary">{person.currentDept}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
                     <TableCell>
                       {person.currentPosition ? (
                         <span className="text-sm">{person.currentPosition}</span>

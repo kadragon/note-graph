@@ -1,0 +1,96 @@
+spec_id: SPEC-person-3
+title: "Person Management Improvements - Sorting, Phone Extension, History UI"
+description: >
+  Improvements to person management:
+  1. Sort persons by department then name
+  2. Add phone extension (4-digit) field
+  3. Add department/position history UI in person detail
+
+given_when_then:
+  - given: "Multiple persons exist with different departments"
+    when: "User views person list"
+    then: "Persons are sorted by department (ascending, nulls last) then by name (ascending)"
+
+  - given: "User creates or edits a person"
+    when: "User enters a 4-digit phone extension"
+    then: "Phone extension is stored and displayed in person list"
+
+  - given: "Person has department history entries"
+    when: "User opens person edit dialog"
+    then: "Department/position history is displayed with start/end dates and status"
+
+acceptance_tests:
+  - id: TEST-person-sort-1
+    desc: "Verify persons are sorted by department then name"
+    steps:
+      - "Create persons: A (dept: 개발팀), B (dept: 기획팀), C (dept: 개발팀), D (no dept)"
+      - "GET /persons"
+      - "Verify order: A, C (개발팀), B (기획팀), D (null dept last)"
+
+  - id: TEST-person-phone-1
+    desc: "Create person with phone extension"
+    steps:
+      - "POST /persons with phoneExt: '3346'"
+      - "Verify person is created with phoneExt"
+      - "GET /persons"
+      - "Verify phoneExt appears in list"
+
+  - id: TEST-person-phone-2
+    desc: "Update person phone extension"
+    steps:
+      - "Create person without phoneExt"
+      - "PUT /persons/{personId} with phoneExt: '1234'"
+      - "Verify phoneExt is updated"
+
+  - id: TEST-person-history-ui-1
+    desc: "Display department history in edit dialog"
+    steps:
+      - "Create person with dept A"
+      - "Update person to dept B"
+      - "Open edit dialog"
+      - "Verify both history entries are displayed"
+
+dependencies:
+  governance:
+    - "Phone extension is 4-digit string (e.g., '3346')"
+    - "Sort order: current_dept ASC NULLS LAST, name ASC"
+
+linked_tasks:
+  - "TASK-027"
+
+technical_notes:
+  - "phone_ext column added to persons table (TEXT, max 4 chars)"
+  - "Sort order uses NULLS LAST to handle persons without department"
+  - "History UI uses existing GET /persons/{personId}/history endpoint"
+  - "Frontend hook usePersonHistory() to fetch history data"
+
+database_changes:
+  migration: "0005_add_person_phone_ext.sql"
+  changes:
+    - "ALTER TABLE persons ADD COLUMN phone_ext TEXT"
+    - "CREATE INDEX idx_persons_phone_ext ON persons(phone_ext)"
+
+api_changes:
+  - endpoint: "GET /persons"
+    change: "Sort order changed to current_dept ASC NULLS LAST, name ASC"
+
+  - endpoint: "POST /persons"
+    change: "Accept optional phoneExt field"
+
+  - endpoint: "PUT /persons/{personId}"
+    change: "Accept optional phoneExt field"
+
+  - endpoint: "All person endpoints"
+    change: "Return phoneExt in person object"
+
+ui_changes:
+  - component: "Persons.tsx"
+    changes:
+      - "Add '연락처' column to person table"
+      - "Display phoneExt value (e.g., '3346')"
+
+  - component: "PersonDialog.tsx"
+    changes:
+      - "Add phone extension input field (4-digit)"
+      - "Add department history section in edit mode"
+      - "Display history entries with dept, position, dates, status"
