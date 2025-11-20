@@ -48,7 +48,7 @@ fontFamily: {
 ### CDN Resource
 
 ```html
-<link rel="stylesheet" as="style" crossorigin
+<link rel="stylesheet" crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
 ```
 
