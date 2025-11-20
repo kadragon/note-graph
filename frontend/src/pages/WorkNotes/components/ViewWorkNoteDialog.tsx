@@ -13,6 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +72,9 @@ export function ViewWorkNoteDialog({
   // Edit todo dialog state
   const [editTodo, setEditTodo] = useState<Todo | null>(null);
   const [editTodoDialogOpen, setEditTodoDialogOpen] = useState(false);
+
+  // Delete todo confirmation dialog state
+  const [deleteTodoId, setDeleteTodoId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -494,11 +507,7 @@ export function ViewWorkNoteDialog({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        if (window.confirm('정말 이 할일을 삭제하시겠습니까?')) {
-                          deleteTodoMutation.mutate(todo.id);
-                        }
-                      }}
+                      onClick={() => setDeleteTodoId(todo.id)}
                       disabled={deleteTodoMutation.isPending}
                       className="h-8 w-8 p-0 shrink-0 text-destructive hover:text-destructive"
                     >
@@ -521,6 +530,31 @@ export function ViewWorkNoteDialog({
       onOpenChange={setEditTodoDialogOpen}
       workNoteId={workNote?.id}
     />
+
+    <AlertDialog open={!!deleteTodoId} onOpenChange={(open) => !open && setDeleteTodoId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>할일 삭제</AlertDialogTitle>
+          <AlertDialogDescription>
+            정말 이 할일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>취소</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (deleteTodoId) {
+                deleteTodoMutation.mutate(deleteTodoId);
+                setDeleteTodoId(null);
+              }
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            삭제
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </>
   );
 }
