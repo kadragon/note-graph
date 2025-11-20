@@ -126,3 +126,31 @@ export function useUpdateTodo(workNoteId?: string) {
     },
   });
 }
+
+export function useDeleteTodo(workNoteId?: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (todoId: string) => API.deleteTodo(todoId),
+    onSuccess: () => {
+      // Invalidate to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      if (workNoteId) {
+        queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNoteId] });
+      }
+      toast({
+        title: '성공',
+        description: '할일이 삭제되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error.message || '할일을 삭제할 수 없습니다.',
+      });
+    },
+  });
+}
