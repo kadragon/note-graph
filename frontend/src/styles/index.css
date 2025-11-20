@@ -29,6 +29,10 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    /* GitHub code block theme colors */
+    --code-bg: #f6f8fa;
+    --code-text: #24292f;
+    --code-inline-bg: rgba(175, 184, 193, 0.2);
   }
 
   .dark {
@@ -56,6 +60,10 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    /* GitHub code block theme colors - dark mode */
+    --code-bg: #161b22;
+    --code-text: #c9d1d9;
+    --code-inline-bg: rgba(110, 118, 129, 0.4);
   }
 }
 
@@ -69,32 +77,20 @@
 }
 
 /* GitHub-style code block styling */
-.prose pre,
-.prose-xs pre,
-.prose-sm pre {
+:is(.prose, .prose-xs, .prose-sm) pre {
   @apply border-0 rounded-md overflow-x-auto;
-  background-color: #f6f8fa !important;
-  padding: 16px !important;
-  margin: 16px 0 !important;
+  background-color: var(--code-bg);
+  padding: 16px;
+  margin: 16px 0;
 }
 
-.dark .prose pre,
-.dark .prose-xs pre,
-.dark .prose-sm pre {
-  background-color: #161b22 !important;
-}
-
-.prose code,
-.prose-xs code,
-.prose-sm code {
+:is(.prose, .prose-xs, .prose-sm) code {
   @apply rounded px-1 py-0.5 text-sm;
-  background-color: rgba(175, 184, 193, 0.2);
+  background-color: var(--code-inline-bg);
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
-.prose pre code,
-.prose-xs pre code,
-.prose-sm pre code {
+:is(.prose, .prose-xs, .prose-sm) pre code {
   @apply p-0 rounded-none;
   background-color: transparent;
   font-size: 0.85em;
@@ -103,18 +99,10 @@
 /* Remove any black borders from code blocks */
 .hljs {
   @apply border-0;
-  background: transparent !important;
+  background: transparent;
 }
 
 /* GitHub theme adjustments for syntax highlighting */
-.prose .hljs,
-.prose-xs .hljs,
-.prose-sm .hljs {
-  color: #24292f;
-}
-
-.dark .prose .hljs,
-.dark .prose-xs .hljs,
-.dark .prose-sm .hljs {
-  color: #c9d1d9;
+:is(.prose, .prose-xs, .prose-sm) .hljs {
+  color: var(--code-text);
 }
