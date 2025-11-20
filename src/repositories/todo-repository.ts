@@ -106,82 +106,100 @@ export class TodoRepository {
     `;
 
     const conditions: string[] = [];
-    const params: string[] = [];
+    const params: (string | number)[] = [];
+
+    // Get selected year (default to current year)
+    const selectedYear = query.year || new Date().getFullYear();
+    const yearStart = new Date(selectedYear, 0, 1, 0, 0, 0, 0);
+    const yearEnd = new Date(selectedYear, 11, 31, 23, 59, 59, 999);
 
     // Apply view filters
     switch (query.view) {
       case 'today': {
-        // Due today AND (wait_until is null OR wait_until <= now)
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        // wait_until <= now (or null) + due_date from yearStart to today
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
+        // Use the earlier of todayEnd and yearEnd as the effective end date
+        const effectiveEnd = new Date(Math.min(todayEnd.getTime(), yearEnd.getTime()));
 
         conditions.push(
+          `t.status != ?`,
+          `(t.wait_until IS NULL OR t.wait_until <= ?)`,
           `t.due_date IS NOT NULL`,
           `t.due_date >= ?`,
-          `t.due_date <= ?`,
-          `(t.wait_until IS NULL OR t.wait_until <= ?)`
+          `t.due_date <= ?`
         );
-        params.push(todayStart.toISOString(), todayEnd.toISOString(), now);
+        params.push('완료', now, yearStart.toISOString(), effectiveEnd.toISOString());
         break;
       }
 
-      case 'this_week': {
-        // Due this week AND (wait_until is null OR wait_until <= now)
-        const weekStart = new Date();
-        weekStart.setHours(0, 0, 0, 0);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of week (Sunday)
-
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
+      case 'week': {
+        // wait_until <= now (or null) + due_date from yearStart to this week Friday
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        // Calculate days until Friday (5)
+        const daysUntilFriday = dayOfWeek <= 5 ? 5 - dayOfWeek : 5 + 7 - dayOfWeek;
+        const weekEnd = new Date(today);
+        weekEnd.setDate(today.getDate() + daysUntilFriday);
         weekEnd.setHours(23, 59, 59, 999);
+        // Use the earlier of weekEnd and yearEnd as the effective end date
+        const effectiveEnd = new Date(Math.min(weekEnd.getTime(), yearEnd.getTime()));
 
         conditions.push(
+          `t.status != ?`,
+          `(t.wait_until IS NULL OR t.wait_until <= ?)`,
           `t.due_date IS NOT NULL`,
           `t.due_date >= ?`,
-          `t.due_date <= ?`,
-          `(t.wait_until IS NULL OR t.wait_until <= ?)`
+          `t.due_date <= ?`
         );
-        params.push(weekStart.toISOString(), weekEnd.toISOString(), now);
+        params.push('완료', now, yearStart.toISOString(), effectiveEnd.toISOString());
         break;
       }
 
-      case 'this_month': {
-        // Due this month AND (wait_until is null OR wait_until <= now)
-        const monthStart = new Date();
-        monthStart.setDate(1);
-        monthStart.setHours(0, 0, 0, 0);
-
-        const monthEnd = new Date(monthStart);
-        monthEnd.setMonth(monthEnd.getMonth() + 1);
-        monthEnd.setDate(0);
-        monthEnd.setHours(23, 59, 59, 999);
+      case 'month': {
+        // wait_until <= now (or null) + due_date from yearStart to end of this month
+        const today = new Date();
+        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+        // Use the earlier of monthEnd and yearEnd as the effective end date
+        const effectiveEnd = new Date(Math.min(monthEnd.getTime(), yearEnd.getTime()));
 
         conditions.push(
+          `t.status != ?`,
+          `(t.wait_until IS NULL OR t.wait_until <= ?)`,
           `t.due_date IS NOT NULL`,
           `t.due_date >= ?`,
-          `t.due_date <= ?`,
-          `(t.wait_until IS NULL OR t.wait_until <= ?)`
+          `t.due_date <= ?`
         );
-        params.push(monthStart.toISOString(), monthEnd.toISOString(), now);
+        params.push('완료', now, yearStart.toISOString(), effectiveEnd.toISOString());
         break;
       }
 
-      case 'backlog': {
-        // Overdue: due_date < now AND status != '완료'
-        conditions.push(`t.due_date IS NOT NULL`, `t.due_date < ?`, `t.status != ?`);
-        params.push(now, '완료');
+      case 'remaining': {
+        // All incomplete todos in selected year
+        conditions.push(
+          `t.status != ?`,
+          `(t.due_date IS NULL OR (t.due_date >= ? AND t.due_date <= ?))`
+        );
+        params.push('완료', yearStart.toISOString(), yearEnd.toISOString());
         break;
       }
 
-      case 'all':
+      case 'completed': {
+        // All completed todos in selected year
+        conditions.push(
+          `t.status = ?`,
+          `(t.due_date IS NULL OR (t.due_date >= ? AND t.due_date <= ?))`
+        );
+        params.push('완료', yearStart.toISOString(), yearEnd.toISOString());
+        break;
+      }
+
       default:
-        // No date filtering for 'all' view
+        // No date filtering for unknown view
         break;
     }
 
-    // Filter by status if provided
+    // Filter by status if provided (overrides view-based status filter)
     if (query.status) {
       conditions.push(`t.status = ?`);
       params.push(query.status);
