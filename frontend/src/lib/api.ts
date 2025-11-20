@@ -4,6 +4,7 @@ import type {
   CreateWorkNoteRequest,
   UpdateWorkNoteRequest,
   Person,
+  PersonDeptHistory,
   CreatePersonRequest,
   UpdatePersonRequest,
   Department,
@@ -228,6 +229,10 @@ class APIClient {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  }
+
+  getPersonHistory(personId: string) {
+    return this.request<PersonDeptHistory[]>(`/persons/${personId}/history`);
   }
 
   // Departments

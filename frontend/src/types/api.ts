@@ -51,6 +51,7 @@ export interface UpdateWorkNoteRequest {
 export interface Person {
   personId: string;
   name: string;
+  phoneExt?: string | null; // 4-digit internal phone extension (e.g., '3346')
   currentDept?: string | null;
   currentPosition?: string | null;
   currentRoleDesc?: string | null;
@@ -58,9 +59,21 @@ export interface Person {
   updatedAt: string;
 }
 
+export interface PersonDeptHistory {
+  id: number;
+  personId: string;
+  deptName: string;
+  position: string | null;
+  roleDesc: string | null;
+  startDate: string;
+  endDate: string | null;
+  isActive: boolean;
+}
+
 export interface CreatePersonRequest {
   personId: string;
   name: string;
+  phoneExt?: string;
   currentDept?: string;
   currentPosition?: string;
   currentRoleDesc?: string;
@@ -68,6 +81,7 @@ export interface CreatePersonRequest {
 
 export interface UpdatePersonRequest {
   name?: string;
+  phoneExt?: string;
   currentDept?: string;
   currentPosition?: string;
   currentRoleDesc?: string;
