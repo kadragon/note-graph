@@ -1,6 +1,8 @@
-// Trace: SPEC-person-1, SPEC-person-2, TASK-022, TASK-025
+// Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027
 import { useState, useEffect } from 'react';
-import { Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { Check, ChevronsUpDown, Plus, History } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import {
   Dialog,
   DialogContent,
@@ -25,8 +27,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { useCreatePerson, useUpdatePerson } from '@/hooks/usePersons';
+import { useCreatePerson, useUpdatePerson, usePersonHistory } from '@/hooks/usePersons';
 import { useDepartments, useCreateDepartment } from '@/hooks/useDepartments';
 import { toCreateDepartmentRequest } from '@/lib/mappers/department';
 import type { Person } from '@/types/api';
@@ -41,6 +49,7 @@ interface PersonDialogProps {
 interface ValidationErrors {
   name?: string;
   personId?: string;
+  phoneExt?: string;
   currentDept?: string;
   currentPosition?: string;
 }
@@ -53,18 +62,24 @@ export function PersonDialog({
 }: PersonDialogProps) {
   const [name, setName] = useState('');
   const [personId, setPersonId] = useState('');
+  const [phoneExt, setPhoneExt] = useState('');
   const [currentDept, setCurrentDept] = useState('');
   const [currentPosition, setCurrentPosition] = useState('');
   const [deptOpen, setDeptOpen] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
+
+  const isEditMode = mode === 'edit';
 
   const createPersonMutation = useCreatePerson();
   const updatePersonMutation = useUpdatePerson();
   const { data: departments = [] } = useDepartments();
   const createDeptMutation = useCreateDepartment();
+  const { data: history = [], isLoading: historyLoading } = usePersonHistory(
+    isEditMode && initialData ? initialData.personId : null
+  );
 
-  const isEditMode = mode === 'edit';
   const mutation = isEditMode ? updatePersonMutation : createPersonMutation;
 
   const selectedDept = departments.find((d) => d.deptName === currentDept);
@@ -81,6 +96,7 @@ export function PersonDialog({
     if (isEditMode && initialData) {
       setName(initialData.name);
       setPersonId(initialData.personId);
+      setPhoneExt(initialData.phoneExt || '');
       setCurrentDept(initialData.currentDept || '');
       setCurrentPosition(initialData.currentPosition || '');
       setErrors({});
@@ -88,8 +104,10 @@ export function PersonDialog({
       // Reset form in create mode when dialog opens
       setName('');
       setPersonId('');
+      setPhoneExt('');
       setCurrentDept('');
       setCurrentPosition('');
+      setHistoryOpen(false);
       setErrors({});
     }
   }, [isEditMode, initialData, open]);
@@ -111,6 +129,11 @@ export function PersonDialog({
       } else if (!/^\d{6}$/.test(personId.trim())) {
         newErrors.personId = '사번은 6자리 숫자여야 합니다';
       }
+    }
+
+    // Validate phoneExt (optional, but if provided must be 4 digits)
+    if (phoneExt.trim() && !/^\d{4}$/.test(phoneExt.trim())) {
+      newErrors.phoneExt = '연락처는 4자리 숫자여야 합니다';
     }
 
     // Validate currentDept (optional, but if provided must be within limits)
@@ -142,6 +165,7 @@ export function PersonDialog({
           personId: initialData.personId,
           data: {
             name: name.trim(),
+            phoneExt: phoneExt.trim() || undefined,
             currentDept: currentDept || undefined,
             currentPosition: currentPosition.trim() || undefined,
           },
@@ -151,6 +175,7 @@ export function PersonDialog({
         await createPersonMutation.mutateAsync({
           name: name.trim(),
           personId: personId.trim(),
+          phoneExt: phoneExt.trim() || undefined,
           currentDept: currentDept || undefined,
           currentPosition: currentPosition.trim() || undefined,
         });
@@ -159,8 +184,10 @@ export function PersonDialog({
       // Reset form, errors and close dialog on success
       setName('');
       setPersonId('');
+      setPhoneExt('');
       setCurrentDept('');
       setCurrentPosition('');
+      setHistoryOpen(false);
       setErrors({});
       onOpenChange(false);
     } catch (error) {
@@ -241,6 +268,26 @@ export function PersonDialog({
               />
               {errors.personId && (
                 <p className="text-sm text-destructive">{errors.personId}</p>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="phoneExt">연락처 (선택)</Label>
+              <Input
+                id="phoneExt"
+                value={phoneExt}
+                onChange={(e) => {
+                  setPhoneExt(e.target.value);
+                  if (errors.phoneExt) {
+                    setErrors((prev) => ({ ...prev, phoneExt: undefined }));
+                  }
+                }}
+                placeholder="4자리 내선번호 (예: 3346)"
+                maxLength={4}
+                className={cn(errors.phoneExt && 'border-destructive')}
+              />
+              {errors.phoneExt && (
+                <p className="text-sm text-destructive">{errors.phoneExt}</p>
               )}
             </div>
 
@@ -356,6 +403,75 @@ export function PersonDialog({
                 </p>
               )}
             </div>
+
+            {/* Department History Section - only in edit mode */}
+            {isEditMode && (
+              <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-between px-0 hover:bg-transparent"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <History className="h-4 w-4" />
+                      부서 이력 ({history.length}건)
+                    </span>
+                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  {historyLoading ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    </div>
+                  ) : history.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      부서 이력이 없습니다.
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {history.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className={cn(
+                            'p-3 rounded-lg border text-sm',
+                            entry.isActive
+                              ? 'bg-primary/5 border-primary/20'
+                              : 'bg-muted/50'
+                          )}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium">{entry.deptName}</span>
+                            {entry.isActive && (
+                              <Badge variant="default" className="text-xs">
+                                현재
+                              </Badge>
+                            )}
+                          </div>
+                          {entry.position && (
+                            <p className="text-muted-foreground">
+                              직책: {entry.position}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(parseISO(entry.startDate), 'yyyy-MM-dd', {
+                              locale: ko,
+                            })}
+                            {' ~ '}
+                            {entry.endDate
+                              ? format(parseISO(entry.endDate), 'yyyy-MM-dd', {
+                                  locale: ko,
+                                })
+                              : '현재'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </div>
 
           <DialogFooter>

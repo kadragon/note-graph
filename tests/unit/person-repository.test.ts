@@ -1,4 +1,4 @@
-// Trace: Test coverage improvement
+// Trace: SPEC-person-1, SPEC-person-3, TASK-027
 // Unit tests for PersonRepository
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -79,15 +79,19 @@ describe('PersonRepository', () => {
     beforeEach(async () => {
       const now = new Date().toISOString();
       await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
+        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
+        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('기획팀'),
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').bind(
           '123456',
           '홍길동',
+          '기획팀',
           now,
           now
         ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').bind(
           '234567',
           '이순신',
+          '개발팀',
           now,
           now
         ),
@@ -108,15 +112,21 @@ describe('PersonRepository', () => {
       expect(result.length).toBeGreaterThanOrEqual(3);
     });
 
-    it('should order results by name ASC', async () => {
+    it('should order results by department then name (nulls last)', async () => {
       // Act
       const result = await repository.findAll();
 
       // Assert
-      expect(result.length).toBeGreaterThan(0);
-      for (let i = 1; i < result.length; i++) {
-        expect(result[i - 1].name.localeCompare(result[i].name)).toBeLessThanOrEqual(0);
-      }
+      expect(result.length).toBeGreaterThanOrEqual(3);
+      // First should be 이순신 (개발팀)
+      expect(result[0].name).toBe('이순신');
+      expect(result[0].currentDept).toBe('개발팀');
+      // Second should be 홍길동 (기획팀)
+      expect(result[1].name).toBe('홍길동');
+      expect(result[1].currentDept).toBe('기획팀');
+      // Last should be 김유신 (no dept - null)
+      expect(result[2].name).toBe('김유신');
+      expect(result[2].currentDept).toBeNull();
     });
 
     it('should search by name', async () => {
@@ -235,6 +245,25 @@ describe('PersonRepository', () => {
       expect(result.currentRoleDesc).toBe('백엔드 개발');
     });
 
+    it('should create person with phone extension', async () => {
+      // Arrange
+      const input: CreatePersonInput = {
+        personId: '123456',
+        name: '홍길동',
+        phoneExt: '3346',
+      };
+
+      // Act
+      const result = await repository.create(input);
+
+      // Assert
+      expect(result.phoneExt).toBe('3346');
+
+      // Verify in DB
+      const found = await repository.findById('123456');
+      expect(found?.phoneExt).toBe('3346');
+    });
+
     it('should create department history entry when department is provided', async () => {
       // Arrange
       await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀').run();
@@ -331,6 +360,23 @@ describe('PersonRepository', () => {
       // Assert
       expect(result.currentPosition).toBe('책임');
       expect(result.currentRoleDesc).toBe('프론트엔드 개발');
+    });
+
+    it('should update phone extension', async () => {
+      // Arrange
+      const update: UpdatePersonInput = {
+        phoneExt: '1234',
+      };
+
+      // Act
+      const result = await repository.update(existingPersonId, update);
+
+      // Assert
+      expect(result.phoneExt).toBe('1234');
+
+      // Verify in DB
+      const found = await repository.findById(existingPersonId);
+      expect(found?.phoneExt).toBe('1234');
     });
 
     it('should create new department history entry when department changes', async () => {
