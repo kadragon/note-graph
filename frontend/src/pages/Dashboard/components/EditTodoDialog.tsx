@@ -23,6 +23,36 @@ interface EditTodoDialogProps {
   workNoteId?: string;
 }
 
+// Constants for styling
+const SELECT_CLASS_NAME =
+  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+
+// Options data for dropdowns
+const STATUS_OPTIONS: Array<{ value: TodoStatus; label: string }> = [
+  { value: TODO_STATUS.IN_PROGRESS, label: TODO_STATUS.IN_PROGRESS },
+  { value: TODO_STATUS.COMPLETED, label: TODO_STATUS.COMPLETED },
+  { value: TODO_STATUS.ON_HOLD, label: TODO_STATUS.ON_HOLD },
+  { value: TODO_STATUS.STOPPED, label: TODO_STATUS.STOPPED },
+];
+
+const REPEAT_RULE_OPTIONS: Array<{ value: RepeatRule; label: string }> = [
+  { value: 'NONE', label: '반복 안함' },
+  { value: 'DAILY', label: '매일' },
+  { value: 'WEEKLY', label: '매주' },
+  { value: 'MONTHLY', label: '매월' },
+];
+
+const RECURRENCE_TYPE_OPTIONS: Array<{ value: RecurrenceType; label: string }> = [
+  { value: 'DUE_DATE', label: '마감일 기준' },
+  { value: 'COMPLETION_DATE', label: '완료일 기준' },
+];
+
+// Helper function to convert date string to UTC ISO string
+// This prevents timezone issues where dates shift by one day
+const toUTCISOString = (dateString: string): string => {
+  return new Date(`${dateString}T00:00:00.000Z`).toISOString();
+};
+
 export function EditTodoDialog({
   todo,
   open,
@@ -65,8 +95,8 @@ export function EditTodoDialog({
         data: {
           title: title.trim(),
           description: description.trim() || undefined,
-          dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-          waitUntil: waitUntil ? new Date(waitUntil).toISOString() : undefined,
+          dueDate: dueDate ? toUTCISOString(dueDate) : undefined,
+          waitUntil: waitUntil ? toUTCISOString(waitUntil) : undefined,
           status,
           repeatRule,
           recurrenceType,
@@ -121,12 +151,13 @@ export function EditTodoDialog({
                 id="status"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as TodoStatus)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className={SELECT_CLASS_NAME}
               >
-                <option value={TODO_STATUS.IN_PROGRESS}>{TODO_STATUS.IN_PROGRESS}</option>
-                <option value={TODO_STATUS.COMPLETED}>{TODO_STATUS.COMPLETED}</option>
-                <option value={TODO_STATUS.ON_HOLD}>{TODO_STATUS.ON_HOLD}</option>
-                <option value={TODO_STATUS.STOPPED}>{TODO_STATUS.STOPPED}</option>
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -159,12 +190,13 @@ export function EditTodoDialog({
                 id="repeatRule"
                 value={repeatRule}
                 onChange={(e) => setRepeatRule(e.target.value as RepeatRule)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className={SELECT_CLASS_NAME}
               >
-                <option value="NONE">반복 안함</option>
-                <option value="DAILY">매일</option>
-                <option value="WEEKLY">매주</option>
-                <option value="MONTHLY">매월</option>
+                {REPEAT_RULE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -175,10 +207,13 @@ export function EditTodoDialog({
                   id="recurrenceType"
                   value={recurrenceType}
                   onChange={(e) => setRecurrenceType(e.target.value as RecurrenceType)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className={SELECT_CLASS_NAME}
                 >
-                  <option value="DUE_DATE">마감일 기준</option>
-                  <option value="COMPLETION_DATE">완료일 기준</option>
+                  {RECURRENCE_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
                 <p className="text-xs text-muted-foreground">
                   {recurrenceType === 'DUE_DATE'
