@@ -359,6 +359,15 @@
 - Added trace annotations referencing SPEC-ai-draft-1 / TASK-026 for future auditing
 - Config-only change; no automated test updates required
 
+### Session 21: Pretendard Variable Font Integration (2025-11-20)
+- **TASK-027 Completed**: Unify font to Pretendard Variable
+- Added Pretendard Variable font via jsDelivr CDN (v1.3.9)
+- Updated `frontend/index.html` with font stylesheet link
+- Updated `tailwind.config.js` fontFamily.sans to prioritize Pretendard Variable
+- Added comprehensive fallback font stack for cross-platform compatibility
+- Benefits: Superior Korean typography, variable font performance, unified visual appearance
+- Build and tests pass without font-related issues
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
