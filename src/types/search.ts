@@ -73,11 +73,12 @@ export interface WorkNoteDraft {
 
 /**
  * AI-suggested todo item
+ * Note: dueDate is always populated (defaults to today if not inferred by LLM)
  */
 export interface AIDraftTodo {
   title: string;
   description: string;
-  dueDateSuggestion: string | null;
+  dueDate: string;
   repeatRule?: {
     interval: number;
     unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
