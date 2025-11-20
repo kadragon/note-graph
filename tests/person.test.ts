@@ -22,7 +22,7 @@ describe('Person creation validation', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Test-User-Email': 'test@example.com',
+        'Cf-Access-Authenticated-User-Email': 'test@example.com',
       },
       body: JSON.stringify({
         personId: '123456',
@@ -47,7 +47,7 @@ describe('Person creation validation', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Test-User-Email': 'test@example.com',
+        'Cf-Access-Authenticated-User-Email': 'test@example.com',
       },
       body: JSON.stringify({
         personId: '123457',
@@ -64,4 +64,3 @@ describe('Person creation validation', () => {
     expect(data.currentDept).toBe('교무기획부');
   });
 });
-
