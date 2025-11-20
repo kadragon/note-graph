@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
 import { useToast } from './use-toast';
-import type { Todo, TodoView, TodoStatus } from '@/types/api';
+import type { Todo, TodoView, TodoStatus, UpdateTodoRequest } from '@/types/api';
 
 export function useTodos(view: TodoView = 'all') {
   return useQuery({
@@ -93,6 +93,35 @@ export function useToggleTodo(workNoteId?: string) {
       toast({
         title: '성공',
         description: '할일 상태가 변경되었습니다.',
+      });
+    },
+  });
+}
+
+export function useUpdateTodo(workNoteId?: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateTodoRequest }) =>
+      API.updateTodo(id, data),
+    onSuccess: () => {
+      // Invalidate to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      if (workNoteId) {
+        queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNoteId] });
+      }
+      toast({
+        title: '성공',
+        description: '할일이 수정되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error.message || '할일을 수정할 수 없습니다.',
       });
     },
   });
