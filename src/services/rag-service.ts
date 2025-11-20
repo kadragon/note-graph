@@ -6,7 +6,7 @@ import type { WorkNote } from '../types/work-note';
 import { EmbeddingService, VectorizeService } from './embedding-service';
 import { ChunkingService } from './chunking-service';
 import { RateLimitError } from '../types/errors';
-import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
+import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 
 /**
  * RAG (Retrieval-Augmented Generation) service
@@ -241,16 +241,19 @@ ${contextText}
   private async callGPT(prompt: string): Promise<string> {
     const url = getAIGatewayUrl(this.env, 'chat/completions');
 
+    const model = this.env.OPENAI_MODEL_CHAT;
+
     const requestBody = {
-      model: this.env.OPENAI_MODEL_CHAT,
+      model,
       messages: [
         {
-          role: 'user',
+          role: 'user' as const,
           content: prompt,
         },
       ],
-      temperature: 0.7,
       max_completion_tokens: RagService.GPT_MAX_COMPLETION_TOKENS,
+      // Reasoning models (o1, o3, gpt-5) don't support temperature parameter
+      ...(!isReasoningModel(model) && { temperature: 0.7 }),
     };
 
     const response = await fetch(url, {

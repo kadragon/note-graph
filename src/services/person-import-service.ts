@@ -6,7 +6,7 @@
 import type { Env } from '../types/env';
 import { parsedPersonDataSchema, type ParsedPersonData } from '../schemas/person';
 import { RateLimitError } from '../types/errors';
-import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
+import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 
 /**
  * Person Import Service
@@ -106,17 +106,20 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
   private async callGPT(prompt: string): Promise<string> {
     const url = getAIGatewayUrl(this.env, 'chat/completions');
 
+    const model = this.env.OPENAI_MODEL_LIGHTWEIGHT;
+
     const requestBody = {
-      model: this.env.OPENAI_MODEL_LIGHTWEIGHT,
+      model,
       messages: [
         {
-          role: 'user',
+          role: 'user' as const,
           content: prompt,
         },
       ],
-      temperature: 0.1, // Low temperature for consistent parsing
       max_completion_tokens: PersonImportService.GPT_MAX_COMPLETION_TOKENS,
-      response_format: { type: 'json_object' }, // Ensure JSON response
+      response_format: { type: 'json_object' as const },
+      // Reasoning models (o1, o3, gpt-5) don't support temperature parameter
+      ...(!isReasoningModel(model) && { temperature: 0.1 }),
     };
 
     const response = await fetch(url, {
