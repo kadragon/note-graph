@@ -47,3 +47,25 @@ export function getAIGatewayUrl(env: Env, endpoint: string): string {
   const baseUrl = `https://gateway.ai.cloudflare.com/v1/${env.CLOUDFLARE_ACCOUNT_ID}/${env.AI_GATEWAY_ID}/openai`;
   return `${baseUrl}/${endpoint}`;
 }
+
+/**
+ * Check if a model is a reasoning model that doesn't support temperature parameter
+ *
+ * OpenAI reasoning models (o1, o3, gpt-5 series) don't support the temperature parameter.
+ * These models only accept the default temperature value of 1.
+ *
+ * Affected models:
+ * - o1 series: o1, o1-mini, o1-preview
+ * - o3 series: o3, o3-mini
+ * - gpt-5 series: gpt-5, gpt-5-mini, gpt-5-nano, gpt-5.1
+ *
+ * @param model - Model name/identifier
+ * @returns true if the model doesn't support temperature parameter
+ *
+ * @see https://community.openai.com/t/temperature-in-gpt-5-models/1337133
+ */
+export function isReasoningModel(model: string | undefined): boolean {
+  if (!model) return false;
+
+  return /^(o1|o3|gpt-5)/.test(model);
+}
