@@ -18,7 +18,7 @@
     "db:migrate:local": "wrangler d1 migrations apply worknote-db --local",
     "db:create-migration": "wrangler d1 migrations create worknote-db",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/",
+    "lint": "eslint src/ frontend/src/",
     "prepare": "husky"
   },
   "dependencies": {
