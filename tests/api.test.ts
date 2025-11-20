@@ -39,13 +39,15 @@ describe('API Integration Tests', () => {
       const originalEnv = env.ENVIRONMENT;
       (env as unknown as Env).ENVIRONMENT = 'production';
 
-      const response = await SELF.fetch('http://localhost/me');
-      expect(response.status).toBe(401);
+      try {
+        const response = await SELF.fetch('http://localhost/me');
+        expect(response.status).toBe(401);
 
-      const data = await response.json<{ code: string; message: string }>();
-      expect(data.code).toBe('UNAUTHORIZED');
-
-      (env as unknown as Env).ENVIRONMENT = originalEnv;
+        const data = await response.json<{ code: string; message: string }>();
+        expect(data.code).toBe('UNAUTHORIZED');
+      } finally {
+        (env as unknown as Env).ENVIRONMENT = originalEnv;
+      }
     });
 
     it('should accept authenticated requests with Cloudflare Access headers', async () => {
