@@ -4,7 +4,7 @@
  */
 
 import type { Env } from '../types/env';
-import type { ParsedPersonData } from '../schemas/person';
+import { parsedPersonDataSchema, type ParsedPersonData } from '../schemas/person';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
 
@@ -51,21 +51,10 @@ export class PersonImportService {
     const prompt = this.constructParsePrompt(inputText);
     const response = await this.callGPT(prompt);
 
-    // Parse JSON response from GPT
+    // Parse and validate JSON response using Zod schema
     try {
-      const parsed = JSON.parse(response) as ParsedPersonData;
-
-      // Validate required fields
-      if (!parsed.personId || !parsed.name) {
-        throw new Error('Invalid parsed data: missing personId or name');
-      }
-
-      // Ensure personId is 6 digits
-      if (!/^\d{6}$/.test(parsed.personId)) {
-        throw new Error('Invalid personId format: must be 6 digits');
-      }
-
-      return parsed;
+      const parsedJson = JSON.parse(response);
+      return parsedPersonDataSchema.parse(parsedJson);
     } catch (error) {
       console.error('Error parsing person response:', error);
       throw new Error('사람 정보 파싱에 실패했습니다. 입력 형식을 확인해주세요.');

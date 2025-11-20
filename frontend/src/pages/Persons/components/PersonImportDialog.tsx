@@ -57,9 +57,7 @@ export function PersonImportDialog({
       });
 
       // Reset and close on success
-      setInputText('');
-      setParsedData(null);
-      onOpenChange(false);
+      handleClose();
     } catch {
       // Error handled by mutation hook
     }
