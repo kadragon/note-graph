@@ -1,5 +1,5 @@
 // Unit tests for AIDraftService
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import type { Env } from '../../src/types/env';
 import { AIDraftService } from '../../src/services/ai-draft-service';
@@ -7,6 +7,15 @@ import { RateLimitError } from '../../src/types/errors';
 import type { WorkNote } from '../../src/types/work-note';
 
 const testEnv = env as unknown as Env;
+
+// Helper to get today's date in YYYY-MM-DD format
+const getTodayDate = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 describe('AIDraftService', () => {
   let service: AIDraftService;
@@ -22,7 +31,7 @@ describe('AIDraftService', () => {
     it('should generate work note draft from unstructured text', async () => {
       // Arrange
       const inputText = '오늘 회의에서 새 프로젝트 기획안을 논의했습니다. 다음 주까지 초안 작성이 필요합니다.';
-      const mockDraft = {
+      const mockLLMResponse = {
         title: '새 프로젝트 기획안 논의',
         content: '오늘 회의에서 새 프로젝트 기획안을 논의했습니다.\n\n다음 주까지 초안 작성이 필요합니다.',
         category: '기획',
@@ -41,7 +50,7 @@ describe('AIDraftService', () => {
           choices: [
             {
               message: {
-                content: JSON.stringify(mockDraft),
+                content: JSON.stringify(mockLLMResponse),
               },
             },
           ],
@@ -51,11 +60,12 @@ describe('AIDraftService', () => {
       // Act
       const result = await service.generateDraftFromText(inputText);
 
-      // Assert
-      expect(result).toEqual(mockDraft);
+      // Assert - result should have transformed todo with dueDate
       expect(result.title).toBe('새 프로젝트 기획안 논의');
       expect(result.category).toBe('기획');
       expect(result.todos).toHaveLength(1);
+      expect(result.todos[0].dueDate).toBe('2024-01-15');
+      expect(result.todos[0].title).toBe('기획안 초안 작성');
     });
 
     it('should include category hint when provided', async () => {
@@ -268,6 +278,106 @@ describe('AIDraftService', () => {
       expect(callBody).toContain('"max_completion_tokens":3000');
       expect(callBody).not.toContain('"max_tokens"');
     });
+
+    it('should default null due dates to today', async () => {
+      // Arrange
+      const inputText = '업무 내용';
+      const mockDraft = {
+        title: '업무',
+        content: '내용',
+        category: '업무',
+        todos: [
+          {
+            title: '할 일 1',
+            description: '설명 1',
+            dueDateSuggestion: null,
+          },
+          {
+            title: '할 일 2',
+            description: '설명 2',
+            dueDateSuggestion: '2025-01-15',
+          },
+        ],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      // Act
+      const result = await service.generateDraftFromText(inputText);
+
+      // Assert
+      const todayDate = getTodayDate();
+      expect(result.todos[0].dueDate).toBe(todayDate);
+      expect(result.todos[1].dueDate).toBe('2025-01-15');
+    });
+
+    it('should use dueDate field instead of dueDateSuggestion', async () => {
+      // Arrange
+      const inputText = '업무 내용';
+      const mockDraft = {
+        title: '업무',
+        content: '내용',
+        category: '업무',
+        todos: [
+          {
+            title: '할 일',
+            description: '설명',
+            dueDateSuggestion: '2025-01-20',
+          },
+        ],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      // Act
+      const result = await service.generateDraftFromText(inputText);
+
+      // Assert
+      expect(result.todos[0]).toHaveProperty('dueDate');
+      expect(result.todos[0]).not.toHaveProperty('dueDateSuggestion');
+      expect(result.todos[0].dueDate).toBe('2025-01-20');
+    });
+
+    it('should handle todos without dueDateSuggestion field', async () => {
+      // Arrange
+      const inputText = '업무 내용';
+      const mockDraft = {
+        title: '업무',
+        content: '내용',
+        category: '업무',
+        todos: [
+          {
+            title: '할 일',
+            description: '설명',
+            // No dueDateSuggestion field at all
+          },
+        ],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      // Act
+      const result = await service.generateDraftFromText(inputText);
+
+      // Assert
+      const todayDate = getTodayDate();
+      expect(result.todos[0].dueDate).toBe(todayDate);
+    });
   });
 
   describe('generateTodoSuggestions()', () => {
@@ -282,7 +392,7 @@ describe('AIDraftService', () => {
         updatedAt: '2024-01-01T00:00:00Z',
       };
 
-      const mockTodos = [
+      const mockLLMTodos = [
         {
           title: '기획안 작성',
           description: '프로젝트 기획안 초안 작성',
@@ -298,17 +408,19 @@ describe('AIDraftService', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [{ message: { content: JSON.stringify(mockTodos) } }],
+          choices: [{ message: { content: JSON.stringify(mockLLMTodos) } }],
         }),
       });
 
       // Act
       const result = await service.generateTodoSuggestions(workNote);
 
-      // Assert
-      expect(result).toEqual(mockTodos);
+      // Assert - result should have transformed todos with dueDate
       expect(result).toHaveLength(2);
       expect(result[0].title).toBe('기획안 작성');
+      expect(result[0].dueDate).toBe('2024-01-15');
+      expect(result[1].title).toBe('검토 미팅');
+      expect(result[1].dueDate).toBe('2024-01-20');
     });
 
     it('should include context text when provided', async () => {
@@ -397,7 +509,7 @@ describe('AIDraftService', () => {
       );
     });
 
-    it('should handle todos with null due date', async () => {
+    it('should default null due dates to today for todo suggestions', async () => {
       // Arrange
       const workNote: WorkNote = {
         workId: 'WORK-001',
@@ -432,8 +544,9 @@ describe('AIDraftService', () => {
       const result = await service.generateTodoSuggestions(workNote);
 
       // Assert
-      expect(result[0].dueDateSuggestion).toBeNull();
-      expect(result[1].dueDateSuggestion).toBe('2024-01-15');
+      const todayDate = getTodayDate();
+      expect(result[0].dueDate).toBe(todayDate);
+      expect(result[1].dueDate).toBe('2024-01-15');
     });
 
     it('should throw RateLimitError on 429 status', async () => {
