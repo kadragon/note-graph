@@ -19,7 +19,7 @@ describe('Department search', () => {
     ]);
 
     const response = await SELF.fetch('http://localhost/departments?q=기획', {
-      headers: { 'X-Test-User-Email': 'test@example.com' },
+      headers: { 'Cf-Access-Authenticated-User-Email': 'test@example.com' },
     });
 
     expect(response.status).toBe(200);
@@ -32,7 +32,7 @@ describe('Department search', () => {
     await testEnv.DB.prepare('INSERT INTO departments (dept_name, description) VALUES (?, ?)').bind('행정지원실', 'C').run();
 
     const response = await SELF.fetch('http://localhost/departments', {
-      headers: { 'X-Test-User-Email': 'test@example.com' },
+      headers: { 'Cf-Access-Authenticated-User-Email': 'test@example.com' },
     });
 
     expect(response.status).toBe(200);
@@ -40,4 +40,3 @@ describe('Department search', () => {
     expect(data.length).toBeGreaterThanOrEqual(1);
   });
 });
-

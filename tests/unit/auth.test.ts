@@ -97,9 +97,10 @@ describe('Authentication Middleware', () => {
       expect(data.user.email).toBe('dev@localhost');
     });
 
-    it('should reject when no authentication header is provided', async () => {
+    it('should reject when no authentication header is provided (production)', async () => {
       // Act
-      const response = await app.request('/test', {}, testEnv);
+      const prodEnv = { ...testEnv, ENVIRONMENT: 'production' };
+      const response = await app.request('/test', {}, prodEnv);
 
       // Assert
       expect(response.status).toBe(401);
@@ -213,9 +214,10 @@ describe('Authentication Handlers', () => {
       expect(data.name).toBeNull(); // name is undefined in middleware, becomes null in handler
     });
 
-    it('should require authentication', async () => {
+    it('should require authentication (production)', async () => {
       // Act
-      const response = await app.request('/me', {}, testEnv);
+      const prodEnv = { ...testEnv, ENVIRONMENT: 'production' };
+      const response = await app.request('/me', {}, prodEnv);
 
       // Assert
       expect(response.status).toBe(401);

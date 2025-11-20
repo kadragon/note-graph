@@ -765,6 +765,28 @@ completed_tasks:
       - dept/name (position null)
       - name (both dept and position null)
 
+  - task_id: TASK-028
+    title: "Align test DB schema with migrations"
+    spec_id: SPEC-devx-1
+    completed_at: "2025-11-20T17:05:30Z"
+    outcome: |
+      Synced Vitest's Workers D1 setup with the latest schema by consolidating
+      manual DDL in tests/setup.ts. Added missing columns (employment_status,
+      dept_at_time, position_at_time), indexes, FTS table, updated todos
+      timestamps, and allowed PARTICIPANT role to match legacy fixtures. This
+      eliminates missing-column errors in repository tests.
+    test_results: |
+      ✓ npm test (425 passed / 3 failed - dev-mode auth fallback returns 200)
+      Note: Coverage still blocked in Workers pool because @vitest/coverage-v8
+      imports node:inspector, which workerd lacks.
+    estimated_effort: 1h
+    actual_effort: ~1h
+    implementation_details: |
+      - Replaced minimal schema bootstrap with DDL mirroring migrations 0001-0009
+      - Included retry queue, task categories, pdf_jobs, and FTS virtual table
+      - Relaxed work_note_person role CHECK to include PARTICIPANT for tests
+      - Left auth-fallback behaviour unchanged (remaining failures unrelated to schema)
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"

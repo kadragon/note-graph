@@ -267,7 +267,7 @@ export class PersonRepository {
                 end_date as endDate, is_active as isActive
          FROM person_dept_history
          WHERE person_id = ?
-         ORDER BY start_date DESC`
+         ORDER BY start_date DESC, id DESC`
       )
       .bind(personId)
       .all<PersonDeptHistory>();
