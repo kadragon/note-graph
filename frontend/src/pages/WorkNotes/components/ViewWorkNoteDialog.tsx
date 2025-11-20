@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Edit2, Save, X } from 'lucide-react';
+import { Edit2, Save, X, Pencil } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
@@ -27,7 +27,8 @@ import { useToggleTodo } from '@/hooks/useTodos';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { formatPersonBadge } from '@/lib/utils';
-import type { WorkNote, CreateTodoRequest, TodoStatus } from '@/types/api';
+import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
+import type { WorkNote, CreateTodoRequest, TodoStatus, Todo } from '@/types/api';
 
 interface ViewWorkNoteDialogProps {
   workNote: WorkNote | null;
@@ -57,6 +58,10 @@ export function ViewWorkNoteDialog({
 
   // Detect system theme preference
   const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
+
+  // Edit todo dialog state
+  const [editTodo, setEditTodo] = useState<Todo | null>(null);
+  const [editTodoDialogOpen, setEditTodoDialogOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -209,6 +214,7 @@ export function ViewWorkNoteDialog({
   if (!workNote) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right">
         <DialogHeader>
@@ -471,6 +477,18 @@ export function ViewWorkNoteDialog({
                         )}
                       </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditTodo(todo);
+                        setEditTodoDialogOpen(true);
+                      }}
+                      className="h-8 w-8 p-0 shrink-0"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      <span className="sr-only">수정</span>
+                    </Button>
                   </div>
                   );
                 })}
@@ -480,5 +498,13 @@ export function ViewWorkNoteDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    <EditTodoDialog
+      todo={editTodo}
+      open={editTodoDialogOpen}
+      onOpenChange={setEditTodoDialogOpen}
+      workNoteId={workNote?.id}
+    />
+  </>
   );
 }

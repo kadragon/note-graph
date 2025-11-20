@@ -144,8 +144,9 @@ export function CreateFromTextDialog({
         });
       }
 
-      // Always invalidate work-notes query
+      // Always invalidate work-notes queries
       queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
 
       // Reset form and close dialog
       resetForm();
