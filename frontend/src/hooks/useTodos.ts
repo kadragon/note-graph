@@ -10,7 +10,7 @@ export function useTodos(view: TodoView = 'all') {
   });
 }
 
-export function useToggleTodo() {
+export function useToggleTodo(workNoteId?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -18,10 +18,13 @@ export function useToggleTodo() {
     mutationFn: ({ id, status }: { id: string; status: TodoStatus }) =>
       API.updateTodo(id, { status }),
     onMutate: async ({ id, status }) => {
-      // Cancel outgoing refetches
+      // Cancel outgoing refetches for all related queries
       await queryClient.cancelQueries({ queryKey: ['todos'] });
+      if (workNoteId) {
+        await queryClient.cancelQueries({ queryKey: ['work-note-todos', workNoteId] });
+      }
 
-      // Snapshot the previous value
+      // Snapshot the previous values
       const previousTodos = queryClient
         .getQueryCache()
         .findAll({ queryKey: ['todos'] })
@@ -29,6 +32,10 @@ export function useToggleTodo() {
           queryKey: query.queryKey,
           data: query.state.data,
         }));
+
+      const previousWorkNoteTodos = workNoteId
+        ? queryClient.getQueryData<Todo[]>(['work-note-todos', workNoteId])
+        : undefined;
 
       // Optimistically update all todo queries
       queryClient
@@ -43,8 +50,15 @@ export function useToggleTodo() {
           });
         });
 
-      // Return context with the previous value
-      return { previousTodos };
+      // Optimistically update work-note-todos query if workNoteId is provided
+      if (workNoteId) {
+        queryClient.setQueryData<Todo[]>(['work-note-todos', workNoteId], (old) =>
+          old?.map((todo) => (todo.id === id ? { ...todo, status } : todo)) ?? []
+        );
+      }
+
+      // Return context with the previous values
+      return { previousTodos, previousWorkNoteTodos, workNoteId };
     },
     onError: (error, _variables, context) => {
       // Rollback to previous value on error
@@ -54,16 +68,32 @@ export function useToggleTodo() {
         });
       }
 
+      if (context?.workNoteId && context?.previousWorkNoteTodos) {
+        queryClient.setQueryData(
+          ['work-note-todos', context.workNoteId],
+          context.previousWorkNoteTodos
+        );
+      }
+
       toast({
         variant: 'destructive',
         title: '오류',
         description: error.message || '할 일 상태를 변경할 수 없습니다.',
       });
     },
-    onSuccess: () => {
+    onSettled: (_data, _error, _variables, context) => {
       // Invalidate to ensure we have the latest data
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      if (context?.workNoteId) {
+        queryClient.invalidateQueries({ queryKey: ['work-note-todos', context.workNoteId] });
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: '성공',
+        description: '할일 상태가 변경되었습니다.',
+      });
     },
   });
 }
