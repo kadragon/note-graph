@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, TASK-005, TASK-018
+// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-018, TASK-027
 /**
  * Person repository for D1 database operations
  */
@@ -31,8 +31,9 @@ export class PersonRepository {
   async findById(personId: string): Promise<Person | null> {
     const result = await this.db
       .prepare(
-        `SELECT person_id as personId, name, current_dept as currentDept,
-                current_position as currentPosition, current_role_desc as currentRoleDesc,
+        `SELECT person_id as personId, name, phone_ext as phoneExt,
+                current_dept as currentDept, current_position as currentPosition,
+                current_role_desc as currentRoleDesc,
                 created_at as createdAt, updated_at as updatedAt
          FROM persons
          WHERE person_id = ?`
@@ -45,10 +46,12 @@ export class PersonRepository {
 
   /**
    * Find all persons with optional search query
+   * Sorted by department (nulls last) then name
    */
   async findAll(searchQuery?: string): Promise<Person[]> {
-    let query = `SELECT person_id as personId, name, current_dept as currentDept,
-                        current_position as currentPosition, current_role_desc as currentRoleDesc,
+    let query = `SELECT person_id as personId, name, phone_ext as phoneExt,
+                        current_dept as currentDept, current_position as currentPosition,
+                        current_role_desc as currentRoleDesc,
                         created_at as createdAt, updated_at as updatedAt
                  FROM persons`;
     const params: string[] = [];
@@ -58,7 +61,8 @@ export class PersonRepository {
       params.push(`%${searchQuery}%`, `%${searchQuery}%`);
     }
 
-    query += ` ORDER BY name ASC`;
+    // Sort by department (nulls last) then name
+    query += ` ORDER BY current_dept ASC NULLS LAST, name ASC`;
 
     const stmt = this.db.prepare(query);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<Person>();
@@ -87,12 +91,13 @@ export class PersonRepository {
       // Insert person
       this.db
         .prepare(
-          `INSERT INTO persons (person_id, name, current_dept, current_position, current_role_desc, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO persons (person_id, name, phone_ext, current_dept, current_position, current_role_desc, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           data.personId,
           data.name,
+          data.phoneExt || null,
           data.currentDept || null,
           data.currentPosition || null,
           data.currentRoleDesc || null,
@@ -125,6 +130,7 @@ export class PersonRepository {
     return {
       personId: data.personId,
       name: data.name,
+      phoneExt: data.phoneExt || null,
       currentDept: data.currentDept || null,
       currentPosition: data.currentPosition || null,
       currentRoleDesc: data.currentRoleDesc || null,
@@ -191,6 +197,10 @@ export class PersonRepository {
       updateFields.push('name = ?');
       updateParams.push(data.name);
     }
+    if (data.phoneExt !== undefined) {
+      updateFields.push('phone_ext = ?');
+      updateParams.push(data.phoneExt || null);
+    }
     if (data.currentDept !== undefined) {
       updateFields.push('current_dept = ?');
       updateParams.push(data.currentDept || null);
@@ -224,6 +234,7 @@ export class PersonRepository {
     return {
       ...existing,
       name: data.name !== undefined ? data.name : existing.name,
+      phoneExt: data.phoneExt !== undefined ? (data.phoneExt || null) : existing.phoneExt,
       currentDept: data.currentDept !== undefined ? (data.currentDept || null) : existing.currentDept,
       currentPosition: data.currentPosition !== undefined ? (data.currentPosition || null) : existing.currentPosition,
       currentRoleDesc: data.currentRoleDesc !== undefined ? (data.currentRoleDesc || null) : existing.currentRoleDesc,

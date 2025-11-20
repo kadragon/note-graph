@@ -1,4 +1,4 @@
-// Trace: TASK-016, TASK-018
+// Trace: TASK-016, TASK-018, TASK-027
 // Test setup and global configuration
 
 import { beforeAll } from 'vitest';
@@ -17,6 +17,7 @@ beforeAll(async () => {
     `CREATE TABLE IF NOT EXISTS persons (
       person_id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      phone_ext TEXT,
       current_dept TEXT,
       current_position TEXT,
       current_role_desc TEXT,

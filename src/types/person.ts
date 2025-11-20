@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, TASK-005
+// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-027
 /**
  * Type definitions for Person and related entities
  */
@@ -9,6 +9,7 @@
 export interface Person {
   personId: string; // 6-digit string
   name: string;
+  phoneExt: string | null; // 4-digit internal phone extension (e.g., '3346')
   currentDept: string | null;
   currentPosition: string | null;
   currentRoleDesc: string | null;

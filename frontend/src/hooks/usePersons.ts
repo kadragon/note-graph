@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, SPEC-person-2, TASK-022, TASK-025
+// Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
 import { useToast } from './use-toast';
@@ -55,5 +55,13 @@ export function useUpdatePerson() {
         description: error.message || '사람 정보를 수정할 수 없습니다.',
       });
     },
+  });
+}
+
+export function usePersonHistory(personId: string | null) {
+  return useQuery({
+    queryKey: ['person-history', personId],
+    queryFn: () => API.getPersonHistory(personId!),
+    enabled: !!personId,
   });
 }
