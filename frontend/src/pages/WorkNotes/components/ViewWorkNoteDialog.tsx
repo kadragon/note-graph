@@ -7,6 +7,7 @@ import { Edit2, Save, X, Pencil, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
+import rehypeHighlight from 'rehype-highlight';
 import {
   Dialog,
   DialogContent,
@@ -378,7 +379,7 @@ export function ViewWorkNoteDialog({
               <div className="prose prose-sm max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800" data-color-mode={colorMode}>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeSanitize]}
+                  rehypePlugins={[rehypeSanitize, rehypeHighlight]}
                 >
                   {workNote.content}
                 </ReactMarkdown>
@@ -479,7 +480,14 @@ export function ViewWorkNoteDialog({
                         {todo.title}
                       </p>
                       {todo.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{todo.description}</p>
+                        <div className="prose prose-xs max-w-none mt-1 text-muted-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeSanitize, rehypeHighlight]}
+                          >
+                            {todo.description}
+                          </ReactMarkdown>
+                        </div>
                       )}
                       <div className="flex gap-2 mt-1">
                         <Badge variant={todo.status === '완료' ? 'secondary' : 'default'} className="text-xs">
