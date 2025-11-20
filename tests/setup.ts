@@ -12,6 +12,22 @@ const migrationModules = import.meta.glob('../migrations/*.sql', {
   query: '?raw',
 }) as Record<string, string>;
 
+function loadMigrationStatements(): string[] {
+  const entries = Object.entries(migrationModules).sort(([a], [b]) => a.localeCompare(b));
+  const statements: string[] = [];
+
+  for (const [, sql] of entries) {
+    // Split on semicolons at line ends; filter out comments/empties
+    sql
+      .split(/;\s*\n/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && !s.startsWith('--'))
+      .forEach((stmt) => statements.push(stmt + ';'));
+  }
+
+  return statements;
+}
+
 // Manual DDL fallback mirrors migrations 0001-0009 (kept in sync when migrations change)
 const manualSchemaStatements: string[] = [
   `CREATE TABLE IF NOT EXISTS persons (
@@ -177,10 +193,8 @@ async function applyManualSchema(db: D1Database): Promise<void> {
 
 async function applyMigrationsOrFallback(db: D1Database): Promise<void> {
   try {
-    const entries = Object.entries(migrationModules).sort(([a], [b]) => a.localeCompare(b));
-    for (const [, sql] of entries) {
-      await db.exec(sql);
-    }
+    const stmts = loadMigrationStatements();
+    await db.batch(stmts.map((s) => db.prepare(s)));
   } catch (error) {
     console.warn('[Test Setup] Migration exec failed, falling back to manual DDL', error);
     await applyManualSchema(db);
