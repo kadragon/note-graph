@@ -23,10 +23,11 @@ import { AssigneeSelector } from '@/components/AssigneeSelector';
 import { API } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
+import { useToggleTodo } from '@/hooks/useTodos';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { formatPersonBadge } from '@/lib/utils';
-import type { WorkNote, CreateTodoRequest, TodoStatus, Todo } from '@/types/api';
+import type { WorkNote, CreateTodoRequest, TodoStatus } from '@/types/api';
 
 interface ViewWorkNoteDialogProps {
   workNote: WorkNote | null;
@@ -60,6 +61,7 @@ export function ViewWorkNoteDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const updateMutation = useUpdateWorkNote();
+  const toggleTodoMutation = useToggleTodo(workNote?.id);
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
@@ -139,48 +141,6 @@ export function ViewWorkNoteDialog({
     },
   });
 
-  // Update todo status mutation with optimistic updates
-  const updateTodoMutation = useMutation({
-    mutationFn: ({ todoId, status }: { todoId: string; status: TodoStatus }) =>
-      API.updateTodo(todoId, { status }),
-    onMutate: async ({ todoId, status }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['work-note-todos', workNote?.id] });
-
-      // Snapshot the previous value
-      const previousTodos = queryClient.getQueryData<Todo[]>(['work-note-todos', workNote?.id]);
-
-      // Optimistically update to the new value
-      queryClient.setQueryData<Todo[]>(['work-note-todos', workNote?.id], (old) =>
-        old?.map((todo) => (todo.id === todoId ? { ...todo, status } : todo)) ?? []
-      );
-
-      return { previousTodos };
-    },
-    onError: (error: Error, _variables, context) => {
-      // Rollback on error
-      if (context?.previousTodos) {
-        queryClient.setQueryData(['work-note-todos', workNote?.id], context.previousTodos);
-      }
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '할일 상태를 변경할 수 없습니다.',
-      });
-    },
-    onSettled: () => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNote?.id] });
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-    },
-    onSuccess: () => {
-      toast({
-        title: '성공',
-        description: '할일 상태가 변경되었습니다.',
-      });
-    },
-  });
 
   const handleAddTodo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,7 +163,7 @@ export function ViewWorkNoteDialog({
       return;
     }
     const newStatus: TodoStatus = currentStatus === '완료' ? '진행중' : '완료';
-    updateTodoMutation.mutate({ todoId, status: newStatus });
+    toggleTodoMutation.mutate({ id: todoId, status: newStatus });
   };
 
   const handleCategoryToggle = (categoryId: string) => {
@@ -489,7 +449,7 @@ export function ViewWorkNoteDialog({
                       <Checkbox
                         checked={todo.status === '완료'}
                         onCheckedChange={() => handleToggleTodoStatus(todo.id, todo.status)}
-                        disabled={updateTodoMutation.isPending || isNonToggleableStatus}
+                        disabled={toggleTodoMutation.isPending || isNonToggleableStatus}
                         title={isNonToggleableStatus ? '보류/중단 상태는 체크박스로 변경할 수 없습니다' : undefined}
                         className="mt-0.5"
                       />
