@@ -30,6 +30,53 @@ export type { Env };
 // Initialize Hono app with auth context
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
+// ============================================================================
+// SPA Fallback Middleware
+// ============================================================================
+// When browser navigates directly to SPA routes (e.g., /work-notes) and refreshes,
+// we need to serve index.html instead of the API response.
+// This mimics the behavior of Vite's proxy bypass in development.
+
+// Frontend SPA routes that overlap with API routes
+const spaRoutes = [
+  '/work-notes',
+  '/persons',
+  '/departments',
+  '/task-categories',
+  '/search',
+  '/rag',
+  '/pdf',
+];
+
+app.use('*', async (c, next) => {
+  const path = new URL(c.req.url).pathname;
+  const accept = c.req.header('accept') || '';
+
+  // Check if request is for an SPA route and browser is requesting HTML
+  const isSpaRoute = spaRoutes.some(
+    (route) => path === route || path.startsWith(route + '/')
+  );
+  const wantsHtml = accept.includes('text/html');
+
+  if (isSpaRoute && wantsHtml) {
+    // Serve index.html for SPA client-side routing
+    try {
+      const indexUrl = new URL('/index.html', c.req.url);
+      const response = await c.env.ASSETS.fetch(indexUrl);
+      return new Response(response.body, {
+        status: response.status,
+        headers: response.headers,
+      });
+    } catch (error) {
+      console.error('Failed to serve index.html:', error);
+      // Fall through to normal routing if assets fetch fails
+      return next();
+    }
+  }
+
+  return next();
+});
+
 // Health check endpoint
 app.get('/health', (c) => {
   return c.json({
