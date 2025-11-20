@@ -1,14 +1,19 @@
-// Trace: TASK-016, TASK-018, TASK-027
-// Test setup and global configuration
+/// <reference types="cloudflare/test" />
 
+// Trace: SPEC-devx-1, TASK-028
 import { beforeAll } from 'vitest';
 import { env } from 'cloudflare:test';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Env } from '../src/types/env';
 
-// Trace: SPEC-devx-1, TASK-028
-const schemaStatements: string[] = [
-  // Persons with phone_ext validation and employment_status
+const migrationModules = import.meta.glob('../migrations/*.sql', {
+  eager: true,
+  import: 'default',
+  query: '?raw',
+}) as Record<string, string>;
+
+// Manual DDL fallback mirrors migrations 0001-0009 (kept in sync when migrations change)
+const manualSchemaStatements: string[] = [
   `CREATE TABLE IF NOT EXISTS persons (
      person_id TEXT PRIMARY KEY,
      name TEXT NOT NULL,
@@ -25,7 +30,6 @@ const schemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_persons_phone_ext ON persons(phone_ext)`,
   `CREATE INDEX IF NOT EXISTS idx_persons_employment_status ON persons(employment_status)`,
 
-  // Departments with active flag
   `CREATE TABLE IF NOT EXISTS departments (
      dept_name TEXT PRIMARY KEY,
      description TEXT,
@@ -33,7 +37,6 @@ const schemaStatements: string[] = [
      created_at TEXT NOT NULL DEFAULT (datetime('now'))
    )`,
 
-  // Department history
   `CREATE TABLE IF NOT EXISTS person_dept_history (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      person_id TEXT NOT NULL REFERENCES persons(person_id) ON DELETE CASCADE,
@@ -49,7 +52,6 @@ const schemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_person_dept_history_is_active ON person_dept_history(is_active)`,
   `CREATE INDEX IF NOT EXISTS idx_person_dept_history_person_active ON person_dept_history(person_id, is_active)`,
 
-  // Work notes
   `CREATE TABLE IF NOT EXISTS work_notes (
      work_id TEXT PRIMARY KEY,
      title TEXT NOT NULL,
@@ -62,7 +64,6 @@ const schemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_work_notes_created_at ON work_notes(created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_work_notes_updated_at ON work_notes(updated_at)`,
 
-  // Work note person associations with snapshot fields
   `CREATE TABLE IF NOT EXISTS work_note_person (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      work_id TEXT NOT NULL REFERENCES work_notes(work_id) ON DELETE CASCADE,
@@ -76,7 +77,6 @@ const schemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_work_note_person_role ON work_note_person(role)`,
   `CREATE INDEX IF NOT EXISTS idx_work_note_person_dept_at_time ON work_note_person(dept_at_time)`,
 
-  // Work note relations and versions
   `CREATE TABLE IF NOT EXISTS work_note_relation (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      work_id TEXT NOT NULL REFERENCES work_notes(work_id) ON DELETE CASCADE,
@@ -99,7 +99,6 @@ const schemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_work_note_versions_work_id ON work_note_versions(work_id)`,
   `CREATE INDEX IF NOT EXISTS idx_work_note_versions_version_no ON work_note_versions(work_id, version_no)`,
 
-  // Optional FTS table for search-related tests (no triggers needed here)
   `CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
      title,
      content_raw,
@@ -109,7 +108,6 @@ const schemaStatements: string[] = [
      content_rowid='rowid'
    )`,
 
-  // Todos
   `CREATE TABLE IF NOT EXISTS todos (
      todo_id TEXT PRIMARY KEY,
      work_id TEXT NOT NULL REFERENCES work_notes(work_id) ON DELETE CASCADE,
@@ -127,7 +125,6 @@ const schemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status)`,
   `CREATE INDEX IF NOT EXISTS idx_todos_updated_at ON todos(updated_at)`,
 
-  // PDF jobs
   `CREATE TABLE IF NOT EXISTS pdf_jobs (
      job_id TEXT PRIMARY KEY,
      status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'READY', 'ERROR')),
@@ -140,7 +137,6 @@ const schemaStatements: string[] = [
      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
    )`,
 
-  // Embedding retry queue
   `CREATE TABLE IF NOT EXISTS embedding_retry_queue (
      id TEXT PRIMARY KEY,
      work_id TEXT NOT NULL,
@@ -161,7 +157,6 @@ const schemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_retry_queue_work_id ON embedding_retry_queue(work_id)`,
   `CREATE INDEX IF NOT EXISTS idx_retry_queue_dead_letter ON embedding_retry_queue(dead_letter_at) WHERE status = 'dead_letter'`,
 
-  // Task categories
   `CREATE TABLE IF NOT EXISTS task_categories (
      category_id TEXT PRIMARY KEY,
      name TEXT NOT NULL UNIQUE,
@@ -176,9 +171,19 @@ const schemaStatements: string[] = [
    )`,
 ];
 
-async function applySchema(db: D1Database): Promise<void> {
-  for (const statement of schemaStatements) {
-    await db.prepare(statement).run();
+async function applyManualSchema(db: D1Database): Promise<void> {
+  await db.batch(manualSchemaStatements.map((statement) => db.prepare(statement)));
+}
+
+async function applyMigrationsOrFallback(db: D1Database): Promise<void> {
+  try {
+    const entries = Object.entries(migrationModules).sort(([a], [b]) => a.localeCompare(b));
+    for (const [, sql] of entries) {
+      await db.exec(sql);
+    }
+  } catch (error) {
+    console.warn('[Test Setup] Migration exec failed, falling back to manual DDL', error);
+    await applyManualSchema(db);
   }
 }
 
@@ -189,8 +194,7 @@ beforeAll(async () => {
     throw new Error('DB binding not available in test environment');
   }
 
-  await applySchema(db);
+  await applyMigrationsOrFallback(db);
 
-  console.log('[Test Setup] Cloudflare Workers test environment initialized with full D1 schema (manual DDL)');
+  console.log('[Test Setup] Cloudflare Workers test environment initialized (migrations or fallback applied)');
 });
-/// <reference types="cloudflare/test" />
