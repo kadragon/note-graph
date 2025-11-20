@@ -56,4 +56,23 @@ todos.patch('/:todoId', async (c) => {
   }
 });
 
+/**
+ * DELETE /todos/:todoId - Delete todo
+ */
+todos.delete('/:todoId', async (c) => {
+  try {
+    const { todoId } = c.req.param();
+    const repository = new TodoRepository(c.env.DB);
+    await repository.delete(todoId);
+
+    return c.body(null, 204);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error deleting todo:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
+});
+
 export default todos;

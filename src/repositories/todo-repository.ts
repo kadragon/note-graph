@@ -243,6 +243,21 @@ export class TodoRepository {
   }
 
   /**
+   * Delete todo by ID
+   */
+  async delete(todoId: string): Promise<void> {
+    const existing = await this.findById(todoId);
+    if (!existing) {
+      throw new NotFoundError('Todo', todoId);
+    }
+
+    await this.db
+      .prepare(`DELETE FROM todos WHERE todo_id = ?`)
+      .bind(todoId)
+      .run();
+  }
+
+  /**
    * Update todo with recurrence logic
    */
   async update(todoId: string, data: UpdateTodoInput): Promise<Todo> {
