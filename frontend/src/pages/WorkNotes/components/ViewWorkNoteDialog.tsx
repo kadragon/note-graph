@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Edit2, Save, X, Pencil } from 'lucide-react';
+import { Edit2, Save, X, Pencil, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
@@ -13,6 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +33,7 @@ import { AssigneeSelector } from '@/components/AssigneeSelector';
 import { API } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
-import { useToggleTodo } from '@/hooks/useTodos';
+import { useToggleTodo, useDeleteTodo } from '@/hooks/useTodos';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { formatPersonBadge } from '@/lib/utils';
@@ -63,10 +73,14 @@ export function ViewWorkNoteDialog({
   const [editTodo, setEditTodo] = useState<Todo | null>(null);
   const [editTodoDialogOpen, setEditTodoDialogOpen] = useState(false);
 
+  // Delete todo confirmation dialog state
+  const [deleteTodoId, setDeleteTodoId] = useState<string | null>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const updateMutation = useUpdateWorkNote();
   const toggleTodoMutation = useToggleTodo(workNote?.id);
+  const deleteTodoMutation = useDeleteTodo(workNote?.id);
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
@@ -197,7 +211,8 @@ export function ViewWorkNoteDialog({
           title: editTitle.trim(),
           content: editContent.trim(),
           categoryIds: editCategoryIds.length > 0 ? editCategoryIds : undefined,
-          relatedPersonIds: editPersonIds.length > 0 ? editPersonIds : undefined,
+          // Always send relatedPersonIds (including empty array) to allow clearing all assignees
+          relatedPersonIds: editPersonIds,
         },
       });
       setIsEditing(false);
@@ -489,6 +504,16 @@ export function ViewWorkNoteDialog({
                       <Pencil className="h-3 w-3" />
                       <span className="sr-only">수정</span>
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteTodoId(todo.id)}
+                      disabled={deleteTodoMutation.isPending}
+                      className="h-8 w-8 p-0 shrink-0 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      <span className="sr-only">삭제</span>
+                    </Button>
                   </div>
                   );
                 })}
@@ -505,6 +530,31 @@ export function ViewWorkNoteDialog({
       onOpenChange={setEditTodoDialogOpen}
       workNoteId={workNote?.id}
     />
+
+    <AlertDialog open={!!deleteTodoId} onOpenChange={(open) => !open && setDeleteTodoId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>할일 삭제</AlertDialogTitle>
+          <AlertDialogDescription>
+            정말 이 할일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>취소</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (deleteTodoId) {
+                deleteTodoMutation.mutate(deleteTodoId);
+                setDeleteTodoId(null);
+              }
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            삭제
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </>
   );
 }

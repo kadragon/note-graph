@@ -172,8 +172,24 @@ class APIClient {
 
   async updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
     // Transform content to contentRaw for backend if present
-    const { content, ...rest } = data;
-    const payload = content !== undefined ? { ...rest, contentRaw: content } : rest;
+    const { content, relatedPersonIds, ...rest } = data;
+
+    // Build payload with proper transformations
+    const payload: Record<string, unknown> = { ...rest };
+
+    if (content !== undefined) {
+      payload.contentRaw = content;
+    }
+
+    // Transform relatedPersonIds to persons format for backend
+    // Backend expects: persons: Array<{personId: string, role: 'OWNER' | 'RELATED'}>
+    if (relatedPersonIds !== undefined) {
+      payload.persons = relatedPersonIds.map(personId => ({
+        personId,
+        role: 'RELATED' as const,
+      }));
+    }
+
     const response = await this.request<BackendWorkNote>(`/work-notes/${workId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
@@ -322,6 +338,12 @@ class APIClient {
       body: JSON.stringify(data),
     });
     return this.transformTodoFromBackend(response);
+  }
+
+  deleteTodo(todoId: string) {
+    return this.request<void>(`/todos/${todoId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Work Note Todos
