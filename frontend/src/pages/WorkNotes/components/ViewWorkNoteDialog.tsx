@@ -4,7 +4,6 @@ import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Edit2, Save, X } from 'lucide-react';
-import MDEditor from '@uiw/react-md-editor';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
@@ -19,10 +18,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { AssigneeSelector } from '@/components/AssigneeSelector';
 import { API } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
+import { useToggleTodo } from '@/hooks/useTodos';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { formatPersonBadge } from '@/lib/utils';
@@ -60,6 +61,7 @@ export function ViewWorkNoteDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const updateMutation = useUpdateWorkNote();
+  const toggleTodoMutation = useToggleTodo(workNote?.id);
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
@@ -119,6 +121,7 @@ export function ViewWorkNoteDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNote?.id] });
       queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       setTodoTitle('');
       setTodoDescription('');
       // Reset due date to today
@@ -138,26 +141,6 @@ export function ViewWorkNoteDialog({
     },
   });
 
-  // Update todo status mutation
-  const updateTodoMutation = useMutation({
-    mutationFn: ({ todoId, status }: { todoId: string; status: TodoStatus }) =>
-      API.updateTodo(todoId, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNote?.id] });
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      toast({
-        title: '성공',
-        description: '할일 상태가 변경되었습니다.',
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '할일 상태를 변경할 수 없습니다.',
-      });
-    },
-  });
 
   const handleAddTodo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,7 +163,7 @@ export function ViewWorkNoteDialog({
       return;
     }
     const newStatus: TodoStatus = currentStatus === '완료' ? '진행중' : '완료';
-    updateTodoMutation.mutate({ todoId, status: newStatus });
+    toggleTodoMutation.mutate({ id: todoId, status: newStatus });
   };
 
   const handleCategoryToggle = (categoryId: string) => {
@@ -359,14 +342,16 @@ export function ViewWorkNoteDialog({
           <div className="border-t pt-4">
             <h3 className="font-semibold mb-2">내용</h3>
             {isEditing ? (
-              <div data-color-mode={colorMode}>
-                <MDEditor
+              <div className="space-y-2">
+                <Textarea
                   value={editContent}
-                  onChange={(value) => setEditContent(value || '')}
-                  preview="edit"
-                  height={400}
-                  visibleDragbar={false}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  placeholder="마크다운 형식으로 작성하세요"
+                  className="min-h-[400px] font-mono text-sm"
                 />
+                <p className="text-xs text-muted-foreground">
+                  마크다운 형식 지원: **굵게**, *기울임*, # 제목, - 목록 등
+                </p>
               </div>
             ) : (
               <div className="prose prose-sm max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800" data-color-mode={colorMode}>
@@ -464,7 +449,7 @@ export function ViewWorkNoteDialog({
                       <Checkbox
                         checked={todo.status === '완료'}
                         onCheckedChange={() => handleToggleTodoStatus(todo.id, todo.status)}
-                        disabled={updateTodoMutation.isPending || isNonToggleableStatus}
+                        disabled={toggleTodoMutation.isPending || isNonToggleableStatus}
                         title={isNonToggleableStatus ? '보류/중단 상태는 체크박스로 변경할 수 없습니다' : undefined}
                         className="mt-0.5"
                       />
