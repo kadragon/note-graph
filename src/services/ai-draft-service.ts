@@ -8,6 +8,7 @@ import type { WorkNoteDraft, AIDraftTodo } from '../types/search';
 import type { WorkNote } from '../types/work-note';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
+import { getTodayDateUTC } from '../utils/date';
 
 /**
  * Raw todo structure returned by LLM
@@ -47,25 +48,14 @@ export class AIDraftService {
   constructor(private env: Env) {}
 
   /**
-   * Get today's date in YYYY-MM-DD format
-   */
-  private getTodayDate(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  /**
    * Transform raw LLM todo to proper AIDraftTodo format
-   * Defaults null/undefined due dates to today's date
+   * Defaults null/undefined due dates to today's date (UTC)
    */
   private transformTodo(rawTodo: RawAIDraftTodo): AIDraftTodo {
     return {
       title: rawTodo.title,
       description: rawTodo.description,
-      dueDate: rawTodo.dueDateSuggestion || this.getTodayDate(),
+      dueDate: rawTodo.dueDateSuggestion || getTodayDateUTC(),
       repeatRule: rawTodo.repeatRule,
     };
   }

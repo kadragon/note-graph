@@ -5,26 +5,30 @@ import type { Env } from '../../src/types/env';
 import { AIDraftService } from '../../src/services/ai-draft-service';
 import { RateLimitError } from '../../src/types/errors';
 import type { WorkNote } from '../../src/types/work-note';
+import { getTodayDateUTC } from '../../src/utils/date';
 
 const testEnv = env as unknown as Env;
 
-// Helper to get today's date in YYYY-MM-DD format
-const getTodayDate = (): string => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+// Fixed date for deterministic testing (2025-01-10 12:00:00 UTC)
+const FIXED_DATE = new Date('2025-01-10T12:00:00.000Z');
+const FIXED_DATE_STRING = '2025-01-10';
 
 describe('AIDraftService', () => {
   let service: AIDraftService;
   let mockFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    // Use fake timers for deterministic date testing
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_DATE);
+
     mockFetch = vi.fn();
     global.fetch = mockFetch;
     service = new AIDraftService(testEnv);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('generateDraftFromText()', () => {
@@ -311,7 +315,7 @@ describe('AIDraftService', () => {
       const result = await service.generateDraftFromText(inputText);
 
       // Assert
-      const todayDate = getTodayDate();
+      const todayDate = FIXED_DATE_STRING;
       expect(result.todos[0].dueDate).toBe(todayDate);
       expect(result.todos[1].dueDate).toBe('2025-01-15');
     });
@@ -375,7 +379,7 @@ describe('AIDraftService', () => {
       const result = await service.generateDraftFromText(inputText);
 
       // Assert
-      const todayDate = getTodayDate();
+      const todayDate = FIXED_DATE_STRING;
       expect(result.todos[0].dueDate).toBe(todayDate);
     });
   });
@@ -544,7 +548,7 @@ describe('AIDraftService', () => {
       const result = await service.generateTodoSuggestions(workNote);
 
       // Assert
-      const todayDate = getTodayDate();
+      const todayDate = FIXED_DATE_STRING;
       expect(result[0].dueDate).toBe(todayDate);
       expect(result[1].dueDate).toBe('2024-01-15');
     });
