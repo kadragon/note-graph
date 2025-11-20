@@ -62,11 +62,8 @@ app.use('*', async (c, next) => {
     // Serve index.html for SPA client-side routing
     try {
       const indexUrl = new URL('/index.html', c.req.url);
-      const response = await c.env.ASSETS.fetch(indexUrl);
-      return new Response(response.body, {
-        status: response.status,
-        headers: response.headers,
-      });
+      // Return response directly for better efficiency (avoids unnecessary object creation)
+      return c.env.ASSETS.fetch(indexUrl);
     } catch (error) {
       console.error('Failed to serve index.html:', error);
       // Fall through to normal routing if assets fetch fails
