@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, TASK-005
+// Trace: SPEC-person-1, TASK-005, TASK-LLM-IMPORT
 /**
  * Person management routes
  */
@@ -8,8 +8,10 @@ import type { Env } from '../index';
 import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
 import { validateBody, validateQuery } from '../utils/validation';
-import { createPersonSchema, updatePersonSchema, listPersonsQuerySchema } from '../schemas/person';
+import { createPersonSchema, updatePersonSchema, listPersonsQuerySchema, importPersonFromTextSchema } from '../schemas/person';
 import { PersonRepository } from '../repositories/person-repository';
+import { DepartmentRepository } from '../repositories/department-repository';
+import { PersonImportService } from '../services/person-import-service';
 import { DomainError } from '../types/errors';
 
 const persons = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -132,6 +134,77 @@ persons.get('/:personId/work-notes', async (c) => {
       return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
     }
     console.error('Error getting person work notes:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
+});
+
+/**
+ * POST /persons/import-from-text - Parse person data from text using LLM
+ */
+persons.post('/import-from-text', async (c) => {
+  try {
+    const data = await validateBody(c, importPersonFromTextSchema);
+    const importService = new PersonImportService(c.env);
+    const parsed = await importService.parsePersonFromText(data.text);
+
+    return c.json(parsed);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error parsing person from text:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: error instanceof Error ? error.message : '서버 오류가 발생했습니다' }, 500);
+  }
+});
+
+/**
+ * POST /persons/import - Import person from parsed data (create or update)
+ */
+persons.post('/import', async (c) => {
+  try {
+    const data = await validateBody(c, createPersonSchema);
+    const personRepository = new PersonRepository(c.env.DB);
+    const deptRepository = new DepartmentRepository(c.env.DB);
+
+    // Check if department exists, create if not
+    if (data.currentDept) {
+      const existingDept = await deptRepository.findByName(data.currentDept);
+      if (!existingDept) {
+        await deptRepository.create({
+          deptName: data.currentDept,
+          description: undefined,
+        });
+      }
+    }
+
+    // Check if person already exists
+    const existingPerson = await personRepository.findById(data.personId);
+
+    let person;
+    let isNew = false;
+
+    if (existingPerson) {
+      // Update existing person
+      person = await personRepository.update(data.personId, {
+        name: data.name,
+        phoneExt: data.phoneExt,
+        currentDept: data.currentDept,
+        currentPosition: data.currentPosition,
+        currentRoleDesc: data.currentRoleDesc,
+        employmentStatus: data.employmentStatus,
+      });
+    } else {
+      // Create new person
+      person = await personRepository.create(data);
+      isNew = true;
+    }
+
+    return c.json({ person, isNew }, isNew ? 201 : 200);
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+    }
+    console.error('Error importing person:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
   }
 });

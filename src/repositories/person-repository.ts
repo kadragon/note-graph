@@ -34,6 +34,7 @@ export class PersonRepository {
         `SELECT person_id as personId, name, phone_ext as phoneExt,
                 current_dept as currentDept, current_position as currentPosition,
                 current_role_desc as currentRoleDesc,
+                employment_status as employmentStatus,
                 created_at as createdAt, updated_at as updatedAt
          FROM persons
          WHERE person_id = ?`
@@ -52,6 +53,7 @@ export class PersonRepository {
     let query = `SELECT person_id as personId, name, phone_ext as phoneExt,
                         current_dept as currentDept, current_position as currentPosition,
                         current_role_desc as currentRoleDesc,
+                        employment_status as employmentStatus,
                         created_at as createdAt, updated_at as updatedAt
                  FROM persons`;
     const params: string[] = [];
@@ -91,8 +93,8 @@ export class PersonRepository {
       // Insert person
       this.db
         .prepare(
-          `INSERT INTO persons (person_id, name, phone_ext, current_dept, current_position, current_role_desc, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO persons (person_id, name, phone_ext, current_dept, current_position, current_role_desc, employment_status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           data.personId,
@@ -101,6 +103,7 @@ export class PersonRepository {
           data.currentDept || null,
           data.currentPosition || null,
           data.currentRoleDesc || null,
+          data.employmentStatus || '재직',
           now,
           now
         ),
@@ -134,6 +137,7 @@ export class PersonRepository {
       currentDept: data.currentDept || null,
       currentPosition: data.currentPosition || null,
       currentRoleDesc: data.currentRoleDesc || null,
+      employmentStatus: data.employmentStatus || '재직',
       createdAt: now,
       updatedAt: now,
     };
@@ -213,6 +217,10 @@ export class PersonRepository {
       updateFields.push('current_role_desc = ?');
       updateParams.push(data.currentRoleDesc || null);
     }
+    if (data.employmentStatus !== undefined) {
+      updateFields.push('employment_status = ?');
+      updateParams.push(data.employmentStatus);
+    }
 
     if (updateFields.length > 0) {
       updateFields.push('updated_at = ?');
@@ -238,6 +246,7 @@ export class PersonRepository {
       currentDept: data.currentDept !== undefined ? (data.currentDept || null) : existing.currentDept,
       currentPosition: data.currentPosition !== undefined ? (data.currentPosition || null) : existing.currentPosition,
       currentRoleDesc: data.currentRoleDesc !== undefined ? (data.currentRoleDesc || null) : existing.currentRoleDesc,
+      employmentStatus: data.employmentStatus !== undefined ? data.employmentStatus : existing.employmentStatus,
       updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
     };
   }

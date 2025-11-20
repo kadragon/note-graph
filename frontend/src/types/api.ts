@@ -48,13 +48,16 @@ export interface UpdateWorkNoteRequest {
 }
 
 // Person types
+export type EmploymentStatus = '재직' | '휴직' | '퇴직';
+
 export interface Person {
   personId: string;
   name: string;
-  phoneExt?: string | null; // 4-digit internal phone extension (e.g., '3346')
+  phoneExt?: string | null; // Up to 15 chars phone number (e.g., '043-123-4567')
   currentDept?: string | null;
   currentPosition?: string | null;
   currentRoleDesc?: string | null;
+  employmentStatus: EmploymentStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -77,6 +80,7 @@ export interface CreatePersonRequest {
   currentDept?: string;
   currentPosition?: string;
   currentRoleDesc?: string;
+  employmentStatus?: EmploymentStatus;
 }
 
 export interface UpdatePersonRequest {
@@ -85,6 +89,27 @@ export interface UpdatePersonRequest {
   currentDept?: string;
   currentPosition?: string;
   currentRoleDesc?: string;
+  employmentStatus?: EmploymentStatus;
+}
+
+// Person import types
+export interface ImportPersonFromTextRequest {
+  text: string;
+}
+
+export interface ParsedPersonData {
+  personId: string;
+  name: string;
+  phoneExt?: string | null;
+  currentDept?: string | null;
+  currentPosition?: string | null;
+  currentRoleDesc?: string | null;
+  employmentStatus: EmploymentStatus;
+}
+
+export interface ImportPersonResponse {
+  person: Person;
+  isNew: boolean;
 }
 
 // Department types

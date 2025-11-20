@@ -1,6 +1,6 @@
-// Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027
+// Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-LLM-IMPORT
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { usePersons } from '@/hooks/usePersons';
 import { PersonDialog } from './components/PersonDialog';
+import { PersonImportDialog } from './components/PersonImportDialog';
 import type { Person } from '@/types/api';
 
 export default function Persons() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const { data: persons = [], isLoading } = usePersons();
 
@@ -36,10 +38,16 @@ export default function Persons() {
           <h1 className="text-2xl font-bold text-gray-900">사람 관리</h1>
           <p className="text-gray-600 mt-1">사람을 관리하세요</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          새 사람
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+            <FileText className="h-4 w-4 mr-2" />
+            가져오기
+          </Button>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            새 사람
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -123,6 +131,11 @@ export default function Persons() {
         onOpenChange={setEditDialogOpen}
         mode="edit"
         initialData={selectedPerson}
+      />
+
+      <PersonImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
       />
     </div>
   );

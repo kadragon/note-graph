@@ -7,6 +7,9 @@ import type {
   PersonDeptHistory,
   CreatePersonRequest,
   UpdatePersonRequest,
+  ImportPersonFromTextRequest,
+  ParsedPersonData,
+  ImportPersonResponse,
   Department,
   CreateDepartmentRequest,
   UpdateDepartmentRequest,
@@ -233,6 +236,21 @@ class APIClient {
 
   getPersonHistory(personId: string) {
     return this.request<PersonDeptHistory[]>(`/persons/${personId}/history`);
+  }
+
+  // Person Import
+  parsePersonFromText(data: ImportPersonFromTextRequest) {
+    return this.request<ParsedPersonData>('/persons/import-from-text', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  importPerson(data: CreatePersonRequest) {
+    return this.request<ImportPersonResponse>('/persons/import', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // Departments
