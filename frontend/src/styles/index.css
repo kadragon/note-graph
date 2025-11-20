@@ -67,3 +67,54 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* GitHub-style code block styling */
+.prose pre,
+.prose-xs pre,
+.prose-sm pre {
+  @apply border-0 rounded-md overflow-x-auto;
+  background-color: #f6f8fa !important;
+  padding: 16px !important;
+  margin: 16px 0 !important;
+}
+
+.dark .prose pre,
+.dark .prose-xs pre,
+.dark .prose-sm pre {
+  background-color: #161b22 !important;
+}
+
+.prose code,
+.prose-xs code,
+.prose-sm code {
+  @apply rounded px-1 py-0.5 text-sm;
+  background-color: rgba(175, 184, 193, 0.2);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+.prose pre code,
+.prose-xs pre code,
+.prose-sm pre code {
+  @apply p-0 rounded-none;
+  background-color: transparent;
+  font-size: 0.85em;
+}
+
+/* Remove any black borders from code blocks */
+.hljs {
+  @apply border-0;
+  background: transparent !important;
+}
+
+/* GitHub theme adjustments for syntax highlighting */
+.prose .hljs,
+.prose-xs .hljs,
+.prose-sm .hljs {
+  color: #24292f;
+}
+
+.dark .prose .hljs,
+.dark .prose-xs .hljs,
+.dark .prose-sm .hljs {
+  color: #c9d1d9;
+}
