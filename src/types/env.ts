@@ -6,6 +6,7 @@ export interface Env {
   DB: D1Database;
   VECTORIZE: VectorizeIndex;
   AI_GATEWAY: Fetcher;
+  ASSETS: Fetcher; // Static assets binding for serving frontend files
   ENVIRONMENT: string;
   CLOUDFLARE_ACCOUNT_ID: string;
   AI_GATEWAY_ID: string;
