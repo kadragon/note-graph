@@ -2,7 +2,7 @@
 # See: https://developers.cloudflare.com/workers/wrangler/configuration/
 # Trace: SPEC-ai-draft-1, SPEC-rag-1, TASK-026
 
-name = "note-graph"
+name = "note"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
