@@ -376,6 +376,11 @@
 - Repository tests now free of missing-column errors; overall `npm test` results: 425 passed / 3 failed (auth tests expect prod-mode 401 but dev fallback returns 200).
 - Coverage still blocked in Workers pool because @vitest/coverage-v8 pulls `node:inspector` (unsupported by workerd).
 
+-### Session 23: Backlog Cleanup (2025-11-21)
+- Pruned `.tasks/backlog.yaml` to pending/paused items (TASK-024, TASK-025, TASK-021, TASK-020, TASK-018, TASK-019) and recalculated totals (21h) after moving TASK-023 to current.
+- Set `.tasks/current.yaml` to TASK-023 (SPEC-dept-1) with trace note; ensures SDD/TDD loop resumes at highest-priority pending work.
+- Linked SPEC-dept-1 to TASK-006, TASK-022, TASK-023 for backward traceability in `.spec/department-management/spec.yaml`.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
