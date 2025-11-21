@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRAGQuery } from '@/hooks/useRAG';
+import { usePersons } from '@/hooks/usePersons';
+import { useDepartments } from '@/hooks/useDepartments';
+import { useWorkNotes } from '@/hooks/useWorkNotes';
 import { ChatMessage } from './components/ChatMessage';
+import {
+  PersonFilterSelector,
+  DepartmentFilterSelector,
+  WorkNoteFilterSelector,
+} from './components/FilterSelectors';
 import type { RAGScope, RAGResponse } from '@/types/api';
 
 interface Message {
@@ -15,13 +23,45 @@ interface Message {
   contexts?: RAGResponse['contexts'];
 }
 
+const SCOPE_DESCRIPTIONS: Record<Exclude<RAGScope, 'global'>, string> = {
+  person: '특정 사람을 선택하면 해당 사람과 관련된 대화만 검색합니다.',
+  department: '특정 부서를 선택하면 해당 부서와 관련된 대화만 검색합니다.',
+  work: '특정 업무를 선택하면 해당 업무와 관련된 대화만 검색합니다.',
+};
+
 export default function RAG() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [scope, setScope] = useState<RAGScope>('global');
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [selectedDeptName, setSelectedDeptName] = useState<string | null>(null);
+  const [selectedWorkId, setSelectedWorkId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const ragMutation = useRAGQuery();
+  const { data: persons = [], isLoading: isLoadingPersons } = usePersons();
+  const { data: departments = [], isLoading: isLoadingDepartments } = useDepartments();
+  const { data: workNotes = [], isLoading: isLoadingWorkNotes } = useWorkNotes();
+
+  // scope 변경 시 선택 초기화
+  const handleScopeChange = (newScope: RAGScope) => {
+    setScope(newScope);
+    setSelectedPersonId(null);
+    setSelectedDeptName(null);
+    setSelectedWorkId(null);
+  };
+
+  // 필터가 필요한 scope에서 필터가 선택되었는지 확인
+  const isFilterSelected = useMemo(() => {
+    if (scope === 'global') return true;
+    if (scope === 'person') return selectedPersonId !== null;
+    if (scope === 'department') return selectedDeptName !== null;
+    if (scope === 'work') return selectedWorkId !== null;
+    return true;
+  }, [scope, selectedPersonId, selectedDeptName, selectedWorkId]);
+
+  // 제출 가능 여부 확인
+  const canSubmit = input.trim() && !ragMutation.isPending && isFilterSelected;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -31,7 +71,7 @@ export default function RAG() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || ragMutation.isPending) return;
+    if (!canSubmit) return;
 
     const userMessage = input.trim();
     setInput('');
@@ -43,6 +83,9 @@ export default function RAG() {
       const response = await ragMutation.mutateAsync({
         query: userMessage,
         scope,
+        ...(scope === 'person' && selectedPersonId ? { personId: selectedPersonId } : {}),
+        ...(scope === 'department' && selectedDeptName ? { deptName: selectedDeptName } : {}),
+        ...(scope === 'work' && selectedWorkId ? { workId: selectedWorkId } : {}),
       });
 
       // Add assistant response
@@ -67,13 +110,52 @@ export default function RAG() {
       </div>
 
       <div className="flex flex-col h-[calc(100%-5rem)]">
-        <Tabs value={scope} onValueChange={(v) => setScope(v as RAGScope)}>
+        <Tabs value={scope} onValueChange={(v) => handleScopeChange(v as RAGScope)}>
           <TabsList className="mb-4">
             <TabsTrigger value="global">전체</TabsTrigger>
             <TabsTrigger value="person">사람</TabsTrigger>
             <TabsTrigger value="department">부서</TabsTrigger>
             <TabsTrigger value="work">업무</TabsTrigger>
           </TabsList>
+
+          {/* 필터 선택 UI */}
+          {scope !== 'global' && (
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-2">
+                {SCOPE_DESCRIPTIONS[scope]}
+              </p>
+
+              {scope === 'person' && (
+                <PersonFilterSelector
+                  persons={persons}
+                  selectedPersonId={selectedPersonId}
+                  onSelectionChange={setSelectedPersonId}
+                  isLoading={isLoadingPersons}
+                  disabled={ragMutation.isPending}
+                />
+              )}
+
+              {scope === 'department' && (
+                <DepartmentFilterSelector
+                  departments={departments}
+                  selectedDeptName={selectedDeptName}
+                  onSelectionChange={setSelectedDeptName}
+                  isLoading={isLoadingDepartments}
+                  disabled={ragMutation.isPending}
+                />
+              )}
+
+              {scope === 'work' && (
+                <WorkNoteFilterSelector
+                  workNotes={workNotes}
+                  selectedWorkId={selectedWorkId}
+                  onSelectionChange={setSelectedWorkId}
+                  isLoading={isLoadingWorkNotes}
+                  disabled={ragMutation.isPending}
+                />
+              )}
+            </div>
+          )}
 
           <TabsContent value={scope} className="flex-1 mt-0">
             <Card className="h-full flex flex-col">
@@ -126,7 +208,7 @@ export default function RAG() {
                   />
                   <Button
                     type="submit"
-                    disabled={ragMutation.isPending || !input.trim()}
+                    disabled={!canSubmit}
                   >
                     <Send className="h-4 w-4" />
                   </Button>
