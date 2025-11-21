@@ -39,6 +39,7 @@ import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { formatPersonBadge } from '@/lib/utils';
 import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
+import { TODO_STATUS } from '@/constants/todoStatus';
 import type { WorkNote, CreateTodoRequest, TodoStatus, Todo } from '@/types/api';
 
 // Markdown plugin configurations
@@ -183,10 +184,10 @@ export function ViewWorkNoteDialog({
   const handleToggleTodoStatus = (todoId: string, currentStatus: TodoStatus) => {
     // Only allow toggling between '진행중' and '완료'
     // '보류' and '중단' states should be managed separately
-    if (currentStatus === '보류' || currentStatus === '중단') {
+    if (currentStatus === TODO_STATUS.ON_HOLD || currentStatus === TODO_STATUS.STOPPED) {
       return;
     }
-    const newStatus: TodoStatus = currentStatus === '완료' ? '진행중' : '완료';
+    const newStatus: TodoStatus = currentStatus === TODO_STATUS.COMPLETED ? TODO_STATUS.IN_PROGRESS : TODO_STATUS.COMPLETED;
     toggleTodoMutation.mutate({ id: todoId, status: newStatus });
   };
 
@@ -466,21 +467,21 @@ export function ViewWorkNoteDialog({
             ) : (
               <div className="space-y-2">
                 {todos.map((todo) => {
-                  const isNonToggleableStatus = todo.status === '보류' || todo.status === '중단';
+                  const isNonToggleableStatus = todo.status === TODO_STATUS.ON_HOLD || todo.status === TODO_STATUS.STOPPED;
                   return (
                     <div
                       key={todo.id}
                       className="flex items-start gap-3 p-3 border rounded-md hover:bg-accent/50 transition-colors"
                     >
                       <Checkbox
-                        checked={todo.status === '완료'}
+                        checked={todo.status === TODO_STATUS.COMPLETED}
                         onCheckedChange={() => handleToggleTodoStatus(todo.id, todo.status)}
                         disabled={toggleTodoMutation.isPending || isNonToggleableStatus}
                         title={isNonToggleableStatus ? '보류/중단 상태는 체크박스로 변경할 수 없습니다' : undefined}
                         className="mt-0.5"
                       />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${todo.status === '완료' ? 'line-through text-muted-foreground' : ''}`}>
+                      <p className={`text-sm font-medium ${todo.status === TODO_STATUS.COMPLETED ? 'line-through text-muted-foreground' : ''}`}>
                         {todo.title}
                       </p>
                       {todo.description && (
@@ -494,7 +495,7 @@ export function ViewWorkNoteDialog({
                         </div>
                       )}
                       <div className="flex gap-2 mt-1">
-                        <Badge variant={todo.status === '완료' ? 'secondary' : 'default'} className="text-xs">
+                        <Badge variant={todo.status === TODO_STATUS.COMPLETED ? 'secondary' : 'default'} className="text-xs">
                           {todo.status}
                         </Badge>
                         {todo.dueDate && (

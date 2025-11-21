@@ -2,6 +2,7 @@ import { CheckCircle2, Clock, AlertCircle, ListTodo } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TodoTabs } from './components/TodoTabs';
 import { useTodos } from '@/hooks/useTodos';
+import { TODO_STATUS } from '@/constants/todoStatus';
 
 export default function Dashboard() {
   const currentYear = new Date().getFullYear();
@@ -11,7 +12,7 @@ export default function Dashboard() {
 
   // Calculate statistics
   const todayCount = todayTodos.length;
-  const completedTodayCount = todayTodos.filter(t => t.status === '완료').length;
+  const completedTodayCount = todayTodos.filter(t => t.status === TODO_STATUS.COMPLETED).length;
   const remainingCount = remainingTodos.length;
   const totalCompletedCount = completedTodos.length;
 
