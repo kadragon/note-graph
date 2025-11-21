@@ -8,18 +8,15 @@ import type { Todo, RepeatRule } from '@/types/api';
 import { cn } from '@/lib/utils';
 import { TODO_STATUS } from '@/constants/todoStatus';
 
-// Helper function to convert repeat rule to Korean label
+// Repeat rule to Korean label mapping
+const REPEAT_RULE_LABELS: Partial<Record<RepeatRule, string>> = {
+  DAILY: '매일',
+  WEEKLY: '매주',
+  MONTHLY: '매월',
+};
+
 const getRepeatRuleLabel = (repeatRule: RepeatRule): string => {
-  switch (repeatRule) {
-    case 'DAILY':
-      return '매일';
-    case 'WEEKLY':
-      return '매주';
-    case 'MONTHLY':
-      return '매월';
-    default:
-      return '';
-  }
+  return REPEAT_RULE_LABELS[repeatRule] ?? '';
 };
 
 interface TodoItemProps {
