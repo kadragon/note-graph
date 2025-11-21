@@ -13,7 +13,7 @@ interface WorkNoteRowProps {
 }
 
 export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
-  const { total, remaining, completed } = workNote.todoStats;
+  const { total, completed } = workNote.todoStats;
 
   return (
     <TableRow>
@@ -42,7 +42,7 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
         {total > 0 ? (
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
-              {remaining === 0 ? (
+              {completed === total ? (
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               ) : (
                 <Circle className="h-4 w-4 text-blue-600" />
