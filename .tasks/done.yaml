@@ -787,6 +787,24 @@ completed_tasks:
       - Relaxed work_note_person role CHECK to include PARTICIPANT for tests
       - Left auth-fallback behaviour unchanged (remaining failures unrelated to schema)
 
+  - task_id: TASK-027
+    title: "Unify font to Pretendard Variable"
+    spec_id: SPEC-worknote-1
+    completed_at: "2025-11-20T15:00:00Z"
+    outcome: |
+      Standardized typography by adding Pretendard Variable (v1.3.9) via CDN in
+      `frontend/index.html` and updating `tailwind.config.js` font stack. This
+      delivers consistent Korean rendering, variable weights, and better cross-
+      platform fallbacks.
+    test_results: |
+      ✓ Build succeeds; Tailwind picks up updated font stack
+      ✓ No TypeScript errors
+      ✓ Font applied through default font-sans classes
+    estimated_effort: 1h
+    actual_effort: ~0.5h
+    notes: |
+      Trace: SPEC-worknote-1 / TASK-027. No backend impact; CDN-hosted font.
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"

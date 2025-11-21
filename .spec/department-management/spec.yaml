@@ -50,7 +50,10 @@ dependencies:
   governance:
     - "Department naming convention (Korean names used as codes)"
 
-linked_tasks: []
+linked_tasks:
+  - TASK-006
+  - TASK-022
+  - TASK-023
 
 technical_notes:
   - "dept_name serves as both human-readable name and primary key"
