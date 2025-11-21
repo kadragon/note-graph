@@ -35,12 +35,12 @@ describe('API Integration Tests', () => {
   });
 
   describe('Authentication', () => {
-    it('should require authentication for /me endpoint', async () => {
+    it('should require authentication for /api/me endpoint', async () => {
       const originalEnv = env.ENVIRONMENT;
       (env as unknown as Env).ENVIRONMENT = 'production';
 
       try {
-        const response = await SELF.fetch('http://localhost/me');
+        const response = await SELF.fetch('http://localhost/api/me');
         expect(response.status).toBe(401);
 
         const data = await response.json<{ code: string; message: string }>();
@@ -51,7 +51,7 @@ describe('API Integration Tests', () => {
     });
 
     it('should accept authenticated requests with Cloudflare Access headers', async () => {
-      const response = await SELF.fetch('http://localhost/me', {
+      const response = await SELF.fetch('http://localhost/api/me', {
         headers: {
           'Cf-Access-Authenticated-User-Email': 'test@example.com',
         },
