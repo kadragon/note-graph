@@ -406,7 +406,12 @@ class APIClient {
     });
 
     // Validate response structure
-    if (!response || !Array.isArray(response.workNotes)) {
+    if (
+      !response ||
+      !Array.isArray(response.workNotes) ||
+      !Array.isArray(response.persons) ||
+      !Array.isArray(response.departments)
+    ) {
       throw new Error('Invalid search response from server');
     }
 
