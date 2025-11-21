@@ -63,7 +63,7 @@ export function EditTodoDialog({
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [waitUntil, setWaitUntil] = useState('');
-  const [status, setStatus] = useState<TodoStatus>('진행중');
+  const [status, setStatus] = useState<TodoStatus>(TODO_STATUS.IN_PROGRESS);
   const [repeatRule, setRepeatRule] = useState<RepeatRule>('NONE');
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('DUE_DATE');
 

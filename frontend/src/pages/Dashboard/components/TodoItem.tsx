@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToggleTodo } from '@/hooks/useTodos';
 import type { Todo } from '@/types/api';
 import { cn } from '@/lib/utils';
+import { TODO_STATUS } from '@/constants/todoStatus';
 
 interface TodoItemProps {
   todo: Todo;
@@ -14,10 +15,10 @@ interface TodoItemProps {
 
 export function TodoItem({ todo, onTodoClick }: TodoItemProps) {
   const toggleTodo = useToggleTodo();
-  const isCompleted = todo.status === 'completed';
+  const isCompleted = todo.status === TODO_STATUS.COMPLETED;
 
   const handleToggle = () => {
-    const newStatus = isCompleted ? 'pending' : 'completed';
+    const newStatus = isCompleted ? TODO_STATUS.IN_PROGRESS : TODO_STATUS.COMPLETED;
     toggleTodo.mutate({ id: todo.id, status: newStatus });
   };
 
