@@ -26,6 +26,7 @@ export interface WorkNoteWithStats extends WorkNote {
     total: number;
     completed: number;
     remaining: number;
+    pending: number;
   };
 }
 
