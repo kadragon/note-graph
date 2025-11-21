@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { TodoList } from './TodoList';
 import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDialog';
 import { useTodos } from '@/hooks/useTodos';
@@ -58,24 +64,24 @@ export function TodoTabs() {
           </TabsList>
         </Tabs>
 
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-          className="ml-4 px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+        <Select
+          value={String(selectedYear)}
+          onValueChange={(value) => setSelectedYear(Number(value))}
         >
-          {YEAR_OPTIONS.map((year) => (
-            <option key={year} value={year}>
-              {year}년
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-[100px] ml-4">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {YEAR_OPTIONS.map((year) => (
+              <SelectItem key={year} value={String(year)}>
+                {year}년
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <TodoList todos={todos} isLoading={isLoading} onTodoClick={handleTodoClick} />
-        </CardContent>
-      </Card>
+      <TodoList todos={todos} isLoading={isLoading} onTodoClick={handleTodoClick} />
 
       <ViewWorkNoteDialog
         workNote={selectedWorkNote || null}

@@ -85,11 +85,11 @@ export default function WorkNotes() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">업무노트</h1>
-          <p className="text-gray-600 mt-1">업무노트를 관리하세요</p>
+          <h1 className="page-title">업무노트</h1>
+          <p className="page-description">업무노트를 관리하세요</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setTextDialogOpen(true)}>

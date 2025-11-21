@@ -1,3 +1,4 @@
+import { CheckCircle2 } from 'lucide-react';
 import { TodoItem } from './TodoItem';
 import type { Todo } from '@/types/api';
 
@@ -18,14 +19,15 @@ export function TodoList({ todos, isLoading, onTodoClick }: TodoListProps) {
 
   if (todos.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">할 일이 없습니다.</p>
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <CheckCircle2 className="h-12 w-12 mb-3 opacity-50" />
+        <p className="text-sm">할 일이 없습니다.</p>
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-gray-100">
+    <div className="divide-y">
       {todos.map((todo) => (
         <TodoItem key={todo.id} todo={todo} onTodoClick={onTodoClick} />
       ))}
