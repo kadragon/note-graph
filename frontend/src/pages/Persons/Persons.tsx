@@ -31,12 +31,14 @@ export default function Persons() {
   const sortedPersons = useMemo(() => {
     return [...persons].sort((a, b) => {
       // Handle null/undefined departments - put them at the end
-      const deptA = a.currentDept || '';
-      const deptB = b.currentDept || '';
+      if (a.currentDept && !b.currentDept) return -1;
+      if (!a.currentDept && b.currentDept) return 1;
 
-      // Compare departments first
-      const deptCompare = deptA.localeCompare(deptB, 'ko');
-      if (deptCompare !== 0) return deptCompare;
+      // Compare departments first (both have departments or both don't)
+      if (a.currentDept && b.currentDept) {
+        const deptCompare = a.currentDept.localeCompare(b.currentDept, 'ko');
+        if (deptCompare !== 0) return deptCompare;
+      }
 
       // If same department, compare by name
       return a.name.localeCompare(b.name, 'ko');

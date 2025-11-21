@@ -59,20 +59,20 @@ export function formatPersonBadge(person: {
  * @returns Tailwind CSS classes for background and text color
  */
 export function getDepartmentColor(deptName: string): string {
-  // Define a palette of distinct colors for departments
+  // Define a palette of distinct colors for departments with hover states
   const colors = [
-    'bg-blue-100 text-blue-800',
-    'bg-green-100 text-green-800',
-    'bg-purple-100 text-purple-800',
-    'bg-orange-100 text-orange-800',
-    'bg-pink-100 text-pink-800',
-    'bg-cyan-100 text-cyan-800',
-    'bg-yellow-100 text-yellow-800',
-    'bg-indigo-100 text-indigo-800',
-    'bg-rose-100 text-rose-800',
-    'bg-teal-100 text-teal-800',
-    'bg-lime-100 text-lime-800',
-    'bg-amber-100 text-amber-800',
+    'bg-blue-100 text-blue-800 hover:bg-blue-200',
+    'bg-green-100 text-green-800 hover:bg-green-200',
+    'bg-purple-100 text-purple-800 hover:bg-purple-200',
+    'bg-orange-100 text-orange-800 hover:bg-orange-200',
+    'bg-pink-100 text-pink-800 hover:bg-pink-200',
+    'bg-cyan-100 text-cyan-800 hover:bg-cyan-200',
+    'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
+    'bg-indigo-100 text-indigo-800 hover:bg-indigo-200',
+    'bg-rose-100 text-rose-800 hover:bg-rose-200',
+    'bg-teal-100 text-teal-800 hover:bg-teal-200',
+    'bg-lime-100 text-lime-800 hover:bg-lime-200',
+    'bg-amber-100 text-amber-800 hover:bg-amber-200',
   ];
 
   // Simple hash function for consistent color assignment
