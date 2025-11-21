@@ -21,28 +21,28 @@ export default function Dashboard() {
       value: todayCount,
       description: `${completedTodayCount}개 완료`,
       icon: Clock,
-      className: 'text-blue-600 bg-blue-100',
+      iconClassName: 'text-primary bg-primary/10',
     },
     {
       title: '남은 할 일',
       value: remainingCount,
       description: '미완료 항목',
       icon: AlertCircle,
-      className: 'text-orange-600 bg-orange-100',
+      iconClassName: 'text-orange-500 bg-orange-500/10 dark:text-orange-400 dark:bg-orange-400/10',
     },
     {
       title: '완료된 할 일',
       value: totalCompletedCount,
       description: '올해 완료',
       icon: CheckCircle2,
-      className: 'text-green-600 bg-green-100',
+      iconClassName: 'text-green-600 bg-green-600/10 dark:text-green-400 dark:bg-green-400/10',
     },
     {
       title: '전체 할 일',
-      value: todayCount + remainingCount + totalCompletedCount,
+      value: remainingCount + totalCompletedCount,
       description: '총 항목 수',
       icon: ListTodo,
-      className: 'text-purple-600 bg-purple-100',
+      iconClassName: 'text-purple-600 bg-purple-600/10 dark:text-purple-400 dark:bg-purple-400/10',
     },
   ];
 
@@ -58,7 +58,7 @@ export default function Dashboard() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}
                 </CardTitle>
-                <div className={`rounded-md p-2 ${stat.className}`}>
+                <div className={`rounded-md p-2 ${stat.iconClassName}`}>
                   <Icon className="h-4 w-4" />
                 </div>
               </CardHeader>

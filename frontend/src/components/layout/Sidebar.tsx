@@ -150,11 +150,13 @@ export default function Sidebar() {
           </div>
           <div className="flex-1 overflow-hidden">
             <p className="truncate text-sm font-medium">
-              {user?.email?.split('@')[0] || '사용자'}
+              {user?.email ? user.email.split('@')[0] : '사용자'}
             </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {user?.email || 'Loading...'}
-            </p>
+            {user?.email && (
+              <p className="truncate text-xs text-muted-foreground">
+                {user.email}
+              </p>
+            )}
           </div>
         </div>
       </div>
