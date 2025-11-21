@@ -105,3 +105,34 @@ export interface TextChunk {
   text: string;
   metadata: ChunkMetadata;
 }
+
+/**
+ * Person search result item
+ */
+export interface PersonSearchItem {
+  personId: string;
+  name: string;
+  currentDept: string | null;
+  currentPosition: string | null;
+  phoneExt: string | null;
+  employmentStatus: string;
+}
+
+/**
+ * Department search result item
+ */
+export interface DepartmentSearchItem {
+  deptName: string;
+  description: string | null;
+  isActive: boolean;
+}
+
+/**
+ * Unified search response with all result types
+ */
+export interface UnifiedSearchResponse {
+  workNotes: SearchResultItem[];
+  persons: PersonSearchItem[];
+  departments: DepartmentSearchItem[];
+  query: string;
+}

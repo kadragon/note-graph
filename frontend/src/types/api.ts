@@ -202,6 +202,28 @@ export interface SearchResult {
   createdAt: string;
 }
 
+export interface PersonSearchResult {
+  personId: string;
+  name: string;
+  currentDept: string | null;
+  currentPosition: string | null;
+  phoneExt: string | null;
+  employmentStatus: string;
+}
+
+export interface DepartmentSearchResult {
+  deptName: string;
+  description: string | null;
+  isActive: boolean;
+}
+
+export interface UnifiedSearchResult {
+  workNotes: SearchResult[];
+  persons: PersonSearchResult[];
+  departments: DepartmentSearchResult[];
+  query: string;
+}
+
 // RAG types
 export type RAGScope = 'global' | 'person' | 'department' | 'work';
 

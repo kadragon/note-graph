@@ -25,6 +25,9 @@ import type {
   UpdateTodoRequest,
   SearchRequest,
   SearchResult,
+  UnifiedSearchResult,
+  PersonSearchResult,
+  DepartmentSearchResult,
   RAGQueryRequest,
   RAGResponse,
   AIGenerateDraftRequest,
@@ -369,9 +372,9 @@ class APIClient {
   }
 
   // Search
-  async search(data: SearchRequest) {
-    interface SearchResponse {
-      results: Array<{
+  async search(data: SearchRequest): Promise<UnifiedSearchResult> {
+    interface UnifiedSearchResponse {
+      workNotes: Array<{
         workNote: {
           workId: string;
           title: string;
@@ -381,23 +384,34 @@ class APIClient {
         score: number;
         source: 'LEXICAL' | 'SEMANTIC' | 'HYBRID';
       }>;
-      count: number;
+      persons: Array<{
+        personId: string;
+        name: string;
+        currentDept: string | null;
+        currentPosition: string | null;
+        phoneExt: string | null;
+        employmentStatus: string;
+      }>;
+      departments: Array<{
+        deptName: string;
+        description: string | null;
+        isActive: boolean;
+      }>;
       query: string;
-      searchType: string;
     }
 
-    const response = await this.request<SearchResponse>('/search/work-notes', {
+    const response = await this.request<UnifiedSearchResponse>('/search/unified', {
       method: 'POST',
       body: JSON.stringify(data),
     });
 
     // Validate response structure
-    if (!response || !Array.isArray(response.results)) {
+    if (!response || !Array.isArray(response.workNotes)) {
       throw new Error('Invalid search response from server');
     }
 
-    // Transform backend response to frontend SearchResult format
-    return response.results.map((item) => ({
+    // Transform backend response to frontend format
+    const workNotes: SearchResult[] = response.workNotes.map((item) => ({
       id: item.workNote.workId,
       title: item.workNote.title,
       category: item.workNote.category || '',
@@ -405,6 +419,28 @@ class APIClient {
       source: item.source.toLowerCase() as 'lexical' | 'semantic' | 'hybrid',
       createdAt: item.workNote.createdAt,
     }));
+
+    const persons: PersonSearchResult[] = response.persons.map((p) => ({
+      personId: p.personId,
+      name: p.name,
+      currentDept: p.currentDept,
+      currentPosition: p.currentPosition,
+      phoneExt: p.phoneExt,
+      employmentStatus: p.employmentStatus,
+    }));
+
+    const departments: DepartmentSearchResult[] = response.departments.map((d) => ({
+      deptName: d.deptName,
+      description: d.description,
+      isActive: d.isActive,
+    }));
+
+    return {
+      workNotes,
+      persons,
+      departments,
+      query: response.query,
+    };
   }
 
   // RAG
