@@ -1,43 +1,19 @@
-import { defineConfig, type ProxyOptions } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
-const proxyPaths = [
-  '/api',
-  '/me',
-  '/work-notes',
-  '/persons',
-  '/departments',
-  '/task-categories',
-  '/todos',
-  '/search',
-  '/rag',
-  '/ai',
-  '/pdf-jobs',
-];
-
-const proxyConfig = proxyPaths.reduce(
-  (config, path) => {
-    config[path] = {
-      target: 'http://localhost:8787',
-      changeOrigin: true,
-      // Bypass proxy for HTML requests (direct browser navigation)
-      // Only proxy API requests (application/json)
-      bypass: (req, _res, _options) => {
-        const accept = req.headers.accept || '';
-        // If browser is requesting HTML (direct navigation/refresh), don't proxy
-        if (accept.includes('text/html')) {
-          return '/index.html';
-        }
-        // Otherwise, proxy to backend (API requests)
-        return null;
-      },
-    };
-    return config;
+// All API routes are now under /api prefix, so we only need one proxy rule
+const proxyConfig = {
+  '/api': {
+    target: 'http://localhost:8787',
+    changeOrigin: true,
   },
-  {} as Record<string, ProxyOptions>
-);
+  '/health': {
+    target: 'http://localhost:8787',
+    changeOrigin: true,
+  },
+};
 
 export default defineConfig({
   plugins: [react()],

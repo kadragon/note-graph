@@ -73,7 +73,7 @@ interface BackendTodo {
 }
 
 class APIClient {
-  private baseURL = '';
+  private baseURL = '/api';
 
   private async request<T>(
     endpoint: string,

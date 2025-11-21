@@ -30,50 +30,6 @@ export type { Env };
 // Initialize Hono app with auth context
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
-// ============================================================================
-// SPA Fallback Middleware
-// ============================================================================
-// When browser navigates directly to SPA routes (e.g., /work-notes) and refreshes,
-// we need to serve index.html instead of the API response.
-// This mimics the behavior of Vite's proxy bypass in development.
-
-// Frontend SPA routes that overlap with API routes
-const spaRoutes = [
-  '/work-notes',
-  '/persons',
-  '/departments',
-  '/task-categories',
-  '/search',
-  '/rag',
-  '/pdf',
-];
-
-app.use('*', async (c, next) => {
-  const path = new URL(c.req.url).pathname;
-  const accept = c.req.header('accept') || '';
-
-  // Check if request is for an SPA route and browser is requesting HTML
-  const isSpaRoute = spaRoutes.some(
-    (route) => path === route || path.startsWith(route + '/')
-  );
-  const wantsHtml = accept.includes('text/html');
-
-  if (isSpaRoute && wantsHtml) {
-    // Serve index.html for SPA client-side routing
-    try {
-      const indexUrl = new URL('/index.html', c.req.url);
-      // Return response directly for better efficiency (avoids unnecessary object creation)
-      return c.env.ASSETS.fetch(indexUrl);
-    } catch (error) {
-      console.error('Failed to serve index.html:', error);
-      // Fall through to normal routing if assets fetch fails
-      return next();
-    }
-  }
-
-  return next();
-});
-
 // Health check endpoint
 app.get('/health', (c) => {
   return c.json({
@@ -84,6 +40,10 @@ app.get('/health', (c) => {
   });
 });
 
+// ============================================================================
+// API Routes (all under /api prefix)
+// ============================================================================
+
 // API info endpoint
 app.get('/api', (c) => {
   return c.json({
@@ -92,33 +52,35 @@ app.get('/api', (c) => {
     description: 'Personal work note management system with AI-powered features',
     endpoints: {
       health: '/health',
-      me: '/me',
-      docs: '/openapi.yaml',
+      me: '/api/me',
+      persons: '/api/persons',
+      departments: '/api/departments',
+      taskCategories: '/api/task-categories',
+      workNotes: '/api/work-notes',
+      todos: '/api/todos',
+      search: '/api/search',
+      rag: '/api/rag',
+      ai: '/api/ai',
+      pdfJobs: '/api/pdf-jobs',
+      admin: '/api/admin',
     },
   });
 });
 
-// ============================================================================
-// Authenticated Endpoints
-// ============================================================================
+// GET /api/me - Get current authenticated user
+app.get('/api/me', authMiddleware, getMeHandler);
 
-// GET /me - Get current authenticated user
-app.get('/me', authMiddleware, getMeHandler);
-
-// ============================================================================
-// API Route Groups
-// ============================================================================
-
-app.route('/persons', persons);
-app.route('/departments', departments);
-app.route('/task-categories', taskCategories);
-app.route('/work-notes', workNotes);
-app.route('/todos', todos);
-app.route('/search', search);
-app.route('/rag', rag);
-app.route('/ai', aiDraft);
-app.route('/pdf-jobs', pdf);
-app.route('/admin', admin);
+// API Route Groups (all under /api prefix)
+app.route('/api/persons', persons);
+app.route('/api/departments', departments);
+app.route('/api/task-categories', taskCategories);
+app.route('/api/work-notes', workNotes);
+app.route('/api/todos', todos);
+app.route('/api/search', search);
+app.route('/api/rag', rag);
+app.route('/api/ai', aiDraft);
+app.route('/api/pdf-jobs', pdf);
+app.route('/api/admin', admin);
 
 // 404 handler
 app.notFound((c) => {
