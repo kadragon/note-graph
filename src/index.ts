@@ -44,8 +44,11 @@ app.get('/health', (c) => {
 // API Routes (all under /api prefix)
 // ============================================================================
 
+// Create API router with /api base path
+const api = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>().basePath('/api');
+
 // API info endpoint
-app.get('/api', (c) => {
+api.get('/', (c) => {
   return c.json({
     name: 'Note Graph API',
     version: '0.1.0',
@@ -68,19 +71,22 @@ app.get('/api', (c) => {
 });
 
 // GET /api/me - Get current authenticated user
-app.get('/api/me', authMiddleware, getMeHandler);
+api.get('/me', authMiddleware, getMeHandler);
 
-// API Route Groups (all under /api prefix)
-app.route('/api/persons', persons);
-app.route('/api/departments', departments);
-app.route('/api/task-categories', taskCategories);
-app.route('/api/work-notes', workNotes);
-app.route('/api/todos', todos);
-app.route('/api/search', search);
-app.route('/api/rag', rag);
-app.route('/api/ai', aiDraft);
-app.route('/api/pdf-jobs', pdf);
-app.route('/api/admin', admin);
+// API Route Groups
+api.route('/persons', persons);
+api.route('/departments', departments);
+api.route('/task-categories', taskCategories);
+api.route('/work-notes', workNotes);
+api.route('/todos', todos);
+api.route('/search', search);
+api.route('/rag', rag);
+api.route('/ai', aiDraft);
+api.route('/pdf-jobs', pdf);
+api.route('/admin', admin);
+
+// Mount API router to main app
+app.route('/', api);
 
 // 404 handler
 app.notFound((c) => {
