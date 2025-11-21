@@ -1,5 +1,5 @@
 // Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-LLM-IMPORT
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, FileText } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePersons } from '@/hooks/usePersons';
 import { PersonDialog } from './components/PersonDialog';
 import { PersonImportDialog } from './components/PersonImportDialog';
+import { getDepartmentColor } from '@/lib/utils';
 import type { Person } from '@/types/api';
 
 export default function Persons() {
@@ -25,6 +26,24 @@ export default function Persons() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const { data: persons = [], isLoading } = usePersons();
+
+  // Sort persons by department (ascending) then by name (ascending)
+  const sortedPersons = useMemo(() => {
+    return [...persons].sort((a, b) => {
+      // Handle null/undefined departments - put them at the end
+      if (a.currentDept && !b.currentDept) return -1;
+      if (!a.currentDept && b.currentDept) return 1;
+
+      // Compare departments first (both have departments or both don't)
+      if (a.currentDept && b.currentDept) {
+        const deptCompare = a.currentDept.localeCompare(b.currentDept, 'ko');
+        if (deptCompare !== 0) return deptCompare;
+      }
+
+      // If same department, compare by name
+      return a.name.localeCompare(b.name, 'ko');
+    });
+  }, [persons]);
 
   const handleRowClick = (person: Person) => {
     setSelectedPerson(person);
@@ -76,7 +95,7 @@ export default function Persons() {
                 </TableRow>
               </TableHeader>
                 <TableBody>
-                  {persons.map((person) => (
+                  {sortedPersons.map((person) => (
                     <TableRow
                       key={person.personId}
                       className="cursor-pointer hover:bg-muted/50"
@@ -95,7 +114,9 @@ export default function Persons() {
                       </TableCell>
                       <TableCell>
                         {person.currentDept ? (
-                          <Badge variant="secondary">{person.currentDept}</Badge>
+                          <Badge className={getDepartmentColor(person.currentDept)}>
+                            {person.currentDept}
+                          </Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>
                         )}
