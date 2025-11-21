@@ -31,24 +31,26 @@ export default function WorkNotes() {
     null
   );
   const [workNoteToDelete, setWorkNoteToDelete] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'completed'>('active');
 
   const { data: workNotes = [], isLoading } = useWorkNotesWithStats();
   const deleteMutation = useDeleteWorkNote();
 
   // Filter work notes by completion status
-  const { activeWorkNotes, completedWorkNotes } = useMemo(() => {
+  const { activeWorkNotes, pendingWorkNotes, completedWorkNotes } = useMemo(() => {
     const active = workNotes.filter(
       wn => wn.todoStats.total === 0 || wn.todoStats.remaining > 0
+    );
+    // 대기중: 대기일이 아직 도래하지 않은 할일이 있는 업무노트
+    const pending = workNotes.filter(
+      wn => wn.todoStats.pending > 0
     );
     const completed = workNotes.filter(
       wn => wn.todoStats.total > 0 && wn.todoStats.remaining === 0
     );
 
-    return { activeWorkNotes: active, completedWorkNotes: completed };
+    return { activeWorkNotes: active, pendingWorkNotes: pending, completedWorkNotes: completed };
   }, [workNotes]);
-
-  const filteredWorkNotes = activeTab === 'completed' ? completedWorkNotes : activeWorkNotes;
 
   // Update selectedWorkNote when workNotes data changes (after edit/update)
   useEffect(() => {
@@ -117,10 +119,13 @@ export default function WorkNotes() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'completed')}>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'pending' | 'completed')}>
               <TabsList className="mb-4">
                 <TabsTrigger value="active">
                   진행 중 ({activeWorkNotes.length})
+                </TabsTrigger>
+                <TabsTrigger value="pending">
+                  대기중 ({pendingWorkNotes.length})
                 </TabsTrigger>
                 <TabsTrigger value="completed">
                   완료됨 ({completedWorkNotes.length})
@@ -129,7 +134,15 @@ export default function WorkNotes() {
 
               <TabsContent value="active">
                 <WorkNotesTable
-                  workNotes={filteredWorkNotes}
+                  workNotes={activeWorkNotes}
+                  onView={handleView}
+                  onDelete={handleDeleteClick}
+                />
+              </TabsContent>
+
+              <TabsContent value="pending">
+                <WorkNotesTable
+                  workNotes={pendingWorkNotes}
                   onView={handleView}
                   onDelete={handleDeleteClick}
                 />
@@ -137,7 +150,7 @@ export default function WorkNotes() {
 
               <TabsContent value="completed">
                 <WorkNotesTable
-                  workNotes={filteredWorkNotes}
+                  workNotes={completedWorkNotes}
                   onView={handleView}
                   onDelete={handleDeleteClick}
                 />

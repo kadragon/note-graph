@@ -18,6 +18,7 @@ export function useWorkNotesWithStats() {
       const workNotes = await API.getWorkNotes();
 
       // Fetch todos for all work notes in parallel
+      const now = new Date();
       const workNotesWithStats = await Promise.all(
         workNotes.map(async (workNote) => {
           try {
@@ -25,10 +26,16 @@ export function useWorkNotesWithStats() {
             const total = todos.length;
             const completed = todos.filter(todo => todo.status === TODO_STATUS.COMPLETED).length;
             const remaining = total - completed;
+            // Pending: 완료되지 않은 할일 중 waitUntil이 미래인 것
+            const pending = todos.filter(todo => {
+              if (todo.status === TODO_STATUS.COMPLETED) return false;
+              if (!todo.waitUntil) return false;
+              return new Date(todo.waitUntil) > now;
+            }).length;
 
             return {
               ...workNote,
-              todoStats: { total, completed, remaining }
+              todoStats: { total, completed, remaining, pending }
             } as WorkNoteWithStats;
           } catch (error) {
             // Log error for debugging
@@ -37,7 +44,7 @@ export function useWorkNotesWithStats() {
             // If there's an error fetching todos, return with zero stats
             return {
               ...workNote,
-              todoStats: { total: 0, completed: 0, remaining: 0 }
+              todoStats: { total: 0, completed: 0, remaining: 0, pending: 0 }
             } as WorkNoteWithStats;
           }
         })
