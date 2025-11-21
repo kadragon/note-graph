@@ -52,17 +52,6 @@ export default function WorkNotes() {
     return { activeWorkNotes: active, pendingWorkNotes: pending, completedWorkNotes: completed };
   }, [workNotes]);
 
-  const filteredWorkNotes = useMemo(() => {
-    switch (activeTab) {
-      case 'pending':
-        return pendingWorkNotes;
-      case 'completed':
-        return completedWorkNotes;
-      default:
-        return activeWorkNotes;
-    }
-  }, [activeTab, activeWorkNotes, pendingWorkNotes, completedWorkNotes]);
-
   // Update selectedWorkNote when workNotes data changes (after edit/update)
   useEffect(() => {
     if (selectedWorkNote && workNotes.length > 0) {
@@ -145,7 +134,7 @@ export default function WorkNotes() {
 
               <TabsContent value="active">
                 <WorkNotesTable
-                  workNotes={filteredWorkNotes}
+                  workNotes={activeWorkNotes}
                   onView={handleView}
                   onDelete={handleDeleteClick}
                 />
@@ -153,7 +142,7 @@ export default function WorkNotes() {
 
               <TabsContent value="pending">
                 <WorkNotesTable
-                  workNotes={filteredWorkNotes}
+                  workNotes={pendingWorkNotes}
                   onView={handleView}
                   onDelete={handleDeleteClick}
                 />
@@ -161,7 +150,7 @@ export default function WorkNotes() {
 
               <TabsContent value="completed">
                 <WorkNotesTable
-                  workNotes={filteredWorkNotes}
+                  workNotes={completedWorkNotes}
                   onView={handleView}
                   onDelete={handleDeleteClick}
                 />
