@@ -8,46 +8,79 @@ import {
   FolderKanban,
   Search,
   MessageSquare,
-  Paperclip,
   Notebook,
+  ChevronRight,
 } from 'lucide-react';
 import { API } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-const navItems = [
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
   {
-    path: '/',
-    label: '대시보드',
-    icon: LayoutDashboard,
+    title: '홈',
+    items: [
+      {
+        path: '/',
+        label: '대시보드',
+        icon: LayoutDashboard,
+      },
+    ],
   },
   {
-    path: '/work-notes',
-    label: '업무노트',
-    icon: FileText,
+    title: '업무 관리',
+    items: [
+      {
+        path: '/work-notes',
+        label: '업무노트',
+        icon: FileText,
+      },
+      {
+        path: '/task-categories',
+        label: '업무 구분',
+        icon: FolderKanban,
+      },
+    ],
   },
   {
-    path: '/persons',
-    label: '사람 관리',
-    icon: User,
+    title: '조직 관리',
+    items: [
+      {
+        path: '/persons',
+        label: '사람 관리',
+        icon: User,
+      },
+      {
+        path: '/departments',
+        label: '부서 관리',
+        icon: Building2,
+      },
+    ],
   },
   {
-    path: '/departments',
-    label: '부서 관리',
-    icon: Building2,
-  },
-  {
-    path: '/task-categories',
-    label: '업무 구분 관리',
-    icon: FolderKanban,
-  },
-  {
-    path: '/search',
-    label: '검색',
-    icon: Search,
-  },
-  {
-    path: '/rag',
-    label: 'AI 챗봇',
-    icon: MessageSquare,
+    title: 'AI 도구',
+    items: [
+      {
+        path: '/search',
+        label: '검색',
+        icon: Search,
+      },
+      {
+        path: '/rag',
+        label: 'AI 챗봇',
+        icon: MessageSquare,
+      },
+    ],
   },
 ];
 
@@ -58,45 +91,75 @@ export default function Sidebar() {
   });
 
   return (
-    <aside className="fixed top-0 left-0 h-screen w-sidebar bg-white border-r border-gray-200 flex flex-col">
+    <aside className="fixed top-0 left-0 h-screen w-sidebar flex flex-col bg-background border-r">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <Notebook className="w-6 h-6" />
-          업무노트
-        </h1>
-        <div className="px-3 py-2 bg-gray-100 rounded-lg">
-          <span className="text-sm text-gray-600">
-            {user?.email || 'Loading...'}
-          </span>
-        </div>
+      <div className="flex h-14 items-center border-b px-4">
+        <NavLink to="/" className="flex items-center gap-2 font-semibold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Notebook className="h-4 w-4" />
+          </div>
+          <span className="text-lg">업무노트</span>
+        </NavLink>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 overflow-y-auto">
-        <div className="space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.path === '/'}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`
-                }
-              >
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
+      <ScrollArea className="flex-1 px-3 py-4">
+        <div className="space-y-6">
+          {navSections.map((section) => (
+            <div key={section.title} className="space-y-1">
+              <h4 className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.title}
+              </h4>
+              <nav className="space-y-0.5">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      end={item.path === '/'}
+                      className={({ isActive }) =>
+                        cn(
+                          'group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all',
+                          isActive
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        )
+                      }
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                      <ChevronRight className={cn(
+                        'ml-auto h-4 w-4 shrink-0 opacity-0 transition-all',
+                        'group-hover:opacity-100'
+                      )} />
+                    </NavLink>
+                  );
+                })}
+              </nav>
+            </div>
+          ))}
         </div>
-      </nav>
+      </ScrollArea>
+
+      {/* User Section */}
+      <div className="border-t p-4">
+        <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-3 py-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <User className="h-4 w-4" />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <p className="truncate text-sm font-medium">
+              {user?.email ? user.email.split('@')[0] : '사용자'}
+            </p>
+            {user?.email && (
+              <p className="truncate text-xs text-muted-foreground">
+                {user.email}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
     </aside>
   );
 }

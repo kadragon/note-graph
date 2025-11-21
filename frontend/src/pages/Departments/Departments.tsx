@@ -30,11 +30,11 @@ export default function Departments() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">부서 관리</h1>
-          <p className="text-gray-600 mt-1">부서를 관리하세요</p>
+          <h1 className="page-title">부서 관리</h1>
+          <p className="page-description">부서를 관리하세요</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -53,7 +53,7 @@ export default function Departments() {
             </div>
           ) : departments.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">부서가 없습니다.</p>
+              <p className="text-sm text-muted-foreground">등록된 부서가 없습니다.</p>
             </div>
           ) : (
             <Table>

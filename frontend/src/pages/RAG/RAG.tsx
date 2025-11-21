@@ -60,10 +60,10 @@ export default function RAG() {
   };
 
   return (
-    <div className="p-6 h-[calc(100vh-4rem)]">
+    <div className="p-6 h-[calc(100vh-3.5rem)]">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">AI 챗봇</h1>
-        <p className="text-gray-600 mt-1">AI와 대화하세요</p>
+        <h1 className="page-title">AI 챗봇</h1>
+        <p className="page-description">AI와 대화하세요</p>
       </div>
 
       <div className="flex flex-col h-[calc(100%-5rem)]">

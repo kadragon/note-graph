@@ -76,6 +76,36 @@
   }
 }
 
+/* Card shadow improvements */
+@layer components {
+  .card-shadow {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+
+  .card-shadow-md {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+}
+
+/* Page layout utilities */
+@layer utilities {
+  .page-container {
+    @apply flex-1 space-y-6 p-6;
+  }
+
+  .page-header {
+    @apply flex items-center justify-between;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold tracking-tight;
+  }
+
+  .page-description {
+    @apply text-muted-foreground mt-1;
+  }
+}
+
 /* GitHub-style code block styling */
 :is(.prose, .prose-xs, .prose-sm) pre {
   @apply border-0 rounded-md overflow-x-auto;
@@ -105,4 +135,49 @@
 /* GitHub theme adjustments for syntax highlighting */
 :is(.prose, .prose-xs, .prose-sm) .hljs {
   color: var(--code-text);
+}
+
+/* Improved table styling */
+@layer components {
+  .data-table {
+    @apply w-full;
+  }
+
+  .data-table th {
+    @apply font-medium text-muted-foreground;
+  }
+
+  .data-table tbody tr {
+    @apply transition-colors hover:bg-muted/50;
+  }
+
+  .data-table tbody tr.clickable {
+    @apply cursor-pointer;
+  }
+}
+
+/* Smooth scrollbar */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
 }

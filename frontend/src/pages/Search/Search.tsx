@@ -30,10 +30,10 @@ export default function Search() {
   const results = searchMutation.data || [];
 
   return (
-    <div className="p-6">
+    <div className="page-container">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">검색</h1>
-        <p className="text-gray-600 mt-1">업무노트를 검색하세요</p>
+        <h1 className="page-title">검색</h1>
+        <p className="page-description">업무노트를 검색하세요</p>
       </div>
 
       <Card className="mb-6">
@@ -63,7 +63,7 @@ export default function Search() {
           <CardContent>
             {results.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500">검색 결과가 없습니다.</p>
+                <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
               </div>
             ) : (
               <Table>

@@ -1,6 +1,8 @@
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { CalendarDays, RefreshCw, FileText } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { useToggleTodo } from '@/hooks/useTodos';
 import type { Todo } from '@/types/api';
 import { cn } from '@/lib/utils';
@@ -26,37 +28,44 @@ export function TodoItem({ todo, onTodoClick }: TodoItemProps) {
   };
 
   return (
-    <div className="flex items-start gap-3 py-3 px-4 hover:bg-gray-50 rounded-lg transition-colors">
+    <div className={cn(
+      'flex items-start gap-3 py-3 px-4 rounded-md transition-colors',
+      'hover:bg-muted/50',
+      isCompleted && 'opacity-60'
+    )}>
       <Checkbox
         checked={isCompleted}
         onCheckedChange={handleToggle}
         disabled={toggleTodo.isPending}
-        className="mt-1"
+        className="mt-0.5"
       />
       <div className="flex-1 min-w-0 cursor-pointer" onClick={handleClick}>
         <p
           className={cn(
-            'text-sm font-medium',
-            isCompleted && 'line-through text-gray-400'
+            'text-sm font-medium leading-tight',
+            isCompleted && 'line-through text-muted-foreground'
           )}
         >
           {todo.title}
         </p>
-        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-2 mt-2">
           {todo.workTitle && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
-              📝 {todo.workTitle}
-            </span>
+            <Badge variant="secondary" className="gap-1 text-xs font-normal">
+              <FileText className="h-3 w-3" />
+              {todo.workTitle}
+            </Badge>
           )}
           {todo.dueDate && (
-            <span>
-              📅 {format(parseISO(todo.dueDate), 'M월 d일 (eee)', { locale: ko })}
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <CalendarDays className="h-3 w-3" />
+              {format(parseISO(todo.dueDate), 'M월 d일 (eee)', { locale: ko })}
             </span>
           )}
           {todo.recurrence && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-              🔁 {todo.recurrence}
-            </span>
+            <Badge variant="outline" className="gap-1 text-xs font-normal">
+              <RefreshCw className="h-3 w-3" />
+              {todo.recurrence}
+            </Badge>
           )}
         </div>
       </div>
