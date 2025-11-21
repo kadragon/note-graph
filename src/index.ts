@@ -92,15 +92,19 @@ app.route('/', api);
 app.notFound(async (c) => {
   const path = c.req.path;
 
-  // For API routes, return JSON 404 error
-  if (path.startsWith('/api/') || path === '/health') {
-    return c.json(
+  // Helper function to create JSON 404 response (DRY principle)
+  const notFoundResponse = () =>
+    c.json(
       {
         error: 'Not Found',
         message: `Route ${c.req.method} ${path} not found`,
       },
       404
     );
+
+  // For API routes, return JSON 404 error
+  if (path.startsWith('/api/') || path === '/health') {
+    return notFoundResponse();
   }
 
   // For all other routes (SPA client-side routes), serve index.html
@@ -108,21 +112,25 @@ app.notFound(async (c) => {
   try {
     const indexUrl = new URL('/index.html', c.req.url);
     const response = await c.env.ASSETS.fetch(indexUrl);
+
+    // Validate that index.html was successfully retrieved
+    if (!response.ok) {
+      console.error(`Failed to fetch index.html: ${response.status} ${response.statusText}`);
+      return notFoundResponse();
+    }
+
     return new Response(response.body, {
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
       },
     });
-  } catch {
-    // Fallback if ASSETS binding fails
-    return c.json(
-      {
-        error: 'Not Found',
-        message: `Route ${c.req.method} ${path} not found`,
-      },
-      404
+  } catch (error) {
+    // Log error details to aid debugging
+    console.error(
+      `ASSETS fetch error: ${error instanceof Error ? error.stack || error.message : JSON.stringify(error)}`
     );
+    return notFoundResponse();
   }
 });
 
