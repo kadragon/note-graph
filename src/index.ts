@@ -89,14 +89,41 @@ api.route('/admin', admin);
 app.route('/', api);
 
 // 404 handler
-app.notFound((c) => {
-  return c.json(
-    {
-      error: 'Not Found',
-      message: `Route ${c.req.method} ${c.req.path} not found`,
-    },
-    404
-  );
+app.notFound(async (c) => {
+  const path = c.req.path;
+
+  // For API routes, return JSON 404 error
+  if (path.startsWith('/api/') || path === '/health') {
+    return c.json(
+      {
+        error: 'Not Found',
+        message: `Route ${c.req.method} ${path} not found`,
+      },
+      404
+    );
+  }
+
+  // For all other routes (SPA client-side routes), serve index.html
+  // This enables browser refresh on routes like /rag, /work-notes, etc.
+  try {
+    const indexUrl = new URL('/index.html', c.req.url);
+    const response = await c.env.ASSETS.fetch(indexUrl);
+    return new Response(response.body, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+      },
+    });
+  } catch {
+    // Fallback if ASSETS binding fails
+    return c.json(
+      {
+        error: 'Not Found',
+        message: `Route ${c.req.method} ${path} not found`,
+      },
+      404
+    );
+  }
 });
 
 // Error handler
