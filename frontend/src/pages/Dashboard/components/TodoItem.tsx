@@ -1,12 +1,23 @@
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarDays, RefreshCw, FileText } from 'lucide-react';
+import { CalendarDays, RefreshCw, FileText, Clock } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useToggleTodo } from '@/hooks/useTodos';
-import type { Todo } from '@/types/api';
+import type { Todo, RepeatRule } from '@/types/api';
 import { cn } from '@/lib/utils';
 import { TODO_STATUS } from '@/constants/todoStatus';
+
+// Repeat rule to Korean label mapping
+const REPEAT_RULE_LABELS: Partial<Record<RepeatRule, string>> = {
+  DAILY: '매일',
+  WEEKLY: '매주',
+  MONTHLY: '매월',
+};
+
+const getRepeatRuleLabel = (repeatRule: RepeatRule): string => {
+  return REPEAT_RULE_LABELS[repeatRule] ?? '';
+};
 
 interface TodoItemProps {
   todo: Todo;
@@ -62,10 +73,16 @@ export function TodoItem({ todo, onTodoClick }: TodoItemProps) {
               {format(parseISO(todo.dueDate), 'M월 d일 (eee)', { locale: ko })}
             </span>
           )}
-          {todo.recurrence && (
+          {todo.waitUntil && (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              {format(parseISO(todo.waitUntil), 'M월 d일', { locale: ko })} 대기
+            </span>
+          )}
+          {todo.repeatRule && todo.repeatRule !== 'NONE' && (
             <Badge variant="outline" className="gap-1 text-xs font-normal">
               <RefreshCw className="h-3 w-3" />
-              {todo.recurrence}
+              {getRepeatRuleLabel(todo.repeatRule)}
             </Badge>
           )}
         </div>
