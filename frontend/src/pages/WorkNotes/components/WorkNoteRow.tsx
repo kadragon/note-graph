@@ -49,8 +49,8 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
               )}
             </div>
             <span className="text-sm font-medium">
-              <span className={remaining === 0 ? 'text-green-600' : 'text-blue-600'}>
-                {remaining}
+              <span className={completed === total ? 'text-green-600' : 'text-blue-600'}>
+                {completed}
               </span>
               <span className="text-muted-foreground"> / {total}</span>
             </span>
