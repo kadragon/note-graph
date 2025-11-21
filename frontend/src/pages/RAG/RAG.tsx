@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,6 +23,12 @@ interface Message {
   contexts?: RAGResponse['contexts'];
 }
 
+const SCOPE_DESCRIPTIONS: Record<Exclude<RAGScope, 'global'>, string> = {
+  person: '특정 사람을 선택하면 해당 사람과 관련된 대화만 검색합니다.',
+  department: '특정 부서를 선택하면 해당 부서와 관련된 대화만 검색합니다.',
+  work: '특정 업무를 선택하면 해당 업무와 관련된 대화만 검색합니다.',
+};
+
 export default function RAG() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -45,6 +51,18 @@ export default function RAG() {
     setSelectedWorkId(null);
   };
 
+  // 필터가 필요한 scope에서 필터가 선택되었는지 확인
+  const isFilterSelected = useMemo(() => {
+    if (scope === 'global') return true;
+    if (scope === 'person') return selectedPersonId !== null;
+    if (scope === 'department') return selectedDeptName !== null;
+    if (scope === 'work') return selectedWorkId !== null;
+    return true;
+  }, [scope, selectedPersonId, selectedDeptName, selectedWorkId]);
+
+  // 제출 가능 여부 확인
+  const canSubmit = input.trim() && !ragMutation.isPending && isFilterSelected;
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -53,7 +71,7 @@ export default function RAG() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || ragMutation.isPending) return;
+    if (!canSubmit) return;
 
     const userMessage = input.trim();
     setInput('');
@@ -104,9 +122,7 @@ export default function RAG() {
           {scope !== 'global' && (
             <div className="mb-4 p-4 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground mb-2">
-                {scope === 'person' && '특정 사람을 선택하면 해당 사람과 관련된 대화만 검색합니다.'}
-                {scope === 'department' && '특정 부서를 선택하면 해당 부서와 관련된 대화만 검색합니다.'}
-                {scope === 'work' && '특정 업무를 선택하면 해당 업무와 관련된 대화만 검색합니다.'}
+                {SCOPE_DESCRIPTIONS[scope]}
               </p>
 
               {scope === 'person' && (
@@ -192,7 +208,7 @@ export default function RAG() {
                   />
                   <Button
                     type="submit"
-                    disabled={ragMutation.isPending || !input.trim()}
+                    disabled={!canSubmit}
                   >
                     <Send className="h-4 w-4" />
                   </Button>

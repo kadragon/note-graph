@@ -18,34 +18,48 @@ import {
 import { cn } from '@/lib/utils';
 import type { Person, Department, WorkNote } from '@/types/api';
 
-// PersonFilterSelector - 단일 사람 선택
-interface PersonFilterSelectorProps {
-  persons: Person[];
-  selectedPersonId: string | null;
-  onSelectionChange: (personId: string | null) => void;
+// 제네릭 필터 선택 컴포넌트
+interface FilterSelectorProps<T> {
+  items: T[];
+  selectedId: string | null;
+  onSelectionChange: (id: string | null) => void;
   isLoading?: boolean;
   disabled?: boolean;
+  getItemId: (item: T) => string;
+  getItemLabel: (item: T) => string;
+  getItemSecondaryLabel?: (item: T) => string;
+  getSearchValue: (item: T) => string;
+  placeholder: string;
+  searchPlaceholder: string;
+  selectedLabel: string;
 }
 
-export function PersonFilterSelector({
-  persons,
-  selectedPersonId,
+function FilterSelector<T>({
+  items,
+  selectedId,
   onSelectionChange,
   isLoading = false,
   disabled = false,
-}: PersonFilterSelectorProps) {
+  getItemId,
+  getItemLabel,
+  getItemSecondaryLabel,
+  getSearchValue,
+  placeholder,
+  searchPlaceholder,
+  selectedLabel,
+}: FilterSelectorProps<T>) {
   const [open, setOpen] = useState(false);
 
-  const selectedPerson = useMemo(
-    () => persons.find((p) => p.personId === selectedPersonId),
-    [persons, selectedPersonId]
+  const selectedItem = useMemo(
+    () => items.find((item) => getItemId(item) === selectedId),
+    [items, selectedId, getItemId]
   );
 
-  const handleSelect = (personId: string) => {
-    if (selectedPersonId === personId) {
+  const handleSelect = (id: string) => {
+    if (selectedId === id) {
       onSelectionChange(null);
     } else {
-      onSelectionChange(personId);
+      onSelectionChange(id);
     }
     setOpen(false);
   };
@@ -56,16 +70,16 @@ export function PersonFilterSelector({
 
   return (
     <div className="grid gap-2">
-      {selectedPerson && (
+      {selectedItem && (
         <div className="flex flex-wrap gap-1">
-          <Badge variant="secondary" className="gap-1 pr-1">
-            <span>{selectedPerson.name} ({selectedPerson.personId})</span>
+          <Badge variant="secondary" className="gap-1 pr-1 max-w-full">
+            <span className="truncate">{getItemLabel(selectedItem)}</span>
             <button
               type="button"
-              className="ml-1 rounded-full hover:bg-secondary-foreground/20"
+              className="ml-1 rounded-full hover:bg-secondary-foreground/20 flex-shrink-0"
               onClick={handleClear}
               disabled={disabled}
-              aria-label={`${selectedPerson.name} 제거`}
+              aria-label={`${getItemLabel(selectedItem)} 제거`}
             >
               <X className="h-3 w-3" />
             </button>
@@ -85,29 +99,30 @@ export function PersonFilterSelector({
           >
             {isLoading
               ? '로딩 중...'
-              : selectedPerson
-                ? `${selectedPerson.name} 선택됨`
-                : '사람 검색...'}
+              : selectedItem
+                ? selectedLabel
+                : placeholder}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[400px] p-0" align="start">
           <Command>
-            <CommandInput placeholder="이름 또는 ID로 검색..." />
+            <CommandInput placeholder={searchPlaceholder} />
             <CommandList>
               <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
               <CommandGroup>
-                {persons.map((person) => {
-                  const isSelected = selectedPersonId === person.personId;
+                {items.map((item) => {
+                  const id = getItemId(item);
+                  const isSelected = selectedId === id;
                   return (
                     <CommandItem
-                      key={person.personId}
-                      value={`${person.name} ${person.personId}`}
-                      onSelect={() => handleSelect(person.personId)}
+                      key={id}
+                      value={getSearchValue(item)}
+                      onSelect={() => handleSelect(id)}
                     >
                       <div
                         className={cn(
-                          'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                          'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary flex-shrink-0',
                           isSelected
                             ? 'bg-primary text-primary-foreground'
                             : 'opacity-50 [&_svg]:invisible'
@@ -115,133 +130,11 @@ export function PersonFilterSelector({
                       >
                         <Check className="h-4 w-4" />
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{person.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {person.personId}
-                          {person.currentDept && ` • ${person.currentDept}`}
-                          {person.currentPosition && ` • ${person.currentPosition}`}
-                        </span>
-                      </div>
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
-
-// DepartmentFilterSelector - 단일 부서 선택
-interface DepartmentFilterSelectorProps {
-  departments: Department[];
-  selectedDeptName: string | null;
-  onSelectionChange: (deptName: string | null) => void;
-  isLoading?: boolean;
-  disabled?: boolean;
-}
-
-export function DepartmentFilterSelector({
-  departments,
-  selectedDeptName,
-  onSelectionChange,
-  isLoading = false,
-  disabled = false,
-}: DepartmentFilterSelectorProps) {
-  const [open, setOpen] = useState(false);
-
-  const selectedDepartment = useMemo(
-    () => departments.find((d) => d.deptName === selectedDeptName),
-    [departments, selectedDeptName]
-  );
-
-  const activeDepartments = useMemo(
-    () => departments.filter((d) => d.isActive),
-    [departments]
-  );
-
-  const handleSelect = (deptName: string) => {
-    if (selectedDeptName === deptName) {
-      onSelectionChange(null);
-    } else {
-      onSelectionChange(deptName);
-    }
-    setOpen(false);
-  };
-
-  const handleClear = () => {
-    onSelectionChange(null);
-  };
-
-  return (
-    <div className="grid gap-2">
-      {selectedDepartment && (
-        <div className="flex flex-wrap gap-1">
-          <Badge variant="secondary" className="gap-1 pr-1">
-            <span>{selectedDepartment.deptName}</span>
-            <button
-              type="button"
-              className="ml-1 rounded-full hover:bg-secondary-foreground/20"
-              onClick={handleClear}
-              disabled={disabled}
-              aria-label={`${selectedDepartment.deptName} 제거`}
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
-        </div>
-      )}
-
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="justify-between"
-            disabled={disabled || isLoading}
-            type="button"
-          >
-            {isLoading
-              ? '로딩 중...'
-              : selectedDepartment
-                ? `${selectedDepartment.deptName} 선택됨`
-                : '부서 검색...'}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="start">
-          <Command>
-            <CommandInput placeholder="부서명으로 검색..." />
-            <CommandList>
-              <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
-              <CommandGroup>
-                {activeDepartments.map((dept) => {
-                  const isSelected = selectedDeptName === dept.deptName;
-                  return (
-                    <CommandItem
-                      key={dept.deptName}
-                      value={dept.deptName}
-                      onSelect={() => handleSelect(dept.deptName)}
-                    >
-                      <div
-                        className={cn(
-                          'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
-                          isSelected
-                            ? 'bg-primary text-primary-foreground'
-                            : 'opacity-50 [&_svg]:invisible'
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{dept.deptName}</span>
-                        {dept.description && (
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate">{getItemLabel(item)}</span>
+                        {getItemSecondaryLabel && (
                           <span className="text-xs text-muted-foreground">
-                            {dept.description}
+                            {getItemSecondaryLabel(item)}
                           </span>
                         )}
                       </div>
@@ -257,7 +150,85 @@ export function DepartmentFilterSelector({
   );
 }
 
-// WorkNoteFilterSelector - 단일 업무노트 선택
+// PersonFilterSelector - 사람 선택 래퍼
+interface PersonFilterSelectorProps {
+  persons: Person[];
+  selectedPersonId: string | null;
+  onSelectionChange: (personId: string | null) => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+}
+
+export function PersonFilterSelector({
+  persons,
+  selectedPersonId,
+  onSelectionChange,
+  isLoading = false,
+  disabled = false,
+}: PersonFilterSelectorProps) {
+  return (
+    <FilterSelector
+      items={persons}
+      selectedId={selectedPersonId}
+      onSelectionChange={onSelectionChange}
+      isLoading={isLoading}
+      disabled={disabled}
+      getItemId={(person) => person.personId}
+      getItemLabel={(person) => `${person.name} (${person.personId})`}
+      getItemSecondaryLabel={(person) => {
+        const parts = [person.personId];
+        if (person.currentDept) parts.push(person.currentDept);
+        if (person.currentPosition) parts.push(person.currentPosition);
+        return parts.join(' • ');
+      }}
+      getSearchValue={(person) => `${person.name} ${person.personId}`}
+      placeholder="사람 검색..."
+      searchPlaceholder="이름 또는 ID로 검색..."
+      selectedLabel="사람 선택됨"
+    />
+  );
+}
+
+// DepartmentFilterSelector - 부서 선택 래퍼
+interface DepartmentFilterSelectorProps {
+  departments: Department[];
+  selectedDeptName: string | null;
+  onSelectionChange: (deptName: string | null) => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+}
+
+export function DepartmentFilterSelector({
+  departments,
+  selectedDeptName,
+  onSelectionChange,
+  isLoading = false,
+  disabled = false,
+}: DepartmentFilterSelectorProps) {
+  const activeDepartments = useMemo(
+    () => departments.filter((d) => d.isActive),
+    [departments]
+  );
+
+  return (
+    <FilterSelector
+      items={activeDepartments}
+      selectedId={selectedDeptName}
+      onSelectionChange={onSelectionChange}
+      isLoading={isLoading}
+      disabled={disabled}
+      getItemId={(dept) => dept.deptName}
+      getItemLabel={(dept) => dept.deptName}
+      getItemSecondaryLabel={(dept) => dept.description || undefined}
+      getSearchValue={(dept) => dept.deptName}
+      placeholder="부서 검색..."
+      searchPlaceholder="부서명으로 검색..."
+      selectedLabel="부서 선택됨"
+    />
+  );
+}
+
+// WorkNoteFilterSelector - 업무노트 선택 래퍼
 interface WorkNoteFilterSelectorProps {
   workNotes: WorkNote[];
   selectedWorkId: string | null;
@@ -273,102 +244,24 @@ export function WorkNoteFilterSelector({
   isLoading = false,
   disabled = false,
 }: WorkNoteFilterSelectorProps) {
-  const [open, setOpen] = useState(false);
-
-  const selectedWorkNote = useMemo(
-    () => workNotes.find((w) => w.id === selectedWorkId),
-    [workNotes, selectedWorkId]
-  );
-
-  const handleSelect = (workId: string) => {
-    if (selectedWorkId === workId) {
-      onSelectionChange(null);
-    } else {
-      onSelectionChange(workId);
-    }
-    setOpen(false);
-  };
-
-  const handleClear = () => {
-    onSelectionChange(null);
-  };
-
   return (
-    <div className="grid gap-2">
-      {selectedWorkNote && (
-        <div className="flex flex-wrap gap-1">
-          <Badge variant="secondary" className="gap-1 pr-1 max-w-full">
-            <span className="truncate">{selectedWorkNote.title}</span>
-            <button
-              type="button"
-              className="ml-1 rounded-full hover:bg-secondary-foreground/20 flex-shrink-0"
-              onClick={handleClear}
-              disabled={disabled}
-              aria-label={`${selectedWorkNote.title} 제거`}
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
-        </div>
-      )}
-
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="justify-between"
-            disabled={disabled || isLoading}
-            type="button"
-          >
-            {isLoading
-              ? '로딩 중...'
-              : selectedWorkNote
-                ? '업무노트 선택됨'
-                : '업무노트 검색...'}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="start">
-          <Command>
-            <CommandInput placeholder="제목 또는 ID로 검색..." />
-            <CommandList>
-              <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
-              <CommandGroup>
-                {workNotes.map((workNote) => {
-                  const isSelected = selectedWorkId === workNote.id;
-                  return (
-                    <CommandItem
-                      key={workNote.id}
-                      value={`${workNote.title} ${workNote.id}`}
-                      onSelect={() => handleSelect(workNote.id)}
-                    >
-                      <div
-                        className={cn(
-                          'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary flex-shrink-0',
-                          isSelected
-                            ? 'bg-primary text-primary-foreground'
-                            : 'opacity-50 [&_svg]:invisible'
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-medium truncate">{workNote.title}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {workNote.id}
-                          {workNote.category && ` • ${workNote.category}`}
-                        </span>
-                      </div>
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </div>
+    <FilterSelector
+      items={workNotes}
+      selectedId={selectedWorkId}
+      onSelectionChange={onSelectionChange}
+      isLoading={isLoading}
+      disabled={disabled}
+      getItemId={(workNote) => workNote.id}
+      getItemLabel={(workNote) => workNote.title}
+      getItemSecondaryLabel={(workNote) => {
+        const parts = [workNote.id];
+        if (workNote.category) parts.push(workNote.category);
+        return parts.join(' • ');
+      }}
+      getSearchValue={(workNote) => `${workNote.title} ${workNote.id}`}
+      placeholder="업무노트 검색..."
+      searchPlaceholder="제목 또는 ID로 검색..."
+      selectedLabel="업무노트 선택됨"
+    />
   );
 }
