@@ -229,6 +229,9 @@ export class EmbeddingProcessor {
 
     console.warn(`[EmbeddingProcessor] Starting batch embedding of ${result.total} pending work notes`);
 
+    // Track failed IDs to prevent retry loops within this execution
+    const failedIds = new Set<string>();
+
     // Collect chunks from multiple work notes
     let allChunks: ChunkToEmbed[] = [];
     let workNoteChunkMap: Map<string, string[]> = new Map(); // workId -> chunkIds
@@ -242,10 +245,26 @@ export class EmbeddingProcessor {
         break;
       }
 
-      for (const workNote of workNotes) {
+      // Filter out failed IDs to prevent retry loops
+      const validWorkNotes = workNotes.filter(wn => !failedIds.has(wn.workId));
+
+      if (validWorkNotes.length === 0) {
+        // All fetched notes have already failed, stop to prevent infinite loop
+        console.warn(`[EmbeddingProcessor] All fetched notes have failed, stopping`);
+        break;
+      }
+
+      // Batch fetch all details upfront to avoid N+1 queries
+      const workIds = validWorkNotes.map(wn => wn.workId);
+      const detailsMap = await this.repository.findByIdsWithDetails(workIds);
+
+      for (const workNote of validWorkNotes) {
         try {
-          // Prepare chunks for this work note
-          const chunks = await this.prepareWorkNoteChunks(workNote);
+          // Get pre-fetched details
+          const details = detailsMap.get(workNote.workId);
+
+          // Prepare chunks for this work note using batch-fetched details
+          const chunks = this.prepareWorkNoteChunksWithDetails(workNote, details);
 
           // Track chunk IDs for this work note
           const chunkIds = chunks.map(c => c.id);
@@ -262,6 +281,11 @@ export class EmbeddingProcessor {
             result.errors.push(...batchResult.errors);
             result.processed += batchResult.processed;
 
+            // Track failed IDs
+            for (const err of batchResult.errors) {
+              failedIds.add(err.workId);
+            }
+
             // Reset for next batch
             allChunks = [];
             workNoteChunkMap = new Map();
@@ -276,6 +300,7 @@ export class EmbeddingProcessor {
             workId: workNote.workId,
             error: errorMessage,
           });
+          failedIds.add(workNote.workId);
           console.error(`[EmbeddingProcessor] Failed to prepare ${workNote.workId}: ${errorMessage}`);
         }
       }
@@ -296,22 +321,25 @@ export class EmbeddingProcessor {
   }
 
   /**
-   * Prepare chunks for a work note without embedding
+   * Prepare chunks for a work note using pre-fetched details
+   * Uses the chunking service's metadata directly instead of rebuilding
    */
-  private async prepareWorkNoteChunks(workNote: WorkNote): Promise<ChunkToEmbed[]> {
-    // Get work note details for person_ids and dept_name
-    const details = await this.repository.findByIdWithDetails(workNote.workId);
+  private prepareWorkNoteChunksWithDetails(
+    workNote: WorkNote,
+    details: import('../types/work-note').WorkNoteDetail | undefined
+  ): ChunkToEmbed[] {
     const personIds = details?.persons.map((p) => p.personId) || [];
-    const deptName = await this.repository.getDeptNameForPerson(personIds[0] || '');
+    // Use first person's current department (single-department-per-note assumption)
+    const deptName = details?.persons[0]?.currentDept || undefined;
 
     const metadata = {
       person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
-      dept_name: deptName || undefined,
+      dept_name: deptName,
       category: workNote.category || undefined,
       created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
     };
 
-    // Chunk work note content
+    // Chunk work note content - chunking service creates full metadata
     const chunks = this.chunkingService.chunkWorkNote(
       workNote.workId,
       workNote.title,
@@ -319,16 +347,11 @@ export class EmbeddingProcessor {
       metadata
     );
 
-    // Prepare chunks for embedding
+    // Use chunking service's metadata directly
     return chunks.map((chunk, index) => ({
       id: ChunkingService.generateChunkId(workNote.workId, index),
       text: chunk.text,
-      metadata: {
-        work_id: workNote.workId,
-        scope: 'WORK',
-        chunk_index: index,
-        ...metadata,
-      },
+      metadata: chunk.metadata as ChunkToEmbed['metadata'],
       workId: workNote.workId,
     }));
   }
