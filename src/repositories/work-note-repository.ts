@@ -531,14 +531,14 @@ export class WorkNoteRepository {
     }
 
     // Return the updated work note without extra DB roundtrip
-    // Reset embeddedAt to null since content may have changed
+    // Reset embeddedAt to null only if content changed (needs re-embedding)
     return {
       ...existing,
       title: data.title !== undefined ? data.title : existing.title,
       contentRaw: data.contentRaw !== undefined ? data.contentRaw : existing.contentRaw,
       category: data.category !== undefined ? (data.category || null) : existing.category,
       updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
-      embeddedAt: null,
+      embeddedAt: updateFields.length > 0 ? null : existing.embeddedAt,
     };
   }
 

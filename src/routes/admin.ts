@@ -48,12 +48,16 @@ admin.post('/reindex/:workId', async (c) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
+    // Determine appropriate status code based on error type
+    const isNotFound = errorMessage.includes('not found');
+    const statusCode = isNotFound ? 404 : 500;
+
     return c.json(
       {
         success: false,
         message: errorMessage,
       },
-      404
+      statusCode
     );
   }
 });

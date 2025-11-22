@@ -1,6 +1,7 @@
 // Trace: SPEC-rag-2, TASK-022
 // Embedding processor for bulk reindexing operations
 
+import type { D1Result } from '@cloudflare/workers-types';
 import type { Env } from '../types/env';
 import type { WorkNote } from '../types/work-note';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
@@ -61,22 +62,35 @@ export class EmbeddingProcessor {
 
     console.warn(`[EmbeddingProcessor] Starting reindex of ${result.total} work notes`);
 
-    // Process in batches
-    let offset = 0;
+    // Process in batches using keyset pagination for better performance
+    let lastCreatedAt: string | null = null;
 
-    while (offset < result.total) {
-      const workNotes = await this.env.DB
-        .prepare(
-          `SELECT work_id as workId, title, content_raw as contentRaw,
-                  category, created_at as createdAt, updated_at as updatedAt
+    while (result.processed < result.total) {
+      // Use keyset pagination instead of OFFSET for better performance on large datasets
+      const query = lastCreatedAt
+        ? `SELECT work_id as workId, title, content_raw as contentRaw,
+                  category, created_at as createdAt, updated_at as updatedAt,
+                  embedded_at as embeddedAt
+           FROM work_notes
+           WHERE created_at > ?
+           ORDER BY created_at ASC
+           LIMIT ?`
+        : `SELECT work_id as workId, title, content_raw as contentRaw,
+                  category, created_at as createdAt, updated_at as updatedAt,
+                  embedded_at as embeddedAt
            FROM work_notes
            ORDER BY created_at ASC
-           LIMIT ? OFFSET ?`
-        )
-        .bind(batchSize, offset)
-        .all<WorkNote>();
+           LIMIT ?`;
 
-      const notes = workNotes.results || [];
+      const workNotes: D1Result<WorkNote> = lastCreatedAt
+        ? await this.env.DB.prepare(query).bind(lastCreatedAt, batchSize).all<WorkNote>()
+        : await this.env.DB.prepare(query).bind(batchSize).all<WorkNote>();
+
+      const notes: WorkNote[] = workNotes.results || [];
+
+      if (notes.length === 0) {
+        break;
+      }
 
       for (const workNote of notes) {
         result.processed++;
@@ -101,7 +115,11 @@ export class EmbeddingProcessor {
         }
       }
 
-      offset += batchSize;
+      // Update cursor for next batch
+      const lastNote = notes[notes.length - 1];
+      if (lastNote) {
+        lastCreatedAt = lastNote.createdAt;
+      }
     }
 
     console.warn(`[EmbeddingProcessor] Reindex complete: ${result.succeeded}/${result.total} succeeded, ${result.failed} failed`);
