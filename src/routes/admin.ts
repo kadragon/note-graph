@@ -196,4 +196,33 @@ admin.post('/process-retry-queue', async (c) => {
   });
 });
 
+/**
+ * GET /admin/embedding-stats
+ * Get embedding statistics (total, embedded, pending)
+ */
+admin.get('/embedding-stats', async (c) => {
+  const processor = new EmbeddingProcessor(c.env);
+  const stats = await processor.getEmbeddingStats();
+
+  return c.json(stats);
+});
+
+/**
+ * POST /admin/embed-pending
+ * Embed only work notes that are not yet embedded
+ * More efficient than reindex-all
+ */
+admin.post('/embed-pending', async (c) => {
+  const batchSize = parseInt(c.req.query('batchSize') || '10');
+
+  const processor = new EmbeddingProcessor(c.env);
+  const result = await processor.embedPending(batchSize);
+
+  return c.json({
+    success: true,
+    message: `미완료 노트 임베딩 완료`,
+    result,
+  });
+});
+
 export default admin;

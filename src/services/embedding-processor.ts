@@ -272,5 +272,78 @@ export class EmbeddingProcessor {
     // Delete stale chunks (if this is a re-embed)
     const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
     await this.vectorizeService.deleteStaleChunks(workNote.workId, newChunkIds);
+
+    // Update embedded_at timestamp
+    await this.repository.updateEmbeddedAt(workNote.workId);
+  }
+
+  /**
+   * Embed only work notes that are not yet embedded
+   * More efficient than reindexAll - only processes pending notes
+   *
+   * @param batchSize - Number of notes to process per batch (default: 10)
+   * @returns Reindex result statistics
+   */
+  async embedPending(batchSize: number = 10): Promise<ReindexResult> {
+    const result: ReindexResult = {
+      total: 0,
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    // Get stats
+    const stats = await this.repository.getEmbeddingStats();
+    result.total = stats.pending;
+
+    if (result.total === 0) {
+      return result;
+    }
+
+    console.warn(`[EmbeddingProcessor] Starting embedding of ${result.total} pending work notes`);
+
+    // Process in batches
+    while (result.processed < result.total) {
+      // Always fetch from offset 0 since we're updating embedded_at
+      const workNotes = await this.repository.findPendingEmbedding(batchSize, 0);
+
+      if (workNotes.length === 0) {
+        break;
+      }
+
+      for (const workNote of workNotes) {
+        result.processed++;
+
+        try {
+          await this.embedWorkNote(workNote);
+          result.succeeded++;
+
+          if (result.processed % 10 === 0) {
+            console.warn(`[EmbeddingProcessor] Progress: ${result.processed}/${result.total}`);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          result.failed++;
+          result.errors.push({
+            workId: workNote.workId,
+            error: errorMessage,
+          });
+
+          console.error(`[EmbeddingProcessor] Failed to embed ${workNote.workId}: ${errorMessage}`);
+        }
+      }
+    }
+
+    console.warn(`[EmbeddingProcessor] Embedding complete: ${result.succeeded}/${result.total} succeeded, ${result.failed} failed`);
+
+    return result;
+  }
+
+  /**
+   * Get embedding statistics
+   */
+  async getEmbeddingStats(): Promise<{ total: number; embedded: number; pending: number }> {
+    return this.repository.getEmbeddingStats();
   }
 }
