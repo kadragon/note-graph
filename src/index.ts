@@ -1,4 +1,4 @@
-// Trace: SPEC-auth-1, TASK-001, TASK-003, TASK-004, TASK-015
+// Trace: SPEC-auth-1, TASK-001, TASK-003, TASK-004, TASK-015, TASK-022
 /**
  * Note Graph - Main Worker Entry Point
  * Personal work note management system with AI-powered features
@@ -11,6 +11,7 @@ import { DomainError } from './types/errors';
 import type { Env } from './types/env';
 import { authMiddleware } from './middleware/auth';
 import { getMeHandler } from './handlers/auth';
+import { EmbeddingProcessor } from './services/embedding-processor';
 
 // Route imports
 import persons from './routes/persons';
@@ -173,4 +174,28 @@ app.onError((err, c) => {
   );
 });
 
-export default app;
+// Export worker with fetch and scheduled handlers
+export default {
+  fetch: app.fetch,
+
+  /**
+   * Scheduled handler for cron triggers
+   * Processes embedding retry queue with exponential backoff
+   */
+  async scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
+    console.log(`[Scheduled] Cron trigger fired: ${event.cron}`);
+
+    const processor = new EmbeddingProcessor(env);
+
+    try {
+      const result = await processor.processRetryQueue(10);
+
+      console.log(`[Scheduled] Retry queue processed:`, {
+        cron: event.cron,
+        ...result,
+      });
+    } catch (error) {
+      console.error(`[Scheduled] Error processing retry queue:`, error);
+    }
+  },
+};

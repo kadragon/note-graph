@@ -4,6 +4,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { EmbeddingRetryService } from '../services/embedding-retry-service';
+import { EmbeddingProcessor } from '../services/embedding-processor';
 import { authMiddleware } from '../middleware/auth';
 
 const admin = new Hono<{ Bindings: Env }>();
@@ -128,6 +129,70 @@ admin.get('/retry-queue/stats', async (c) => {
   return c.json({
     stats,
     total: stats.pending + stats.retrying + stats.dead_letter,
+  });
+});
+
+/**
+ * POST /admin/reindex-all
+ * Reindex all work notes into vector store
+ * Used for initial setup or recovery
+ */
+admin.post('/reindex-all', async (c) => {
+  const batchSize = parseInt(c.req.query('batchSize') || '10');
+
+  const processor = new EmbeddingProcessor(c.env);
+  const result = await processor.reindexAll(batchSize);
+
+  return c.json({
+    success: true,
+    message: `벡터 스토어 재인덱싱 완료`,
+    result,
+  });
+});
+
+/**
+ * POST /admin/reindex/:workId
+ * Reindex a single work note into vector store
+ */
+admin.post('/reindex/:workId', async (c) => {
+  const workId = c.req.param('workId');
+
+  const processor = new EmbeddingProcessor(c.env);
+
+  try {
+    await processor.reindexOne(workId);
+
+    return c.json({
+      success: true,
+      message: `업무 노트 ${workId} 재인덱싱 완료`,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    return c.json(
+      {
+        success: false,
+        message: errorMessage,
+      },
+      404
+    );
+  }
+});
+
+/**
+ * POST /admin/process-retry-queue
+ * Manually trigger retry queue processing
+ */
+admin.post('/process-retry-queue', async (c) => {
+  const batchSize = parseInt(c.req.query('batchSize') || '10');
+
+  const processor = new EmbeddingProcessor(c.env);
+  const result = await processor.processRetryQueue(batchSize);
+
+  return c.json({
+    success: true,
+    message: `재시도 큐 처리 완료`,
+    result,
   });
 });
 

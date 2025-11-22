@@ -1,0 +1,276 @@
+// Trace: SPEC-rag-2, TASK-022
+// Embedding processor for retry queue and bulk reindexing
+
+import type { Env } from '../types/env';
+import type { WorkNote } from '../types/work-note';
+import { WorkNoteRepository } from '../repositories/work-note-repository';
+import { ChunkingService } from './chunking-service';
+import { EmbeddingService, VectorizeService } from './embedding-service';
+import { EmbeddingRetryService } from './embedding-retry-service';
+import { format } from 'date-fns';
+
+export interface ProcessorResult {
+  processed: number;
+  succeeded: number;
+  failed: number;
+  movedToDeadLetter: number;
+}
+
+export interface ReindexResult {
+  total: number;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  errors: Array<{ workId: string; error: string }>;
+}
+
+/**
+ * Embedding processor for handling retry queue and bulk operations
+ */
+export class EmbeddingProcessor {
+  private repository: WorkNoteRepository;
+  private chunkingService: ChunkingService;
+  private vectorizeService: VectorizeService;
+  private retryService: EmbeddingRetryService;
+
+  constructor(private env: Env) {
+    this.repository = new WorkNoteRepository(env.DB);
+    this.chunkingService = new ChunkingService();
+
+    const embeddingService = new EmbeddingService(env);
+    this.vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
+    this.retryService = new EmbeddingRetryService(env.DB);
+  }
+
+  /**
+   * Process pending items in the retry queue
+   * Called by scheduled worker (cron trigger)
+   *
+   * @param batchSize - Number of items to process per run (default: 10)
+   * @returns Processing result statistics
+   */
+  async processRetryQueue(batchSize: number = 10): Promise<ProcessorResult> {
+    const result: ProcessorResult = {
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      movedToDeadLetter: 0,
+    };
+
+    // Get items ready for retry
+    const items = await this.retryService.getRetryableItems(batchSize);
+
+    if (items.length === 0) {
+      return result;
+    }
+
+    console.warn(`[EmbeddingProcessor] Processing ${items.length} retry items`);
+
+    for (const item of items) {
+      result.processed++;
+
+      try {
+        // Fetch work note
+        const workNote = await this.repository.findById(item.work_id);
+
+        if (!workNote) {
+          // Work note was deleted, remove from retry queue
+          await this.retryService.deleteRetryItem(item.id);
+          console.warn(`[EmbeddingProcessor] Work note ${item.work_id} not found, removed from queue`);
+          result.succeeded++;
+          continue;
+        }
+
+        // Perform embedding based on operation type
+        if (item.operation_type === 'create' || item.operation_type === 'update') {
+          await this.embedWorkNote(workNote);
+        } else if (item.operation_type === 'delete') {
+          await this.vectorizeService.deleteWorkNoteChunks(item.work_id);
+        }
+
+        // Success - remove from queue
+        await this.retryService.deleteRetryItem(item.id);
+        result.succeeded++;
+        console.warn(`[EmbeddingProcessor] Successfully processed ${item.work_id}`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorDetails = {
+          error: errorMessage,
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+        };
+
+        const newAttemptCount = item.attempt_count + 1;
+
+        if (newAttemptCount >= item.max_attempts) {
+          // Move to dead-letter queue
+          await this.retryService.moveToDeadLetter(
+            item.id,
+            newAttemptCount,
+            errorMessage,
+            errorDetails
+          );
+          result.movedToDeadLetter++;
+          console.error(`[EmbeddingProcessor] Moved ${item.work_id} to dead-letter after ${newAttemptCount} attempts`);
+        } else {
+          // Update for next retry with exponential backoff
+          await this.retryService.updateRetryAttempt(
+            item.id,
+            newAttemptCount,
+            errorMessage,
+            errorDetails
+          );
+          result.failed++;
+          console.error(`[EmbeddingProcessor] Retry ${newAttemptCount}/${item.max_attempts} failed for ${item.work_id}: ${errorMessage}`);
+        }
+      }
+    }
+
+    console.warn(`[EmbeddingProcessor] Completed: ${result.succeeded} succeeded, ${result.failed} failed, ${result.movedToDeadLetter} dead-lettered`);
+
+    return result;
+  }
+
+  /**
+   * Reindex all work notes into vector store
+   * Used for initial setup or recovery
+   *
+   * @param batchSize - Number of notes to process per batch (default: 10)
+   * @returns Reindex result statistics
+   */
+  async reindexAll(batchSize: number = 10): Promise<ReindexResult> {
+    const result: ReindexResult = {
+      total: 0,
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    // Get total count
+    const countResult = await this.env.DB
+      .prepare('SELECT COUNT(*) as count FROM work_notes')
+      .first<{ count: number }>();
+
+    result.total = countResult?.count || 0;
+
+    if (result.total === 0) {
+      return result;
+    }
+
+    console.warn(`[EmbeddingProcessor] Starting reindex of ${result.total} work notes`);
+
+    // Process in batches
+    let offset = 0;
+
+    while (offset < result.total) {
+      const workNotes = await this.env.DB
+        .prepare(
+          `SELECT work_id as workId, title, content_raw as contentRaw,
+                  category, created_at as createdAt, updated_at as updatedAt
+           FROM work_notes
+           ORDER BY created_at ASC
+           LIMIT ? OFFSET ?`
+        )
+        .bind(batchSize, offset)
+        .all<WorkNote>();
+
+      const notes = workNotes.results || [];
+
+      for (const workNote of notes) {
+        result.processed++;
+
+        try {
+          await this.embedWorkNote(workNote);
+          result.succeeded++;
+
+          if (result.processed % 10 === 0) {
+            console.warn(`[EmbeddingProcessor] Progress: ${result.processed}/${result.total}`);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          result.failed++;
+          result.errors.push({
+            workId: workNote.workId,
+            error: errorMessage,
+          });
+
+          console.error(`[EmbeddingProcessor] Failed to embed ${workNote.workId}: ${errorMessage}`);
+
+          // Enqueue for retry
+          try {
+            await this.retryService.enqueueRetry(
+              workNote.workId,
+              'create',
+              errorMessage,
+              { error: errorMessage, source: 'reindexAll' }
+            );
+          } catch {
+            console.error(`[EmbeddingProcessor] Failed to enqueue retry for ${workNote.workId}`);
+          }
+        }
+      }
+
+      offset += batchSize;
+    }
+
+    console.warn(`[EmbeddingProcessor] Reindex complete: ${result.succeeded}/${result.total} succeeded, ${result.failed} failed`);
+
+    return result;
+  }
+
+  /**
+   * Reindex a single work note
+   *
+   * @param workId - Work note ID to reindex
+   */
+  async reindexOne(workId: string): Promise<void> {
+    const workNote = await this.repository.findById(workId);
+
+    if (!workNote) {
+      throw new Error(`Work note ${workId} not found`);
+    }
+
+    await this.embedWorkNote(workNote);
+  }
+
+  /**
+   * Embed a work note into vector store
+   * Shared logic for retry processing and bulk reindex
+   */
+  private async embedWorkNote(workNote: WorkNote): Promise<void> {
+    // Get work note details for person_ids and dept_name
+    const details = await this.repository.findByIdWithDetails(workNote.workId);
+    const personIds = details?.persons.map((p) => p.personId) || [];
+    const deptName = await this.repository.getDeptNameForPerson(personIds[0] || '');
+
+    const metadata = {
+      person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
+      dept_name: deptName || undefined,
+      category: workNote.category || undefined,
+      created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
+    };
+
+    // Chunk work note content
+    const chunks = this.chunkingService.chunkWorkNote(
+      workNote.workId,
+      workNote.title,
+      workNote.contentRaw,
+      metadata
+    );
+
+    // Prepare chunks for embedding
+    const chunksToEmbed = chunks.map((chunk, index) => ({
+      id: ChunkingService.generateChunkId(workNote.workId, index),
+      text: chunk.text,
+      metadata: chunk.metadata,
+    }));
+
+    // Upsert chunks into Vectorize
+    await this.vectorizeService.upsertChunks(chunksToEmbed);
+
+    // Delete stale chunks (if this is a re-embed)
+    const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
+    await this.vectorizeService.deleteStaleChunks(workNote.workId, newChunkIds);
+  }
+}
