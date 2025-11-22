@@ -17,6 +17,24 @@ export interface ReindexResult {
   errors: Array<{ workId: string; error: string }>;
 }
 
+// OpenAI embedding API can handle up to 2048 inputs, but we use smaller batches for reliability
+const MAX_CHUNKS_PER_BATCH = 100;
+
+interface ChunkToEmbed {
+  id: string;
+  text: string;
+  metadata: {
+    work_id: string;
+    scope: string;
+    chunk_index: number;
+    person_ids?: string;
+    dept_name?: string;
+    category?: string;
+    created_at_bucket: string;
+  };
+  workId: string; // Track which work note this chunk belongs to
+}
+
 /**
  * Embedding processor for bulk operations
  */
@@ -187,9 +205,9 @@ export class EmbeddingProcessor {
 
   /**
    * Embed only work notes that are not yet embedded
-   * More efficient than reindexAll - only processes pending notes
+   * Uses batch processing across multiple work notes for efficiency
    *
-   * @param batchSize - Number of notes to process per batch (default: 10)
+   * @param batchSize - Number of notes to fetch per batch (default: 10)
    * @returns Reindex result statistics
    */
   async embedPending(batchSize: number = 10): Promise<ReindexResult> {
@@ -209,7 +227,14 @@ export class EmbeddingProcessor {
       return result;
     }
 
-    console.warn(`[EmbeddingProcessor] Starting embedding of ${result.total} pending work notes`);
+    console.warn(`[EmbeddingProcessor] Starting batch embedding of ${result.total} pending work notes`);
+
+    // Track failed IDs to prevent retry loops within this execution
+    const failedIds = new Set<string>();
+
+    // Collect chunks from multiple work notes
+    let allChunks: ChunkToEmbed[] = [];
+    let workNoteChunkMap: Map<string, string[]> = new Map(); // workId -> chunkIds
 
     // Process in batches
     while (result.processed < result.total) {
@@ -220,32 +245,172 @@ export class EmbeddingProcessor {
         break;
       }
 
-      for (const workNote of workNotes) {
-        result.processed++;
+      // Filter out failed IDs to prevent retry loops
+      const validWorkNotes = workNotes.filter(wn => !failedIds.has(wn.workId));
 
+      if (validWorkNotes.length === 0) {
+        // All fetched notes have already failed, stop to prevent infinite loop
+        console.warn(`[EmbeddingProcessor] All fetched notes have failed, stopping`);
+        break;
+      }
+
+      // Batch fetch all details upfront to avoid N+1 queries
+      const workIds = validWorkNotes.map(wn => wn.workId);
+      const detailsMap = await this.repository.findByIdsWithDetails(workIds);
+
+      for (const workNote of validWorkNotes) {
         try {
-          await this.embedWorkNote(workNote);
-          result.succeeded++;
+          // Get pre-fetched details
+          const details = detailsMap.get(workNote.workId);
 
-          if (result.processed % 10 === 0) {
+          // Prepare chunks for this work note using batch-fetched details
+          const chunks = this.prepareWorkNoteChunksWithDetails(workNote, details);
+
+          // Track chunk IDs for this work note
+          const chunkIds = chunks.map(c => c.id);
+          workNoteChunkMap.set(workNote.workId, chunkIds);
+
+          // Add to batch
+          allChunks.push(...chunks);
+
+          // Process batch when we reach the limit
+          if (allChunks.length >= MAX_CHUNKS_PER_BATCH) {
+            const batchResult = await this.processBatch(allChunks, workNoteChunkMap);
+            result.succeeded += batchResult.succeeded;
+            result.failed += batchResult.failed;
+            result.errors.push(...batchResult.errors);
+            result.processed += batchResult.processed;
+
+            // Track failed IDs
+            for (const err of batchResult.errors) {
+              failedIds.add(err.workId);
+            }
+
+            // Reset for next batch
+            allChunks = [];
+            workNoteChunkMap = new Map();
+
             console.warn(`[EmbeddingProcessor] Progress: ${result.processed}/${result.total}`);
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           result.failed++;
+          result.processed++;
           result.errors.push({
             workId: workNote.workId,
             error: errorMessage,
           });
-
-          console.error(`[EmbeddingProcessor] Failed to embed ${workNote.workId}: ${errorMessage}`);
+          failedIds.add(workNote.workId);
+          console.error(`[EmbeddingProcessor] Failed to prepare ${workNote.workId}: ${errorMessage}`);
         }
       }
     }
 
-    console.warn(`[EmbeddingProcessor] Embedding complete: ${result.succeeded}/${result.total} succeeded, ${result.failed} failed`);
+    // Process remaining chunks
+    if (allChunks.length > 0) {
+      const batchResult = await this.processBatch(allChunks, workNoteChunkMap);
+      result.succeeded += batchResult.succeeded;
+      result.failed += batchResult.failed;
+      result.errors.push(...batchResult.errors);
+      result.processed += batchResult.processed;
+    }
+
+    console.warn(`[EmbeddingProcessor] Batch embedding complete: ${result.succeeded}/${result.total} succeeded, ${result.failed} failed`);
 
     return result;
+  }
+
+  /**
+   * Prepare chunks for a work note using pre-fetched details
+   * Uses the chunking service's metadata directly instead of rebuilding
+   */
+  private prepareWorkNoteChunksWithDetails(
+    workNote: WorkNote,
+    details: import('../types/work-note').WorkNoteDetail | undefined
+  ): ChunkToEmbed[] {
+    const personIds = details?.persons.map((p) => p.personId) || [];
+    // Use first person's current department (single-department-per-note assumption)
+    const deptName = details?.persons[0]?.currentDept || undefined;
+
+    const metadata = {
+      person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
+      dept_name: deptName,
+      category: workNote.category || undefined,
+      created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
+    };
+
+    // Chunk work note content - chunking service creates full metadata
+    const chunks = this.chunkingService.chunkWorkNote(
+      workNote.workId,
+      workNote.title,
+      workNote.contentRaw,
+      metadata
+    );
+
+    // Use chunking service's metadata directly
+    return chunks.map((chunk, index) => ({
+      id: ChunkingService.generateChunkId(workNote.workId, index),
+      text: chunk.text,
+      metadata: chunk.metadata as ChunkToEmbed['metadata'],
+      workId: workNote.workId,
+    }));
+  }
+
+  /**
+   * Process a batch of chunks from multiple work notes
+   */
+  private async processBatch(
+    chunks: ChunkToEmbed[],
+    workNoteChunkMap: Map<string, string[]>
+  ): Promise<{ processed: number; succeeded: number; failed: number; errors: Array<{ workId: string; error: string }> }> {
+    const batchResult = {
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      errors: [] as Array<{ workId: string; error: string }>,
+    };
+
+    const workIds = Array.from(workNoteChunkMap.keys());
+
+    try {
+      // Batch embed all chunks at once
+      const chunksForVectorize = chunks.map(c => ({
+        id: c.id,
+        text: c.text,
+        metadata: c.metadata as import('../types/search').ChunkMetadata,
+      }));
+
+      await this.vectorizeService.upsertChunks(chunksForVectorize);
+
+      // Update embedded_at for all work notes in this batch
+      for (const workId of workIds) {
+        try {
+          // Delete stale chunks
+          const newChunkIds = new Set(workNoteChunkMap.get(workId) || []);
+          await this.vectorizeService.deleteStaleChunks(workId, newChunkIds);
+
+          // Update timestamp
+          await this.repository.updateEmbeddedAt(workId);
+          batchResult.succeeded++;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          batchResult.failed++;
+          batchResult.errors.push({ workId, error: errorMessage });
+        }
+        batchResult.processed++;
+      }
+    } catch (error) {
+      // If batch embedding fails, mark all work notes as failed
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      for (const workId of workIds) {
+        batchResult.failed++;
+        batchResult.processed++;
+        batchResult.errors.push({ workId, error: errorMessage });
+      }
+      console.error(`[EmbeddingProcessor] Batch embedding failed: ${errorMessage}`);
+    }
+
+    return batchResult;
   }
 
   /**

@@ -115,6 +115,79 @@ export class WorkNoteRepository {
   }
 
   /**
+   * Find multiple work notes by IDs with all associations (batch fetch)
+   * Optimized to avoid N+1 queries
+   */
+  async findByIdsWithDetails(workIds: string[]): Promise<Map<string, WorkNoteDetail>> {
+    if (workIds.length === 0) {
+      return new Map();
+    }
+
+    const placeholders = workIds.map(() => '?').join(',');
+
+    // Fetch all work notes
+    const workNotesResult = await this.db
+      .prepare(
+        `SELECT work_id as workId, title, content_raw as contentRaw,
+                category, created_at as createdAt, updated_at as updatedAt,
+                embedded_at as embeddedAt
+         FROM work_notes
+         WHERE work_id IN (${placeholders})`
+      )
+      .bind(...workIds)
+      .all<WorkNote>();
+
+    const workNotes = workNotesResult.results || [];
+
+    if (workNotes.length === 0) {
+      return new Map();
+    }
+
+    // Fetch all persons in a single query
+    const personsResult = await this.db
+      .prepare(
+        `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
+                wnp.role, p.name as personName, p.current_dept as currentDept,
+                p.current_position as currentPosition
+         FROM work_note_person wnp
+         INNER JOIN persons p ON wnp.person_id = p.person_id
+         WHERE wnp.work_id IN (${placeholders})`
+      )
+      .bind(...workIds)
+      .all<WorkNotePersonAssociation & { workId: string }>();
+
+    // Group persons by workId
+    const personsByWorkId = new Map<string, WorkNotePersonAssociation[]>();
+    for (const person of personsResult.results || []) {
+      if (!personsByWorkId.has(person.workId)) {
+        personsByWorkId.set(person.workId, []);
+      }
+      personsByWorkId.get(person.workId)!.push({
+        id: person.id,
+        workId: person.workId,
+        personId: person.personId,
+        role: person.role,
+        personName: person.personName,
+        currentDept: person.currentDept,
+        currentPosition: person.currentPosition,
+      });
+    }
+
+    // Build result map
+    const result = new Map<string, WorkNoteDetail>();
+    for (const workNote of workNotes) {
+      result.set(workNote.workId, {
+        ...workNote,
+        persons: personsByWorkId.get(workNote.workId) || [],
+        relatedWorkNotes: [],
+        categories: [],
+      });
+    }
+
+    return result;
+  }
+
+  /**
    * Find all work notes with filters
    */
   async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
