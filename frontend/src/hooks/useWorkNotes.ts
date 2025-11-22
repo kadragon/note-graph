@@ -24,14 +24,24 @@ export function useWorkNotesWithStats() {
           try {
             const todos = await API.getWorkNoteTodos(workNote.id);
             const total = todos.length;
-            const completed = todos.filter(todo => todo.status === TODO_STATUS.COMPLETED).length;
-            const remaining = total - completed;
-            // Pending: 완료되지 않은 할일 중 waitUntil이 미래인 것
-            const pending = todos.filter(todo => {
-              if (todo.status === TODO_STATUS.COMPLETED) return false;
-              if (!todo.waitUntil) return false;
-              return new Date(todo.waitUntil) > now;
-            }).length;
+            // 한 번의 순회로 모든 통계 계산
+            const { completed, pending, remaining } = todos.reduce(
+              (acc, todo) => {
+                if (todo.status === TODO_STATUS.COMPLETED) {
+                  acc.completed++;
+                } else {
+                  // 미완료 상태: waitUntil이 미래면 pending, 아니면 remaining
+                  const hasFutureWaitUntil = todo.waitUntil && new Date(todo.waitUntil) > now;
+                  if (hasFutureWaitUntil) {
+                    acc.pending++;
+                  } else {
+                    acc.remaining++;
+                  }
+                }
+                return acc;
+              },
+              { completed: 0, pending: 0, remaining: 0 }
+            );
 
             return {
               ...workNote,
