@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search as SearchIcon, User, Building2, FileText, type LucideIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -199,8 +200,20 @@ function DepartmentsTable({ departments }: DepartmentsTableProps) {
 }
 
 export default function Search() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const searchMutation = useSearch();
+
+  // Read query from URL params and trigger search on mount
+  useEffect(() => {
+    const urlQuery = searchParams.get('q');
+    if (urlQuery) {
+      setQuery(urlQuery);
+      searchMutation.mutate({ query: urlQuery });
+      // Clear the URL param after reading
+      setSearchParams({}, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

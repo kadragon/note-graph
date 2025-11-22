@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -18,12 +18,48 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const pageInfo = pathTitles[location.pathname] || { title: '페이지', subtitle: '' };
+
+  // Global keyboard shortcut: Ctrl+K (or Cmd+K on Mac) or / to focus search
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+K or Cmd+K
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      // Check for / key (only when not in an input/textarea)
+      if (e.key === '/' && !isEditableElement(e.target as Element)) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    const isEditableElement = (element: Element): boolean => {
+      const tagName = element.tagName.toLowerCase();
+      return (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select' ||
+        (element as HTMLElement).isContentEditable
+      );
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
+    }
+    // Escape key to blur the search input
+    if (e.key === 'Escape') {
+      searchInputRef.current?.blur();
     }
   };
 
@@ -38,8 +74,9 @@ export default function Header() {
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             type="search"
-            placeholder="검색..."
+            placeholder="검색... (⌘K)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
