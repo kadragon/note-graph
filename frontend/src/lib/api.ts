@@ -34,6 +34,8 @@ import type {
   AIGenerateDraftRequest,
   AIGenerateDraftResponse,
   PDFJob,
+  EmbeddingStats,
+  BatchProcessResult,
 } from '@/types/api';
 
 /**
@@ -491,6 +493,38 @@ class APIClient {
 
   getPDFJob(jobId: string) {
     return this.request<PDFJob>(`/pdf-jobs/${jobId}`);
+  }
+
+  // Admin - Vector Store Management
+  getEmbeddingStats() {
+    return this.request<EmbeddingStats>('/admin/embedding-stats');
+  }
+
+  reindexAll(batchSize?: number) {
+    const params = new URLSearchParams();
+    if (batchSize) params.set('batchSize', batchSize.toString());
+    const queryString = params.toString();
+    return this.request<{ success: boolean; message: string; result: BatchProcessResult }>(
+      `/admin/reindex-all${queryString ? `?${queryString}` : ''}`,
+      { method: 'POST' }
+    );
+  }
+
+  reindexOne(workId: string) {
+    return this.request<{ success: boolean; message: string }>(
+      `/admin/reindex/${workId}`,
+      { method: 'POST' }
+    );
+  }
+
+  embedPending(batchSize?: number) {
+    const params = new URLSearchParams();
+    if (batchSize) params.set('batchSize', batchSize.toString());
+    const queryString = params.toString();
+    return this.request<{ success: boolean; message: string; result: BatchProcessResult }>(
+      `/admin/embed-pending${queryString ? `?${queryString}` : ''}`,
+      { method: 'POST' }
+    );
   }
 }
 
