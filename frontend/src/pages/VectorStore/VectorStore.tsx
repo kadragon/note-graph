@@ -10,6 +10,17 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { API } from '@/lib/api';
 import type { BatchProcessResult } from '@/types/api';
@@ -24,7 +35,15 @@ export default function VectorStore() {
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['embedding-stats'],
     queryFn: () => API.getEmbeddingStats(),
-    refetchInterval: 5000, // Auto refresh every 5 seconds
+    // Only poll when there are pending embeddings
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // Stop polling when pending is 0
+      if (data && data.pending === 0) {
+        return false;
+      }
+      return 5000; // Poll every 5 seconds when pending > 0
+    },
   });
 
   // Handler factory functions to reduce duplication
@@ -176,19 +195,41 @@ export default function VectorStore() {
               미완료 임베딩 처리
             </Button>
 
-            <Button
-              onClick={() => reindexAllMutation.mutate()}
-              disabled={isProcessing}
-              variant="outline"
-              className="flex-1"
-            >
-              {reindexAllMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              전체 재인덱싱
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  disabled={isProcessing}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  {reindexAllMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  전체 재인덱싱
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>전체 재인덱싱</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    모든 업무노트를 다시 임베딩합니다. 이 작업은 시간이 오래 걸릴 수 있습니다.
+                    {stats && stats.total > 0 && (
+                      <span className="block mt-2 font-medium">
+                        총 {stats.total}개의 업무노트가 재인덱싱됩니다.
+                      </span>
+                    )}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>취소</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => reindexAllMutation.mutate()}>
+                    재인덱싱 시작
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           {(stats?.pending ?? 0) > 0 && (
