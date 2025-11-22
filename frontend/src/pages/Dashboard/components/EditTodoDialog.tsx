@@ -166,7 +166,15 @@ export function EditTodoDialog({
               <select
                 id="status"
                 value={status}
-                onChange={(e) => setStatus(e.target.value as TodoStatus)}
+                onChange={(e) => {
+                  const newStatus = e.target.value as TodoStatus;
+                  setStatus(newStatus);
+                  // Clear dueDate and waitUntil when status is changed to ON_HOLD or STOPPED
+                  if (newStatus === TODO_STATUS.ON_HOLD || newStatus === TODO_STATUS.STOPPED) {
+                    setDueDate('');
+                    setWaitUntil('');
+                  }
+                }}
                 className={SELECT_CLASS_NAME}
               >
                 {STATUS_OPTIONS.map((option) => (

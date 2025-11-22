@@ -1,6 +1,6 @@
 // Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2
 import { useState, useEffect, useCallback } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, getYear } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Edit2, Save, X, Pencil, Trash2 } from 'lucide-react';
@@ -55,6 +55,18 @@ interface ViewWorkNoteDialogProps {
 
 // Helper function to get today's date in YYYY-MM-DD format
 const getTodayString = (): string => new Date().toISOString().split('T')[0];
+
+// Format date with year if different from current year
+const formatDateWithYear = (dateString: string): string => {
+  const date = parseISO(dateString);
+  const currentYear = getYear(new Date());
+  const dateYear = getYear(date);
+
+  if (dateYear !== currentYear) {
+    return format(date, 'yyyy-MM-dd');
+  }
+  return format(date, 'M-dd');
+};
 
 export function ViewWorkNoteDialog({
   workNote,
@@ -504,7 +516,12 @@ export function ViewWorkNoteDialog({
                         </Badge>
                         {todo.dueDate && (
                           <Badge variant="outline" className="text-xs">
-                            마감: {format(parseISO(todo.dueDate), 'M/d', { locale: ko })}
+                            마감: {formatDateWithYear(todo.dueDate)}
+                          </Badge>
+                        )}
+                        {todo.waitUntil && (
+                          <Badge variant="outline" className="text-xs">
+                            대기: {formatDateWithYear(todo.waitUntil)}
                           </Badge>
                         )}
                       </div>
