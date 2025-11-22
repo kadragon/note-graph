@@ -72,8 +72,8 @@ export function useCreateWorkNote() {
   return useMutation({
     mutationFn: (data: CreateWorkNoteRequest) => API.createWorkNote(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       toast({
         title: '성공',
         description: '업무노트가 생성되었습니다.',
@@ -97,8 +97,8 @@ export function useUpdateWorkNote() {
     mutationFn: ({ workId, data }: { workId: string; data: UpdateWorkNoteRequest }) =>
       API.updateWorkNote(workId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       toast({
         title: '성공',
         description: '업무노트가 수정되었습니다.',
@@ -121,8 +121,8 @@ export function useDeleteWorkNote() {
   return useMutation({
     mutationFn: (workId: string) => API.deleteWorkNote(workId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       toast({
         title: '성공',
         description: '업무노트가 삭제되었습니다.',

@@ -16,7 +16,7 @@ import { getAuthUser } from '../middleware/auth';
  * @param c - Hono context with authenticated user
  * @returns User information
  */
-export async function getMeHandler(c: Context<{ Bindings: Env; Variables: { user: AuthUser } }>) {
+export function getMeHandler(c: Context<{ Bindings: Env; Variables: { user: AuthUser } }>) {
   const user = getAuthUser(c);
 
   return c.json({

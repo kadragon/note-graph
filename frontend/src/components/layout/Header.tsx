@@ -56,7 +56,7 @@ export default function Header() {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      void navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
     }
     // Escape key to blur the search input

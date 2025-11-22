@@ -215,7 +215,7 @@ export default function Search() {
       setQuery(urlQuery);
       searchMutation.mutate({ query: urlQuery });
     }
-  }, [urlQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [urlQuery, searchMutation]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

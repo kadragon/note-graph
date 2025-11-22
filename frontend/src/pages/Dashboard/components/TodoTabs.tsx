@@ -12,7 +12,7 @@ import { TodoList } from './TodoList';
 import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDialog';
 import { useTodos } from '@/hooks/useTodos';
 import { API } from '@/lib/api';
-import type { TodoView, Todo, WorkNote } from '@/types/api';
+import type { TodoView, Todo } from '@/types/api';
 
 const TODO_VIEWS: { value: TodoView; label: string }[] = [
   { value: 'today', label: '오늘' },

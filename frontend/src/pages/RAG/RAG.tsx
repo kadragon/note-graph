@@ -97,7 +97,7 @@ export default function RAG() {
           contexts: response.contexts,
         },
       ]);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook
     }
   };
@@ -197,7 +197,7 @@ export default function RAG() {
                 </ScrollArea>
 
                 <form
-                  onSubmit={handleSubmit}
+                  onSubmit={(e) => void handleSubmit(e)}
                   className="border-t p-4 flex gap-2"
                 >
                   <Input

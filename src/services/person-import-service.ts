@@ -54,7 +54,7 @@ export class PersonImportService {
 
     // Parse and validate JSON response using Zod schema
     try {
-      const parsedJson = JSON.parse(response);
+      const parsedJson = JSON.parse(response) as Record<string, unknown>;
 
       // Convert null values to undefined for Zod optional fields
       // GPT may return null for missing fields, but Zod expects undefined

@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../index';
 import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
@@ -33,7 +34,7 @@ taskCategories.get('/', async (c) => {
     return c.json(results);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error listing task categories:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -52,7 +53,7 @@ taskCategories.post('/', async (c) => {
     return c.json(category, 201);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error creating task category:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -75,7 +76,7 @@ taskCategories.get('/:categoryId', async (c) => {
     return c.json(category);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error getting task category:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -95,7 +96,7 @@ taskCategories.put('/:categoryId', async (c) => {
     return c.json(category);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error updating task category:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -114,7 +115,7 @@ taskCategories.delete('/:categoryId', async (c) => {
     return c.json({ message: 'Task category deleted successfully' });
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error deleting task category:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -133,7 +134,7 @@ taskCategories.get('/:categoryId/work-notes', async (c) => {
     return c.json(workNotes);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error getting task category work notes:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);

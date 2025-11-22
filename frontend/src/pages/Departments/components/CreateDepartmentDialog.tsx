@@ -37,7 +37,7 @@ export function CreateDepartmentDialog({
       await createMutation.mutateAsync(payload);
       setName('');
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook
     }
   };
@@ -45,7 +45,7 @@ export function CreateDepartmentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>새 부서 추가</DialogTitle>
             <DialogDescription>

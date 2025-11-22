@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../index';
 import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
@@ -31,7 +32,7 @@ persons.get('/', async (c) => {
     return c.json(results);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error listing persons:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -50,7 +51,7 @@ persons.post('/', async (c) => {
     return c.json(person, 201);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error creating person:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -73,7 +74,7 @@ persons.get('/:personId', async (c) => {
     return c.json(person);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error getting person:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -93,7 +94,7 @@ persons.put('/:personId', async (c) => {
     return c.json(person);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error updating person:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -112,7 +113,7 @@ persons.get('/:personId/history', async (c) => {
     return c.json(history);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error getting person history:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -131,7 +132,7 @@ persons.get('/:personId/work-notes', async (c) => {
     return c.json(workNotes);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error getting person work notes:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -150,7 +151,7 @@ persons.post('/import-from-text', async (c) => {
     return c.json(parsed);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error parsing person from text:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: error instanceof Error ? error.message : '서버 오류가 발생했습니다' }, 500);
@@ -202,7 +203,7 @@ persons.post('/import', async (c) => {
     return c.json({ person, isNew }, isNew ? 201 : 200);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error importing person:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);

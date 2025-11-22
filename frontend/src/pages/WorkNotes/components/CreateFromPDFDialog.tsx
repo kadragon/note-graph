@@ -79,7 +79,7 @@ export function CreateFromPDFDialog({
     try {
       const result = await uploadMutation.mutateAsync(file);
       setCurrentJobId(result.jobId);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook
     }
   };
@@ -115,7 +115,7 @@ export function CreateFromPDFDialog({
       // Reset form and close dialog
       resetForm();
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook
     }
   };
@@ -163,7 +163,7 @@ export function CreateFromPDFDialog({
           {!job?.draft && (
             <div className="space-y-3">
               <FileDropzone
-                onFileSelect={handleFileSelect}
+                onFileSelect={(file) => void handleFileSelect(file)}
                 disabled={uploadMutation.isPending || !!currentJobId}
               />
 
@@ -195,7 +195,7 @@ export function CreateFromPDFDialog({
 
           {/* Step 2: Edit Draft */}
           {job?.status === 'completed' && job.draft && (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="title">제목</Label>
                 <Input

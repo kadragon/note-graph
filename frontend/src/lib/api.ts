@@ -94,7 +94,7 @@ class APIClient {
     };
 
     // In development, use test auth header
-    if (import.meta.env.DEV) {
+    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
       (headers as Record<string, string>)['X-Test-User-Email'] =
         'test@example.com';
     }
@@ -105,9 +105,9 @@ class APIClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
+      const error = (await response.json().catch(() => ({
         message: '알 수 없는 오류가 발생했습니다',
-      }));
+      }))) as { message?: string };
       throw new Error(error.message || `HTTP ${response.status}`);
     }
 
@@ -115,7 +115,7 @@ class APIClient {
       return null as T;
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
   async uploadFile<T>(
@@ -132,12 +132,11 @@ class APIClient {
       }
     });
 
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {};
 
     // In development, use test auth header
-    if (import.meta.env.DEV) {
-      (headers as Record<string, string>)['X-Test-User-Email'] =
-        'test@example.com';
+    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
+      headers['X-Test-User-Email'] = 'test@example.com';
     }
 
     const response = await fetch(`${this.baseURL}${endpoint}`, {
@@ -147,13 +146,13 @@ class APIClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
+      const error = (await response.json().catch(() => ({
         message: '업로드 실패',
-      }));
+      }))) as { message?: string };
       throw new Error(error.message || `HTTP ${response.status}`);
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
   // Auth
@@ -164,7 +163,7 @@ class APIClient {
   // Work Notes
   async getWorkNotes() {
     const response = await this.request<BackendWorkNote[]>('/work-notes');
-    return response.map(this.transformWorkNoteFromBackend);
+    return response.map((note) => this.transformWorkNoteFromBackend(note));
   }
 
   async getWorkNote(workId: string) {

@@ -17,7 +17,7 @@ export function useCreateDepartment() {
   return useMutation({
     mutationFn: (data: CreateDepartmentRequest) => API.createDepartment(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      void queryClient.invalidateQueries({ queryKey: ['departments'] });
       toast({
         title: '성공',
         description: '부서가 생성되었습니다.',
@@ -41,7 +41,7 @@ export function useUpdateDepartment() {
     mutationFn: ({ deptName, data }: { deptName: string; data: UpdateDepartmentRequest }) =>
       API.updateDepartment(deptName, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      void queryClient.invalidateQueries({ queryKey: ['departments'] });
       toast({
         title: '성공',
         description: '부서가 수정되었습니다.',

@@ -20,7 +20,8 @@ export async function validateBody<T extends z.ZodType>(
   schema: T
 ): Promise<z.infer<T>> {
   try {
-    const body = await c.req.json();
+    const body: unknown = await c.req.json();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return schema.parse(body);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -44,6 +45,7 @@ export function validateQuery<T extends z.ZodType>(
 ): z.infer<T> {
   try {
     const query = c.req.query();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return schema.parse(query);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -67,6 +69,7 @@ export function validateParams<T extends z.ZodType>(
 ): z.infer<T> {
   try {
     const params = c.req.param();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return schema.parse(params);
   } catch (error) {
     if (error instanceof z.ZodError) {
