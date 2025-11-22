@@ -1,9 +1,9 @@
 // Trace: SPEC-rag-2, TASK-022
-// Admin routes for embedding retry queue management
+// Admin routes for embedding management
 
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
-import { EmbeddingRetryService } from '../services/embedding-retry-service';
+import { EmbeddingProcessor } from '../services/embedding-processor';
 import { authMiddleware } from '../middleware/auth';
 
 const admin = new Hono<{ Bindings: Env }>();
@@ -12,122 +12,82 @@ const admin = new Hono<{ Bindings: Env }>();
 admin.use('*', authMiddleware);
 
 /**
- * GET /admin/embedding-failures
- * List dead-letter embedding failures with pagination
+ * POST /admin/reindex-all
+ * Reindex all work notes into vector store
+ * Used for initial setup or recovery
  */
-admin.get('/embedding-failures', async (c) => {
-  const limit = parseInt(c.req.query('limit') || '50');
-  const offset = parseInt(c.req.query('offset') || '0');
+admin.post('/reindex-all', async (c) => {
+  const batchSize = parseInt(c.req.query('batchSize') || '10');
 
-  const retryService = new EmbeddingRetryService(c.env.DB);
-
-  const [items, total] = await Promise.all([
-    retryService.getDeadLetterItems(limit, offset),
-    retryService.countDeadLetterItems(),
-  ]);
-
-  return c.json({
-    items,
-    total,
-    limit,
-    offset,
-  });
-});
-
-/**
- * POST /admin/embedding-failures/:id/retry
- * Manually retry a dead-letter embedding failure
- */
-admin.post('/embedding-failures/:id/retry', async (c) => {
-  const retryId = c.req.param('id');
-
-  const retryService = new EmbeddingRetryService(c.env.DB);
-
-  // Check if retry item exists and is in dead-letter status
-  const item = await retryService.getRetryItem(retryId);
-
-  if (!item) {
-    return c.json(
-      {
-        success: false,
-        message: '재시도 항목을 찾을 수 없습니다.',
-      },
-      404
-    );
-  }
-
-  if (item.status !== 'dead_letter') {
-    return c.json(
-      {
-        success: false,
-        message: '재시도는 dead_letter 상태인 항목만 가능합니다.',
-        current_status: item.status,
-      },
-      400
-    );
-  }
-
-  // Reset to pending for retry
-  await retryService.retryDeadLetterItem(retryId);
+  const processor = new EmbeddingProcessor(c.env);
+  const result = await processor.reindexAll(batchSize);
 
   return c.json({
     success: true,
-    message: '재시도가 예약되었습니다.',
-    status: 'pending',
+    message: `벡터 스토어 재인덱싱 완료`,
+    result,
   });
 });
 
 /**
- * GET /admin/embedding-failures/:id
- * Get details of a specific embedding failure
+ * POST /admin/reindex/:workId
+ * Reindex a single work note into vector store
  */
-admin.get('/embedding-failures/:id', async (c) => {
-  const retryId = c.req.param('id');
+admin.post('/reindex/:workId', async (c) => {
+  const workId = c.req.param('workId');
 
-  const retryService = new EmbeddingRetryService(c.env.DB);
-  const item = await retryService.getRetryItem(retryId);
+  const processor = new EmbeddingProcessor(c.env);
 
-  if (!item) {
+  try {
+    await processor.reindexOne(workId);
+
+    return c.json({
+      success: true,
+      message: `업무 노트 ${workId} 재인덱싱 완료`,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Determine appropriate status code based on error type
+    const isNotFound = errorMessage.includes('not found');
+    const statusCode = isNotFound ? 404 : 500;
+
     return c.json(
       {
-        error: '재시도 항목을 찾을 수 없습니다.',
+        success: false,
+        message: errorMessage,
       },
-      404
+      statusCode
     );
   }
-
-  return c.json(item);
 });
 
 /**
- * GET /admin/retry-queue/stats
- * Get statistics about the retry queue
+ * GET /admin/embedding-stats
+ * Get embedding statistics (total, embedded, pending)
  */
-admin.get('/retry-queue/stats', async (c) => {
-  // Get counts by status
-  const statsQuery = await c.env.DB.prepare(
-    `SELECT
-       status,
-       COUNT(*) as count
-     FROM embedding_retry_queue
-     GROUP BY status`
-  ).all<{ status: string; count: number }>();
+admin.get('/embedding-stats', async (c) => {
+  const processor = new EmbeddingProcessor(c.env);
+  const stats = await processor.getEmbeddingStats();
 
-  const stats = {
-    pending: 0,
-    retrying: 0,
-    dead_letter: 0,
-  };
+  return c.json(stats);
+});
 
-  for (const row of statsQuery.results || []) {
-    if (row.status === 'pending') stats.pending = row.count;
-    if (row.status === 'retrying') stats.retrying = row.count;
-    if (row.status === 'dead_letter') stats.dead_letter = row.count;
-  }
+/**
+ * POST /admin/embed-pending
+ * Embed only work notes that are not yet embedded
+ * More efficient than reindex-all
+ */
+admin.post('/embed-pending', async (c) => {
+  const batchSize = parseInt(c.req.query('batchSize') || '10');
+
+  const processor = new EmbeddingProcessor(c.env);
+  const result = await processor.embedPending(batchSize);
 
   return c.json({
-    stats,
-    total: stats.pending + stats.retrying + stats.dead_letter,
+    success: true,
+    message: `미완료 노트 임베딩 완료`,
+    result,
   });
 });
 

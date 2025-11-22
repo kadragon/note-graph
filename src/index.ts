@@ -1,4 +1,4 @@
-// Trace: SPEC-auth-1, TASK-001, TASK-003, TASK-004, TASK-015
+// Trace: SPEC-auth-1, TASK-001, TASK-003, TASK-004, TASK-015, TASK-022
 /**
  * Note Graph - Main Worker Entry Point
  * Personal work note management system with AI-powered features

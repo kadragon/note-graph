@@ -29,7 +29,8 @@ export class WorkNoteRepository {
     const result = await this.db
       .prepare(
         `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, created_at as createdAt, updated_at as updatedAt
+                category, created_at as createdAt, updated_at as updatedAt,
+                embedded_at as embeddedAt
          FROM work_notes
          WHERE work_id = ?`
       )
@@ -102,7 +103,8 @@ export class WorkNoteRepository {
     const result = await this.db
       .prepare(
         `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, created_at as createdAt, updated_at as updatedAt
+                category, created_at as createdAt, updated_at as updatedAt,
+                embedded_at as embeddedAt
          FROM work_notes
          WHERE work_id IN (${placeholders})`
       )
@@ -118,7 +120,8 @@ export class WorkNoteRepository {
   async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
     let sql = `
       SELECT DISTINCT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
-             wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt
+             wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt,
+             wn.embedded_at as embeddedAt
       FROM work_notes wn
     `;
 
@@ -350,6 +353,7 @@ export class WorkNoteRepository {
       category: data.category || null,
       createdAt: now,
       updatedAt: now,
+      embeddedAt: null,
     };
   }
 
@@ -384,6 +388,7 @@ export class WorkNoteRepository {
 
     if (updateFields.length > 0) {
       updateFields.push('updated_at = ?');
+      updateFields.push('embedded_at = NULL'); // Reset embedding status on content change
       updateParams.push(now);
       updateParams.push(workId);
 
@@ -526,12 +531,14 @@ export class WorkNoteRepository {
     }
 
     // Return the updated work note without extra DB roundtrip
+    // Reset embeddedAt to null only if content changed (needs re-embedding)
     return {
       ...existing,
       title: data.title !== undefined ? data.title : existing.title,
       contentRaw: data.contentRaw !== undefined ? data.contentRaw : existing.contentRaw,
       category: data.category !== undefined ? (data.category || null) : existing.category,
       updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
+      embeddedAt: updateFields.length > 0 ? null : existing.embeddedAt,
     };
   }
 
@@ -583,5 +590,63 @@ export class WorkNoteRepository {
       .first<{ current_dept: string | null }>();
 
     return result?.current_dept || null;
+  }
+
+  /**
+   * Update embedded_at timestamp for a work note
+   * Called after successful embedding
+   *
+   * @param workId - Work note ID
+   */
+  async updateEmbeddedAt(workId: string): Promise<void> {
+    const now = new Date().toISOString();
+    await this.db
+      .prepare('UPDATE work_notes SET embedded_at = ? WHERE work_id = ?')
+      .bind(now, workId)
+      .run();
+  }
+
+  /**
+   * Get count of embedded and non-embedded work notes
+   */
+  async getEmbeddingStats(): Promise<{ total: number; embedded: number; pending: number }> {
+    const result = await this.db
+      .prepare(
+        `SELECT
+           COUNT(*) as total,
+           SUM(CASE WHEN embedded_at IS NOT NULL THEN 1 ELSE 0 END) as embedded,
+           SUM(CASE WHEN embedded_at IS NULL THEN 1 ELSE 0 END) as pending
+         FROM work_notes`
+      )
+      .first<{ total: number; embedded: number; pending: number }>();
+
+    return {
+      total: result?.total || 0,
+      embedded: result?.embedded || 0,
+      pending: result?.pending || 0,
+    };
+  }
+
+  /**
+   * Find work notes that are not yet embedded
+   *
+   * @param limit - Maximum number of notes to return
+   * @param offset - Offset for pagination
+   */
+  async findPendingEmbedding(limit: number = 10, offset: number = 0): Promise<WorkNote[]> {
+    const result = await this.db
+      .prepare(
+        `SELECT work_id as workId, title, content_raw as contentRaw,
+                category, created_at as createdAt, updated_at as updatedAt,
+                embedded_at as embeddedAt
+         FROM work_notes
+         WHERE embedded_at IS NULL
+         ORDER BY created_at ASC
+         LIMIT ? OFFSET ?`
+      )
+      .bind(limit, offset)
+      .all<WorkNote>();
+
+    return result.results || [];
   }
 }
