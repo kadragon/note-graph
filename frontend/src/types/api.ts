@@ -286,3 +286,22 @@ export interface PDFJob {
   draft?: AIGenerateDraftResponse;
   error?: string;
 }
+
+// Vector Store types
+export interface EmbeddingStats {
+  total: number;
+  embedded: number;
+  pending: number;
+}
+
+export interface ReindexResult {
+  processed: number;
+  succeeded: number;
+  failed: number;
+}
+
+export interface EmbedPendingResult {
+  processed: number;
+  succeeded: number;
+  failed: number;
+}

@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Notebook,
   ChevronRight,
+  Database,
 } from 'lucide-react';
 import { API } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -79,6 +80,11 @@ const navSections: NavSection[] = [
         path: '/rag',
         label: 'AI 챗봇',
         icon: MessageSquare,
+      },
+      {
+        path: '/vector-store',
+        label: '벡터 스토어',
+        icon: Database,
       },
     ],
   },

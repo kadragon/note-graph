@@ -13,6 +13,7 @@ const TaskCategories = lazy(() => import('@/pages/TaskCategories/TaskCategories'
 const Search = lazy(() => import('@/pages/Search'));
 const RAG = lazy(() => import('@/pages/RAG'));
 const PDFUpload = lazy(() => import('@/pages/PDFUpload'));
+const VectorStore = lazy(() => import('@/pages/VectorStore'));
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
             <Route path="/search" element={<Search />} />
             <Route path="/rag" element={<RAG />} />
             <Route path="/pdf" element={<PDFUpload />} />
+            <Route path="/vector-store" element={<VectorStore />} />
           </Routes>
         </Suspense>
       </AppLayout>
