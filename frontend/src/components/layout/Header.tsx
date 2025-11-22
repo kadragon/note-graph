@@ -14,6 +14,18 @@ const pathTitles: Record<string, { title: string; subtitle: string }> = {
   '/rag': { title: 'AI 챗봇', subtitle: 'AI와 대화하세요' },
 };
 
+// Check if element is an editable input field
+function isEditableElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return (
+    tagName === 'input' ||
+    tagName === 'textarea' ||
+    tagName === 'select' ||
+    target.isContentEditable
+  );
+}
+
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -32,20 +44,10 @@ export default function Header() {
       }
 
       // Check for / key (only when not in an input/textarea)
-      if (e.key === '/' && !isEditableElement(e.target as Element)) {
+      if (e.key === '/' && !isEditableElement(e.target)) {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
-    };
-
-    const isEditableElement = (element: Element): boolean => {
-      const tagName = element.tagName.toLowerCase();
-      return (
-        tagName === 'input' ||
-        tagName === 'textarea' ||
-        tagName === 'select' ||
-        (element as HTMLElement).isContentEditable
-      );
     };
 
     document.addEventListener('keydown', handleGlobalKeyDown);
@@ -76,7 +78,7 @@ export default function Header() {
           <Input
             ref={searchInputRef}
             type="search"
-            placeholder="검색... (⌘K)"
+            placeholder="검색... (⌘/Ctrl+K)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}

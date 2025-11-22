@@ -201,24 +201,27 @@ function DepartmentsTable({ departments }: DepartmentsTableProps) {
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [query, setQuery] = useState('');
   const searchMutation = useSearch();
 
-  // Read query from URL params and trigger search on mount
+  // Get query from URL params (source of truth)
+  const urlQuery = searchParams.get('q') || '';
+
+  // Local state for input field
+  const [query, setQuery] = useState(urlQuery);
+
+  // Trigger search when URL params change
   useEffect(() => {
-    const urlQuery = searchParams.get('q');
     if (urlQuery) {
       setQuery(urlQuery);
       searchMutation.mutate({ query: urlQuery });
-      // Clear the URL param after reading
-      setSearchParams({}, { replace: true });
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [urlQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      searchMutation.mutate({ query: query.trim() });
+      // Update URL params to maintain browser history
+      setSearchParams({ q: query.trim() });
     }
   };
 
