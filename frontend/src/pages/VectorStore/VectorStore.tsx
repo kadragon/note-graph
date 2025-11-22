@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Database,
@@ -13,11 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { API } from '@/lib/api';
+import type { BatchProcessResult } from '@/types/api';
+
+const BATCH_SIZE = 10;
 
 export default function VectorStore() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [batchSize] = useState(10);
 
   // Fetch embedding stats
   const { data: stats, isLoading: isLoadingStats } = useQuery({
@@ -26,51 +27,47 @@ export default function VectorStore() {
     refetchInterval: 5000, // Auto refresh every 5 seconds
   });
 
-  // Embed pending mutation
-  const embedPendingMutation = useMutation({
-    mutationFn: () => API.embedPending(batchSize),
-    onSuccess: (data) => {
+  // Handler factory functions to reduce duplication
+  const createSuccessHandler = (title: string) => {
+    return (data: { result: BatchProcessResult }) => {
       queryClient.invalidateQueries({ queryKey: ['embedding-stats'] });
       toast({
-        title: '임베딩 완료',
+        title,
         description: `처리: ${data.result.processed}, 성공: ${data.result.succeeded}, 실패: ${data.result.failed}`,
       });
-    },
-    onError: (error: Error) => {
+    };
+  };
+
+  const createErrorHandler = (title: string) => {
+    return (error: Error) => {
       toast({
-        title: '임베딩 실패',
+        title,
         description: error.message,
         variant: 'destructive',
       });
-    },
+    };
+  };
+
+  // Embed pending mutation
+  const embedPendingMutation = useMutation({
+    mutationFn: () => API.embedPending(BATCH_SIZE),
+    onSuccess: createSuccessHandler('임베딩 완료'),
+    onError: createErrorHandler('임베딩 실패'),
   });
 
   // Reindex all mutation
   const reindexAllMutation = useMutation({
-    mutationFn: () => API.reindexAll(batchSize),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['embedding-stats'] });
-      toast({
-        title: '전체 재인덱싱 완료',
-        description: `처리: ${data.result.processed}, 성공: ${data.result.succeeded}, 실패: ${data.result.failed}`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: '재인덱싱 실패',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
+    mutationFn: () => API.reindexAll(BATCH_SIZE),
+    onSuccess: createSuccessHandler('전체 재인덱싱 완료'),
+    onError: createErrorHandler('재인덱싱 실패'),
   });
 
   const isProcessing = embedPendingMutation.isPending || reindexAllMutation.isPending;
 
-  const embeddingPercentage = stats
-    ? stats.total > 0
-      ? Math.round((stats.embedded / stats.total) * 100)
-      : 0
-    : 0;
+  // Simplified percentage calculation
+  const total = stats?.total ?? 0;
+  const embedded = stats?.embedded ?? 0;
+  const embeddingPercentage = total > 0 ? Math.round((embedded / total) * 100) : 0;
 
   return (
     <div className="p-6">

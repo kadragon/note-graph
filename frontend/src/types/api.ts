@@ -294,13 +294,7 @@ export interface EmbeddingStats {
   pending: number;
 }
 
-export interface ReindexResult {
-  processed: number;
-  succeeded: number;
-  failed: number;
-}
-
-export interface EmbedPendingResult {
+export interface BatchProcessResult {
   processed: number;
   succeeded: number;
   failed: number;

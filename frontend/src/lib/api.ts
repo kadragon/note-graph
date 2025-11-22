@@ -35,8 +35,7 @@ import type {
   AIGenerateDraftResponse,
   PDFJob,
   EmbeddingStats,
-  ReindexResult,
-  EmbedPendingResult,
+  BatchProcessResult,
 } from '@/types/api';
 
 /**
@@ -505,7 +504,7 @@ class APIClient {
     const params = new URLSearchParams();
     if (batchSize) params.set('batchSize', batchSize.toString());
     const queryString = params.toString();
-    return this.request<{ success: boolean; message: string; result: ReindexResult }>(
+    return this.request<{ success: boolean; message: string; result: BatchProcessResult }>(
       `/admin/reindex-all${queryString ? `?${queryString}` : ''}`,
       { method: 'POST' }
     );
@@ -522,7 +521,7 @@ class APIClient {
     const params = new URLSearchParams();
     if (batchSize) params.set('batchSize', batchSize.toString());
     const queryString = params.toString();
-    return this.request<{ success: boolean; message: string; result: EmbedPendingResult }>(
+    return this.request<{ success: boolean; message: string; result: BatchProcessResult }>(
       `/admin/embed-pending${queryString ? `?${queryString}` : ''}`,
       { method: 'POST' }
     );
