@@ -20,18 +20,31 @@ export class TodoRepository {
   }
 
   /**
+   * Convert SQLite integer to boolean for skipWeekends field
+   * Centralizes the database-to-domain object mapping
+   */
+  private convertTodoFromDb<T extends { skipWeekends: boolean }>(todo: T): T {
+    return {
+      ...todo,
+      skipWeekends: Boolean(todo.skipWeekends),
+    };
+  }
+
+  /**
    * Skip weekends by moving to next Monday if the date falls on Sat/Sun
+   * Returns a new Date instance to avoid mutating the input
    */
   private skipWeekendsForDate(date: Date): Date {
-    const dayOfWeek = date.getDay();
+    const result = new Date(date.getTime());
+    const dayOfWeek = result.getDay();
     if (dayOfWeek === 0) {
       // Sunday -> Monday
-      date.setDate(date.getDate() + 1);
+      result.setDate(result.getDate() + 1);
     } else if (dayOfWeek === 6) {
       // Saturday -> Monday
-      date.setDate(date.getDate() + 2);
+      result.setDate(result.getDate() + 2);
     }
-    return date;
+    return result;
   }
 
   /**
@@ -84,11 +97,9 @@ export class TodoRepository {
     }
 
     // Apply skip weekends if enabled
-    if (skipWeekends) {
-      this.skipWeekendsForDate(baseDate);
-    }
+    const finalDate = skipWeekends ? this.skipWeekendsForDate(baseDate) : baseDate;
 
-    return baseDate.toISOString();
+    return finalDate.toISOString();
   }
 
   /**
@@ -109,12 +120,7 @@ export class TodoRepository {
       .bind(todoId)
       .first<Todo>();
 
-    if (result) {
-      // Convert SQLite integer to boolean
-      result.skipWeekends = Boolean(result.skipWeekends);
-    }
-
-    return result || null;
+    return result ? this.convertTodoFromDb(result) : null;
   }
 
   /**
@@ -136,11 +142,7 @@ export class TodoRepository {
       .bind(workId)
       .all<Todo>();
 
-    // Convert SQLite integer to boolean for each todo
-    return (result.results || []).map(todo => ({
-      ...todo,
-      skipWeekends: Boolean(todo.skipWeekends)
-    }));
+    return (result.results || []).map(todo => this.convertTodoFromDb(todo));
   }
 
   /**
@@ -269,11 +271,7 @@ export class TodoRepository {
     const stmt = this.db.prepare(sql);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<TodoWithWorkNote>();
 
-    // Convert SQLite integer to boolean for each todo
-    return (result.results || []).map(todo => ({
-      ...todo,
-      skipWeekends: Boolean(todo.skipWeekends)
-    }));
+    return (result.results || []).map(todo => this.convertTodoFromDb(todo));
   }
 
   /**
