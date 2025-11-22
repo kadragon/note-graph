@@ -208,6 +208,9 @@ export class WorkNoteService {
 
     // Upsert chunks into Vectorize
     await this.vectorizeService.upsertChunks(chunksToEmbed);
+
+    // Update embedded_at timestamp on success
+    await this.repository.updateEmbeddedAt(workNote.workId);
   }
 
   /**
@@ -259,6 +262,9 @@ export class WorkNoteService {
     // delete chunks that exceed the new chunk count
     const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
     await this.vectorizeService.deleteStaleChunks(workNote.workId, newChunkIds);
+
+    // Update embedded_at timestamp on success
+    await this.repository.updateEmbeddedAt(workNote.workId);
   }
 
   /**
