@@ -11,6 +11,7 @@ import rehypeHighlight from 'rehype-highlight';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -266,6 +267,9 @@ export function ViewWorkNoteDialog({
               )}
             </div>
           </div>
+          <DialogDescription className="sr-only">
+            업무 노트 상세 보기 및 편집
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

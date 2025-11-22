@@ -70,6 +70,9 @@ interface BackendTodo {
   waitUntil?: string;
   repeatRule?: RepeatRule;
   recurrenceType?: RecurrenceType;
+  customInterval?: number;
+  customUnit?: 'DAY' | 'WEEK' | 'MONTH';
+  skipWeekends?: boolean;
   createdAt: string;
   updatedAt: string;
   workTitle?: string;
@@ -234,6 +237,9 @@ class APIClient {
       waitUntil: backendTodo.waitUntil,
       repeatRule: backendTodo.repeatRule,
       recurrenceType: backendTodo.recurrenceType,
+      customInterval: backendTodo.customInterval,
+      customUnit: backendTodo.customUnit,
+      skipWeekends: backendTodo.skipWeekends,
       createdAt: backendTodo.createdAt,
       updatedAt: backendTodo.updatedAt,
     };
