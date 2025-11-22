@@ -108,8 +108,11 @@ database_schema:
     - due_date TEXT
     - wait_until TEXT
     - status TEXT # 진행중, 완료, 보류, 중단
-    - repeat_rule TEXT # NONE, DAILY, WEEKLY, MONTHLY
+    - repeat_rule TEXT # NONE, DAILY, WEEKLY, MONTHLY, CUSTOM
     - recurrence_type TEXT # DUE_DATE, COMPLETION_DATE
+    - custom_interval INTEGER # For CUSTOM repeat (e.g., 2 for "every 2 months")
+    - custom_unit TEXT # DAY, WEEK, MONTH
+    - skip_weekends INTEGER # 0 or 1, skip Saturday/Sunday
 
 api_endpoints:
   - method: GET

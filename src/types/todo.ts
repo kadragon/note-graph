@@ -11,12 +11,17 @@ export type TodoStatus = '진행중' | '완료' | '보류' | '중단';
 /**
  * Repeat rule for recurring todos
  */
-export type RepeatRule = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type RepeatRule = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM';
 
 /**
  * Recurrence type strategy
  */
 export type RecurrenceType = 'DUE_DATE' | 'COMPLETION_DATE';
+
+/**
+ * Custom interval unit for CUSTOM repeat rule
+ */
+export type CustomIntervalUnit = 'DAY' | 'WEEK' | 'MONTH';
 
 /**
  * Todo entity
@@ -33,6 +38,9 @@ export interface Todo {
   status: TodoStatus;
   repeatRule: RepeatRule;
   recurrenceType: RecurrenceType | null;
+  customInterval: number | null; // For CUSTOM repeat rule (e.g., 2 for "every 2 months")
+  customUnit: CustomIntervalUnit | null; // Unit for custom interval (DAY, WEEK, MONTH)
+  skipWeekends: boolean; // Skip weekends when calculating next due date
 }
 
 /**

@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useUpdateTodo } from '@/hooks/useTodos';
 import { TODO_STATUS } from '@/constants/todoStatus';
-import type { Todo, TodoStatus, RepeatRule, RecurrenceType } from '@/types/api';
+import type { Todo, TodoStatus, RepeatRule, RecurrenceType, CustomIntervalUnit } from '@/types/api';
 
 interface EditTodoDialogProps {
   todo: Todo | null;
@@ -40,6 +40,13 @@ const REPEAT_RULE_OPTIONS: Array<{ value: RepeatRule; label: string }> = [
   { value: 'DAILY', label: '매일' },
   { value: 'WEEKLY', label: '매주' },
   { value: 'MONTHLY', label: '매월' },
+  { value: 'CUSTOM', label: '커스텀' },
+];
+
+const CUSTOM_UNIT_OPTIONS: Array<{ value: CustomIntervalUnit; label: string }> = [
+  { value: 'DAY', label: '일' },
+  { value: 'WEEK', label: '주' },
+  { value: 'MONTH', label: '개월' },
 ];
 
 const RECURRENCE_TYPE_OPTIONS: Array<{ value: RecurrenceType; label: string }> = [
@@ -66,6 +73,9 @@ export function EditTodoDialog({
   const [status, setStatus] = useState<TodoStatus>(TODO_STATUS.IN_PROGRESS);
   const [repeatRule, setRepeatRule] = useState<RepeatRule>('NONE');
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('DUE_DATE');
+  const [customInterval, setCustomInterval] = useState<number>(1);
+  const [customUnit, setCustomUnit] = useState<CustomIntervalUnit>('MONTH');
+  const [skipWeekends, setSkipWeekends] = useState(false);
 
   const updateMutation = useUpdateTodo(workNoteId);
 
@@ -79,6 +89,9 @@ export function EditTodoDialog({
       setStatus(todo.status);
       setRepeatRule(todo.repeatRule || 'NONE');
       setRecurrenceType(todo.recurrenceType || 'DUE_DATE');
+      setCustomInterval(todo.customInterval || 1);
+      setCustomUnit(todo.customUnit || 'MONTH');
+      setSkipWeekends(todo.skipWeekends || false);
     }
   }, [todo, open]);
 
@@ -100,6 +113,9 @@ export function EditTodoDialog({
           status,
           repeatRule,
           recurrenceType,
+          customInterval: repeatRule === 'CUSTOM' ? customInterval : null,
+          customUnit: repeatRule === 'CUSTOM' ? customUnit : null,
+          skipWeekends,
         },
       });
 
@@ -199,6 +215,49 @@ export function EditTodoDialog({
                 ))}
               </select>
             </div>
+
+            {repeatRule === 'CUSTOM' && (
+              <div className="grid gap-2">
+                <Label>커스텀 반복 간격</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={customInterval}
+                    onChange={(e) => setCustomInterval(parseInt(e.target.value) || 1)}
+                    className="w-20"
+                  />
+                  <select
+                    value={customUnit}
+                    onChange={(e) => setCustomUnit(e.target.value as CustomIntervalUnit)}
+                    className={SELECT_CLASS_NAME}
+                  >
+                    {CUSTOM_UNIT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="flex items-center text-sm text-muted-foreground">마다</span>
+                </div>
+              </div>
+            )}
+
+            {repeatRule !== 'NONE' && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="skipWeekends"
+                  checked={skipWeekends}
+                  onChange={(e) => setSkipWeekends(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="skipWeekends" className="text-sm font-normal">
+                  주말 제외 (토/일요일은 다음 월요일로)
+                </Label>
+              </div>
+            )}
 
             {repeatRule !== 'NONE' && (
               <div className="grid gap-2">
