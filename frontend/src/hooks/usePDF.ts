@@ -8,7 +8,7 @@ export function useUploadPDF() {
 
   return useMutation({
     mutationFn: (file: File) => API.uploadPDF(file),
-    onSuccess: (data) => {
+    onSuccess: (_data) => {
       toast({
         title: '성공',
         description: 'PDF 파일이 업로드되었습니다.',
@@ -50,7 +50,7 @@ export function useSavePDFDraft() {
       return createWorkNote.mutateAsync(draft);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
       toast({
         title: '성공',
         description: '업무노트로 저장되었습니다.',

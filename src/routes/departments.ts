@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../index';
 import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
@@ -29,7 +30,7 @@ departments.get('/', async (c) => {
     return c.json(results);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error listing departments:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -48,7 +49,7 @@ departments.post('/', async (c) => {
     return c.json(department, 201);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error creating department:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -71,7 +72,7 @@ departments.get('/:deptName', async (c) => {
     return c.json(department);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error getting department:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -91,7 +92,7 @@ departments.put('/:deptName', async (c) => {
     return c.json(department);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error updating department:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -110,7 +111,7 @@ departments.get('/:deptName/work-notes', async (c) => {
     return c.json(workNotes);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as any);
+      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
     }
     console.error('Error getting department work notes:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);

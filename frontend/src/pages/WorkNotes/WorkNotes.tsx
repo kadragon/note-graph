@@ -19,7 +19,7 @@ import { CreateWorkNoteDialog } from './components/CreateWorkNoteDialog';
 import { CreateFromPDFDialog } from './components/CreateFromPDFDialog';
 import { CreateFromTextDialog } from './components/CreateFromTextDialog';
 import { ViewWorkNoteDialog } from './components/ViewWorkNoteDialog';
-import type { WorkNote, WorkNoteWithStats } from '@/types/api';
+import type { WorkNote } from '@/types/api';
 
 export default function WorkNotes() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -192,7 +192,7 @@ export default function WorkNotes() {
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteConfirm}
+              onClick={() => void handleDeleteConfirm()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               삭제

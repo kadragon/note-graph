@@ -129,7 +129,7 @@ export function EditTodoDialog({
       });
 
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook
     }
   };
@@ -139,7 +139,7 @@ export function EditTodoDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>할일 수정</DialogTitle>
             <DialogDescription>

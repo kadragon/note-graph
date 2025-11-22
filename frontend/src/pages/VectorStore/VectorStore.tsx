@@ -49,7 +49,7 @@ export default function VectorStore() {
   // Handler factory functions to reduce duplication
   const createSuccessHandler = (title: string) => {
     return (data: { result: BatchProcessResult }) => {
-      queryClient.invalidateQueries({ queryKey: ['embedding-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['embedding-stats'] });
       toast({
         title,
         description: `처리: ${data.result.processed}, 성공: ${data.result.succeeded}, 실패: ${data.result.failed}`,

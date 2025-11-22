@@ -22,13 +22,12 @@ describe('API.createDepartment', () => {
       }),
     });
 
-    // @ts-expect-error - inject test double
-    global.fetch = fetchMock;
+    (global as unknown as { fetch: typeof fetch }).fetch = fetchMock;
 
     await API.createDepartment({ deptName: '교무기획부' });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/departments',
+      '/api/departments',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ deptName: '교무기획부' }),

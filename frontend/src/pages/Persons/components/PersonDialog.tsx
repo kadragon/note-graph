@@ -190,7 +190,7 @@ export function PersonDialog({
       setHistoryOpen(false);
       setErrors({});
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook (toast notification)
     }
   };
@@ -205,7 +205,7 @@ export function PersonDialog({
       setCurrentDept(dept.deptName);
       setNewDeptName('');
       setDeptOpen(false);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook
     }
   };
@@ -213,7 +213,7 @@ export function PersonDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>
               {isEditMode ? '사람 정보 수정' : '새 사람 추가'}
@@ -326,14 +326,14 @@ export function PersonDialog({
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
-                                  handleCreateDept();
+                                  void handleCreateDept();
                                 }
                               }}
                             />
                             <Button
                               type="button"
                               size="sm"
-                              onClick={handleCreateDept}
+                              onClick={() => void handleCreateDept()}
                               disabled={createDeptMutation.isPending}
                             >
                               <Plus className="h-4 w-4" />

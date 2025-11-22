@@ -69,7 +69,7 @@ export function CreatePersonDialog({
       setCurrentDept('');
       setCurrentPosition('');
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook
     }
   };
@@ -84,7 +84,7 @@ export function CreatePersonDialog({
       setCurrentDept(dept.deptName);
       setNewDeptName('');
       setDeptOpen(false);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook
     }
   };
@@ -92,7 +92,7 @@ export function CreatePersonDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>새 사람 추가</DialogTitle>
             <DialogDescription>
@@ -155,14 +155,14 @@ export function CreatePersonDialog({
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
-                                  handleCreateDept();
+                                  void handleCreateDept();
                                 }
                               }}
                             />
                             <Button
                               type="button"
                               size="sm"
-                              onClick={handleCreateDept}
+                              onClick={() => void handleCreateDept()}
                               disabled={createDeptMutation.isPending}
                             >
                               <Plus className="h-4 w-4" />

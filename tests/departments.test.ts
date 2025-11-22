@@ -18,7 +18,7 @@ describe('Department search', () => {
       testEnv.DB.prepare('INSERT INTO departments (dept_name, description) VALUES (?, ?)').bind('연구개발실', 'B'),
     ]);
 
-    const response = await SELF.fetch('http://localhost/departments?q=기획', {
+    const response = await SELF.fetch('http://localhost/api/departments?q=기획', {
       headers: { 'Cf-Access-Authenticated-User-Email': 'test@example.com' },
     });
 
@@ -31,7 +31,7 @@ describe('Department search', () => {
   it('should return all departments when no query provided', async () => {
     await testEnv.DB.prepare('INSERT INTO departments (dept_name, description) VALUES (?, ?)').bind('행정지원실', 'C').run();
 
-    const response = await SELF.fetch('http://localhost/departments', {
+    const response = await SELF.fetch('http://localhost/api/departments', {
       headers: { 'Cf-Access-Authenticated-User-Email': 'test@example.com' },
     });
 

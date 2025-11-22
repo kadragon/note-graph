@@ -119,7 +119,7 @@ export function PersonImportDialog({
           <Button
             type="button"
             variant="secondary"
-            onClick={handleParse}
+            onClick={() => void handleParse()}
             disabled={!inputText.trim() || parsePersonMutation.isPending}
           >
             {parsePersonMutation.isPending ? (
@@ -193,7 +193,7 @@ export function PersonImportDialog({
           </Button>
           <Button
             type="button"
-            onClick={handleImport}
+            onClick={() => void handleImport()}
             disabled={!parsedData || importPersonMutation.isPending}
           >
             {importPersonMutation.isPending ? (

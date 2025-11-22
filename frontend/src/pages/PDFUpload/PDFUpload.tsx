@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,7 +27,7 @@ export default function PDFUpload() {
     try {
       const result = await uploadMutation.mutateAsync(file);
       setCurrentJobId(result.jobId);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook
     }
   };
@@ -44,7 +44,7 @@ export default function PDFUpload() {
       // Reset after save
       setCurrentJobId(null);
       setUploadedFile(null);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook
     }
   };
@@ -80,7 +80,7 @@ export default function PDFUpload() {
 
       <div className="grid gap-6">
         <FileDropzone
-          onFileSelect={handleFileSelect}
+          onFileSelect={(file) => void handleFileSelect(file)}
           disabled={uploadMutation.isPending || !!currentJobId}
         />
 
@@ -118,7 +118,7 @@ export default function PDFUpload() {
               <div className="flex items-center justify-between">
                 <CardTitle>생성된 초안</CardTitle>
                 <Button
-                  onClick={handleSaveDraft}
+                  onClick={() => void handleSaveDraft()}
                   disabled={saveDraftMutation.isPending}
                 >
                   <Save className="h-4 w-4 mr-2" />
@@ -141,20 +141,19 @@ export default function PDFUpload() {
                   {job.draft.content}
                 </div>
               </div>
-              {job.draft.suggestedTodos &&
-                job.draft.suggestedTodos.length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium mb-2">제안된 할 일</p>
-                    <ul className="space-y-1">
-                      {job.draft.suggestedTodos.map((todo, idx) => (
-                        <li key={idx} className="text-sm flex items-start">
-                          <span className="mr-2">•</span>
-                          <span>{todo}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+              {job.draft.todos && job.draft.todos.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2">제안된 할 일</p>
+                  <ul className="space-y-1">
+                    {job.draft.todos.map((todo, idx) => (
+                      <li key={idx} className="text-sm flex items-start">
+                        <span className="mr-2">•</span>
+                        <span>{todo.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

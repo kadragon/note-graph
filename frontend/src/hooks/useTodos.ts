@@ -83,10 +83,10 @@ export function useToggleTodo(workNoteId?: string) {
     },
     onSettled: (_data, _error, _variables, context) => {
       // Invalidate to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['todos'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       if (context?.workNoteId) {
-        queryClient.invalidateQueries({ queryKey: ['work-note-todos', context.workNoteId] });
+        void queryClient.invalidateQueries({ queryKey: ['work-note-todos', context.workNoteId] });
       }
     },
     onSuccess: () => {
@@ -107,10 +107,10 @@ export function useUpdateTodo(workNoteId?: string) {
       API.updateTodo(id, data),
     onSuccess: () => {
       // Invalidate to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['todos'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       if (workNoteId) {
-        queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNoteId] });
+        void queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNoteId] });
       }
       toast({
         title: '성공',
@@ -197,10 +197,10 @@ export function useDeleteTodo(workNoteId?: string) {
     },
     onSettled: (_data, _error, _todoId, context) => {
       // Invalidate to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['todos'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       if (context?.workNoteId) {
-        queryClient.invalidateQueries({ queryKey: ['work-note-todos', context.workNoteId] });
+        void queryClient.invalidateQueries({ queryKey: ['work-note-todos', context.workNoteId] });
       }
     },
     onSuccess: () => {

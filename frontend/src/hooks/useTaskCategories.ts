@@ -17,7 +17,7 @@ export function useCreateTaskCategory() {
   return useMutation({
     mutationFn: (data: CreateTaskCategoryRequest) => API.createTaskCategory(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['taskCategories'] });
+      void queryClient.invalidateQueries({ queryKey: ['taskCategories'] });
       toast({
         title: '성공',
         description: '업무 구분이 생성되었습니다.',
@@ -41,7 +41,7 @@ export function useUpdateTaskCategory() {
     mutationFn: ({ categoryId, data }: { categoryId: string; data: UpdateTaskCategoryRequest }) =>
       API.updateTaskCategory(categoryId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['taskCategories'] });
+      void queryClient.invalidateQueries({ queryKey: ['taskCategories'] });
       toast({
         title: '성공',
         description: '업무 구분이 수정되었습니다.',
@@ -64,7 +64,7 @@ export function useDeleteTaskCategory() {
   return useMutation({
     mutationFn: (categoryId: string) => API.deleteTaskCategory(categoryId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['taskCategories'] });
+      void queryClient.invalidateQueries({ queryKey: ['taskCategories'] });
       toast({
         title: '성공',
         description: '업무 구분이 삭제되었습니다.',

@@ -73,7 +73,7 @@ export async function authMiddleware(
  * @throws Error if user is not set in context (middleware not applied)
  */
 export function getAuthUser(c: Context): AuthUser {
-  const user = c.get('user');
+  const user = c.get('user') as AuthUser | undefined;
   if (!user) {
     throw new Error('User not found in context. Ensure authMiddleware is applied.');
   }

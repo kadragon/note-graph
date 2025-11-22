@@ -89,7 +89,7 @@ export class DepartmentRepository {
 
     // Build update query dynamically based on provided fields
     const updates: string[] = [];
-    const params: any[] = [];
+    const params: (string | number | null)[] = [];
 
     if (data.description !== undefined) {
       updates.push('description = ?');

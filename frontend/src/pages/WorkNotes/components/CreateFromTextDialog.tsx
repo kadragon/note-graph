@@ -76,7 +76,7 @@ export function CreateFromTextDialog({
       }
 
       setDraftGenerated(true);
-    } catch (error) {
+    } catch {
       // Error handled by mutation hook
     }
   };
@@ -131,7 +131,7 @@ export function CreateFromTextDialog({
         await Promise.all(todoPromises);
 
         // Invalidate todos query when todos are created
-        queryClient.invalidateQueries({ queryKey: ['todos'] });
+        void queryClient.invalidateQueries({ queryKey: ['todos'] });
 
         toast({
           title: '성공',
@@ -145,8 +145,8 @@ export function CreateFromTextDialog({
       }
 
       // Always invalidate work-notes queries
-      queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
 
       // Reset form and close dialog
       resetForm();
@@ -218,7 +218,7 @@ export function CreateFromTextDialog({
               </div>
 
               <Button
-                onClick={handleGenerate}
+                onClick={() => void handleGenerate()}
                 disabled={generateMutation.isPending || !inputText.trim()}
                 className="w-full"
               >
@@ -236,7 +236,7 @@ export function CreateFromTextDialog({
 
           {/* Step 2: Edit Draft */}
           {draftGenerated && (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="title">제목</Label>
                 <Input

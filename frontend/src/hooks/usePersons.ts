@@ -18,7 +18,7 @@ export function useCreatePerson() {
   return useMutation({
     mutationFn: (data: CreatePersonRequest) => API.createPerson(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['persons'] });
+      void queryClient.invalidateQueries({ queryKey: ['persons'] });
       toast({
         title: '성공',
         description: '사람이 추가되었습니다.',
@@ -42,7 +42,7 @@ export function useUpdatePerson() {
     mutationFn: ({ personId, data }: { personId: string; data: UpdatePersonRequest }) =>
       API.updatePerson(personId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['persons'] });
+      void queryClient.invalidateQueries({ queryKey: ['persons'] });
       toast({
         title: '성공',
         description: '사람 정보가 수정되었습니다.',
@@ -88,8 +88,8 @@ export function useImportPerson() {
   return useMutation({
     mutationFn: (data: CreatePersonRequest) => API.importPerson(data),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['persons'] });
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      void queryClient.invalidateQueries({ queryKey: ['persons'] });
+      void queryClient.invalidateQueries({ queryKey: ['departments'] });
       toast({
         title: '성공',
         description: result.isNew ? '새 사람이 추가되었습니다.' : '사람 정보가 업데이트되었습니다.',

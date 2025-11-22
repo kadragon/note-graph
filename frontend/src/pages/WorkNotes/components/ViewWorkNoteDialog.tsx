@@ -143,11 +143,11 @@ export function ViewWorkNoteDialog({
   // Create todo mutation
   const createTodoMutation = useMutation({
     mutationFn: (data: CreateTodoRequest) =>
-      workNote ? API.createWorkNoteTodo(workNote.id, data) : Promise.reject(),
+      workNote ? API.createWorkNoteTodo(workNote.id, data) : Promise.reject(new Error('No work note')),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNote?.id] });
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNote?.id] });
+      void queryClient.invalidateQueries({ queryKey: ['todos'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       setTodoTitle('');
       setTodoDescription('');
       // Reset due date to today
@@ -223,7 +223,7 @@ export function ViewWorkNoteDialog({
         },
       });
       setIsEditing(false);
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook
     }
   };
@@ -407,7 +407,7 @@ export function ViewWorkNoteDialog({
                 <X className="h-4 w-4 mr-2" />
                 취소
               </Button>
-              <Button onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+              <Button onClick={() => void handleSaveEdit()} disabled={updateMutation.isPending}>
                 <Save className="h-4 w-4 mr-2" />
                 {updateMutation.isPending ? '저장 중...' : '저장'}
               </Button>

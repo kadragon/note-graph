@@ -66,7 +66,7 @@ export function CreateWorkNoteDialog({
       setSelectedPersonIds([]);
       setContent('');
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook
     }
   };
@@ -74,7 +74,7 @@ export function CreateWorkNoteDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>새 업무노트 작성</DialogTitle>
             <DialogDescription>
