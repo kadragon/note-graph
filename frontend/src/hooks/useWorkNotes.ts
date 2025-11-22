@@ -25,12 +25,17 @@ export function useWorkNotesWithStats() {
             const todos = await API.getWorkNoteTodos(workNote.id);
             const total = todos.length;
             const completed = todos.filter(todo => todo.status === TODO_STATUS.COMPLETED).length;
-            const remaining = total - completed;
             // Pending: 완료되지 않은 할일 중 waitUntil이 미래인 것
             const pending = todos.filter(todo => {
               if (todo.status === TODO_STATUS.COMPLETED) return false;
               if (!todo.waitUntil) return false;
               return new Date(todo.waitUntil) > now;
+            }).length;
+            // Remaining: 완료되지 않았고, waitUntil이 없거나 현재 이전인 할일 (지금 할 수 있는 것)
+            const remaining = todos.filter(todo => {
+              if (todo.status === TODO_STATUS.COMPLETED) return false;
+              if (todo.waitUntil && new Date(todo.waitUntil) > now) return false;
+              return true;
             }).length;
 
             return {
