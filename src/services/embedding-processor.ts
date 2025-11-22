@@ -1,20 +1,12 @@
 // Trace: SPEC-rag-2, TASK-022
-// Embedding processor for retry queue and bulk reindexing
+// Embedding processor for bulk reindexing operations
 
 import type { Env } from '../types/env';
 import type { WorkNote } from '../types/work-note';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingService, VectorizeService } from './embedding-service';
-import { EmbeddingRetryService } from './embedding-retry-service';
 import { format } from 'date-fns';
-
-export interface ProcessorResult {
-  processed: number;
-  succeeded: number;
-  failed: number;
-  movedToDeadLetter: number;
-}
 
 export interface ReindexResult {
   total: number;
@@ -25,13 +17,12 @@ export interface ReindexResult {
 }
 
 /**
- * Embedding processor for handling retry queue and bulk operations
+ * Embedding processor for bulk operations
  */
 export class EmbeddingProcessor {
   private repository: WorkNoteRepository;
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
-  private retryService: EmbeddingRetryService;
 
   constructor(private env: Env) {
     this.repository = new WorkNoteRepository(env.DB);
@@ -39,96 +30,6 @@ export class EmbeddingProcessor {
 
     const embeddingService = new EmbeddingService(env);
     this.vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
-    this.retryService = new EmbeddingRetryService(env.DB);
-  }
-
-  /**
-   * Process pending items in the retry queue
-   * Called by scheduled worker (cron trigger)
-   *
-   * @param batchSize - Number of items to process per run (default: 10)
-   * @returns Processing result statistics
-   */
-  async processRetryQueue(batchSize: number = 10): Promise<ProcessorResult> {
-    const result: ProcessorResult = {
-      processed: 0,
-      succeeded: 0,
-      failed: 0,
-      movedToDeadLetter: 0,
-    };
-
-    // Get items ready for retry
-    const items = await this.retryService.getRetryableItems(batchSize);
-
-    if (items.length === 0) {
-      return result;
-    }
-
-    console.warn(`[EmbeddingProcessor] Processing ${items.length} retry items`);
-
-    for (const item of items) {
-      result.processed++;
-
-      try {
-        // Fetch work note
-        const workNote = await this.repository.findById(item.work_id);
-
-        if (!workNote) {
-          // Work note was deleted, remove from retry queue
-          await this.retryService.deleteRetryItem(item.id);
-          console.warn(`[EmbeddingProcessor] Work note ${item.work_id} not found, removed from queue`);
-          result.succeeded++;
-          continue;
-        }
-
-        // Perform embedding based on operation type
-        if (item.operation_type === 'create' || item.operation_type === 'update') {
-          await this.embedWorkNote(workNote);
-        } else if (item.operation_type === 'delete') {
-          await this.vectorizeService.deleteWorkNoteChunks(item.work_id);
-        }
-
-        // Success - remove from queue
-        await this.retryService.deleteRetryItem(item.id);
-        result.succeeded++;
-        console.warn(`[EmbeddingProcessor] Successfully processed ${item.work_id}`);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const errorDetails = {
-          error: errorMessage,
-          stack: error instanceof Error ? error.stack : undefined,
-          timestamp: new Date().toISOString(),
-        };
-
-        const newAttemptCount = item.attempt_count + 1;
-
-        if (newAttemptCount >= item.max_attempts) {
-          // Move to dead-letter queue
-          await this.retryService.moveToDeadLetter(
-            item.id,
-            newAttemptCount,
-            errorMessage,
-            errorDetails
-          );
-          result.movedToDeadLetter++;
-          console.error(`[EmbeddingProcessor] Moved ${item.work_id} to dead-letter after ${newAttemptCount} attempts`);
-        } else {
-          // Update for next retry with exponential backoff
-          await this.retryService.updateRetryAttempt(
-            item.id,
-            newAttemptCount,
-            errorMessage,
-            errorDetails
-          );
-          result.failed++;
-          console.error(`[EmbeddingProcessor] Retry ${newAttemptCount}/${item.max_attempts} failed for ${item.work_id}: ${errorMessage}`);
-        }
-      }
-    }
-
-    console.warn(`[EmbeddingProcessor] Completed: ${result.succeeded} succeeded, ${result.failed} failed, ${result.movedToDeadLetter} dead-lettered`);
-
-    return result;
   }
 
   /**
@@ -196,18 +97,7 @@ export class EmbeddingProcessor {
           });
 
           console.error(`[EmbeddingProcessor] Failed to embed ${workNote.workId}: ${errorMessage}`);
-
-          // Enqueue for retry
-          try {
-            await this.retryService.enqueueRetry(
-              workNote.workId,
-              'create',
-              errorMessage,
-              { error: errorMessage, source: 'reindexAll' }
-            );
-          } catch {
-            console.error(`[EmbeddingProcessor] Failed to enqueue retry for ${workNote.workId}`);
-          }
+          // Note: Failed embeddings will have NULL embedded_at and can be retried via /admin/embed-pending
         }
       }
 
