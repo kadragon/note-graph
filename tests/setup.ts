@@ -74,11 +74,13 @@ const manualSchemaStatements: string[] = [
      content_raw TEXT NOT NULL,
      category TEXT,
      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+     embedded_at TEXT
    )`,
   `CREATE INDEX IF NOT EXISTS idx_work_notes_category ON work_notes(category)`,
   `CREATE INDEX IF NOT EXISTS idx_work_notes_created_at ON work_notes(created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_work_notes_updated_at ON work_notes(updated_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_work_notes_embedded_at ON work_notes(embedded_at)`,
 
   `CREATE TABLE IF NOT EXISTS work_note_person (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,16 +132,22 @@ const manualSchemaStatements: string[] = [
      title TEXT NOT NULL,
      description TEXT,
      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+     updated_at TEXT,
      due_date TEXT,
      wait_until TEXT,
      status TEXT NOT NULL DEFAULT '진행중' CHECK (status IN ('진행중', '완료', '보류', '중단')),
-     repeat_rule TEXT NOT NULL DEFAULT 'NONE' CHECK (repeat_rule IN ('NONE', 'DAILY', 'WEEKLY', 'MONTHLY')),
-     recurrence_type TEXT CHECK (recurrence_type IN ('DUE_DATE', 'COMPLETION_DATE'))
+     repeat_rule TEXT NOT NULL DEFAULT 'NONE' CHECK (repeat_rule IN ('NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM')),
+     recurrence_type TEXT CHECK (recurrence_type IN ('DUE_DATE', 'COMPLETION_DATE')),
+     custom_interval INTEGER,
+     custom_unit TEXT,
+     skip_weekends INTEGER DEFAULT 0
    )`,
   `CREATE INDEX IF NOT EXISTS idx_todos_work_id ON todos(work_id)`,
   `CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status)`,
-  `CREATE INDEX IF NOT EXISTS idx_todos_updated_at ON todos(updated_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_todos_due_date ON todos(due_date)`,
+  `CREATE INDEX IF NOT EXISTS idx_todos_wait_until ON todos(wait_until)`,
+  `CREATE INDEX IF NOT EXISTS idx_todos_created_at ON todos(created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_todos_status_due_date ON todos(status, due_date)`,
 
   `CREATE TABLE IF NOT EXISTS pdf_jobs (
      job_id TEXT PRIMARY KEY,
