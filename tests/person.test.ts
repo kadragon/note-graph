@@ -18,7 +18,7 @@ beforeEach(async () => {
 
 describe('Person creation validation', () => {
   it('should return validation error when department does not exist', async () => {
-    const response = await SELF.fetch('http://localhost/persons', {
+    const response = await SELF.fetch('http://localhost/api/persons', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -43,7 +43,7 @@ describe('Person creation validation', () => {
       .bind('교무기획부', '테스트 부서')
       .run();
 
-    const response = await SELF.fetch('http://localhost/persons', {
+    const response = await SELF.fetch('http://localhost/api/persons', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

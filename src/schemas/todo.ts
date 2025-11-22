@@ -74,7 +74,7 @@ export const updateTodoSchema = z.object({
  * Query parameters for listing todos
  */
 export const listTodosQuerySchema = z.object({
-  view: z.enum(['today', 'week', 'month', 'remaining', 'completed']).default('today'),
+  view: z.enum(['today', 'week', 'month', 'remaining', 'completed', 'backlog']).default('today'),
   status: todoStatusSchema.optional(),
   year: z.coerce.number().int().min(2000).max(2100).optional(),
 });

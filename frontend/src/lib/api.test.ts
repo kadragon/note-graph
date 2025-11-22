@@ -27,7 +27,7 @@ describe('API.createDepartment', () => {
     await API.createDepartment({ deptName: '교무기획부' });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/departments',
+      '/api/departments',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ deptName: '교무기획부' }),

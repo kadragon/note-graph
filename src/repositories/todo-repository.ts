@@ -231,6 +231,17 @@ export class TodoRepository {
         break;
       }
 
+      case 'backlog': {
+        // Overdue todos (due_date < now and not completed)
+        conditions.push(
+          `t.status != ?`,
+          `t.due_date IS NOT NULL`,
+          `t.due_date < ?`
+        );
+        params.push('완료', now);
+        break;
+      }
+
       case 'remaining': {
         // All incomplete todos in selected year
         conditions.push(
