@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -14,16 +14,54 @@ const pathTitles: Record<string, { title: string; subtitle: string }> = {
   '/rag': { title: 'AI 챗봇', subtitle: 'AI와 대화하세요' },
 };
 
+// Check if element is an editable input field
+function isEditableElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return (
+    tagName === 'input' ||
+    tagName === 'textarea' ||
+    tagName === 'select' ||
+    target.isContentEditable
+  );
+}
+
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const pageInfo = pathTitles[location.pathname] || { title: '페이지', subtitle: '' };
+
+  // Global keyboard shortcut: Ctrl+K (or Cmd+K on Mac) or / to focus search
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+K or Cmd+K
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      // Check for / key (only when not in an input/textarea)
+      if (e.key === '/' && !isEditableElement(e.target)) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
+    }
+    // Escape key to blur the search input
+    if (e.key === 'Escape') {
+      searchInputRef.current?.blur();
     }
   };
 
@@ -38,8 +76,9 @@ export default function Header() {
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             type="search"
-            placeholder="검색..."
+            placeholder="검색... (⌘/Ctrl+K)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
