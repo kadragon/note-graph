@@ -38,12 +38,13 @@ export default function WorkNotes() {
 
   // Filter work notes by completion status
   const { activeWorkNotes, pendingWorkNotes, completedWorkNotes } = useMemo(() => {
+    // 진행 중: 할일이 없거나 현재 활성화된 할일이 있는 업무노트
     const active = workNotes.filter(
       wn => wn.todoStats.total === 0 || wn.todoStats.remaining > 0
     );
-    // 대기중: 대기일이 아직 도래하지 않은 할일이 있는 업무노트
+    // 대기중: 남은 할일이 없고 대기 중인 할일만 있는 업무노트
     const pending = workNotes.filter(
-      wn => wn.todoStats.pending > 0
+      wn => wn.todoStats.remaining === 0 && wn.todoStats.pending > 0
     );
     const completed = workNotes.filter(
       wn => wn.todoStats.total > 0 && wn.todoStats.remaining === 0 && wn.todoStats.pending === 0
