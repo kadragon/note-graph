@@ -4,8 +4,8 @@
 -- SQLite doesn't support ALTER TABLE to modify CHECK constraints
 -- So we need to recreate the table with the updated constraint
 
--- Wrap in transaction for atomicity - prevents data loss on partial failure
-BEGIN TRANSACTION;
+-- Note: D1 doesn't support BEGIN TRANSACTION/COMMIT SQL statements
+-- D1 batch API provides atomicity automatically
 
 -- Step 1: Create new table with updated CHECK constraint
 CREATE TABLE todos_new (
@@ -50,5 +50,3 @@ CREATE INDEX idx_todos_due_date ON todos(due_date);
 CREATE INDEX idx_todos_wait_until ON todos(wait_until);
 CREATE INDEX idx_todos_created_at ON todos(created_at);
 CREATE INDEX idx_todos_status_due_date ON todos(status, due_date);
-
-COMMIT;
