@@ -1,9 +1,37 @@
 // Trace: SPEC-worknote-2, TASK-025
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { format, parseISO, getYear } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Format date with year if different from current year
+ * Uses Korean locale for localized date format
+ *
+ * @param dateString - ISO date string
+ * @returns Formatted date string: 'yyyy년 M월 d일' if different year, 'M월 d일' if same year
+ *
+ * @example
+ * // Current year is 2025
+ * formatDateWithYear('2025-12-23T00:00:00.000Z')
+ * // returns '12월 23일'
+ *
+ * formatDateWithYear('2026-01-01T00:00:00.000Z')
+ * // returns '2026년 1월 1일'
+ */
+export function formatDateWithYear(dateString: string): string {
+  const date = parseISO(dateString);
+  const currentYear = getYear(new Date());
+  const dateYear = getYear(date);
+
+  if (dateYear !== currentYear) {
+    return format(date, 'yyyy년 M월 d일', { locale: ko });
+  }
+  return format(date, 'M월 d일', { locale: ko });
 }
 
 /**

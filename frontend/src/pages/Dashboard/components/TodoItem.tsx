@@ -1,11 +1,9 @@
-import { format, parseISO } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { CalendarDays, RefreshCw, FileText, Clock } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useToggleTodo } from '@/hooks/useTodos';
 import type { Todo, RepeatRule } from '@/types/api';
-import { cn } from '@/lib/utils';
+import { cn, formatDateWithYear } from '@/lib/utils';
 import { TODO_STATUS } from '@/constants/todoStatus';
 
 // Repeat rule to Korean label mapping
@@ -70,13 +68,13 @@ export function TodoItem({ todo, onTodoClick }: TodoItemProps) {
           {todo.dueDate && (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <CalendarDays className="h-3 w-3" />
-              {format(parseISO(todo.dueDate), 'M월 d일 (eee)', { locale: ko })}
+              {formatDateWithYear(todo.dueDate)}
             </span>
           )}
           {todo.waitUntil && (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
-              {format(parseISO(todo.waitUntil), 'M월 d일', { locale: ko })} 대기
+              {formatDateWithYear(todo.waitUntil)} 대기
             </span>
           )}
           {todo.repeatRule && todo.repeatRule !== 'NONE' && (

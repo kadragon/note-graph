@@ -38,7 +38,7 @@ import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
 import { useToggleTodo, useDeleteTodo } from '@/hooks/useTodos';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
-import { formatPersonBadge } from '@/lib/utils';
+import { formatPersonBadge, formatDateWithYear } from '@/lib/utils';
 import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
 import { TODO_STATUS } from '@/constants/todoStatus';
 import type { WorkNote, CreateTodoRequest, TodoStatus, Todo } from '@/types/api';
@@ -504,7 +504,12 @@ export function ViewWorkNoteDialog({
                         </Badge>
                         {todo.dueDate && (
                           <Badge variant="outline" className="text-xs">
-                            마감: {format(parseISO(todo.dueDate), 'M/d', { locale: ko })}
+                            마감: {formatDateWithYear(todo.dueDate)}
+                          </Badge>
+                        )}
+                        {todo.waitUntil && (
+                          <Badge variant="outline" className="text-xs">
+                            대기: {formatDateWithYear(todo.waitUntil)}
                           </Badge>
                         )}
                       </div>
