@@ -1,11 +1,9 @@
-import { format, parseISO, getYear } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { CalendarDays, RefreshCw, FileText, Clock } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useToggleTodo } from '@/hooks/useTodos';
 import type { Todo, RepeatRule } from '@/types/api';
-import { cn } from '@/lib/utils';
+import { cn, formatDateWithYear } from '@/lib/utils';
 import { TODO_STATUS } from '@/constants/todoStatus';
 
 // Repeat rule to Korean label mapping
@@ -17,18 +15,6 @@ const REPEAT_RULE_LABELS: Partial<Record<RepeatRule, string>> = {
 
 const getRepeatRuleLabel = (repeatRule: RepeatRule): string => {
   return REPEAT_RULE_LABELS[repeatRule] ?? '';
-};
-
-// Format date with year if different from current year
-const formatDateWithYear = (dateString: string): string => {
-  const date = parseISO(dateString);
-  const currentYear = getYear(new Date());
-  const dateYear = getYear(date);
-
-  if (dateYear !== currentYear) {
-    return format(date, 'yyyy-MM-dd');
-  }
-  return format(date, 'M-dd');
 };
 
 interface TodoItemProps {
