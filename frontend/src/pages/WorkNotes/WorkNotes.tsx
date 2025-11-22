@@ -46,7 +46,7 @@ export default function WorkNotes() {
       wn => wn.todoStats.pending > 0
     );
     const completed = workNotes.filter(
-      wn => wn.todoStats.total > 0 && wn.todoStats.remaining === 0
+      wn => wn.todoStats.total > 0 && wn.todoStats.remaining === 0 && wn.todoStats.pending === 0
     );
 
     return { activeWorkNotes: active, pendingWorkNotes: pending, completedWorkNotes: completed };
