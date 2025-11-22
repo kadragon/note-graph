@@ -151,8 +151,9 @@ export interface UpdateTaskCategoryRequest {
 // Todo types
 export type TodoStatus = '진행중' | '완료' | '보류' | '중단';
 export type TodoView = 'today' | 'week' | 'month' | 'remaining' | 'completed';
-export type RepeatRule = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type RepeatRule = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM';
 export type RecurrenceType = 'DUE_DATE' | 'COMPLETION_DATE';
+export type CustomIntervalUnit = 'DAY' | 'WEEK' | 'MONTH';
 
 export interface Todo {
   id: string;
@@ -163,6 +164,9 @@ export interface Todo {
   waitUntil?: string;
   repeatRule?: RepeatRule;
   recurrenceType?: RecurrenceType;
+  customInterval?: number;
+  customUnit?: CustomIntervalUnit;
+  skipWeekends?: boolean;
   workNoteId?: string;
   workTitle?: string;
   createdAt: string;
@@ -176,6 +180,9 @@ export interface CreateTodoRequest {
   waitUntil?: string;
   repeatRule?: RepeatRule;
   recurrenceType?: RecurrenceType;
+  customInterval?: number;
+  customUnit?: CustomIntervalUnit;
+  skipWeekends?: boolean;
 }
 
 export interface UpdateTodoRequest {
@@ -186,6 +193,9 @@ export interface UpdateTodoRequest {
   waitUntil?: string;
   repeatRule?: RepeatRule;
   recurrenceType?: RecurrenceType;
+  customInterval?: number | null;
+  customUnit?: CustomIntervalUnit | null;
+  skipWeekends?: boolean;
 }
 
 // Search types

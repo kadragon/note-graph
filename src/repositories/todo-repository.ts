@@ -5,7 +5,7 @@
 
 import type { D1Database } from '@cloudflare/workers-types';
 import { nanoid } from 'nanoid';
-import type { Todo, TodoWithWorkNote, RepeatRule, RecurrenceType } from '../types/todo';
+import type { Todo, TodoWithWorkNote, RepeatRule, RecurrenceType, CustomIntervalUnit } from '../types/todo';
 import type { CreateTodoInput, UpdateTodoInput, ListTodosQuery } from '../schemas/todo';
 import { NotFoundError } from '../types/errors';
 
@@ -20,13 +20,31 @@ export class TodoRepository {
   }
 
   /**
+   * Skip weekends by moving to next Monday if the date falls on Sat/Sun
+   */
+  private skipWeekendsForDate(date: Date): Date {
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek === 0) {
+      // Sunday -> Monday
+      date.setDate(date.getDate() + 1);
+    } else if (dayOfWeek === 6) {
+      // Saturday -> Monday
+      date.setDate(date.getDate() + 2);
+    }
+    return date;
+  }
+
+  /**
    * Calculate next due date based on recurrence strategy
    */
   private calculateNextDueDate(
     dueDate: string | null,
     completionDate: Date,
     repeatRule: RepeatRule,
-    recurrenceType: RecurrenceType | null
+    recurrenceType: RecurrenceType | null,
+    customInterval: number | null = null,
+    customUnit: CustomIntervalUnit | null = null,
+    skipWeekends: boolean = false
   ): string | null {
     if (!dueDate || repeatRule === 'NONE' || !recurrenceType) {
       return null;
@@ -44,8 +62,30 @@ export class TodoRepository {
       case 'MONTHLY':
         baseDate.setMonth(baseDate.getMonth() + 1);
         break;
+      case 'CUSTOM':
+        if (customInterval && customUnit) {
+          switch (customUnit) {
+            case 'DAY':
+              baseDate.setDate(baseDate.getDate() + customInterval);
+              break;
+            case 'WEEK':
+              baseDate.setDate(baseDate.getDate() + (customInterval * 7));
+              break;
+            case 'MONTH':
+              baseDate.setMonth(baseDate.getMonth() + customInterval);
+              break;
+          }
+        } else {
+          return null;
+        }
+        break;
       default:
         return null;
+    }
+
+    // Apply skip weekends if enabled
+    if (skipWeekends) {
+      this.skipWeekendsForDate(baseDate);
     }
 
     return baseDate.toISOString();
@@ -60,12 +100,19 @@ export class TodoRepository {
         `SELECT todo_id as todoId, work_id as workId,
                 title, description, created_at as createdAt, updated_at as updatedAt,
                 due_date as dueDate, wait_until as waitUntil, status,
-                repeat_rule as repeatRule, recurrence_type as recurrenceType
+                repeat_rule as repeatRule, recurrence_type as recurrenceType,
+                custom_interval as customInterval, custom_unit as customUnit,
+                skip_weekends as skipWeekends
          FROM todos
          WHERE todo_id = ?`
       )
       .bind(todoId)
       .first<Todo>();
+
+    if (result) {
+      // Convert SQLite integer to boolean
+      result.skipWeekends = Boolean(result.skipWeekends);
+    }
 
     return result || null;
   }
@@ -79,7 +126,9 @@ export class TodoRepository {
         `SELECT todo_id as todoId, work_id as workId,
                 title, description, created_at as createdAt, updated_at as updatedAt,
                 due_date as dueDate, wait_until as waitUntil, status,
-                repeat_rule as repeatRule, recurrence_type as recurrenceType
+                repeat_rule as repeatRule, recurrence_type as recurrenceType,
+                custom_interval as customInterval, custom_unit as customUnit,
+                skip_weekends as skipWeekends
          FROM todos
          WHERE work_id = ?
          ORDER BY created_at DESC`
@@ -87,7 +136,11 @@ export class TodoRepository {
       .bind(workId)
       .all<Todo>();
 
-    return result.results || [];
+    // Convert SQLite integer to boolean for each todo
+    return (result.results || []).map(todo => ({
+      ...todo,
+      skipWeekends: Boolean(todo.skipWeekends)
+    }));
   }
 
   /**
@@ -100,6 +153,8 @@ export class TodoRepository {
              t.title, t.description, t.created_at as createdAt, t.updated_at as updatedAt,
              t.due_date as dueDate, t.wait_until as waitUntil, t.status,
              t.repeat_rule as repeatRule, t.recurrence_type as recurrenceType,
+             t.custom_interval as customInterval, t.custom_unit as customUnit,
+             t.skip_weekends as skipWeekends,
              w.title as workTitle
       FROM todos t
       LEFT JOIN work_notes w ON t.work_id = w.work_id
@@ -214,7 +269,11 @@ export class TodoRepository {
     const stmt = this.db.prepare(sql);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<TodoWithWorkNote>();
 
-    return result.results || [];
+    // Convert SQLite integer to boolean for each todo
+    return (result.results || []).map(todo => ({
+      ...todo,
+      skipWeekends: Boolean(todo.skipWeekends)
+    }));
   }
 
   /**
@@ -226,8 +285,8 @@ export class TodoRepository {
 
     await this.db
       .prepare(
-        `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         todoId,
@@ -240,7 +299,10 @@ export class TodoRepository {
         data.waitUntil || null,
         '진행중', // Default status
         data.repeatRule,
-        data.recurrenceType || null
+        data.recurrenceType || null,
+        data.customInterval || null,
+        data.customUnit || null,
+        data.skipWeekends ? 1 : 0
       )
       .run();
 
@@ -257,6 +319,9 @@ export class TodoRepository {
       status: '진행중',
       repeatRule: data.repeatRule,
       recurrenceType: data.recurrenceType || null,
+      customInterval: data.customInterval || null,
+      customUnit: data.customUnit || null,
+      skipWeekends: data.skipWeekends || false,
     };
   }
 
@@ -293,7 +358,7 @@ export class TodoRepository {
 
     // Build update fields
     const updateFields: string[] = [];
-    const updateParams: (string | null)[] = [];
+    const updateParams: (string | number | null)[] = [];
 
     if (data.title !== undefined) {
       updateFields.push('title = ?');
@@ -323,6 +388,18 @@ export class TodoRepository {
       updateFields.push('recurrence_type = ?');
       updateParams.push(data.recurrenceType || null);
     }
+    if (data.customInterval !== undefined) {
+      updateFields.push('custom_interval = ?');
+      updateParams.push(data.customInterval || null);
+    }
+    if (data.customUnit !== undefined) {
+      updateFields.push('custom_unit = ?');
+      updateParams.push(data.customUnit || null);
+    }
+    if (data.skipWeekends !== undefined) {
+      updateFields.push('skip_weekends = ?');
+      updateParams.push(data.skipWeekends ? 1 : 0);
+    }
 
     if (updateFields.length > 0) {
       // Always update updated_at when any field changes
@@ -342,7 +419,10 @@ export class TodoRepository {
         existing.dueDate,
         now,
         existing.repeatRule,
-        existing.recurrenceType
+        existing.recurrenceType,
+        existing.customInterval,
+        existing.customUnit,
+        existing.skipWeekends
       );
 
       if (nextDueDate) {
@@ -352,8 +432,8 @@ export class TodoRepository {
         statements.push(
           this.db
             .prepare(
-              `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+              `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
             .bind(
               newTodoId,
@@ -366,7 +446,10 @@ export class TodoRepository {
               null, // Reset wait_until for new instance
               '진행중',
               existing.repeatRule,
-              existing.recurrenceType
+              existing.recurrenceType,
+              existing.customInterval,
+              existing.customUnit,
+              existing.skipWeekends ? 1 : 0
             )
         );
       }
@@ -386,6 +469,9 @@ export class TodoRepository {
       waitUntil: data.waitUntil !== undefined ? (data.waitUntil || null) : existing.waitUntil,
       repeatRule: data.repeatRule !== undefined ? data.repeatRule : existing.repeatRule,
       recurrenceType: data.recurrenceType !== undefined ? (data.recurrenceType || null) : existing.recurrenceType,
+      customInterval: data.customInterval !== undefined ? (data.customInterval || null) : existing.customInterval,
+      customUnit: data.customUnit !== undefined ? (data.customUnit || null) : existing.customUnit,
+      skipWeekends: data.skipWeekends !== undefined ? data.skipWeekends : existing.skipWeekends,
       updatedAt: updateFields.length > 0 ? nowISO : existing.updatedAt,
     };
   }
