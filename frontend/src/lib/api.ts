@@ -21,6 +21,7 @@ import type {
   TodoStatus,
   RepeatRule,
   RecurrenceType,
+  CustomIntervalUnit,
   CreateTodoRequest,
   UpdateTodoRequest,
   SearchRequest,
@@ -71,7 +72,7 @@ interface BackendTodo {
   repeatRule?: RepeatRule;
   recurrenceType?: RecurrenceType;
   customInterval?: number;
-  customUnit?: 'DAY' | 'WEEK' | 'MONTH';
+  customUnit?: CustomIntervalUnit;
   skipWeekends?: boolean;
   createdAt: string;
   updatedAt: string;
