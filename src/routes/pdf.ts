@@ -35,13 +35,23 @@ pdf.get('/:jobId', async (c) => {
     throw new NotFoundError('PDF job', jobId);
   }
 
+  let draft: WorkNoteDraft | undefined;
+  if (job.draftJson) {
+    try {
+      draft = JSON.parse(job.draftJson) as WorkNoteDraft;
+    } catch (error) {
+      console.error(`[PDF Job ${jobId}] Failed to parse draft JSON:`, error);
+      draft = undefined;
+    }
+  }
+
   const response: PdfJobResponse = {
     jobId: job.jobId,
     status: job.status,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     errorMessage: job.errorMessage || undefined,
-    draft: job.draftJson ? (JSON.parse(job.draftJson) as WorkNoteDraft) : undefined,
+    draft,
   };
 
   return c.json(response);

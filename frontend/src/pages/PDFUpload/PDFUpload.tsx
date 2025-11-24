@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useUploadPDF, usePDFJob, useSavePDFDraft } from '@/hooks/usePDF';
+import type { PDFJobStatus } from '@/types/api';
 import { FileDropzone } from './components/FileDropzone';
 
 export default function PDFUpload() {
@@ -52,14 +53,14 @@ export default function PDFUpload() {
   const getStatusBadge = () => {
     if (!job) return null;
 
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
+    const variants: Record<PDFJobStatus, 'default' | 'secondary' | 'destructive'> = {
       PENDING: 'secondary',
       PROCESSING: 'default',
       READY: 'default',
       ERROR: 'destructive',
     };
 
-    const labels: Record<string, string> = {
+    const labels: Record<PDFJobStatus, string> = {
       PENDING: '대기 중',
       PROCESSING: '처리 중',
       READY: '완료',
