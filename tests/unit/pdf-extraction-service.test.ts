@@ -99,9 +99,17 @@ describe('PdfExtractionService', () => {
       expect(() => service.validatePdfBuffer(buffer)).not.toThrow();
     });
 
-    it('should validate PDF header at exact position', () => {
-      // Arrange - PDF header must be at the start
-      const buffer = new TextEncoder().encode('JUNK%PDF-1.4\n' + 'x'.repeat(100));
+    it('should validate wrapped PDF formats (e.g., Handysoft)', () => {
+      // Arrange - PDF with wrapper header (like Handysoft Approval Document)
+      const buffer = new TextEncoder().encode('Handysoft Approval Document File' + '\x00'.repeat(100) + '%PDF-1.4\n' + 'x'.repeat(100));
+
+      // Act & Assert - should not throw because PDF signature exists in wrapper
+      expect(() => service.validatePdfBuffer(buffer)).not.toThrow();
+    });
+
+    it('should reject buffer with no PDF signature anywhere', () => {
+      // Arrange - No PDF signature at all
+      const buffer = new TextEncoder().encode('Not a PDF file at all, just random text content here'.repeat(10));
 
       // Act & Assert
       expect(() => service.validatePdfBuffer(buffer)).toThrow(CorruptPdfError);
