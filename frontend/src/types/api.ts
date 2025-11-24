@@ -17,6 +17,10 @@ export interface WorkNote {
     currentDept?: string | null;
     currentPosition?: string | null;
   }>;
+  relatedWorkNotes?: Array<{
+    relatedWorkId: string;
+    relatedWorkTitle?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +41,7 @@ export interface CreateWorkNoteRequest {
   categoryIds?: string[];
   relatedPersonIds?: string[];
   relatedDepartmentIds?: string[];
+  relatedWorkIds?: string[];
 }
 
 export interface UpdateWorkNoteRequest {
@@ -46,6 +51,7 @@ export interface UpdateWorkNoteRequest {
   categoryIds?: string[];
   relatedPersonIds?: string[];
   relatedDepartmentIds?: string[];
+  relatedWorkIds?: string[];
 }
 
 // Person types
@@ -260,7 +266,10 @@ export interface RAGResponse {
 
 // AI Draft types
 export interface AIGenerateDraftRequest {
-  text: string;
+  inputText: string;
+  category?: string;
+  personIds?: string[];
+  deptName?: string;
 }
 
 export interface AIDraftTodo {
@@ -269,11 +278,23 @@ export interface AIDraftTodo {
   dueDate?: string;
 }
 
-export interface AIGenerateDraftResponse {
+export interface AIDraftReference {
+  workId: string;
+  title: string;
+  category?: string;
+  similarityScore?: number;
+}
+
+export interface AIDraftPayload {
   title: string;
   category: string;
   content: string;
   todos: AIDraftTodo[];
+}
+
+export interface AIGenerateDraftResponse {
+  draft: AIDraftPayload;
+  references: AIDraftReference[];
 }
 
 // PDF types
@@ -284,7 +305,7 @@ export interface PDFJob {
   status: PDFJobStatus;
   createdAt: string;
   updatedAt: string;
-  draft?: AIGenerateDraftResponse;
+  draft?: AIDraftPayload;
   errorMessage?: string;
 }
 

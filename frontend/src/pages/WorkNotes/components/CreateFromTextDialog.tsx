@@ -1,4 +1,4 @@
-// Trace: TASK-027, SPEC-worknote-1
+// Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-029
 import { useState, useEffect } from 'react';
 import { FileEdit, Sparkles } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -22,7 +22,7 @@ import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { useToast } from '@/hooks/use-toast';
 import { API } from '@/lib/api';
-import type { AIDraftTodo } from '@/types/api';
+import type { AIDraftTodo, AIDraftReference } from '@/types/api';
 
 interface CreateFromTextDialogProps {
   open: boolean;
@@ -40,6 +40,8 @@ export function CreateFromTextDialog({
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
   const [suggestedTodos, setSuggestedTodos] = useState<AIDraftTodo[]>([]);
+  const [references, setReferences] = useState<AIDraftReference[]>([]);
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const generateMutation = useGenerateDraftWithSimilar();
@@ -63,13 +65,16 @@ export function CreateFromTextDialog({
         inputText: inputText.trim(),
       });
 
-      setTitle(result.title);
-      setContent(result.content);
-      setSuggestedTodos(result.todos || []);
+      const draft = result.draft;
+      setTitle(draft.title);
+      setContent(draft.content);
+      setSuggestedTodos(draft.todos || []);
+      setReferences(result.references || []);
+      setSelectedReferenceIds((result.references || []).map((ref) => ref.workId));
 
       // Try to find matching category
       const matchingCategory = taskCategories.find(
-        (cat) => cat.name === result.category
+        (cat) => cat.name === draft.category
       );
       if (matchingCategory) {
         setSelectedCategoryIds([matchingCategory.categoryId]);
@@ -86,6 +91,14 @@ export function CreateFromTextDialog({
       prev.includes(categoryId)
         ? prev.filter((id) => id !== categoryId)
         : [...prev, categoryId]
+    );
+  };
+
+  const handleReferenceToggle = (workId: string) => {
+    setSelectedReferenceIds((prev) =>
+      prev.includes(workId)
+        ? prev.filter((id) => id !== workId)
+        : [...prev, workId]
     );
   };
 
@@ -110,6 +123,7 @@ export function CreateFromTextDialog({
         content: content.trim(),
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+        relatedWorkIds: selectedReferenceIds.length > 0 ? selectedReferenceIds : undefined,
       });
 
       // Validate that work note was created with an ID
@@ -170,6 +184,8 @@ export function CreateFromTextDialog({
     setSelectedPersonIds([]);
     setContent('');
     setSuggestedTodos([]);
+    setReferences([]);
+    setSelectedReferenceIds([]);
   };
 
   const handleClose = () => {
@@ -304,6 +320,40 @@ export function CreateFromTextDialog({
                   required
                 />
               </div>
+
+              {references.length > 0 && (
+                <div className="grid gap-2">
+                  <Label>AI가 참고한 업무노트</Label>
+                  <Card className="p-3 space-y-2">
+                    {references.map((ref) => {
+                      const isSelected = selectedReferenceIds.includes(ref.workId);
+                      const scoreLabel = ref.similarityScore !== undefined
+                        ? `${Math.round(ref.similarityScore * 100)}%`
+                        : 'N/A';
+
+                      return (
+                        <div key={ref.workId} className="flex items-start gap-3">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleReferenceToggle(ref.workId)}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium">{ref.title}</div>
+                            <div className="text-xs text-muted-foreground flex gap-2">
+                              <span>연관도 {scoreLabel}</span>
+                              {ref.category && <span className="text-muted-foreground">카테고리: {ref.category}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </Card>
+                  <p className="text-xs text-muted-foreground">
+                    필요 없는 참고 자료는 선택 해제하세요. 해제된 항목은 저장되지 않습니다.
+                  </p>
+                </div>
+              )}
 
               {suggestedTodos.length > 0 && (
                 <div className="grid gap-2">

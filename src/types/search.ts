@@ -72,6 +72,17 @@ export interface WorkNoteDraft {
 }
 
 /**
+ * Similar work note reference used during AI draft generation
+ */
+export interface SimilarWorkNoteReference {
+  workId: string;
+  title: string;
+  content: string;
+  category?: string;
+  similarityScore: number;
+}
+
+/**
  * AI-suggested todo item
  * Note: dueDate is always populated (defaults to today if not inferred by LLM)
  */

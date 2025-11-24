@@ -1,4 +1,4 @@
-// Trace: SPEC-rag-1, SPEC-rag-2, TASK-012, TASK-022
+// Trace: SPEC-rag-1, SPEC-rag-2, SPEC-ai-draft-refs-1, TASK-012, TASK-022, TASK-029
 /**
  * Work note service coordinating D1, chunking, and embedding operations
  * Uses embedded_at tracking for embedding state management
@@ -7,6 +7,7 @@
 import type { Env } from '../types/env';
 import type { WorkNote, WorkNoteDetail } from '../types/work-note';
 import type { CreateWorkNoteInput, UpdateWorkNoteInput, ListWorkNotesQuery } from '../schemas/work-note';
+import type { SimilarWorkNoteReference } from '../types/search';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingService, VectorizeService } from './embedding-service';
@@ -242,16 +243,24 @@ export class WorkNoteService {
     inputText: string,
     topK: number = 3,
     scoreThreshold: number = 0.5
-  ): Promise<Array<{ title: string; content: string; category?: string }>> {
+  ): Promise<SimilarWorkNoteReference[]> {
     try {
       // Search for similar work notes
       const similarResults = await this.vectorizeService.search(inputText, topK);
 
       // Filter by similarity threshold and extract work IDs
       const relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);
+      const workIdScores = new Map<string, number>();
       const workIds = [...new Set(
         relevantResults
-          .map((r) => r.id?.split('#')[0])
+          .map((r) => {
+            const workId = r.id?.split('#')[0];
+            if (workId) {
+              const currentScore = workIdScores.get(workId) || 0;
+              workIdScores.set(workId, Math.max(currentScore, r.score));
+            }
+            return workId;
+          })
           .filter((id): id is string => id !== undefined)
       )]; // Handle chunk IDs, deduplicate
 
@@ -271,9 +280,11 @@ export class WorkNoteService {
         .map((id) => workNoteMap.get(id))
         .filter((note): note is WorkNote => note !== undefined)
         .map((note) => ({
+          workId: note.workId,
           title: note.title,
           content: note.contentRaw,
           category: note.category || undefined,
+          similarityScore: workIdScores.get(note.workId) ?? 0,
         }));
     } catch (error) {
       console.error('[WorkNoteService] Error finding similar notes:', error);

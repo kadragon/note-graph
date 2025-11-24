@@ -55,6 +55,10 @@ interface BackendWorkNote {
     currentDept?: string | null;
     currentPosition?: string | null;
   }>;
+  relatedWorkNotes?: Array<{
+    relatedWorkId: string;
+    relatedWorkTitle?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -173,17 +177,34 @@ class APIClient {
 
   async createWorkNote(data: CreateWorkNoteRequest) {
     // Transform content to contentRaw for backend
-    const { content, ...rest } = data;
+    const { content, relatedPersonIds, relatedWorkIds, ...rest } = data;
+
+    const payload: Record<string, unknown> = {
+      ...rest,
+      contentRaw: content,
+    };
+
+    if (relatedPersonIds !== undefined) {
+      payload.persons = relatedPersonIds.map((personId) => ({
+        personId,
+        role: 'RELATED' as const,
+      }));
+    }
+
+    if (relatedWorkIds !== undefined) {
+      payload.relatedWorkIds = relatedWorkIds;
+    }
+
     const response = await this.request<BackendWorkNote>('/work-notes', {
       method: 'POST',
-      body: JSON.stringify({ ...rest, contentRaw: content }),
+      body: JSON.stringify(payload),
     });
     return this.transformWorkNoteFromBackend(response);
   }
 
   async updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
     // Transform content to contentRaw for backend if present
-    const { content, relatedPersonIds, ...rest } = data;
+    const { content, relatedPersonIds, relatedWorkIds, ...rest } = data;
 
     // Build payload with proper transformations
     const payload: Record<string, unknown> = { ...rest };
@@ -199,6 +220,10 @@ class APIClient {
         personId,
         role: 'RELATED' as const,
       }));
+    }
+
+    if (relatedWorkIds !== undefined) {
+      payload.relatedWorkIds = relatedWorkIds;
     }
 
     const response = await this.request<BackendWorkNote>(`/work-notes/${workId}`, {
@@ -222,6 +247,7 @@ class APIClient {
       category: backendWorkNote.category || '',
       categories: backendWorkNote.categories || [],
       persons: backendWorkNote.persons || [],
+      relatedWorkNotes: backendWorkNote.relatedWorkNotes || [],
       createdAt: backendWorkNote.createdAt,
       updatedAt: backendWorkNote.updatedAt,
     };

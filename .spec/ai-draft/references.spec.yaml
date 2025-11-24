@@ -1,0 +1,52 @@
+spec_id: SPEC-ai-draft-refs-1
+title: "AI draft reference transparency"
+description: >
+  Show the list of prior work notes the AI used as context while drafting,
+  let the user exclude irrelevant ones, and persist the confirmed references
+  on the saved work note for later viewing.
+
+given_when_then:
+  - given: "User generates an AI draft from text"
+    when: "Similar work notes are retrieved as context"
+    then: "The draft response includes a reference list (workId, title, similarity score)"
+
+  - given: "Reference list contains items the user deems unrelated"
+    when: "User deselects those items before saving"
+    then: "Deselected work notes are not stored as references on the new work note"
+
+  - given: "Work note was saved with confirmed references"
+    when: "User opens the work note later"
+    then: "Saved references are displayed with titles and links to the related work notes"
+
+acceptance_tests:
+  - id: TEST-ai-draft-refs-1
+    desc: "Draft response returns referenced work notes"
+    steps:
+      - "POST /ai/work-notes/draft-from-text-with-similar with inputText"
+      - "Verify response includes draft plus references array with workId/title/score"
+
+  - id: TEST-ai-draft-refs-2
+    desc: "Excluded references are not persisted"
+    steps:
+      - "Generate draft, deselect at least one reference"
+      - "Create work note sending remaining reference IDs"
+      - "GET /work-notes/{id} shows only selected references"
+
+  - id: TEST-ai-draft-refs-3
+    desc: "Saved references visible in UI"
+    steps:
+      - "Open work note detail"
+      - "References section lists stored related work notes with titles"
+
+dependencies:
+  governance:
+    - "AI Gateway configuration"
+    - "Vectorize similarity search"
+
+linked_tasks:
+  - TASK-029
+
+technical_notes:
+  - "Reuse work_note_relation to persist confirmed references"
+  - "Expose similarity score for transparency; storing score is optional"
+  - "Default: all suggested references are pre-selected; user can deselect before save"

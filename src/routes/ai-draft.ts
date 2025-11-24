@@ -1,4 +1,4 @@
-// Trace: SPEC-ai-draft-1, TASK-013
+// Trace: SPEC-ai-draft-1, SPEC-ai-draft-refs-1, TASK-013, TASK-029
 /**
  * AI-powered work note draft generation routes
  */
@@ -60,7 +60,7 @@ app.post('/work-notes/draft-from-text', activeCategoriesMiddleware, async (c) =>
       activeCategories: activeCategoryNames,
     });
 
-    return c.json(draft);
+    return c.json({ draft, references: [] });
   } catch (error) {
     if (error instanceof RateLimitError) {
       return c.json(
@@ -98,12 +98,16 @@ app.post('/work-notes/draft-from-text-with-similar', activeCategoriesMiddleware,
     // Generate AI draft with similar notes as context
     const aiDraftService = new AIDraftService(c.env);
     const draft = similarNotes.length > 0
-      ? await aiDraftService.generateDraftFromTextWithContext(body.inputText, similarNotes, {
-          category: body.category,
-          personIds: body.personIds,
-          deptName: body.deptName,
-          activeCategories: activeCategoryNames,
-        })
+      ? await aiDraftService.generateDraftFromTextWithContext(
+          body.inputText,
+          similarNotes,
+          {
+            category: body.category,
+            personIds: body.personIds,
+            deptName: body.deptName,
+            activeCategories: activeCategoryNames,
+          }
+        )
       : await aiDraftService.generateDraftFromText(body.inputText, {
           category: body.category,
           personIds: body.personIds,
@@ -111,7 +115,14 @@ app.post('/work-notes/draft-from-text-with-similar', activeCategoriesMiddleware,
           activeCategories: activeCategoryNames,
         });
 
-    return c.json(draft);
+    const references = similarNotes.map((note) => ({
+      workId: note.workId,
+      title: note.title,
+      category: note.category,
+      similarityScore: note.similarityScore,
+    }));
+
+    return c.json({ draft, references });
   } catch (error) {
     if (error instanceof RateLimitError) {
       return c.json(
