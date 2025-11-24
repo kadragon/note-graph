@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { AssigneeSelector } from '@/components/AssigneeSelector';
+import { AIReferenceList } from '@/components/AIReferenceList';
 import { FileDropzone } from '@/pages/PDFUpload/components/FileDropzone';
 import { useUploadPDF, usePDFJob } from '@/hooks/usePDF';
 import { useCreateWorkNote } from '@/hooks/useWorkNotes';
@@ -42,7 +43,6 @@ export function CreateFromPDFDialog({
   const [content, setContent] = useState('');
   const [references, setReferences] = useState<AIDraftReference[]>([]);
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
-  const [showAllReferences, setShowAllReferences] = useState(false);
 
   const uploadMutation = useUploadPDF();
   const { data: job } = usePDFJob(
@@ -98,14 +98,6 @@ export function CreateFromPDFDialog({
     );
   };
 
-  const handleReferenceToggle = (workId: string) => {
-    setSelectedReferenceIds((prev) =>
-      prev.includes(workId)
-        ? prev.filter((id) => id !== workId)
-        : [...prev, workId]
-    );
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -144,7 +136,6 @@ export function CreateFromPDFDialog({
     setContent('');
     setReferences([]);
     setSelectedReferenceIds([]);
-    setShowAllReferences(false);
   };
 
   const handleClose = () => {
@@ -270,48 +261,11 @@ export function CreateFromPDFDialog({
                 )}
               </div>
 
-              {references.length > 0 && (
-                <div className="grid gap-2">
-                  <Label>AI가 참고한 업무노트</Label>
-                  <Card className="p-3 space-y-2 max-h-[260px] overflow-y-auto">
-                    {(showAllReferences ? references : references.slice(0, 5)).map((ref) => {
-                      const isSelected = selectedReferenceIds.includes(ref.workId);
-                      const scoreLabel = ref.similarityScore !== undefined
-                        ? `${Math.round(ref.similarityScore * 100)}%`
-                        : 'N/A';
-
-                      return (
-                        <div key={ref.workId} className="flex items-start gap-3">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => handleReferenceToggle(ref.workId)}
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium">{ref.title}</div>
-                            <div className="text-xs text-muted-foreground flex gap-2">
-                              <span>연관도 {scoreLabel}</span>
-                              {ref.category && <span className="text-muted-foreground">카테고리: {ref.category}</span>}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </Card>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <p>필요 없는 참고 자료는 선택 해제하세요. 해제된 항목은 저장되지 않습니다.</p>
-                    {references.length > 5 && (
-                      <button
-                        type="button"
-                        className="text-primary underline underline-offset-2"
-                        onClick={() => setShowAllReferences((prev) => !prev)}
-                      >
-                        {showAllReferences ? '간략히 보기' : `모두 보기 (${references.length})`}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+              <AIReferenceList
+                references={references}
+                selectedIds={selectedReferenceIds}
+                onSelectionChange={setSelectedReferenceIds}
+              />
 
               <div className="grid gap-2">
                 <Label htmlFor="content">내용</Label>

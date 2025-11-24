@@ -1,6 +1,8 @@
 // Trace: SPEC-pdf-1, SPEC-ai-draft-refs-1, TASK-014, TASK-030
 // PDF job types for async PDF processing
 
+import type { SimilarWorkNoteReference } from './search';
+
 export type PdfJobStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'ERROR';
 
 /**
@@ -77,4 +79,3 @@ export interface PdfUploadRequest {
   personIds?: string;
   deptName?: string;
 }
-import type { SimilarWorkNoteReference } from './search';

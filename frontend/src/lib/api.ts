@@ -184,16 +184,7 @@ class APIClient {
       contentRaw: content,
     };
 
-    if (relatedPersonIds !== undefined) {
-      payload.persons = relatedPersonIds.map((personId) => ({
-        personId,
-        role: 'RELATED' as const,
-      }));
-    }
-
-    if (relatedWorkIds !== undefined) {
-      payload.relatedWorkIds = relatedWorkIds;
-    }
+    this.appendRelationPayload(payload, relatedPersonIds, relatedWorkIds);
 
     const response = await this.request<BackendWorkNote>('/work-notes', {
       method: 'POST',
@@ -213,18 +204,7 @@ class APIClient {
       payload.contentRaw = content;
     }
 
-    // Transform relatedPersonIds to persons format for backend
-    // Backend expects: persons: Array<{personId: string, role: 'OWNER' | 'RELATED'}>
-    if (relatedPersonIds !== undefined) {
-      payload.persons = relatedPersonIds.map(personId => ({
-        personId,
-        role: 'RELATED' as const,
-      }));
-    }
-
-    if (relatedWorkIds !== undefined) {
-      payload.relatedWorkIds = relatedWorkIds;
-    }
+    this.appendRelationPayload(payload, relatedPersonIds, relatedWorkIds);
 
     const response = await this.request<BackendWorkNote>(`/work-notes/${workId}`, {
       method: 'PUT',
@@ -251,6 +231,27 @@ class APIClient {
       createdAt: backendWorkNote.createdAt,
       updatedAt: backendWorkNote.updatedAt,
     };
+  }
+
+  /**
+   * Transforms relatedPersonIds and relatedWorkIds to backend format
+   * Reduces code duplication between createWorkNote and updateWorkNote
+   */
+  private appendRelationPayload(
+    payload: Record<string, unknown>,
+    relatedPersonIds?: string[],
+    relatedWorkIds?: string[]
+  ): void {
+    if (relatedPersonIds !== undefined) {
+      payload.persons = relatedPersonIds.map((personId) => ({
+        personId,
+        role: 'RELATED' as const,
+      }));
+    }
+
+    if (relatedWorkIds !== undefined) {
+      payload.relatedWorkIds = relatedWorkIds;
+    }
   }
 
   private transformTodoFromBackend(backendTodo: BackendTodo): Todo {

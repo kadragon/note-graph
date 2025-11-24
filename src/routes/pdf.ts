@@ -22,6 +22,30 @@ const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const SIMILAR_NOTES_TOP_K = 3;
 const SIMILARITY_SCORE_THRESHOLD = 0.5;
 
+/**
+ * Parse draft JSON and extract draft and references
+ * Handles both old format (WorkNoteDraft) and new format (WorkNoteDraftWithReferences)
+ */
+function parseDraftJson(
+  draftJson: string | null,
+  jobId: string
+): { draft?: WorkNoteDraft; references?: SimilarWorkNoteReference[] } {
+  if (!draftJson) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(draftJson) as WorkNoteDraft | WorkNoteDraftWithReferences;
+    if ('draft' in parsed && 'references' in parsed) {
+      return { draft: parsed.draft, references: parsed.references };
+    }
+    return { draft: parsed };
+  } catch (error) {
+    console.error(`[PDF Job ${jobId}] Failed to parse draft JSON:`, error);
+    return {};
+  }
+}
+
 const pdf = new Hono<{ Bindings: Env }>();
 
 /**
@@ -37,22 +61,7 @@ pdf.get('/:jobId', async (c) => {
     throw new NotFoundError('PDF job', jobId);
   }
 
-  let draft: WorkNoteDraft | undefined;
-  let references: SimilarWorkNoteReference[] | undefined;
-  if (job.draftJson) {
-    try {
-      const parsed = JSON.parse(job.draftJson) as WorkNoteDraft | WorkNoteDraftWithReferences;
-      if ('draft' in parsed && 'references' in parsed) {
-        draft = parsed.draft;
-        references = parsed.references;
-      } else {
-        draft = parsed;
-      }
-    } catch (error) {
-      console.error(`[PDF Job ${jobId}] Failed to parse draft JSON:`, error);
-      draft = undefined;
-    }
-  }
+  const { draft, references } = parseDraftJson(job.draftJson, jobId);
 
   const response: PdfJobResponse = {
     jobId: job.jobId,
@@ -194,21 +203,7 @@ pdf.post('/', async (c) => {
     }
 
     // Return successful response with draft from DB
-    let responseDraft: WorkNoteDraft | undefined;
-    let responseReferences: SimilarWorkNoteReference[] | undefined;
-    if (job.draftJson) {
-      try {
-        const parsed = JSON.parse(job.draftJson) as WorkNoteDraft | WorkNoteDraftWithReferences;
-        if ('draft' in parsed && 'references' in parsed) {
-          responseDraft = parsed.draft;
-          responseReferences = parsed.references;
-        } else {
-          responseDraft = parsed;
-        }
-      } catch (error) {
-        console.error(`[PDF Job ${jobId}] Failed to parse draft JSON in response:`, error);
-      }
-    }
+    const { draft: responseDraft, references: responseReferences } = parseDraftJson(job.draftJson, jobId);
 
     const response: PdfJobResponse = {
       jobId: job.jobId,
