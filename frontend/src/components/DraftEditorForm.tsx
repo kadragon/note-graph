@@ -137,8 +137,8 @@ export function DraftEditorForm({
           <Label>생성될 할일 (삭제 가능)</Label>
           <Card className="p-3">
             <ul className="space-y-2 text-sm">
-              {suggestedTodos.map((todo, idx) => (
-                <li key={`${todo.title}-${idx}`} className="flex items-start group">
+              {suggestedTodos.map((todo) => (
+                <li key={todo.uiId} className="flex items-start group">
                   <span className="mr-2">•</span>
                   <div className="flex-1">
                     <div className="font-medium">{todo.title}</div>
@@ -154,7 +154,7 @@ export function DraftEditorForm({
                     variant="ghost"
                     size="sm"
                     className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => handleRemoveTodo(idx)}
+                    onClick={() => handleRemoveTodo(todo.uiId)}
                   >
                     <Trash2 className="h-3 w-3 text-destructive" />
                   </Button>

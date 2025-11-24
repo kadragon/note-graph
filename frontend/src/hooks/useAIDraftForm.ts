@@ -1,5 +1,5 @@
 // Trace: SPEC-worknote-1, TASK-032
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
@@ -7,12 +7,17 @@ import { useToast } from '@/hooks/use-toast';
 import { API } from '@/lib/api';
 import type { AIDraftTodo, AIDraftReference, WorkNoteDraft } from '@/types/api';
 
+// Extended todo type with stable UI identifier
+export interface SuggestedTodo extends AIDraftTodo {
+  uiId: string;
+}
+
 export interface AIDraftFormState {
   title: string;
   content: string;
   selectedCategoryIds: string[];
   selectedPersonIds: string[];
-  suggestedTodos: AIDraftTodo[];
+  suggestedTodos: SuggestedTodo[];
   references: AIDraftReference[];
   selectedReferenceIds: string[];
   isSubmitting: boolean;
@@ -24,7 +29,7 @@ export interface AIDraftFormActions {
   setSelectedCategoryIds: (ids: string[]) => void;
   setSelectedPersonIds: (ids: string[]) => void;
   handleCategoryToggle: (categoryId: string) => void;
-  handleRemoveTodo: (index: number) => void;
+  handleRemoveTodo: (uiId: string) => void;
   setSelectedReferenceIds: (ids: string[]) => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   resetForm: () => void;
@@ -43,15 +48,31 @@ export function useAIDraftForm(onSuccess?: () => void) {
   const [content, setContent] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
-  const [suggestedTodos, setSuggestedTodos] = useState<AIDraftTodo[]>([]);
+  const [suggestedTodos, setSuggestedTodos] = useState<SuggestedTodo[]>([]);
   const [references, setReferences] = useState<AIDraftReference[]>([]);
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Store draft category name to handle async category loading
+  const [draftCategoryName, setDraftCategoryName] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
   const { data: persons = [], isLoading: personsLoading } = usePersons();
   const { toast } = useToast();
+
+  // Sync category ID when categories load or draft category name changes
+  useEffect(() => {
+    if (draftCategoryName && taskCategories.length > 0) {
+      const matchingCategory = taskCategories.find(
+        (cat) => cat.name === draftCategoryName
+      );
+      if (matchingCategory) {
+        setSelectedCategoryIds([matchingCategory.categoryId]);
+      } else {
+        setSelectedCategoryIds([]);
+      }
+    }
+  }, [draftCategoryName, taskCategories]);
 
   const handleCategoryToggle = useCallback((categoryId: string) => {
     setSelectedCategoryIds((prev) =>
@@ -61,8 +82,8 @@ export function useAIDraftForm(onSuccess?: () => void) {
     );
   }, []);
 
-  const handleRemoveTodo = useCallback((index: number) => {
-    setSuggestedTodos((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveTodo = useCallback((uiId: string) => {
+    setSuggestedTodos((prev) => prev.filter((todo) => todo.uiId !== uiId));
   }, []);
 
   const resetForm = useCallback(() => {
@@ -73,26 +94,25 @@ export function useAIDraftForm(onSuccess?: () => void) {
     setSuggestedTodos([]);
     setReferences([]);
     setSelectedReferenceIds([]);
+    setDraftCategoryName(null);
   }, []);
 
   const populateDraft = useCallback((draft: WorkNoteDraft, refs?: AIDraftReference[]) => {
     setTitle(draft.title);
     setContent(draft.content);
-    setSuggestedTodos(draft.todos || []);
+    // Add unique IDs to todos for stable React keys
+    setSuggestedTodos((draft.todos || []).map((todo) => ({
+      ...todo,
+      uiId: crypto.randomUUID(),
+    })));
+    // Store category name for async resolution
+    setDraftCategoryName(draft.category || null);
 
     if (refs) {
       setReferences(refs);
       setSelectedReferenceIds(refs.map((ref) => ref.workId));
     }
-
-    // Try to find matching category
-    const matchingCategory = taskCategories.find(
-      (cat) => cat.name === draft.category
-    );
-    if (matchingCategory) {
-      setSelectedCategoryIds([matchingCategory.categoryId]);
-    }
-  }, [taskCategories]);
+  }, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,24 +145,37 @@ export function useAIDraftForm(onSuccess?: () => void) {
 
       // Create todos if any suggested todos exist
       if (suggestedTodos.length > 0) {
-        const todoPromises = suggestedTodos.map((todo) =>
-          API.createWorkNoteTodo(workNote.id, {
-            title: todo.title,
-            description: todo.description,
-            dueDate: todo.dueDate,
-            repeatRule: 'NONE',
-          })
+        // Use Promise.allSettled for resilience to partial failures
+        const todoCreationResults = await Promise.allSettled(
+          suggestedTodos.map((todo) =>
+            API.createWorkNoteTodo(workNote.id, {
+              title: todo.title,
+              description: todo.description,
+              dueDate: todo.dueDate,
+              repeatRule: 'NONE',
+            })
+          )
         );
 
-        await Promise.all(todoPromises);
+        const successfulCount = todoCreationResults.filter((r) => r.status === 'fulfilled').length;
+        const failedCount = suggestedTodos.length - successfulCount;
 
-        // Invalidate todos query when todos are created
-        void queryClient.invalidateQueries({ queryKey: ['todos'] });
+        if (successfulCount > 0) {
+          void queryClient.invalidateQueries({ queryKey: ['todos'] });
+        }
 
-        toast({
-          title: '성공',
-          description: `업무노트와 ${suggestedTodos.length}개의 할일이 저장되었습니다.`,
-        });
+        if (failedCount > 0) {
+          toast({
+            variant: 'destructive',
+            title: '일부 할일 생성 실패',
+            description: `업무노트는 저장되었지만, ${failedCount}개의 할일 생성에 실패했습니다.${successfulCount > 0 ? ` ${successfulCount}개는 성공했습니다.` : ''}`,
+          });
+        } else {
+          toast({
+            title: '성공',
+            description: `업무노트와 ${suggestedTodos.length}개의 할일이 저장되었습니다.`,
+          });
+        }
       } else {
         toast({
           title: '성공',
