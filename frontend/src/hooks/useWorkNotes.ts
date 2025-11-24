@@ -96,9 +96,10 @@ export function useUpdateWorkNote() {
   return useMutation({
     mutationFn: ({ workId, data }: { workId: string; data: UpdateWorkNoteRequest }) =>
       API.updateWorkNote(workId, data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
       void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-note-detail', variables.workId] });
       toast({
         title: '성공',
         description: '업무노트가 수정되었습니다.',

@@ -1,12 +1,6 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task:
-  task_id: TASK-023
-  spec_id: SPEC-dept-1
-  title: "Add stable department IDs (post-review follow-up)"
-  status: in_progress
-  started_at: "2025-11-21"
+current_task: null
 notes: |
-  Backlog pruned to pending items only. TASK-023 pulled into current to address
-  department stable ID follow-up. Trace: SPEC-dept-1 / TASK-023.
+  All current work completed. Ready for next task selection.

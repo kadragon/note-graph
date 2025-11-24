@@ -805,6 +805,47 @@ completed_tasks:
     notes: |
       Trace: SPEC-worknote-1 / TASK-027. No backend impact; CDN-hosted font.
 
+  - task_id: TASK-029
+    title: "Show and store AI draft reference sources"
+    spec_id: SPEC-ai-draft-refs-1
+    completed_at: "2025-11-24T11:40:00Z"
+    outcome: |
+      AI 초안 생성 응답에 참고한 업무노트 목록을 포함하고, 생성 화면에서
+      사용자가 불필요한 항목을 해제할 수 있도록 체크박스 UI를 추가했습니다.
+      선택된 항목은 work_note_relation으로 저장되어 업무노트 상세 화면의
+      "참고한 업무노트" 섹션에서 확인할 수 있습니다. WorkNoteService가
+      유사도 점수를 반환하고, AI draft 엔드포인트는 draft + references 형태로
+      응답합니다.
+    test_results: |
+      ✓ npm test -- work-note-service.test.ts
+    estimated_effort: 2h
+    actual_effort: ~2h
+    implementation_details: |
+      - SPEC-ai-draft-refs-1 정의 및 TASK-029 수행
+      - findSimilarNotes가 workId 및 similarityScore를 포함한 레퍼런스 배열 반환
+      - /ai/work-notes/draft-from-text-with-similar이 { draft, references } 형태로 응답
+      - 생성 대화상자에 참고 목록/체크박스 UI 추가 및 relatedWorkIds로 저장
+      - 업무노트 상세 조회 시 관련 업무노트 섹션 노출
+
+  - task_id: TASK-030
+    title: "Expose PDF draft references for selection"
+    spec_id: SPEC-ai-draft-refs-1
+    completed_at: "2025-11-24T12:56:00Z"
+    outcome: |
+      PDF 비동기 초안 처리에서도 AI가 참고한 업무노트 목록을 반환하도록 확장하고,
+      업로드/초안 편집 단계에서 체크박스로 노출하여 불필요한 항목을 제외 후 저장할
+      수 있게 했습니다. 선택된 항목은 relatedWorkIds로 업무노트에 저장되며, 기존
+      PDF 폴링 응답이 draft + references 형태로 통일되었습니다.
+    test_results: |
+      ✓ npm test -- pdf-job-repository.test.ts work-note-service.test.ts
+    estimated_effort: 1.5h
+    actual_effort: ~1.5h
+    implementation_details: |
+      - PDF 처리 시 similar notes → references 배열 생성, draft_json에 {draft,references} 저장
+      - GET /pdf-jobs/:jobId가 references를 함께 반환
+      - PDF 생성 UI에 참고 목록 체크박스 UI 추가, 선택된 것만 relatedWorkIds로 저장
+      - PdfJobRepository가 reference 포함 draft를 저장/테스트 추가
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"

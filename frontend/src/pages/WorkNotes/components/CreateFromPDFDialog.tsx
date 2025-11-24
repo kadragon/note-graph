@@ -1,4 +1,4 @@
-// Trace: TASK-027, SPEC-worknote-1
+// Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-030
 import { useState, useEffect } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import {
@@ -17,12 +17,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { AssigneeSelector } from '@/components/AssigneeSelector';
+import { AIReferenceList } from '@/components/AIReferenceList';
 import { FileDropzone } from '@/pages/PDFUpload/components/FileDropzone';
 import { useUploadPDF, usePDFJob } from '@/hooks/usePDF';
 import { useCreateWorkNote } from '@/hooks/useWorkNotes';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { useToast } from '@/hooks/use-toast';
+import type { AIDraftReference } from '@/types/api';
 
 interface CreateFromPDFDialogProps {
   open: boolean;
@@ -39,6 +41,8 @@ export function CreateFromPDFDialog({
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
+  const [references, setReferences] = useState<AIDraftReference[]>([]);
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
 
   const uploadMutation = useUploadPDF();
   const { data: job } = usePDFJob(
@@ -55,6 +59,8 @@ export function CreateFromPDFDialog({
     if (job?.status === 'READY' && job.draft && title === '' && content === '') {
       setTitle(job.draft.title);
       setContent(job.draft.content);
+      setReferences(job.references || []);
+      setSelectedReferenceIds((job.references || []).map((ref) => ref.workId));
       // Try to find matching category
       const matchingCategory = taskCategories.find(
         (cat) => cat.name === job.draft?.category
@@ -110,6 +116,7 @@ export function CreateFromPDFDialog({
         content: content.trim(),
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+        relatedWorkIds: selectedReferenceIds.length > 0 ? selectedReferenceIds : undefined,
       });
 
       // Reset form and close dialog
@@ -127,6 +134,8 @@ export function CreateFromPDFDialog({
     setSelectedCategoryIds([]);
     setSelectedPersonIds([]);
     setContent('');
+    setReferences([]);
+    setSelectedReferenceIds([]);
   };
 
   const handleClose = () => {
@@ -251,6 +260,12 @@ export function CreateFromPDFDialog({
                   />
                 )}
               </div>
+
+              <AIReferenceList
+                references={references}
+                selectedIds={selectedReferenceIds}
+                onSelectionChange={setSelectedReferenceIds}
+              />
 
               <div className="grid gap-2">
                 <Label htmlFor="content">내용</Label>

@@ -2,7 +2,13 @@
 // Repository for managing PDF processing jobs in D1 database
 
 import { NotFoundError } from '../types/errors.js';
-import type { PdfJob, PdfJobStatus, PdfUploadMetadata, WorkNoteDraft } from '../types/pdf.js';
+import type {
+  PdfJob,
+  PdfJobStatus,
+  PdfUploadMetadata,
+  WorkNoteDraft,
+  WorkNoteDraftWithReferences,
+} from '../types/pdf.js';
 
 /**
  * PdfJobRepository
@@ -91,7 +97,7 @@ export class PdfJobRepository {
   /**
    * Update job status to READY with draft
    */
-  async updateStatusToReady(jobId: string, draft: WorkNoteDraft): Promise<void> {
+  async updateStatusToReady(jobId: string, draft: WorkNoteDraft | WorkNoteDraftWithReferences): Promise<void> {
     const now = new Date().toISOString();
     const draftJson = JSON.stringify(draft);
 

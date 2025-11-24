@@ -1,4 +1,4 @@
-// Trace: TASK-027, SPEC-worknote-1
+// Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-029
 import { useState, useEffect } from 'react';
 import { FileEdit, Sparkles } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,12 +17,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { AssigneeSelector } from '@/components/AssigneeSelector';
+import { AIReferenceList } from '@/components/AIReferenceList';
 import { useGenerateDraftWithSimilar } from '@/hooks/useAIDraft';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { useToast } from '@/hooks/use-toast';
 import { API } from '@/lib/api';
-import type { AIDraftTodo } from '@/types/api';
+import type { AIDraftTodo, AIDraftReference } from '@/types/api';
 
 interface CreateFromTextDialogProps {
   open: boolean;
@@ -40,6 +41,8 @@ export function CreateFromTextDialog({
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
   const [suggestedTodos, setSuggestedTodos] = useState<AIDraftTodo[]>([]);
+  const [references, setReferences] = useState<AIDraftReference[]>([]);
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const generateMutation = useGenerateDraftWithSimilar();
@@ -63,13 +66,16 @@ export function CreateFromTextDialog({
         inputText: inputText.trim(),
       });
 
-      setTitle(result.title);
-      setContent(result.content);
-      setSuggestedTodos(result.todos || []);
+      const draft = result.draft;
+      setTitle(draft.title);
+      setContent(draft.content);
+      setSuggestedTodos(draft.todos || []);
+      setReferences(result.references || []);
+      setSelectedReferenceIds((result.references || []).map((ref) => ref.workId));
 
       // Try to find matching category
       const matchingCategory = taskCategories.find(
-        (cat) => cat.name === result.category
+        (cat) => cat.name === draft.category
       );
       if (matchingCategory) {
         setSelectedCategoryIds([matchingCategory.categoryId]);
@@ -110,6 +116,7 @@ export function CreateFromTextDialog({
         content: content.trim(),
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+        relatedWorkIds: selectedReferenceIds.length > 0 ? selectedReferenceIds : undefined,
       });
 
       // Validate that work note was created with an ID
@@ -170,6 +177,8 @@ export function CreateFromTextDialog({
     setSelectedPersonIds([]);
     setContent('');
     setSuggestedTodos([]);
+    setReferences([]);
+    setSelectedReferenceIds([]);
   };
 
   const handleClose = () => {
@@ -304,6 +313,12 @@ export function CreateFromTextDialog({
                   required
                 />
               </div>
+
+              <AIReferenceList
+                references={references}
+                selectedIds={selectedReferenceIds}
+                onSelectionChange={setSelectedReferenceIds}
+              />
 
               {suggestedTodos.length > 0 && (
                 <div className="grid gap-2">

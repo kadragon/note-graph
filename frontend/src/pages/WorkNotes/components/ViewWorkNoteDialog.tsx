@@ -98,22 +98,32 @@ export function ViewWorkNoteDialog({
     enabled: !!workNote && open,
   });
 
+  // Fetch detailed work note (includes references)
+  const { data: detailedWorkNote } = useQuery({
+    queryKey: ['work-note-detail', workNote?.id],
+    queryFn: () => (workNote ? API.getWorkNote(workNote.id) : Promise.resolve(null)),
+    enabled: !!workNote && open,
+    staleTime: 30_000,
+  });
+
+  const currentWorkNote = detailedWorkNote || workNote;
+
   // Reset form with current work note data
   const resetForm = useCallback(() => {
-    if (workNote) {
-      setEditTitle(workNote.title);
-      setEditContent(workNote.content);
-      setEditCategoryIds(workNote.categories?.map((c) => c.categoryId) || []);
-      setEditPersonIds(workNote.persons?.map((p) => p.personId) || []);
+    if (currentWorkNote) {
+      setEditTitle(currentWorkNote.title);
+      setEditContent(currentWorkNote.content);
+      setEditCategoryIds(currentWorkNote.categories?.map((c) => c.categoryId) || []);
+      setEditPersonIds(currentWorkNote.persons?.map((p) => p.personId) || []);
     }
-  }, [workNote]);
+  }, [currentWorkNote]);
 
   // Initialize edit form when work note changes
   useEffect(() => {
-    if (workNote && open) {
+    if (currentWorkNote && open) {
       resetForm();
     }
-  }, [workNote, open, resetForm]);
+  }, [currentWorkNote, open, resetForm]);
 
   // Reset editing state when dialog closes
   useEffect(() => {
@@ -143,9 +153,11 @@ export function ViewWorkNoteDialog({
   // Create todo mutation
   const createTodoMutation = useMutation({
     mutationFn: (data: CreateTodoRequest) =>
-      workNote ? API.createWorkNoteTodo(workNote.id, data) : Promise.reject(new Error('No work note')),
+      currentWorkNote
+        ? API.createWorkNoteTodo(currentWorkNote.id, data)
+        : Promise.reject(new Error('No work note')),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNote?.id] });
+      void queryClient.invalidateQueries({ queryKey: ['work-note-todos', currentWorkNote?.id] });
       void queryClient.invalidateQueries({ queryKey: ['todos'] });
       void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       setTodoTitle('');
@@ -202,7 +214,7 @@ export function ViewWorkNoteDialog({
 
 
   const handleSaveEdit = async () => {
-    if (!workNote || !editTitle.trim() || !editContent.trim()) {
+    if (!currentWorkNote || !editTitle.trim() || !editContent.trim()) {
       toast({
         variant: 'destructive',
         title: '오류',
@@ -213,7 +225,7 @@ export function ViewWorkNoteDialog({
 
     try {
       await updateMutation.mutateAsync({
-        workId: workNote.id,
+        workId: currentWorkNote.id,
         data: {
           title: editTitle.trim(),
           content: editContent.trim(),
@@ -233,7 +245,7 @@ export function ViewWorkNoteDialog({
     setIsEditing(false);
   };
 
-  if (!workNote) return null;
+  if (!currentWorkNote) return null;
 
   return (
     <>
@@ -251,7 +263,7 @@ export function ViewWorkNoteDialog({
                 />
               </div>
             ) : (
-              <DialogTitle className="text-xl">{workNote.title}</DialogTitle>
+              <DialogTitle className="text-xl">{currentWorkNote.title}</DialogTitle>
             )}
             <div className="flex items-center gap-2">
               {!isEditing && (
@@ -304,8 +316,8 @@ export function ViewWorkNoteDialog({
               )
             ) : (
               <div className="flex flex-wrap gap-1">
-                {workNote.categories && workNote.categories.length > 0 ? (
-                  workNote.categories.map((category) => (
+                {currentWorkNote.categories && currentWorkNote.categories.length > 0 ? (
+                  currentWorkNote.categories.map((category) => (
                     <Badge key={category.categoryId} variant="secondary">
                       {category.name}
                     </Badge>
@@ -333,8 +345,8 @@ export function ViewWorkNoteDialog({
               )
             ) : (
               <div className="flex flex-wrap gap-1">
-                {workNote.persons && workNote.persons.length > 0 ? (
-                  workNote.persons.map((person) => (
+                {currentWorkNote.persons && currentWorkNote.persons.length > 0 ? (
+                  currentWorkNote.persons.map((person) => (
                     <Badge key={person.personId} variant="outline">
                       {formatPersonBadge({
                         name: person.personName,
@@ -357,13 +369,13 @@ export function ViewWorkNoteDialog({
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
               생성일:{' '}
-              {format(parseISO(workNote.createdAt), 'yyyy년 M월 d일 HH:mm', {
+              {format(parseISO(currentWorkNote.createdAt), 'yyyy년 M월 d일 HH:mm', {
                 locale: ko,
               })}
             </p>
             <p>
               수정일:{' '}
-              {format(parseISO(workNote.updatedAt), 'yyyy년 M월 d일 HH:mm', {
+              {format(parseISO(currentWorkNote.updatedAt), 'yyyy년 M월 d일 HH:mm', {
                 locale: ko,
               })}
             </p>
@@ -390,9 +402,31 @@ export function ViewWorkNoteDialog({
                   remarkPlugins={remarkPlugins}
                   rehypePlugins={rehypePlugins}
                 >
-                  {workNote.content}
+                  {currentWorkNote.content}
                 </ReactMarkdown>
               </div>
+            )}
+          </div>
+
+          {/* References */}
+          <div className="border-t pt-4">
+            <h3 className="font-semibold mb-2">참고한 업무노트</h3>
+            {currentWorkNote.relatedWorkNotes && currentWorkNote.relatedWorkNotes.length > 0 ? (
+              <div className="space-y-2">
+                {currentWorkNote.relatedWorkNotes.map((ref) => (
+                  <div
+                    key={ref.relatedWorkId}
+                    className="flex items-center justify-between border rounded-md p-3"
+                  >
+                    <div>
+                      <p className="font-medium">{ref.relatedWorkTitle || ref.relatedWorkId}</p>
+                      <p className="text-xs text-muted-foreground">ID: {ref.relatedWorkId}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">저장된 참고 업무노트가 없습니다.</p>
             )}
           </div>
 
@@ -550,7 +584,7 @@ export function ViewWorkNoteDialog({
       todo={editTodo}
       open={editTodoDialogOpen}
       onOpenChange={setEditTodoDialogOpen}
-      workNoteId={workNote?.id}
+      workNoteId={currentWorkNote?.id}
     />
 
     <AlertDialog open={!!deleteTodoId} onOpenChange={(open) => !open && setDeleteTodoId(null)}>

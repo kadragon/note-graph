@@ -118,7 +118,7 @@ export class AIDraftService {
    */
   async generateDraftFromTextWithContext(
     inputText: string,
-    similarNotes: Array<{ title: string; content: string; category?: string }>,
+    similarNotes: Array<{ workId: string; title: string; content: string; category?: string; similarityScore?: number }>,
     options?: {
       category?: string;
       personIds?: string[];
