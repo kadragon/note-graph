@@ -277,14 +277,15 @@ export interface AIGenerateDraftResponse {
 }
 
 // PDF types
-export type PDFJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type PDFJobStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'ERROR';
 
 export interface PDFJob {
   jobId: string;
   status: PDFJobStatus;
-  filename?: string;
+  createdAt: string;
+  updatedAt: string;
   draft?: AIGenerateDraftResponse;
-  error?: string;
+  errorMessage?: string;
 }
 
 // Vector Store types

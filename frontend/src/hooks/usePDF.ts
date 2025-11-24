@@ -31,7 +31,7 @@ export function usePDFJob(jobId: string | null, enabled: boolean) {
     enabled: enabled && !!jobId,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === 'pending' || status === 'processing' ? 2000 : false;
+      return status === 'PENDING' || status === 'PROCESSING' ? 2000 : false;
     },
   });
 }

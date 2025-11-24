@@ -52,7 +52,7 @@ export function CreateFromPDFDialog({
 
   // Update form when draft is ready (only if user hasn't edited yet)
   useEffect(() => {
-    if (job?.status === 'completed' && job.draft && title === '' && content === '') {
+    if (job?.status === 'READY' && job.draft && title === '' && content === '') {
       setTitle(job.draft.title);
       setContent(job.draft.content);
       // Try to find matching category
@@ -176,17 +176,17 @@ export function CreateFromPDFDialog({
                         {(uploadedFile.size / 1024).toFixed(2)} KB
                       </p>
                     </div>
-                    {job?.status === 'pending' || job?.status === 'processing' ? (
+                    {job?.status === 'PENDING' || job?.status === 'PROCESSING' ? (
                       <Badge variant="secondary" className="flex items-center gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
                         처리 중
                       </Badge>
-                    ) : job?.status === 'failed' ? (
+                    ) : job?.status === 'ERROR' ? (
                       <Badge variant="destructive">실패</Badge>
                     ) : null}
                   </div>
-                  {job?.error && (
-                    <p className="text-sm text-destructive mt-2">{job.error}</p>
+                  {job?.errorMessage && (
+                    <p className="text-sm text-destructive mt-2">{job.errorMessage}</p>
                   )}
                 </Card>
               )}
@@ -194,7 +194,7 @@ export function CreateFromPDFDialog({
           )}
 
           {/* Step 2: Edit Draft */}
-          {job?.status === 'completed' && job.draft && (
+          {job?.status === 'READY' && job.draft && (
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="title">제목</Label>
