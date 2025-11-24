@@ -16,6 +16,8 @@ import {
 export class PdfExtractionService {
   // PDF signature bytes: %PDF-
   private static readonly PDF_SIGNATURE = [0x25, 0x50, 0x44, 0x46, 0x2d];
+  // Maximum bytes to search for PDF signature in wrapped formats (10KB)
+  private static readonly MAX_SIGNATURE_SEARCH_BYTES = 10240;
 
   /**
    * Normalize PDF buffer by extracting embedded PDF from wrapper formats
@@ -28,30 +30,14 @@ export class PdfExtractionService {
     const uint8Array =
       buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
 
-    // Check if already starts with PDF signature
-    if (this.startsWithPdfSignature(uint8Array)) {
-      return uint8Array;
-    }
-
-    // Search for PDF signature in the buffer (for wrapped formats like Handysoft)
     const pdfOffset = this.findPdfSignatureOffset(uint8Array);
 
     if (pdfOffset === -1) {
       throw new CorruptPdfError();
     }
 
-    // Extract PDF portion from the wrapper
-    return uint8Array.slice(pdfOffset);
-  }
-
-  /**
-   * Check if buffer starts with PDF signature
-   */
-  private startsWithPdfSignature(buffer: Uint8Array): boolean {
-    if (buffer.length < 5) return false;
-    return PdfExtractionService.PDF_SIGNATURE.every(
-      (byte, index) => buffer[index] === byte
-    );
+    // Return as-is if PDF starts at beginning, otherwise extract from offset
+    return pdfOffset === 0 ? uint8Array : uint8Array.slice(pdfOffset);
   }
 
   /**
@@ -60,7 +46,10 @@ export class PdfExtractionService {
    */
   private findPdfSignatureOffset(buffer: Uint8Array): number {
     const signature = PdfExtractionService.PDF_SIGNATURE;
-    const maxSearchLength = Math.min(buffer.length - 5, 10000); // Search first 10KB
+    const maxSearchLength = Math.min(
+      buffer.length - signature.length,
+      PdfExtractionService.MAX_SIGNATURE_SEARCH_BYTES
+    );
 
     for (let i = 0; i <= maxSearchLength; i++) {
       if (signature.every((byte, index) => buffer[i + index] === byte)) {
@@ -141,11 +130,8 @@ export class PdfExtractionService {
     }
 
     // Check for PDF signature (either at start or embedded in wrapper)
-    if (!this.startsWithPdfSignature(uint8Array)) {
-      const pdfOffset = this.findPdfSignatureOffset(uint8Array);
-      if (pdfOffset === -1) {
-        throw new CorruptPdfError();
-      }
+    if (this.findPdfSignatureOffset(uint8Array) === -1) {
+      throw new CorruptPdfError();
     }
 
     return true;
