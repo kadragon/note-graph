@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useUploadPDF, usePDFJob, useSavePDFDraft } from '@/hooks/usePDF';
+import type { PDFJobStatus } from '@/types/api';
 import { FileDropzone } from './components/FileDropzone';
 
 export default function PDFUpload() {
@@ -52,18 +53,18 @@ export default function PDFUpload() {
   const getStatusBadge = () => {
     if (!job) return null;
 
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
-      pending: 'secondary',
-      processing: 'default',
-      completed: 'default',
-      failed: 'destructive',
+    const variants: Record<PDFJobStatus, 'default' | 'secondary' | 'destructive'> = {
+      PENDING: 'secondary',
+      PROCESSING: 'default',
+      READY: 'default',
+      ERROR: 'destructive',
     };
 
-    const labels: Record<string, string> = {
-      pending: '대기 중',
-      processing: '처리 중',
-      completed: '완료',
-      failed: '실패',
+    const labels: Record<PDFJobStatus, string> = {
+      PENDING: '대기 중',
+      PROCESSING: '처리 중',
+      READY: '완료',
+      ERROR: '실패',
     };
 
     return (
@@ -102,9 +103,9 @@ export default function PDFUpload() {
                   <span className="font-medium">크기:</span>{' '}
                   {(uploadedFile.size / 1024).toFixed(2)} KB
                 </p>
-                {job?.error && (
+                {job?.errorMessage && (
                   <p className="text-sm text-destructive">
-                    <span className="font-medium">오류:</span> {job.error}
+                    <span className="font-medium">오류:</span> {job.errorMessage}
                   </p>
                 )}
               </div>
@@ -112,7 +113,7 @@ export default function PDFUpload() {
           </Card>
         )}
 
-        {job?.status === 'completed' && job.draft && (
+        {job?.status === 'READY' && job.draft && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

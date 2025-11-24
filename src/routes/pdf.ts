@@ -23,6 +23,41 @@ const SIMILARITY_SCORE_THRESHOLD = 0.5;
 const pdf = new Hono<{ Bindings: Env }>();
 
 /**
+ * GET /pdf-jobs/:jobId
+ * Get PDF job status and result
+ */
+pdf.get('/:jobId', async (c) => {
+  const jobId = c.req.param('jobId');
+  const repository = new PdfJobRepository(c.env.DB);
+
+  const job = await repository.getById(jobId);
+  if (!job) {
+    throw new NotFoundError('PDF job', jobId);
+  }
+
+  let draft: WorkNoteDraft | undefined;
+  if (job.draftJson) {
+    try {
+      draft = JSON.parse(job.draftJson) as WorkNoteDraft;
+    } catch (error) {
+      console.error(`[PDF Job ${jobId}] Failed to parse draft JSON:`, error);
+      draft = undefined;
+    }
+  }
+
+  const response: PdfJobResponse = {
+    jobId: job.jobId,
+    status: job.status,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+    errorMessage: job.errorMessage || undefined,
+    draft,
+  };
+
+  return c.json(response);
+});
+
+/**
  * POST /pdf-jobs
  * Upload PDF file and process synchronously
  * - Validates and extracts text from PDF
