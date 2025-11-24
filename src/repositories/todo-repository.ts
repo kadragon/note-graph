@@ -385,11 +385,17 @@ export class TodoRepository {
       updateParams.push(data.status);
     }
     const nextWaitUntil = data.waitUntil !== undefined ? (data.waitUntil || null) : existing.waitUntil;
+    // Auto-fill due_date from wait_until when:
+    // 1. User is setting wait_until in this update
+    // 2. User didn't provide due_date in this update
+    // 3. wait_until is not being cleared
+    // 4. Either no existing due_date, OR existing due_date is before new wait_until
+    //    (ensures due_date is never earlier than wait_until)
     const shouldAutoFillDueDate =
       data.waitUntil !== undefined &&
-      (data.dueDate === undefined || data.dueDate === null) &&
-      !existing.dueDate &&
-      nextWaitUntil !== null;
+      data.dueDate === undefined &&
+      nextWaitUntil !== null &&
+      (!existing.dueDate || existing.dueDate < nextWaitUntil);
 
     if (data.dueDate !== undefined) {
       updateFields.push('due_date = ?');

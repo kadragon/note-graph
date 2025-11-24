@@ -461,6 +461,34 @@ describe('TodoRepository', () => {
       expect(result.dueDate).toBe(waitUntil);
     });
 
+    it('should keep dueDate when updating waitUntil if dueDate is after waitUntil', async () => {
+      // Arrange - set dueDate to 12/10, then update waitUntil to 12/05
+      const existingDueDate = new Date('2025-12-10T00:00:00.000Z').toISOString();
+      await repository.update(existingTodoId, { dueDate: existingDueDate });
+
+      // Act - update only waitUntil (before dueDate)
+      const newWaitUntil = new Date('2025-12-05T00:00:00.000Z').toISOString();
+      const result = await repository.update(existingTodoId, { waitUntil: newWaitUntil });
+
+      // Assert - dueDate should remain unchanged since it's after waitUntil
+      expect(result.waitUntil).toBe(newWaitUntil);
+      expect(result.dueDate).toBe(existingDueDate);
+    });
+
+    it('should update dueDate to waitUntil when existing dueDate is before waitUntil', async () => {
+      // Arrange - set dueDate to 12/01, then update waitUntil to 12/10
+      const existingDueDate = new Date('2025-12-01T00:00:00.000Z').toISOString();
+      await repository.update(existingTodoId, { dueDate: existingDueDate });
+
+      // Act - update only waitUntil (after dueDate)
+      const newWaitUntil = new Date('2025-12-10T00:00:00.000Z').toISOString();
+      const result = await repository.update(existingTodoId, { waitUntil: newWaitUntil });
+
+      // Assert - dueDate should be updated to match waitUntil
+      expect(result.waitUntil).toBe(newWaitUntil);
+      expect(result.dueDate).toBe(newWaitUntil);
+    });
+
     it('should update status', async () => {
       // Arrange
       const update: UpdateTodoInput = {
@@ -727,7 +755,7 @@ describe('TodoRepository', () => {
       const newTodo = allTodos.find((t) => t.status === '진행중');
 
       expect(newTodo?.dueDate).toBeDefined();
-      expect(newTodo?.waitUntil).toBe(newTodo?.dueDate || undefined);
+      expect(newTodo?.waitUntil).toBe(newTodo?.dueDate);
     });
 
     it('should preserve repeat_rule and recurrence_type in new instance', async () => {
