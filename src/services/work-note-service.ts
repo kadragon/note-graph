@@ -236,13 +236,13 @@ export class WorkNoteService {
    *
    * @param inputText - Text to find similar notes for
    * @param topK - Number of similar notes to return (default: 3)
-   * @param scoreThreshold - Minimum similarity score (default: 0.5)
+   * @param scoreThreshold - Minimum similarity score (default: 0.7)
    * @returns Array of similar notes with title, content, and category
    */
   async findSimilarNotes(
     inputText: string,
     topK: number = 3,
-    scoreThreshold: number = 0.5
+    scoreThreshold: number = 0.7
   ): Promise<SimilarWorkNoteReference[]> {
     try {
       // Search for similar work notes

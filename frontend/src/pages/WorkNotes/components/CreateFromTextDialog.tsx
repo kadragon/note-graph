@@ -1,6 +1,6 @@
 // Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-029
 import { useState, useEffect } from 'react';
-import { FileEdit, Sparkles } from 'lucide-react';
+import { FileEdit, Sparkles, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -169,6 +169,10 @@ export function CreateFromTextDialog({
     }
   };
 
+  const handleRemoveTodo = (index: number) => {
+    setSuggestedTodos((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const resetForm = () => {
     setInputText('');
     setDraftGenerated(false);
@@ -322,11 +326,11 @@ export function CreateFromTextDialog({
 
               {suggestedTodos.length > 0 && (
                 <div className="grid gap-2">
-                  <Label>제안된 할일 (참고용)</Label>
+                  <Label>생성될 할일 (삭제 가능)</Label>
                   <Card className="p-3">
                     <ul className="space-y-2 text-sm">
                       {suggestedTodos.map((todo, idx) => (
-                        <li key={`${todo.title}-${idx}`} className="flex items-start">
+                        <li key={`${todo.title}-${idx}`} className="flex items-start group">
                           <span className="mr-2">•</span>
                           <div className="flex-1">
                             <div className="font-medium">{todo.title}</div>
@@ -337,6 +341,15 @@ export function CreateFromTextDialog({
                               <div className="text-muted-foreground text-xs mt-0.5">마감: {todo.dueDate}</div>
                             )}
                           </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleRemoveTodo(idx)}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
                         </li>
                       ))}
                     </ul>
