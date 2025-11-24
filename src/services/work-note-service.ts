@@ -232,12 +232,12 @@ export class WorkNoteService {
    * Find similar work notes based on input text
    *
    * Searches for similar work notes using vector similarity and returns
-   * basic information (title, content, category) suitable for AI context.
+   * basic information (title, content, category, todos) suitable for AI context.
    *
    * @param inputText - Text to find similar notes for
    * @param topK - Number of similar notes to return (default: 3)
    * @param scoreThreshold - Minimum similarity score (default: 0.7)
-   * @returns Array of similar notes with title, content, and category
+   * @returns Array of similar notes with title, content, category, and todos
    */
   async findSimilarNotes(
     inputText: string,
@@ -268,8 +268,11 @@ export class WorkNoteService {
         return [];
       }
 
-      // Batch fetch work notes (solves N+1 query problem)
-      const workNotes = await this.repository.findByIds(workIds);
+      // Batch fetch work notes and todos in parallel (solves N+1 query problem)
+      const [workNotes, todosByWorkId] = await Promise.all([
+        this.repository.findByIds(workIds),
+        this.repository.findTodosByWorkIds(workIds),
+      ]);
 
       // Map results maintaining similarity order
       const workNoteMap = new Map(
@@ -285,6 +288,7 @@ export class WorkNoteService {
           content: note.contentRaw,
           category: note.category || undefined,
           similarityScore: workIdScores.get(note.workId) ?? 0,
+          todos: todosByWorkId.get(note.workId) || [],
         }));
     } catch (error) {
       console.error('[WorkNoteService] Error finding similar notes:', error);

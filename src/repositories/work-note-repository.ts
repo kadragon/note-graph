@@ -8,6 +8,7 @@ import { nanoid } from 'nanoid';
 import type { WorkNote, WorkNoteDetail, WorkNoteVersion, WorkNotePersonAssociation, WorkNoteRelation } from '../types/work-note';
 import type { CreateWorkNoteInput, UpdateWorkNoteInput, ListWorkNotesQuery } from '../schemas/work-note';
 import type { TaskCategory } from '../types/task-category';
+import type { ReferenceTodo } from '../types/search';
 import { NotFoundError } from '../types/errors';
 
 const MAX_VERSIONS = 5;
@@ -112,6 +113,43 @@ export class WorkNoteRepository {
       .all<WorkNote>();
 
     return result.results || [];
+  }
+
+  /**
+   * Find todos for multiple work notes by IDs (batch fetch)
+   * Returns a map of workId to array of simplified todos for AI reference context
+   */
+  async findTodosByWorkIds(workIds: string[]): Promise<Map<string, ReferenceTodo[]>> {
+    if (workIds.length === 0) {
+      return new Map();
+    }
+
+    const placeholders = workIds.map(() => '?').join(',');
+    const result = await this.db
+      .prepare(
+        `SELECT work_id as workId, title, description, status, due_date as dueDate
+         FROM todos
+         WHERE work_id IN (${placeholders})
+         ORDER BY due_date ASC NULLS LAST, created_at ASC`
+      )
+      .bind(...workIds)
+      .all<{ workId: string; title: string; description: string | null; status: string; dueDate: string | null }>();
+
+    // Group todos by workId
+    const todosByWorkId = new Map<string, ReferenceTodo[]>();
+    for (const todo of result.results || []) {
+      if (!todosByWorkId.has(todo.workId)) {
+        todosByWorkId.set(todo.workId, []);
+      }
+      todosByWorkId.get(todo.workId)!.push({
+        title: todo.title,
+        description: todo.description,
+        status: todo.status,
+        dueDate: todo.dueDate,
+      });
+    }
+
+    return todosByWorkId;
   }
 
   /**

@@ -1,0 +1,214 @@
+// Trace: SPEC-worknote-1, TASK-032
+import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTaskCategories } from '@/hooks/useTaskCategories';
+import { usePersons } from '@/hooks/usePersons';
+import { useToast } from '@/hooks/use-toast';
+import { API } from '@/lib/api';
+import type { AIDraftTodo, AIDraftReference, WorkNoteDraft } from '@/types/api';
+
+export interface AIDraftFormState {
+  title: string;
+  content: string;
+  selectedCategoryIds: string[];
+  selectedPersonIds: string[];
+  suggestedTodos: AIDraftTodo[];
+  references: AIDraftReference[];
+  selectedReferenceIds: string[];
+  isSubmitting: boolean;
+}
+
+export interface AIDraftFormActions {
+  setTitle: (title: string) => void;
+  setContent: (content: string) => void;
+  setSelectedCategoryIds: (ids: string[]) => void;
+  setSelectedPersonIds: (ids: string[]) => void;
+  handleCategoryToggle: (categoryId: string) => void;
+  handleRemoveTodo: (index: number) => void;
+  setSelectedReferenceIds: (ids: string[]) => void;
+  handleSubmit: (e: React.FormEvent) => Promise<void>;
+  resetForm: () => void;
+  populateDraft: (draft: WorkNoteDraft, refs?: AIDraftReference[]) => void;
+}
+
+export interface AIDraftFormData {
+  taskCategories: Array<{ categoryId: string; name: string }>;
+  persons: Array<{ personId: string; name: string; currentDept?: string | null; currentPosition?: string | null }>;
+  categoriesLoading: boolean;
+  personsLoading: boolean;
+}
+
+export function useAIDraftForm(onSuccess?: () => void) {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
+  const [suggestedTodos, setSuggestedTodos] = useState<AIDraftTodo[]>([]);
+  const [references, setReferences] = useState<AIDraftReference[]>([]);
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const queryClient = useQueryClient();
+  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
+  const { data: persons = [], isLoading: personsLoading } = usePersons();
+  const { toast } = useToast();
+
+  const handleCategoryToggle = useCallback((categoryId: string) => {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  }, []);
+
+  const handleRemoveTodo = useCallback((index: number) => {
+    setSuggestedTodos((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setTitle('');
+    setContent('');
+    setSelectedCategoryIds([]);
+    setSelectedPersonIds([]);
+    setSuggestedTodos([]);
+    setReferences([]);
+    setSelectedReferenceIds([]);
+  }, []);
+
+  const populateDraft = useCallback((draft: WorkNoteDraft, refs?: AIDraftReference[]) => {
+    setTitle(draft.title);
+    setContent(draft.content);
+    setSuggestedTodos(draft.todos || []);
+
+    if (refs) {
+      setReferences(refs);
+      setSelectedReferenceIds(refs.map((ref) => ref.workId));
+    }
+
+    // Try to find matching category
+    const matchingCategory = taskCategories.find(
+      (cat) => cat.name === draft.category
+    );
+    if (matchingCategory) {
+      setSelectedCategoryIds([matchingCategory.categoryId]);
+    }
+  }, [taskCategories]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!title.trim() || !content.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '제목과 내용을 입력해주세요.',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Create work note first
+      const workNote = await API.createWorkNote({
+        title: title.trim(),
+        content: content.trim(),
+        categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+        relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+        relatedWorkIds: selectedReferenceIds.length > 0 ? selectedReferenceIds : undefined,
+      });
+
+      // Validate that work note was created with an ID
+      if (!workNote?.id) {
+        throw new Error('업무노트 생성에 실패했거나, 서버에서 잘못된 데이터를 반환했습니다.');
+      }
+
+      // Create todos if any suggested todos exist
+      if (suggestedTodos.length > 0) {
+        const todoPromises = suggestedTodos.map((todo) =>
+          API.createWorkNoteTodo(workNote.id, {
+            title: todo.title,
+            description: todo.description,
+            dueDate: todo.dueDate,
+            repeatRule: 'NONE',
+          })
+        );
+
+        await Promise.all(todoPromises);
+
+        // Invalidate todos query when todos are created
+        void queryClient.invalidateQueries({ queryKey: ['todos'] });
+
+        toast({
+          title: '성공',
+          description: `업무노트와 ${suggestedTodos.length}개의 할일이 저장되었습니다.`,
+        });
+      } else {
+        toast({
+          title: '성공',
+          description: '업무노트가 생성되었습니다.',
+        });
+      }
+
+      // Always invalidate work-notes queries
+      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+
+      // Reset form and call success callback
+      resetForm();
+      onSuccess?.();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    title,
+    content,
+    selectedCategoryIds,
+    selectedPersonIds,
+    selectedReferenceIds,
+    suggestedTodos,
+    queryClient,
+    toast,
+    resetForm,
+    onSuccess,
+  ]);
+
+  const state: AIDraftFormState = {
+    title,
+    content,
+    selectedCategoryIds,
+    selectedPersonIds,
+    suggestedTodos,
+    references,
+    selectedReferenceIds,
+    isSubmitting,
+  };
+
+  const actions: AIDraftFormActions = {
+    setTitle,
+    setContent,
+    setSelectedCategoryIds,
+    setSelectedPersonIds,
+    handleCategoryToggle,
+    handleRemoveTodo,
+    setSelectedReferenceIds,
+    handleSubmit,
+    resetForm,
+    populateDraft,
+  };
+
+  const data: AIDraftFormData = {
+    taskCategories,
+    persons,
+    categoriesLoading,
+    personsLoading,
+  };
+
+  return { state, actions, data };
+}

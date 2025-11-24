@@ -3,4 +3,6 @@
 
 current_task: null
 notes: |
-  All current work completed. Ready for next task selection.
+  TASK-032 completed. AI draft dialog code reduced by 62% through shared
+  useAIDraftForm hook and DraftEditorForm component.
+  Ready for next task selection.

@@ -2,55 +2,6 @@
 # Tasks ordered by priority (highest first)
 
 tasks:
-  - task_id: TASK-031
-    spec_id: SPEC-ai-draft-refs-1
-    title: "Include todos in similar work note references"
-    description: |
-      Extend findSimilarNotes to return todo information for each similar work note.
-      This allows AI to reference todo patterns from previous work notes when generating
-      new drafts, improving todo suggestion quality.
-
-      Implementation steps:
-      1. Update SimilarWorkNoteReference type to include todos array
-      2. Modify WorkNoteRepository to fetch todos with similar notes (batch query)
-      3. Update findSimilarNotes in WorkNoteService to include todos
-      4. Update AI prompt in constructDraftPromptWithContext to display reference todos
-    priority: 3
-    status: pending
-    estimated_effort: 3h
-    acceptance_criteria:
-      - "SimilarWorkNoteReference includes todos array"
-      - "AI prompt shows todo list for each reference note"
-      - "No N+1 query problem (batch fetch todos)"
-
-  - task_id: TASK-032
-    spec_id: SPEC-worknote-1
-    title: "Refactor PDF and Text dialogs to share AI draft logic"
-    description: |
-      Extract common AI draft editing logic from CreateFromPDFDialog and
-      CreateFromTextDialog into a shared component or hook to reduce code duplication.
-
-      Current duplication:
-      - suggestedTodos state management
-      - handleRemoveTodo function
-      - Category/person selection
-      - Reference selection
-      - Todo creation on submit
-      - Form reset logic
-
-      Implementation options:
-      1. Create shared DraftEditorForm component
-      2. Create useAIDraftForm custom hook
-      3. Both dialogs become thin wrappers for input collection
-    priority: 2
-    status: pending
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "Common draft editing logic extracted to shared component/hook"
-      - "Both dialogs use the shared logic"
-      - "No functional regression in either dialog"
-      - "Code duplication reduced by >50%"
-
   - task_id: TASK-024
     spec_id: SPEC-worknote-1
     title: "Add searchable assignee selector for work notes"
@@ -151,13 +102,9 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 8
-  total_estimated_effort: 28 hours
+  total_tasks: 6
+  total_estimated_effort: 21 hours
   phases:
-    - name: "AI Draft Enhancement"
-      tasks: [TASK-031, TASK-032]
-      effort: 7h
-
     - name: "Entity Management"
       tasks: [TASK-024, TASK-025, TASK-020, TASK-021]
       effort: 11h
