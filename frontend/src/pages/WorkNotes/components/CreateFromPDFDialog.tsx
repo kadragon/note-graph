@@ -42,6 +42,7 @@ export function CreateFromPDFDialog({
   const [content, setContent] = useState('');
   const [references, setReferences] = useState<AIDraftReference[]>([]);
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
+  const [showAllReferences, setShowAllReferences] = useState(false);
 
   const uploadMutation = useUploadPDF();
   const { data: job } = usePDFJob(
@@ -143,6 +144,7 @@ export function CreateFromPDFDialog({
     setContent('');
     setReferences([]);
     setSelectedReferenceIds([]);
+    setShowAllReferences(false);
   };
 
   const handleClose = () => {
@@ -271,8 +273,8 @@ export function CreateFromPDFDialog({
               {references.length > 0 && (
                 <div className="grid gap-2">
                   <Label>AI가 참고한 업무노트</Label>
-                  <Card className="p-3 space-y-2">
-                    {references.map((ref) => {
+                  <Card className="p-3 space-y-2 max-h-[260px] overflow-y-auto">
+                    {(showAllReferences ? references : references.slice(0, 5)).map((ref) => {
                       const isSelected = selectedReferenceIds.includes(ref.workId);
                       const scoreLabel = ref.similarityScore !== undefined
                         ? `${Math.round(ref.similarityScore * 100)}%`
@@ -296,9 +298,18 @@ export function CreateFromPDFDialog({
                       );
                     })}
                   </Card>
-                  <p className="text-xs text-muted-foreground">
-                    필요 없는 참고 자료는 선택 해제하세요. 해제된 항목은 저장되지 않습니다.
-                  </p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <p>필요 없는 참고 자료는 선택 해제하세요. 해제된 항목은 저장되지 않습니다.</p>
+                    {references.length > 5 && (
+                      <button
+                        type="button"
+                        className="text-primary underline underline-offset-2"
+                        onClick={() => setShowAllReferences((prev) => !prev)}
+                      >
+                        {showAllReferences ? '간략히 보기' : `모두 보기 (${references.length})`}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
