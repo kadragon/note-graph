@@ -412,6 +412,12 @@
 - Both dialogs now thin wrappers for Step 1 (input collection), delegating Step 2 (editing) to DraftEditorForm.
 - Build and typecheck pass successfully.
 
+### Session 28: Todo Wait/Due Alignment (2025-11-24)
+- **TASK-033 Completed** (SPEC-todo-1): Made wait dates primary in todo UI and defaults.
+- Backend create/update now auto-fill `due_date` when only `wait_until` is provided; recurrence inserts copy next `due_date` to `wait_until`.
+- Frontend shows wait date before due date in dashboard todo items and work note dialog; edit dialog auto-fills due date when wait date is set.
+- Added TEST-todo-7/8 to cover auto-fill and recurrence wait duplication; `npm test -- tests/unit/todo-repository.test.ts` passing.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

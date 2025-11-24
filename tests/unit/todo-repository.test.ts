@@ -338,6 +338,26 @@ describe('TodoRepository', () => {
       expect(result.recurrenceType).toBe('DUE_DATE');
     });
 
+    it('should auto-set dueDate when waitUntil is provided without dueDate', async () => {
+      // Arrange
+      const waitUntil = new Date('2025-12-01T00:00:00.000Z').toISOString();
+      const input: CreateTodoInput = {
+        title: 'Wait only',
+        waitUntil,
+        repeatRule: 'NONE',
+      };
+
+      // Act
+      const result = await repository.create(testWorkId, input);
+
+      // Assert
+      expect(result.waitUntil).toBe(waitUntil);
+      expect(result.dueDate).toBe(waitUntil);
+
+      const stored = await repository.findById(result.todoId);
+      expect(stored?.dueDate).toBe(waitUntil);
+    });
+
     it('should create todo with Korean text', async () => {
       // Arrange
       const input: CreateTodoInput = {
@@ -427,6 +447,18 @@ describe('TodoRepository', () => {
 
       // Assert
       expect(result.description).toBe('Updated description');
+    });
+
+    it('should set dueDate when adding waitUntil and dueDate is missing', async () => {
+      // Arrange
+      const waitUntil = new Date('2025-12-05T00:00:00.000Z').toISOString();
+
+      // Act
+      const result = await repository.update(existingTodoId, { waitUntil });
+
+      // Assert
+      expect(result.waitUntil).toBe(waitUntil);
+      expect(result.dueDate).toBe(waitUntil);
     });
 
     it('should update status', async () => {
@@ -671,7 +703,7 @@ describe('TodoRepository', () => {
       expect(allTodos.filter((t) => t.status === '진행중').length).toBeLessThanOrEqual(2);
     });
 
-    it('should reset wait_until for new recurring instance', async () => {
+    it('should copy next due_date to wait_until for new recurring instance', async () => {
       // Arrange
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 1);
@@ -694,7 +726,8 @@ describe('TodoRepository', () => {
       const allTodos = await repository.findByWorkId(testWorkId);
       const newTodo = allTodos.find((t) => t.status === '진행중');
 
-      expect(newTodo?.waitUntil).toBeNull();
+      expect(newTodo?.dueDate).toBeDefined();
+      expect(newTodo?.waitUntil).toBe(newTodo?.dueDate || undefined);
     });
 
     it('should preserve repeat_rule and recurrence_type in new instance', async () => {

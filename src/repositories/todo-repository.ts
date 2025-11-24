@@ -1,4 +1,4 @@
-// Trace: SPEC-todo-1, TASK-008
+// Trace: SPEC-todo-1, TASK-008, TASK-033
 /**
  * Todo repository for D1 database operations
  */
@@ -292,6 +292,9 @@ export class TodoRepository {
     const now = new Date().toISOString();
     const todoId = this.generateTodoId();
 
+    const effectiveWaitUntil = data.waitUntil || null;
+    const effectiveDueDate = data.dueDate || effectiveWaitUntil || null;
+
     await this.db
       .prepare(
         `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
@@ -304,8 +307,8 @@ export class TodoRepository {
         data.description || null,
         now,
         now,
-        data.dueDate || null,
-        data.waitUntil || null,
+        effectiveDueDate,
+        effectiveWaitUntil,
         '진행중', // Default status
         data.repeatRule,
         data.recurrenceType || null,
@@ -323,8 +326,8 @@ export class TodoRepository {
       description: data.description || null,
       createdAt: now,
       updatedAt: now,
-      dueDate: data.dueDate || null,
-      waitUntil: data.waitUntil || null,
+      dueDate: effectiveDueDate,
+      waitUntil: effectiveWaitUntil,
       status: '진행중',
       repeatRule: data.repeatRule,
       recurrenceType: data.recurrenceType || null,
@@ -381,13 +384,24 @@ export class TodoRepository {
       updateFields.push('status = ?');
       updateParams.push(data.status);
     }
+    const nextWaitUntil = data.waitUntil !== undefined ? (data.waitUntil || null) : existing.waitUntil;
+    const shouldAutoFillDueDate =
+      data.waitUntil !== undefined &&
+      (data.dueDate === undefined || data.dueDate === null) &&
+      !existing.dueDate &&
+      nextWaitUntil !== null;
+
     if (data.dueDate !== undefined) {
       updateFields.push('due_date = ?');
       updateParams.push(data.dueDate || null);
+    } else if (shouldAutoFillDueDate) {
+      updateFields.push('due_date = ?');
+      updateParams.push(nextWaitUntil);
     }
+
     if (data.waitUntil !== undefined) {
       updateFields.push('wait_until = ?');
-      updateParams.push(data.waitUntil || null);
+      updateParams.push(nextWaitUntil);
     }
     if (data.repeatRule !== undefined) {
       updateFields.push('repeat_rule = ?');
@@ -437,6 +451,7 @@ export class TodoRepository {
       if (nextDueDate) {
         // Create new todo instance for next occurrence
         const newTodoId = this.generateTodoId();
+        const nextWaitUntil = nextDueDate;
 
         statements.push(
           this.db
@@ -452,7 +467,7 @@ export class TodoRepository {
               nowISO,
               nowISO,
               nextDueDate,
-              null, // Reset wait_until for new instance
+              nextWaitUntil,
               '진행중',
               existing.repeatRule,
               existing.recurrenceType,
@@ -468,14 +483,22 @@ export class TodoRepository {
       await this.db.batch(statements);
     }
 
+    const resultingDueDate = data.dueDate !== undefined
+      ? (data.dueDate || null)
+      : shouldAutoFillDueDate
+        ? nextWaitUntil
+        : existing.dueDate;
+
+    const resultingWaitUntil = nextWaitUntil;
+
     // Return the updated todo without extra DB roundtrip
     return {
       ...existing,
       title: data.title !== undefined ? data.title : existing.title,
       description: data.description !== undefined ? (data.description || null) : existing.description,
       status: data.status !== undefined ? data.status : existing.status,
-      dueDate: data.dueDate !== undefined ? (data.dueDate || null) : existing.dueDate,
-      waitUntil: data.waitUntil !== undefined ? (data.waitUntil || null) : existing.waitUntil,
+      dueDate: resultingDueDate,
+      waitUntil: resultingWaitUntil,
       repeatRule: data.repeatRule !== undefined ? data.repeatRule : existing.repeatRule,
       recurrenceType: data.recurrenceType !== undefined ? (data.recurrenceType || null) : existing.recurrenceType,
       customInterval: data.customInterval !== undefined ? (data.customInterval || null) : existing.customInterval,

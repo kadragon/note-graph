@@ -3,6 +3,6 @@
 
 current_task: null
 notes: |
-  TASK-032 completed. AI draft dialog code reduced by 62% through shared
-  useAIDraftForm hook and DraftEditorForm component.
-  Ready for next task selection.
+  TASK-033 completed: todo wait/due ordering fixed, auto-fill due_date from
+  wait_until, recurring todos copy wait_until from computed due date. Tests
+  updated (TEST-todo-7/8) and backend/frontend aligned.

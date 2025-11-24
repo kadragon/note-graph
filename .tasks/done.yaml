@@ -2,6 +2,21 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-033
+    title: "Align todo wait/due defaults and recurrence"
+    spec_id: SPEC-todo-1
+    completed_at: "2025-11-24T07:23:55Z"
+    outcome: |
+      Reordered todo UI to show wait date before due date when managing work note
+      todos, auto-set due_date when wait_until is provided without a due date,
+      and ensured recurring todos carry the computed due date into wait_until for
+      the next instance. Backend create/update logic now defaults missing due_date
+      to wait_until, and recurrence inserts copy due_date to wait_until.
+    test_results: |
+      ✓ npm test -- tests/unit/todo-repository.test.ts
+    estimated_effort: 1.5h
+    actual_effort: ~1h
+
   - task_id: TASK-026
     title: "Align AI Gateway binding"
     spec_id: SPEC-ai-draft-1

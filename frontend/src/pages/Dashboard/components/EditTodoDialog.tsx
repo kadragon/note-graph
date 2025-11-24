@@ -79,6 +79,13 @@ export function EditTodoDialog({
 
   const updateMutation = useUpdateTodo(workNoteId);
 
+  const handleWaitUntilChange = (value: string) => {
+    setWaitUntil(value);
+    if (!dueDate && value) {
+      setDueDate(value);
+    }
+  };
+
   // Initialize form when todo changes
   useEffect(() => {
     if (todo && open) {
@@ -111,13 +118,15 @@ export function EditTodoDialog({
       return;
     }
 
+    const effectiveDueDate = dueDate || (waitUntil ? waitUntil : '');
+
     try {
       await updateMutation.mutateAsync({
         id: todo.id,
         data: {
           title: title.trim(),
           description: description.trim() || undefined,
-          dueDate: dueDate ? toUTCISOString(dueDate) : undefined,
+          dueDate: effectiveDueDate ? toUTCISOString(effectiveDueDate) : undefined,
           waitUntil: waitUntil ? toUTCISOString(waitUntil) : undefined,
           status,
           repeatRule,
@@ -187,6 +196,19 @@ export function EditTodoDialog({
             </div>
 
             <div className="grid gap-2">
+              <Label htmlFor="waitUntil">대기일 (선택사항)</Label>
+              <Input
+                id="waitUntil"
+                type="date"
+                value={waitUntil}
+                onChange={(e) => handleWaitUntilChange(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                이 날짜까지 대시보드에서 숨겨집니다.
+              </p>
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="dueDate">마감일 (선택사항)</Label>
               <Input
                 id="dueDate"
@@ -194,19 +216,6 @@ export function EditTodoDialog({
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
               />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="waitUntil">대기일 (선택사항)</Label>
-              <Input
-                id="waitUntil"
-                type="date"
-                value={waitUntil}
-                onChange={(e) => setWaitUntil(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                이 날짜까지 대시보드에서 숨겨집니다.
-              </p>
             </div>
 
             <div className="grid gap-2">
