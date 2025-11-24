@@ -390,8 +390,27 @@
 ### Session 25: PDF Draft References (2025-11-24)
 - **TASK-030 Completed** (SPEC-ai-draft-refs-1): Extended PDF async draft flow to return referenced work notes and allow deselection before saving.
 - Backend: PDF processing stores `{draft, references}` in `draft_json`, GET `/pdf-jobs/:jobId` returns references; PdfJobRepository updated with reference-aware ready status and tests.
-- Frontend: Create-from-PDF dialog now shows “AI가 참고한 업무노트” checkbox list, saves selected references as `relatedWorkIds` when creating the work note.
+- Frontend: Create-from-PDF dialog now shows "AI가 참고한 업무노트" checkbox list, saves selected references as `relatedWorkIds` when creating the work note.
 - Tests: `npm test -- pdf-job-repository.test.ts work-note-service.test.ts`.
+
+### Session 26: Todo Patterns in AI References (2025-11-24)
+- **TASK-031 Completed** (SPEC-ai-draft-refs-1): Extended findSimilarNotes to include todo information for better AI draft suggestions.
+- Added `ReferenceTodo` type with title, description, status, dueDate fields.
+- Added optional `todos` array to `SimilarWorkNoteReference` interface.
+- Created `WorkNoteRepository.findTodosByWorkIds()` batch query method to avoid N+1 queries.
+- Updated `findSimilarNotes` to fetch todos in parallel using `Promise.all`.
+- Updated `constructDraftPromptWithContext` to display reference todos with due dates and status.
+- AI prompt now instructs to reference todo patterns from similar notes when generating suggestions.
+- Tests: 51 tests pass for work-note-repository and work-note-service; 4 new tests for todo functionality.
+
+### Session 27: AI Draft Dialog Refactoring (2025-11-24)
+- **TASK-032 Completed** (SPEC-worknote-1): Extracted common AI draft editing logic to reduce code duplication by 62%.
+- Created `useAIDraftForm` hook managing shared state and logic (title, content, categories, persons, todos, references, submit).
+- Created `DraftEditorForm` component for shared UI (category selection, assignee selector, content, references, todos).
+- Refactored `CreateFromTextDialog`: 388→143 lines (63% reduction).
+- Refactored `CreateFromPDFDialog`: 391→154 lines (61% reduction).
+- Both dialogs now thin wrappers for Step 1 (input collection), delegating Step 2 (editing) to DraftEditorForm.
+- Build and typecheck pass successfully.
 
 ## Known Issues
 

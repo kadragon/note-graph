@@ -72,6 +72,16 @@ export interface WorkNoteDraft {
 }
 
 /**
+ * Simplified todo for AI reference context
+ */
+export interface ReferenceTodo {
+  title: string;
+  description: string | null;
+  status: string;
+  dueDate: string | null;
+}
+
+/**
  * Similar work note reference used during AI draft generation
  */
 export interface SimilarWorkNoteReference {
@@ -80,6 +90,7 @@ export interface SimilarWorkNoteReference {
   content: string;
   category?: string;
   similarityScore: number;
+  todos?: ReferenceTodo[];
 }
 
 /**

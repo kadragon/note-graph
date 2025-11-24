@@ -17,7 +17,7 @@ import { RateLimitError, NotFoundError } from '../types/errors';
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
-const SIMILARITY_SCORE_THRESHOLD = 0.5;
+const SIMILARITY_SCORE_THRESHOLD = 0.7;
 
 type Variables = {
   user: AuthUser;

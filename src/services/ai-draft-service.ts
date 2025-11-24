@@ -4,7 +4,7 @@
  */
 
 import type { Env } from '../types/env';
-import type { WorkNoteDraft, AIDraftTodo } from '../types/search';
+import type { WorkNoteDraft, AIDraftTodo, ReferenceTodo } from '../types/search';
 import type { WorkNote } from '../types/work-note';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
@@ -215,6 +215,8 @@ ${inputText}${categoryHint}${deptHint}
 ${categoryInstruction}
 4. 3-5개의 관련 할 일 항목과 제안 기한
 
+중요: 내용은 핵심만 간결하게 작성하세요. 불필요한 설명이나 반복을 피하고, 실제 업무에 필요한 정보만 포함하세요.
+
 JSON 형식으로 반환:
 {
   "title": "...",
@@ -237,7 +239,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
    */
   private constructDraftPromptWithContext(
     inputText: string,
-    similarNotes: Array<{ title: string; content: string; category?: string }>,
+    similarNotes: Array<{ title: string; content: string; category?: string; todos?: ReferenceTodo[] }>,
     options?: {
       category?: string;
       personIds?: string[];
@@ -250,14 +252,24 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
 
     // Build context from similar notes
     const contextText = similarNotes.length > 0
-      ? `\n\n참고할 유사한 업무노트들:\n${similarNotes
+      ? `\n\n[이전 업무노트 - 참고용]
+아래는 유사한 이전 업무노트들입니다. 형식, 스타일, 할 일 패턴을 참고하고, 내용은 새로운 업무에 맞게 작성하세요:
+${similarNotes
           .map(
-            (note, idx) => `
+            (note, idx) => {
+              // Build todos section if available
+              const todosSection = note.todos && note.todos.length > 0
+                ? `\n할 일 목록:
+${note.todos.map((todo) => `  - ${todo.title}${todo.dueDate ? ` (기한: ${todo.dueDate})` : ''}${todo.status !== '진행중' ? ` [${todo.status}]` : ''}`).join('\n')}`
+                : '';
+
+              return `
 [참고 노트 ${idx + 1}]
 제목: ${note.title}
 카테고리: ${note.category || '없음'}
-내용 요약: ${note.content.slice(0, 200)}...
-`
+내용 요약: ${note.content.slice(0, 300)}...${todosSection}
+`;
+            }
           )
           .join('\n')}`
       : '';
@@ -277,7 +289,9 @@ ${inputText}${categoryHint}${deptHint}${contextText}
 1. 간결한 제목 (한국어, 유사 노트의 제목 스타일 참고)
 2. 잘 정리된 내용 (한국어, 마크다운 포맷 사용, 유사 노트의 구조 참고)
 ${categoryInstruction}
-4. 3-5개의 관련 할 일 항목과 제안 기한 (유사 노트의 할일 패턴 참고)
+4. 3-5개의 관련 할 일 항목과 제안 기한 (유사 노트의 할 일 패턴 참고)
+
+중요: 내용은 핵심만 간결하게 작성하세요. 불필요한 설명이나 반복을 피하고, 실제 업무에 필요한 정보만 포함하세요.
 
 JSON 형식으로 반환:
 {

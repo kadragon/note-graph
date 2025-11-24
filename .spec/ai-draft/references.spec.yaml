@@ -45,6 +45,8 @@ dependencies:
 
 linked_tasks:
   - TASK-029
+  - TASK-030
+  - TASK-031
 
 technical_notes:
   - "Reuse work_note_relation to persist confirmed references"
