@@ -4,7 +4,7 @@ import { env } from 'cloudflare:test';
 import { PdfJobRepository } from '../../src/repositories/pdf-job-repository';
 import { NotFoundError } from '../../src/types/errors';
 import type { Env } from '../../src/types/env';
-import type { PdfUploadMetadata, WorkNoteDraft } from '../../src/types/pdf';
+import type { PdfUploadMetadata, WorkNoteDraft, WorkNoteDraftWithReferences } from '../../src/types/pdf';
 
 const testEnv = env as unknown as Env;
 
@@ -263,6 +263,29 @@ describe('PdfJobRepository', () => {
 
       // Act & Assert
       await expect(repository.updateStatusToReady('non-existent', draft)).rejects.toThrow(NotFoundError);
+    });
+
+    it('should persist references when provided', async () => {
+      const jobId = 'test-job-011';
+      await repository.create(jobId, 'uploads/ref.pdf', { fileName: 'ref.pdf' });
+
+      const draftWithRefs: WorkNoteDraftWithReferences = {
+        draft: {
+          title: 'Ref Draft',
+          content: 'With references',
+          category: 'PDF',
+          todos: [],
+        },
+        references: [
+          { workId: 'WORK-REF1', title: '참고1', category: '기획', similarityScore: 0.82 },
+        ],
+      };
+
+      await repository.updateStatusToReady(jobId, draftWithRefs);
+
+      const job = await repository.getById(jobId);
+      expect(job?.status).toBe('READY');
+      expect(job?.draftJson).toBe(JSON.stringify(draftWithRefs));
     });
   });
 

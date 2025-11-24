@@ -13,7 +13,9 @@ import type {
   PdfJobResponse,
   PdfUploadMetadata,
   WorkNoteDraft,
+  WorkNoteDraftWithReferences,
 } from '../types/pdf.js';
+import type { SimilarWorkNoteReference } from '../types/search.js';
 
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -36,9 +38,16 @@ pdf.get('/:jobId', async (c) => {
   }
 
   let draft: WorkNoteDraft | undefined;
+  let references: SimilarWorkNoteReference[] | undefined;
   if (job.draftJson) {
     try {
-      draft = JSON.parse(job.draftJson) as WorkNoteDraft;
+      const parsed = JSON.parse(job.draftJson) as WorkNoteDraft | WorkNoteDraftWithReferences;
+      if ('draft' in parsed && 'references' in parsed) {
+        draft = parsed.draft;
+        references = parsed.references;
+      } else {
+        draft = parsed;
+      }
     } catch (error) {
       console.error(`[PDF Job ${jobId}] Failed to parse draft JSON:`, error);
       draft = undefined;
@@ -52,6 +61,7 @@ pdf.get('/:jobId', async (c) => {
     updatedAt: job.updatedAt,
     errorMessage: job.errorMessage || undefined,
     draft,
+    references,
   };
 
   return c.json(response);
@@ -162,8 +172,17 @@ pdf.post('/', async (c) => {
           deptName: metadata.deptName,
         });
 
+    const references: SimilarWorkNoteReference[] = similarNotes.map((note) => ({
+      workId: note.workId,
+      title: note.title,
+      content: note.content,
+      category: note.category,
+      similarityScore: note.similarityScore,
+    }));
+
     // Update job status to READY
-    await repository.updateStatusToReady(jobId, draft);
+    const draftPayload: WorkNoteDraftWithReferences = { draft, references };
+    await repository.updateStatusToReady(jobId, draftPayload);
 
     // eslint-disable-next-line no-console
     console.log(`[PDF Processing] Job ${jobId} completed successfully`);
@@ -175,10 +194,27 @@ pdf.post('/', async (c) => {
     }
 
     // Return successful response with draft from DB
+    let responseDraft: WorkNoteDraft | undefined;
+    let responseReferences: SimilarWorkNoteReference[] | undefined;
+    if (job.draftJson) {
+      try {
+        const parsed = JSON.parse(job.draftJson) as WorkNoteDraft | WorkNoteDraftWithReferences;
+        if ('draft' in parsed && 'references' in parsed) {
+          responseDraft = parsed.draft;
+          responseReferences = parsed.references;
+        } else {
+          responseDraft = parsed;
+        }
+      } catch (error) {
+        console.error(`[PDF Job ${jobId}] Failed to parse draft JSON in response:`, error);
+      }
+    }
+
     const response: PdfJobResponse = {
       jobId: job.jobId,
       status: job.status,
-      draft: job.draftJson ? (JSON.parse(job.draftJson) as WorkNoteDraft) : undefined,
+      draft: responseDraft,
+      references: responseReferences,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     };

@@ -306,6 +306,7 @@ export interface PDFJob {
   createdAt: string;
   updatedAt: string;
   draft?: AIDraftPayload;
+   references?: AIDraftReference[];
   errorMessage?: string;
 }
 

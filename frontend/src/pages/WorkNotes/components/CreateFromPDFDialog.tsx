@@ -1,4 +1,4 @@
-// Trace: TASK-027, SPEC-worknote-1
+// Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-030
 import { useState, useEffect } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import {
@@ -23,6 +23,7 @@ import { useCreateWorkNote } from '@/hooks/useWorkNotes';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { useToast } from '@/hooks/use-toast';
+import type { AIDraftReference } from '@/types/api';
 
 interface CreateFromPDFDialogProps {
   open: boolean;
@@ -39,6 +40,8 @@ export function CreateFromPDFDialog({
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
+  const [references, setReferences] = useState<AIDraftReference[]>([]);
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
 
   const uploadMutation = useUploadPDF();
   const { data: job } = usePDFJob(
@@ -55,6 +58,8 @@ export function CreateFromPDFDialog({
     if (job?.status === 'READY' && job.draft && title === '' && content === '') {
       setTitle(job.draft.title);
       setContent(job.draft.content);
+      setReferences(job.references || []);
+      setSelectedReferenceIds((job.references || []).map((ref) => ref.workId));
       // Try to find matching category
       const matchingCategory = taskCategories.find(
         (cat) => cat.name === job.draft?.category
@@ -92,6 +97,14 @@ export function CreateFromPDFDialog({
     );
   };
 
+  const handleReferenceToggle = (workId: string) => {
+    setSelectedReferenceIds((prev) =>
+      prev.includes(workId)
+        ? prev.filter((id) => id !== workId)
+        : [...prev, workId]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -110,6 +123,7 @@ export function CreateFromPDFDialog({
         content: content.trim(),
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+        relatedWorkIds: selectedReferenceIds.length > 0 ? selectedReferenceIds : undefined,
       });
 
       // Reset form and close dialog
@@ -127,6 +141,8 @@ export function CreateFromPDFDialog({
     setSelectedCategoryIds([]);
     setSelectedPersonIds([]);
     setContent('');
+    setReferences([]);
+    setSelectedReferenceIds([]);
   };
 
   const handleClose = () => {
@@ -251,6 +267,40 @@ export function CreateFromPDFDialog({
                   />
                 )}
               </div>
+
+              {references.length > 0 && (
+                <div className="grid gap-2">
+                  <Label>AI가 참고한 업무노트</Label>
+                  <Card className="p-3 space-y-2">
+                    {references.map((ref) => {
+                      const isSelected = selectedReferenceIds.includes(ref.workId);
+                      const scoreLabel = ref.similarityScore !== undefined
+                        ? `${Math.round(ref.similarityScore * 100)}%`
+                        : 'N/A';
+
+                      return (
+                        <div key={ref.workId} className="flex items-start gap-3">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleReferenceToggle(ref.workId)}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium">{ref.title}</div>
+                            <div className="text-xs text-muted-foreground flex gap-2">
+                              <span>연관도 {scoreLabel}</span>
+                              {ref.category && <span className="text-muted-foreground">카테고리: {ref.category}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </Card>
+                  <p className="text-xs text-muted-foreground">
+                    필요 없는 참고 자료는 선택 해제하세요. 해제된 항목은 저장되지 않습니다.
+                  </p>
+                </div>
+              )}
 
               <div className="grid gap-2">
                 <Label htmlFor="content">내용</Label>

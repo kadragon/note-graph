@@ -387,6 +387,12 @@
 - Frontend: Create-from-text dialog shows referenced work notes with deselectable checkboxes and saves selected IDs as `relatedWorkIds`; work note detail fetches full detail and renders a “참고한 업무노트” section.
 - Added new spec `.spec/ai-draft/references.spec.yaml`; cleared current task after completion.
 
+### Session 25: PDF Draft References (2025-11-24)
+- **TASK-030 Completed** (SPEC-ai-draft-refs-1): Extended PDF async draft flow to return referenced work notes and allow deselection before saving.
+- Backend: PDF processing stores `{draft, references}` in `draft_json`, GET `/pdf-jobs/:jobId` returns references; PdfJobRepository updated with reference-aware ready status and tests.
+- Frontend: Create-from-PDF dialog now shows “AI가 참고한 업무노트” checkbox list, saves selected references as `relatedWorkIds` when creating the work note.
+- Tests: `npm test -- pdf-job-repository.test.ts work-note-service.test.ts`.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
