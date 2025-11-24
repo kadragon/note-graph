@@ -65,16 +65,16 @@ export function TodoItem({ todo, onTodoClick }: TodoItemProps) {
               {todo.workTitle}
             </Badge>
           )}
-          {todo.dueDate && (
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <CalendarDays className="h-3 w-3" />
-              {formatDateWithYear(todo.dueDate)}
-            </span>
-          )}
           {todo.waitUntil && (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
               {formatDateWithYear(todo.waitUntil)} 대기
+            </span>
+          )}
+          {todo.dueDate && (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <CalendarDays className="h-3 w-3" />
+              {formatDateWithYear(todo.dueDate)}
             </span>
           )}
           {todo.repeatRule && todo.repeatRule !== 'NONE' && (

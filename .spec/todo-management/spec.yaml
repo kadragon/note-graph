@@ -34,6 +34,18 @@ given_when_then:
     when: "User filters todos by status='진행중'"
     then: "Only todos with matching status returned"
 
+  - given: "Todo is displayed in work note detail"
+    when: "Wait date and due date are both present"
+    then: "Wait date appears before due date in the UI"
+
+  - given: "User sets wait_until without specifying due_date"
+    when: "Todo is created or updated"
+    then: "due_date is auto-set to the same date as wait_until"
+
+  - given: "Recurring todo is completed and generates the next instance"
+    when: "New instance is created"
+    then: "New todo has wait_until equal to its computed due_date"
+
 acceptance_tests:
   - id: TEST-todo-1
     desc: "Create todo for work note"
@@ -81,6 +93,22 @@ acceptance_tests:
       - "PATCH /todos/{todoId} with status=완료"
       - "Verify todo status updated"
       - "If repeat_rule != NONE, verify new instance created"
+
+  - id: TEST-todo-7
+    desc: "Auto-set due_date when only wait_until is provided"
+    steps:
+      - "Create todo with wait_until set and due_date omitted"
+      - "Verify stored due_date equals wait_until"
+      - "Update a todo by setting wait_until while due_date is null"
+      - "Verify due_date is updated to match wait_until"
+
+  - id: TEST-todo-8
+    desc: "Recurring todo copies wait/due for next instance"
+    steps:
+      - "Create recurring todo with due_date and wait_until set"
+      - "Complete the todo to trigger recurrence"
+      - "Verify new todo due_date is computed per rule"
+      - "Verify new todo wait_until equals its due_date"
 
 dependencies:
   governance:

@@ -338,6 +338,26 @@ describe('TodoRepository', () => {
       expect(result.recurrenceType).toBe('DUE_DATE');
     });
 
+    it('should auto-set dueDate when waitUntil is provided without dueDate', async () => {
+      // Arrange
+      const waitUntil = new Date('2025-12-01T00:00:00.000Z').toISOString();
+      const input: CreateTodoInput = {
+        title: 'Wait only',
+        waitUntil,
+        repeatRule: 'NONE',
+      };
+
+      // Act
+      const result = await repository.create(testWorkId, input);
+
+      // Assert
+      expect(result.waitUntil).toBe(waitUntil);
+      expect(result.dueDate).toBe(waitUntil);
+
+      const stored = await repository.findById(result.todoId);
+      expect(stored?.dueDate).toBe(waitUntil);
+    });
+
     it('should create todo with Korean text', async () => {
       // Arrange
       const input: CreateTodoInput = {
@@ -427,6 +447,46 @@ describe('TodoRepository', () => {
 
       // Assert
       expect(result.description).toBe('Updated description');
+    });
+
+    it('should set dueDate when adding waitUntil and dueDate is missing', async () => {
+      // Arrange
+      const waitUntil = new Date('2025-12-05T00:00:00.000Z').toISOString();
+
+      // Act
+      const result = await repository.update(existingTodoId, { waitUntil });
+
+      // Assert
+      expect(result.waitUntil).toBe(waitUntil);
+      expect(result.dueDate).toBe(waitUntil);
+    });
+
+    it('should keep dueDate when updating waitUntil if dueDate is after waitUntil', async () => {
+      // Arrange - set dueDate to 12/10, then update waitUntil to 12/05
+      const existingDueDate = new Date('2025-12-10T00:00:00.000Z').toISOString();
+      await repository.update(existingTodoId, { dueDate: existingDueDate });
+
+      // Act - update only waitUntil (before dueDate)
+      const newWaitUntil = new Date('2025-12-05T00:00:00.000Z').toISOString();
+      const result = await repository.update(existingTodoId, { waitUntil: newWaitUntil });
+
+      // Assert - dueDate should remain unchanged since it's after waitUntil
+      expect(result.waitUntil).toBe(newWaitUntil);
+      expect(result.dueDate).toBe(existingDueDate);
+    });
+
+    it('should update dueDate to waitUntil when existing dueDate is before waitUntil', async () => {
+      // Arrange - set dueDate to 12/01, then update waitUntil to 12/10
+      const existingDueDate = new Date('2025-12-01T00:00:00.000Z').toISOString();
+      await repository.update(existingTodoId, { dueDate: existingDueDate });
+
+      // Act - update only waitUntil (after dueDate)
+      const newWaitUntil = new Date('2025-12-10T00:00:00.000Z').toISOString();
+      const result = await repository.update(existingTodoId, { waitUntil: newWaitUntil });
+
+      // Assert - dueDate should be updated to match waitUntil
+      expect(result.waitUntil).toBe(newWaitUntil);
+      expect(result.dueDate).toBe(newWaitUntil);
     });
 
     it('should update status', async () => {
@@ -671,7 +731,7 @@ describe('TodoRepository', () => {
       expect(allTodos.filter((t) => t.status === '진행중').length).toBeLessThanOrEqual(2);
     });
 
-    it('should reset wait_until for new recurring instance', async () => {
+    it('should copy next due_date to wait_until for new recurring instance', async () => {
       // Arrange
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 1);
@@ -694,7 +754,8 @@ describe('TodoRepository', () => {
       const allTodos = await repository.findByWorkId(testWorkId);
       const newTodo = allTodos.find((t) => t.status === '진행중');
 
-      expect(newTodo?.waitUntil).toBeNull();
+      expect(newTodo?.dueDate).toBeDefined();
+      expect(newTodo?.waitUntil).toBe(newTodo?.dueDate);
     });
 
     it('should preserve repeat_rule and recurrence_type in new instance', async () => {

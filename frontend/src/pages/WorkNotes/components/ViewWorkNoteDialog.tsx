@@ -536,14 +536,14 @@ export function ViewWorkNoteDialog({
                         <Badge variant={todo.status === TODO_STATUS.COMPLETED ? 'secondary' : 'default'} className="text-xs">
                           {todo.status}
                         </Badge>
-                        {todo.dueDate && (
-                          <Badge variant="outline" className="text-xs">
-                            마감: {formatDateWithYear(todo.dueDate)}
-                          </Badge>
-                        )}
                         {todo.waitUntil && (
                           <Badge variant="outline" className="text-xs">
                             대기: {formatDateWithYear(todo.waitUntil)}
+                          </Badge>
+                        )}
+                        {todo.dueDate && (
+                          <Badge variant="outline" className="text-xs">
+                            마감: {formatDateWithYear(todo.dueDate)}
                           </Badge>
                         )}
                       </div>
