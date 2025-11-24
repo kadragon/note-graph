@@ -14,6 +14,51 @@ import {
  * Extracts text from PDF files using unpdf library
  */
 export class PdfExtractionService {
+  // PDF signature bytes: %PDF-
+  private static readonly PDF_SIGNATURE = [0x25, 0x50, 0x44, 0x46, 0x2d];
+  // Maximum bytes to search for PDF signature in wrapped formats (10KB)
+  private static readonly MAX_SIGNATURE_SEARCH_BYTES = 10240;
+
+  /**
+   * Normalize PDF buffer by extracting embedded PDF from wrapper formats
+   * Supports: Standard PDF, Handysoft Approval Document, and other wrapped formats
+   * @param buffer - Original file buffer
+   * @returns Normalized PDF buffer starting with %PDF- signature
+   * @throws CorruptPdfError if no PDF signature found
+   */
+  private normalizePdfBuffer(buffer: ArrayBuffer | Uint8Array): Uint8Array {
+    const uint8Array =
+      buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
+
+    const pdfOffset = this.findPdfSignatureOffset(uint8Array);
+
+    if (pdfOffset === -1) {
+      throw new CorruptPdfError();
+    }
+
+    // Return as-is if PDF starts at beginning, otherwise extract from offset
+    return pdfOffset === 0 ? uint8Array : uint8Array.slice(pdfOffset);
+  }
+
+  /**
+   * Find PDF signature offset in buffer
+   * @returns Offset position or -1 if not found
+   */
+  private findPdfSignatureOffset(buffer: Uint8Array): number {
+    const signature = PdfExtractionService.PDF_SIGNATURE;
+    const maxSearchLength = Math.min(
+      buffer.length - signature.length,
+      PdfExtractionService.MAX_SIGNATURE_SEARCH_BYTES
+    );
+
+    for (let i = 0; i <= maxSearchLength; i++) {
+      if (signature.every((byte, index) => buffer[i + index] === byte)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   /**
    * Extract text from PDF buffer
    * @param pdfBuffer - PDF file as ArrayBuffer or Uint8Array
@@ -22,8 +67,11 @@ export class PdfExtractionService {
    */
   async extractText(pdfBuffer: ArrayBuffer | Uint8Array): Promise<string> {
     try {
+      // Normalize buffer to handle wrapped formats (e.g., Handysoft)
+      const normalizedBuffer = this.normalizePdfBuffer(pdfBuffer);
+
       // extractText returns { totalPages, text: string } when mergePages: true
-      const result = await extractText(pdfBuffer, { mergePages: true });
+      const result = await extractText(normalizedBuffer, { mergePages: true });
       const text = result.text;
 
       // Check if text was extracted
@@ -68,6 +116,7 @@ export class PdfExtractionService {
 
   /**
    * Validate PDF buffer (basic checks)
+   * Supports wrapped formats like Handysoft Approval Document
    * @param buffer - PDF file buffer
    * @returns true if valid, throws error if invalid
    */
@@ -80,9 +129,8 @@ export class PdfExtractionService {
       throw new CorruptPdfError();
     }
 
-    // Check PDF header (%PDF-)
-    const header = String.fromCharCode(...uint8Array.slice(0, 5));
-    if (header !== '%PDF-') {
+    // Check for PDF signature (either at start or embedded in wrapper)
+    if (this.findPdfSignatureOffset(uint8Array) === -1) {
       throw new CorruptPdfError();
     }
 
