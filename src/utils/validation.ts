@@ -25,7 +25,7 @@ export async function validateBody<T extends z.ZodType>(
     return schema.parse(body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new ValidationError('Request validation failed', error.errors);
+      throw new ValidationError('Request validation failed', error.issues);
     }
     throw error;
   }
@@ -49,7 +49,7 @@ export function validateQuery<T extends z.ZodType>(
     return schema.parse(query);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new ValidationError('Query validation failed', error.errors);
+      throw new ValidationError('Query validation failed', error.issues);
     }
     throw error;
   }
@@ -73,7 +73,7 @@ export function validateParams<T extends z.ZodType>(
     return schema.parse(params);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new ValidationError('Parameter validation failed', error.errors);
+      throw new ValidationError('Parameter validation failed', error.issues);
     }
     throw error;
   }

@@ -68,7 +68,7 @@ export class PersonImportService {
       return parsedPersonDataSchema.parse(sanitizedJson);
     } catch (error) {
       if (error instanceof ZodError) {
-        const details = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+        const details = error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
         console.error('Zod validation error:', details);
         console.error('GPT response was:', response);
         throw new Error(`사람 정보 파싱에 실패했습니다: ${details}`);
