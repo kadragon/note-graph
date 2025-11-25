@@ -155,19 +155,7 @@ workNotes.post('/:workId/todos', async (c) => {
 
     // Re-embed work note to include new todo in vector store (async, non-blocking)
     const service = new WorkNoteService(c.env);
-    service.findById(workId).then(async (workNote) => {
-      if (workNote) {
-        const details = await service.findByIdWithDetails(workId);
-        if (details) {
-          await service.update(workId, {
-            title: details.title,
-            contentRaw: details.contentRaw,
-            category: details.category || undefined,
-            persons: details.persons.map(p => ({ personId: p.personId, role: p.role })),
-          });
-        }
-      }
-    }).catch((error) => {
+    service.reembedOnly(workId).catch((error) => {
       console.error('[WorkNote] Failed to re-embed after todo creation:', {
         workId,
         todoId: todo.todoId,

@@ -51,19 +51,7 @@ todos.patch('/:todoId', async (c) => {
 
     // Re-embed work note to reflect updated todo in vector store (async, non-blocking)
     const service = new WorkNoteService(c.env);
-    service.findById(todo.workId).then(async (workNote) => {
-      if (workNote) {
-        const details = await service.findByIdWithDetails(todo.workId);
-        if (details) {
-          await service.update(todo.workId, {
-            title: details.title,
-            contentRaw: details.contentRaw,
-            category: details.category || undefined,
-            persons: details.persons.map(p => ({ personId: p.personId, role: p.role })),
-          });
-        }
-      }
-    }).catch((error) => {
+    service.reembedOnly(todo.workId).catch((error) => {
       console.error('[WorkNote] Failed to re-embed after todo update:', {
         workId: todo.workId,
         todoId: todo.todoId,
@@ -101,19 +89,7 @@ todos.delete('/:todoId', async (c) => {
 
     // Re-embed work note to remove deleted todo from vector store (async, non-blocking)
     const service = new WorkNoteService(c.env);
-    service.findById(workId).then(async (workNote) => {
-      if (workNote) {
-        const details = await service.findByIdWithDetails(workId);
-        if (details) {
-          await service.update(workId, {
-            title: details.title,
-            contentRaw: details.contentRaw,
-            category: details.category || undefined,
-            persons: details.persons.map(p => ({ personId: p.personId, role: p.role })),
-          });
-        }
-      }
-    }).catch((error) => {
+    service.reembedOnly(workId).catch((error) => {
       console.error('[WorkNote] Failed to re-embed after todo deletion:', {
         workId,
         todoId,

@@ -229,6 +229,63 @@ export class WorkNoteService {
   }
 
   /**
+   * Re-embed work note without modifying any database fields
+   * Used when todo changes or other non-content updates require vector store refresh
+   *
+   * This method:
+   * - Reads current work note data from DB
+   * - Re-chunks and re-embeds into vector store
+   * - Updates only embedded_at timestamp
+   * - Does NOT create version history or modify updated_at
+   *
+   * @param workId - Work note ID to re-embed
+   */
+  async reembedOnly(workId: string): Promise<void> {
+    const workNote = await this.repository.findById(workId);
+
+    if (!workNote) {
+      throw new Error(`Work note ${workId} not found`);
+    }
+
+    // Get work note details for person_ids and dept_name
+    const details = await this.repository.findByIdWithDetails(workId);
+    const personIds = details?.persons.map((p) => p.personId) || [];
+    const deptName = await this.repository.getDeptNameForPerson(personIds[0] || '');
+
+    const metadata = {
+      person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
+      dept_name: deptName || undefined,
+      category: workNote.category || undefined,
+      created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
+    };
+
+    // Chunk work note content
+    const chunks = this.chunkingService.chunkWorkNote(
+      workNote.workId,
+      workNote.title,
+      workNote.contentRaw,
+      metadata
+    );
+
+    // Prepare chunks for embedding
+    const chunksToEmbed = chunks.map((chunk, index) => ({
+      id: ChunkingService.generateChunkId(workNote.workId, index),
+      text: chunk.text,
+      metadata: chunk.metadata,
+    }));
+
+    // Upsert chunks into Vectorize
+    await this.vectorizeService.upsertChunks(chunksToEmbed);
+
+    // Delete stale chunks
+    const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
+    await this.vectorizeService.deleteStaleChunks(workNote.workId, newChunkIds);
+
+    // Update embedded_at timestamp (does NOT modify updated_at or create version)
+    await this.repository.updateEmbeddedAt(workNote.workId);
+  }
+
+  /**
    * Find similar work notes based on input text
    *
    * Searches for similar work notes using vector similarity and returns
