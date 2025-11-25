@@ -339,8 +339,9 @@ export class TodoRepository {
 
   /**
    * Delete todo by ID
+   * Returns the workId of the deleted todo for potential re-embedding
    */
-  async delete(todoId: string): Promise<void> {
+  async delete(todoId: string): Promise<string> {
     const existing = await this.findById(todoId);
     if (!existing) {
       throw new NotFoundError('Todo', todoId);
@@ -350,6 +351,8 @@ export class TodoRepository {
       .prepare(`DELETE FROM todos WHERE todo_id = ?`)
       .bind(todoId)
       .run();
+
+    return existing.workId;
   }
 
   /**
