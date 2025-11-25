@@ -21,6 +21,21 @@ const workNotes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 workNotes.use('*', authMiddleware);
 
 /**
+ * Trigger re-embedding of a work note (fire-and-forget)
+ * Used when todo changes require vector store update
+ */
+function triggerReembed(env: Env, workId: string, todoId: string, operation: string): void {
+  const service = new WorkNoteService(env);
+  service.reembedOnly(workId).catch((error) => {
+    console.error(`[WorkNote] Failed to re-embed after todo ${operation}:`, {
+      workId,
+      todoId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+}
+
+/**
  * GET /work-notes - List work notes with filters
  */
 workNotes.get('/', async (c) => {
@@ -144,6 +159,7 @@ workNotes.get('/:workId/todos', async (c) => {
 
 /**
  * POST /work-notes/:workId/todos - Create todo for work note
+ * Re-embeds the parent work note to include new todo in vector store
  */
 workNotes.post('/:workId/todos', async (c) => {
   try {
@@ -151,6 +167,9 @@ workNotes.post('/:workId/todos', async (c) => {
     const data = await validateBody(c, createTodoSchema);
     const repository = new TodoRepository(c.env.DB);
     const todo = await repository.create(workId, data);
+
+    // Re-embed work note to include new todo in vector store (async, non-blocking)
+    triggerReembed(c.env, workId, todo.todoId, 'creation');
 
     return c.json(todo, 201);
   } catch (error) {

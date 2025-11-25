@@ -127,8 +127,57 @@ export class WorkNoteService {
    * Chunk and embed work note for RAG
    */
   private async chunkAndEmbedWorkNote(workNote: WorkNote, data: CreateWorkNoteInput): Promise<void> {
-    // Extract metadata for chunking
     const personIds = data.persons?.map((p) => p.personId) || [];
+    await this.performChunkingAndEmbedding(workNote, personIds, false);
+  }
+
+  /**
+   * Re-chunk and re-embed work note after update
+   *
+   * Uses atomic upsert-first strategy to prevent data loss:
+   * 1. Upsert new chunks (preserves old chunks if this fails)
+   * 2. Delete stale chunks only after successful upsert
+   */
+  private async rechunkAndEmbedWorkNote(workNote: WorkNote, data: UpdateWorkNoteInput): Promise<void> {
+    // Get person IDs (use updated data if provided, otherwise fetch from DB)
+    let personIds: string[] = [];
+    if (data.persons !== undefined) {
+      personIds = data.persons.map((p) => p.personId);
+    } else {
+      const details = await this.repository.findByIdWithDetails(workNote.workId);
+      personIds = details?.persons.map((p) => p.personId) || [];
+    }
+
+    await this.performChunkingAndEmbedding(workNote, personIds, true);
+  }
+
+  /**
+   * Get department name from person IDs
+   *
+   * Uses the first person's current department
+   */
+  private async getDeptNameFromPersons(personIds: string[]): Promise<string | null> {
+    if (personIds.length === 0 || !personIds[0]) {
+      return null;
+    }
+
+    // Get first person's department via repository
+    return this.repository.getDeptNameForPerson(personIds[0]);
+  }
+
+  /**
+   * Common chunking and embedding logic
+   * Shared between create, update, and reembedOnly operations
+   *
+   * @param workNote - Work note to chunk and embed
+   * @param personIds - Person IDs associated with the work note
+   * @param deleteStaleChunks - Whether to delete stale chunks after upsert
+   */
+  private async performChunkingAndEmbedding(
+    workNote: WorkNote,
+    personIds: string[],
+    deleteStaleChunks: boolean = false
+  ): Promise<void> {
     const deptName = await this.getDeptNameFromPersons(personIds);
 
     const metadata = {
@@ -156,76 +205,41 @@ export class WorkNoteService {
     // Upsert chunks into Vectorize
     await this.vectorizeService.upsertChunks(chunksToEmbed);
 
-    // Update embedded_at timestamp on success
-    await this.repository.updateEmbeddedAt(workNote.workId);
-  }
-
-  /**
-   * Re-chunk and re-embed work note after update
-   *
-   * Uses atomic upsert-first strategy to prevent data loss:
-   * 1. Upsert new chunks (preserves old chunks if this fails)
-   * 2. Delete stale chunks only after successful upsert
-   */
-  private async rechunkAndEmbedWorkNote(workNote: WorkNote, data: UpdateWorkNoteInput): Promise<void> {
-    // Get person IDs (use updated data if provided, otherwise fetch from DB)
-    let personIds: string[] = [];
-    if (data.persons !== undefined) {
-      personIds = data.persons.map((p) => p.personId);
-    } else {
-      const details = await this.repository.findByIdWithDetails(workNote.workId);
-      personIds = details?.persons.map((p) => p.personId) || [];
+    // Delete stale chunks if requested (for updates)
+    if (deleteStaleChunks) {
+      const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
+      await this.vectorizeService.deleteStaleChunks(workNote.workId, newChunkIds);
     }
-
-    const deptName = await this.getDeptNameFromPersons(personIds);
-
-    const metadata = {
-      person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
-      dept_name: deptName || undefined,
-      category: workNote.category || undefined,
-      created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
-    };
-
-    // Chunk updated work note content
-    const chunks = this.chunkingService.chunkWorkNote(
-      workNote.workId,
-      workNote.title,
-      workNote.contentRaw,
-      metadata
-    );
-
-    // Prepare chunks for embedding
-    const chunksToEmbed = chunks.map((chunk, index) => ({
-      id: ChunkingService.generateChunkId(workNote.workId, index),
-      text: chunk.text,
-      metadata: chunk.metadata,
-    }));
-
-    // ATOMIC: Upsert new chunks first (preserves old chunks if this fails)
-    await this.vectorizeService.upsertChunks(chunksToEmbed);
-
-    // Only delete stale chunks after successful upsert
-    // Note: Vectorize upsert replaces chunks with same ID, so we only need to
-    // delete chunks that exceed the new chunk count
-    const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
-    await this.vectorizeService.deleteStaleChunks(workNote.workId, newChunkIds);
 
     // Update embedded_at timestamp on success
     await this.repository.updateEmbeddedAt(workNote.workId);
   }
 
   /**
-   * Get department name from person IDs
+   * Re-embed work note without modifying any database fields
+   * Used when todo changes or other non-content updates require vector store refresh
    *
-   * Uses the first person's current department
+   * This method:
+   * - Reads current work note data from DB
+   * - Re-chunks and re-embeds into vector store
+   * - Updates only embedded_at timestamp
+   * - Does NOT create version history or modify updated_at
+   *
+   * @param workId - Work note ID to re-embed
    */
-  private async getDeptNameFromPersons(personIds: string[]): Promise<string | null> {
-    if (personIds.length === 0 || !personIds[0]) {
-      return null;
+  async reembedOnly(workId: string): Promise<void> {
+    const workNote = await this.repository.findById(workId);
+
+    if (!workNote) {
+      throw new Error(`Work note ${workId} not found`);
     }
 
-    // Get first person's department via repository
-    return this.repository.getDeptNameForPerson(personIds[0]);
+    // Get work note details for person_ids
+    const details = await this.repository.findByIdWithDetails(workId);
+    const personIds = details?.persons.map((p) => p.personId) || [];
+
+    // Use shared chunking and embedding logic with stale chunk deletion
+    await this.performChunkingAndEmbedding(workNote, personIds, true);
   }
 
   /**
