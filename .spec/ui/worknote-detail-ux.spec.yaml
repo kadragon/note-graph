@@ -1,0 +1,54 @@
+spec_id: SPEC-ui-1
+title: "Work Note Detail UX Polish"
+description: >
+  Improve work note detail and todo reading/editing experience:
+  quick-edit entry points when key fields are missing, duplicate save
+  controls near the top, denser content spacing, and clearer todo
+  typography with preserved line breaks.
+
+given_when_then:
+  - given: "User views a work note whose categories are empty"
+    when: "The user clicks the '업무 구분 없음' chip"
+    then: "The dialog switches to edit mode and focuses the category picker"
+
+  - given: "User views a work note without assignees"
+    when: "The user clicks the '담당자 없음' chip"
+    then: "The dialog switches to edit mode and focuses the assignee selector"
+
+  - given: "User is editing a work note with long content"
+    when: "The user scrolls to the top"
+    then: "A save action is available near the top without scrolling to the bottom"
+
+  - given: "User reads work note content"
+    when: "The content contains multiple paragraphs and lists"
+    then: "Line spacing and paragraph gaps are compact enough to reduce scrolling while remaining legible"
+
+  - given: "Todo list items with multi-line descriptions"
+    when: "User views the todo list in the work note dialog"
+    then: "Todo titles appear visually more prominent than descriptions, and descriptions honor line breaks"
+
+acceptance_tests:
+  - id: TEST-ui-1
+    desc: "Clicking empty category chip enters edit mode and focuses category picker"
+  - id: TEST-ui-2
+    desc: "Clicking empty assignee chip enters edit mode and focuses assignee selector"
+  - id: TEST-ui-3
+    desc: "Save button is visible near the top when editing long content"
+  - id: TEST-ui-4
+    desc: "Content paragraphs render with tighter line spacing and reduced vertical gaps"
+  - id: TEST-ui-5
+    desc: "Todo titles are visually larger than descriptions, and descriptions preserve line breaks"
+
+dependencies:
+  governance:
+    - "Frontend uses React + Tailwind + Radix UI"
+    - "Typography powered by tailwind-typography classes"
+
+linked_tasks:
+  - TASK-034
+
+technical_notes:
+  - "Ensure edit-mode toggle preserves existing field values"
+  - "Focus behavior should not throw when refs are null (guarded check)"
+  - "Spacing changes should be scoped to prose blocks to avoid global regressions"
+

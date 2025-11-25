@@ -439,6 +439,20 @@
   - `frontend/src/pages/WorkNotes/components/WorkNotesTable.tsx` (added header column)
   - `frontend/src/pages/WorkNotes/components/WorkNoteRow.tsx` (added persons cell with person name and dept)
 
+### Session 31: Work Note Detail UX Polish (2025-11-25)
+- **Task**: TASK-034 (SPEC-ui-1) quick-edit triggers, save controls, spacing, todo typography.
+- **Changes**:
+  - Clicking "업무 구분 없음" or "담당자 없음" toggles edit mode and focuses the relevant picker.
+  - Added sticky top save/cancel buttons in the detail dialog (bottom actions retained).
+  - Tightened prose spacing via CSS to reduce scroll without hurting readability.
+  - Todo titles now larger than descriptions; descriptions preserve manual line breaks using `preserveLineBreaksForMarkdown`.
+- **Tests**: `npm test -- tests/unit/text-format.test.ts`
+- **Files Modified**:
+  - `frontend/src/pages/WorkNotes/components/ViewWorkNoteDialog.tsx`
+  - `frontend/src/lib/utils.ts`
+  - `frontend/src/styles/index.css`
+  - `tests/unit/text-format.test.ts`
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

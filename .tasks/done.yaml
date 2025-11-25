@@ -903,6 +903,25 @@ completed_tasks:
       - CreateFromPDFDialog: PDF 업로드 + 폴링 → DraftEditorForm
       - 코드 감소: 원본 779줄 → 리팩토링 후 297줄 (62% 감소)
 
+  - task_id: TASK-034
+    title: "Work note detail quick-edit & todo typography polish"
+    spec_id: SPEC-ui-1
+    completed_at: "2025-11-25T02:03:50Z"
+    outcome: |
+      - Clicking '업무 구분 없음' or '담당자 없음' now opens edit mode and focuses the relevant picker for fast assignment.
+      - Added sticky top save/cancel controls so long notes can be saved without scrolling.
+      - Tightened prose spacing for work note content to reduce scroll while keeping readability.
+      - Todo titles are visually dominant, and descriptions now preserve manual line breaks.
+    test_results: |
+      ✓ npm test -- tests/unit/text-format.test.ts
+    estimated_effort: 3h
+    actual_effort: ~1h
+    implementation_details: |
+      - Added preserveLineBreaksForMarkdown helper to convert newlines to markdown breaks (utils + unit test).
+      - Quick-edit entry points with focus targeting for empty category/assignee chips.
+      - Top-level save bar (sticky) plus bottom actions; kept existing update mutation.
+      - Tweaked typography classes and prose CSS for denser content and todo layout.
+
 # Example entry format:
 # - task_id: TASK-001
 #   title: "Initialize Cloudflare Workers project"

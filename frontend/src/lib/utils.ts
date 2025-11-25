@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-2, TASK-025
+// Trace: SPEC-worknote-2, TASK-025, SPEC-ui-1, TASK-034
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format, parseISO, getYear } from 'date-fns';
@@ -113,4 +113,19 @@ export function getDepartmentColor(deptName: string): string {
 
   const index = Math.abs(hash) % colors.length;
   return colors[index];
+}
+
+/**
+ * Convert newline characters into Markdown-compatible hard line breaks.
+ * Useful when rendering user-entered multiline text with ReactMarkdown
+ * while preserving intentional line breaks.
+ */
+export function preserveLineBreaksForMarkdown(text: string): string {
+  if (!text) return '';
+
+  return text
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line, index, lines) => (index === lines.length - 1 ? line : `${line}  \n`))
+    .join('');
 }

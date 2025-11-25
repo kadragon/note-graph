@@ -126,6 +126,28 @@
   font-size: 0.85em;
 }
 
+/* Trace: SPEC-ui-1 / TASK-034 - Compact spacing for prose content to reduce scrolling */
+:is(.prose, .prose-sm) p {
+  line-height: 1.55;
+  margin-top: 0;
+  margin-bottom: 0.6rem;
+}
+
+:is(.prose, .prose-sm) li {
+  line-height: 1.5;
+  margin-top: 0.1rem;
+  margin-bottom: 0.4rem;
+}
+
+:is(.prose, .prose-sm) h1,
+:is(.prose, .prose-sm) h2,
+:is(.prose, .prose-sm) h3,
+:is(.prose, .prose-sm) h4 {
+  margin-top: 1.2rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.3;
+}
+
 /* Remove any black borders from code blocks */
 .hljs {
   @apply border-0;
