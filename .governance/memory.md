@@ -439,6 +439,39 @@
   - `frontend/src/pages/WorkNotes/components/WorkNotesTable.tsx` (added header column)
   - `frontend/src/pages/WorkNotes/components/WorkNoteRow.tsx` (added persons cell with person name and dept)
 
+### Session 31: Work Note Detail UX Polish (2025-11-25)
+- **Task**: TASK-034 (SPEC-ui-1) quick-edit triggers, save controls, spacing, todo typography.
+- **Changes**:
+  - Clicking "업무 구분 없음" or "담당자 없음" toggles edit mode and focuses the relevant picker.
+  - Added sticky top save/cancel buttons in the detail dialog (bottom actions retained).
+  - Tightened prose spacing via CSS to reduce scroll without hurting readability.
+  - Todo titles now larger than descriptions; descriptions preserve manual line breaks using `preserveLineBreaksForMarkdown`.
+- **Tests**: `npm test -- tests/unit/text-format.test.ts`
+- **Files Modified**:
+  - `frontend/src/pages/WorkNotes/components/ViewWorkNoteDialog.tsx`
+  - `frontend/src/lib/utils.ts`
+  - `frontend/src/styles/index.css`
+  - `tests/unit/text-format.test.ts`
+
+### Session 32: Code Review Improvements (2025-11-25)
+- **Task**: Code review feedback implementation for PR #110
+- **Improvements**:
+  - **Accessibility**: Added `aria-label` attributes to quick-edit trigger buttons for screen reader support
+  - **UX Enhancement**: Focus failure now shows toast notification guiding user to scroll to fields
+  - **Code Quality**: `focusFirstInteractiveElement` returns boolean to indicate success/failure
+  - **Documentation**: Added detailed CSS comments explaining prose spacing rationale and values
+  - **Style Consistency**: Removed redundant Tailwind prose utility classes to rely on global styles in `index.css`
+  - **Code Simplification**: Removed unnecessary `whitespace-pre-line` as ReactMarkdown already handles line breaks
+- **Patterns Learned**:
+  - Focus management should provide user feedback when automatic focus fails
+  - Accessibility labels are essential for interactive UI elements without visible text
+  - CSS magic numbers should be documented with context and rationale
+  - Avoid duplicating styles between component utilities and global CSS - maintain single source of truth
+  - When using helper functions to transform content (like `preserveLineBreaksForMarkdown`), redundant CSS properties can be removed
+- **Files Modified**:
+  - `frontend/src/pages/WorkNotes/components/ViewWorkNoteDialog.tsx` (accessibility + focus feedback + style cleanup)
+  - `frontend/src/styles/index.css` (documentation)
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

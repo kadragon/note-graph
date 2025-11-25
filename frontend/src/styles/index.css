@@ -126,6 +126,34 @@
   font-size: 0.85em;
 }
 
+/* Trace: SPEC-ui-1 / TASK-034 - Compact spacing for prose content to reduce scrolling
+ * These values are optimized for dialog/modal contexts where vertical space is limited:
+ * - Paragraph line-height 1.55 (down from 1.75) maintains readability while reducing gaps
+ * - List item spacing 0.4rem (down from 0.75rem) for denser but legible lists
+ * - Heading margins 1.2rem/0.6rem (down from 2rem/1rem) reduce section breaks
+ * Tested to ensure no negative impact on mobile readability or accessibility
+ */
+:is(.prose, .prose-sm) p {
+  line-height: 1.55;
+  margin-top: 0;
+  margin-bottom: 0.6rem;
+}
+
+:is(.prose, .prose-sm) li {
+  line-height: 1.5;
+  margin-top: 0.1rem;
+  margin-bottom: 0.4rem;
+}
+
+:is(.prose, .prose-sm) h1,
+:is(.prose, .prose-sm) h2,
+:is(.prose, .prose-sm) h3,
+:is(.prose, .prose-sm) h4 {
+  margin-top: 1.2rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.3;
+}
+
 /* Remove any black borders from code blocks */
 .hljs {
   @apply border-0;

@@ -1,5 +1,5 @@
-// Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2
-import { useState, useEffect, useCallback } from 'react';
+// Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2, SPEC-ui-1, TASK-034
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -38,7 +38,7 @@ import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
 import { useToggleTodo, useDeleteTodo } from '@/hooks/useTodos';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
-import { formatPersonBadge, formatDateWithYear } from '@/lib/utils';
+import { formatPersonBadge, formatDateWithYear, preserveLineBreaksForMarkdown } from '@/lib/utils';
 import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
 import { TODO_STATUS } from '@/constants/todoStatus';
 import type { WorkNote, CreateTodoRequest, TodoStatus, Todo } from '@/types/api';
@@ -72,6 +72,10 @@ export function ViewWorkNoteDialog({
   const [todoDescription, setTodoDescription] = useState('');
   // Set default due date to today in YYYY-MM-DD format
   const [todoDueDate, setTodoDueDate] = useState(getTodayString);
+
+  // Refs for focusing specific sections when entering edit mode
+  const categorySectionRef = useRef<HTMLDivElement | null>(null);
+  const assigneeSectionRef = useRef<HTMLDivElement | null>(null);
 
   // Detect system theme preference
   const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
@@ -212,6 +216,44 @@ export function ViewWorkNoteDialog({
     );
   };
 
+  const focusFirstInteractiveElement = (container: HTMLElement | null): boolean => {
+    if (!container) return false;
+    const focusable = container.querySelector<HTMLElement>(
+      'input, button, textarea, select, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable) {
+      focusable.focus();
+      return true;
+    }
+    return false;
+  };
+
+  const enterEditMode = useCallback(
+    (focusTarget?: 'category' | 'assignee') => {
+      resetForm();
+      setIsEditing(true);
+      // Wait for the edit UI to render before focusing
+      window.requestAnimationFrame(() => {
+        let focusSuccess = false;
+        if (focusTarget === 'category') {
+          focusSuccess = focusFirstInteractiveElement(categorySectionRef.current);
+        } else if (focusTarget === 'assignee') {
+          focusSuccess = focusFirstInteractiveElement(assigneeSectionRef.current);
+        }
+
+        // If focus failed, show a toast to guide the user
+        if (focusTarget && !focusSuccess) {
+          toast({
+            title: '편집 모드로 전환되었습니다',
+            description: '아래로 스크롤하여 필드를 수정하세요.',
+            variant: 'default',
+          });
+        }
+      });
+    },
+    [resetForm, toast]
+  );
+
 
   const handleSaveEdit = async () => {
     if (!currentWorkNote || !editTitle.trim() || !editContent.trim()) {
@@ -270,7 +312,7 @@ export function ViewWorkNoteDialog({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => enterEditMode()}
                   className="h-8 w-8 p-0"
                 >
                   <Edit2 className="h-4 w-4" />
@@ -284,6 +326,28 @@ export function ViewWorkNoteDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {isEditing && (
+          <div className="sticky top-0 z-10 mb-4 flex justify-end gap-2 border-b bg-background pb-3">
+            <Button
+              variant="outline"
+              onClick={handleCancelEdit}
+              disabled={updateMutation.isPending}
+              size="sm"
+            >
+              <X className="h-4 w-4 mr-2" />
+              취소
+            </Button>
+            <Button
+              onClick={() => void handleSaveEdit()}
+              disabled={updateMutation.isPending}
+              size="sm"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {updateMutation.isPending ? '저장 중...' : '저장'}
+            </Button>
+          </div>
+        )}
+
         <div className="space-y-4">
           {/* Categories Section */}
           <div>
@@ -296,7 +360,10 @@ export function ViewWorkNoteDialog({
                   등록된 업무 구분이 없습니다.
                 </p>
               ) : (
-                <div className="grid grid-cols-2 gap-3 max-h-[150px] overflow-y-auto border rounded-md p-3">
+                <div
+                  ref={categorySectionRef}
+                  className="grid grid-cols-2 gap-3 max-h-[150px] overflow-y-auto border rounded-md p-3"
+                >
                   {taskCategories.map((category) => (
                     <div key={category.categoryId} className="flex items-center space-x-2">
                       <Checkbox
@@ -323,7 +390,15 @@ export function ViewWorkNoteDialog({
                     </Badge>
                   ))
                 ) : (
-                  <Badge variant="outline">업무 구분 없음</Badge>
+                  <button
+                    type="button"
+                    onClick={() => enterEditMode('category')}
+                    className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label="업무 구분 추가하기"
+                  >
+                    <Badge variant="outline">업무 구분 없음</Badge>
+                    <span className="text-xs">클릭하여 추가</span>
+                  </button>
                 )}
               </div>
             )}
@@ -336,12 +411,14 @@ export function ViewWorkNoteDialog({
               persons.length === 0 && !personsLoading ? (
                 <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
               ) : (
-                <AssigneeSelector
-                  persons={persons}
-                  selectedPersonIds={editPersonIds}
-                  onSelectionChange={setEditPersonIds}
-                  isLoading={personsLoading}
-                />
+                <div ref={assigneeSectionRef}>
+                  <AssigneeSelector
+                    persons={persons}
+                    selectedPersonIds={editPersonIds}
+                    onSelectionChange={setEditPersonIds}
+                    isLoading={personsLoading}
+                  />
+                </div>
               )
             ) : (
               <div className="flex flex-wrap gap-1">
@@ -359,7 +436,15 @@ export function ViewWorkNoteDialog({
                     </Badge>
                   ))
                 ) : (
-                  <Badge variant="outline">담당자 없음</Badge>
+                  <button
+                    type="button"
+                    onClick={() => enterEditMode('assignee')}
+                    className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label="담당자 지정하기"
+                  >
+                    <Badge variant="outline">담당자 없음</Badge>
+                    <span className="text-xs">클릭하여 지정</span>
+                  </button>
                 )}
               </div>
             )}
@@ -397,7 +482,10 @@ export function ViewWorkNoteDialog({
                 </p>
               </div>
             ) : (
-              <div className="prose prose-sm max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800" data-color-mode={colorMode}>
+              <div
+                className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800"
+                data-color-mode={colorMode}
+              >
                 <ReactMarkdown
                   remarkPlugins={remarkPlugins}
                   rehypePlugins={rehypePlugins}
@@ -506,6 +594,9 @@ export function ViewWorkNoteDialog({
               <div className="space-y-2">
                 {todos.map((todo) => {
                   const isNonToggleableStatus = todo.status === TODO_STATUS.ON_HOLD || todo.status === TODO_STATUS.STOPPED;
+                  const descriptionWithBreaks = todo.description
+                    ? preserveLineBreaksForMarkdown(todo.description)
+                    : '';
                   return (
                     <div
                       key={todo.id}
@@ -518,36 +609,39 @@ export function ViewWorkNoteDialog({
                         title={isNonToggleableStatus ? '보류/중단 상태는 체크박스로 변경할 수 없습니다' : undefined}
                         className="mt-0.5"
                       />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${todo.status === TODO_STATUS.COMPLETED ? 'line-through text-muted-foreground' : ''}`}>
-                        {todo.title}
-                      </p>
-                      {todo.description && (
-                        <div className="prose prose-xs max-w-none mt-1 text-muted-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                          <ReactMarkdown
-                            remarkPlugins={remarkPlugins}
-                            rehypePlugins={rehypePlugins}
-                          >
-                            {todo.description}
-                          </ReactMarkdown>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-base font-semibold leading-snug ${todo.status === TODO_STATUS.COMPLETED ? 'line-through text-muted-foreground' : ''}`}
+                        >
+                          {todo.title}
+                        </p>
+                        {todo.description && (
+                          <div className="mt-1 text-xs text-muted-foreground leading-snug break-words">
+                            <ReactMarkdown
+                              remarkPlugins={remarkPlugins}
+                              rehypePlugins={rehypePlugins}
+                              className="[&>*]:m-0 [&>p]:mb-1"
+                            >
+                              {descriptionWithBreaks}
+                            </ReactMarkdown>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <Badge variant={todo.status === TODO_STATUS.COMPLETED ? 'secondary' : 'default'} className="text-xs">
+                            {todo.status}
+                          </Badge>
+                          {todo.waitUntil && (
+                            <Badge variant="outline" className="text-xs">
+                              대기: {formatDateWithYear(todo.waitUntil)}
+                            </Badge>
+                          )}
+                          {todo.dueDate && (
+                            <Badge variant="outline" className="text-xs">
+                              마감: {formatDateWithYear(todo.dueDate)}
+                            </Badge>
+                          )}
                         </div>
-                      )}
-                      <div className="flex gap-2 mt-1">
-                        <Badge variant={todo.status === TODO_STATUS.COMPLETED ? 'secondary' : 'default'} className="text-xs">
-                          {todo.status}
-                        </Badge>
-                        {todo.waitUntil && (
-                          <Badge variant="outline" className="text-xs">
-                            대기: {formatDateWithYear(todo.waitUntil)}
-                          </Badge>
-                        )}
-                        {todo.dueDate && (
-                          <Badge variant="outline" className="text-xs">
-                            마감: {formatDateWithYear(todo.dueDate)}
-                          </Badge>
-                        )}
                       </div>
-                    </div>
                     <Button
                       variant="ghost"
                       size="sm"

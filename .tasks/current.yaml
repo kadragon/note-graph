@@ -3,6 +3,6 @@
 
 current_task: null
 notes: |
-  TASK-033 completed: todo wait/due ordering fixed, auto-fill due_date from
-  wait_until, recurring todos copy wait_until from computed due date. Tests
-  updated (TEST-todo-7/8) and backend/frontend aligned.
+  TASK-034 (SPEC-ui-1) completed: quick-edit for empty category/assignee chips,
+  top save controls, compact content spacing, and todo typography/line-break polish.
+  Tests: npm test -- tests/unit/text-format.test.ts.
