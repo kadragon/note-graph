@@ -216,12 +216,16 @@ export function ViewWorkNoteDialog({
     );
   };
 
-  const focusFirstInteractiveElement = (container: HTMLElement | null) => {
-    if (!container) return;
+  const focusFirstInteractiveElement = (container: HTMLElement | null): boolean => {
+    if (!container) return false;
     const focusable = container.querySelector<HTMLElement>(
       'input, button, textarea, select, [tabindex]:not([tabindex="-1"])'
     );
-    focusable?.focus();
+    if (focusable) {
+      focusable.focus();
+      return true;
+    }
+    return false;
   };
 
   const enterEditMode = useCallback(
@@ -230,14 +234,24 @@ export function ViewWorkNoteDialog({
       setIsEditing(true);
       // Wait for the edit UI to render before focusing
       window.requestAnimationFrame(() => {
+        let focusSuccess = false;
         if (focusTarget === 'category') {
-          focusFirstInteractiveElement(categorySectionRef.current);
+          focusSuccess = focusFirstInteractiveElement(categorySectionRef.current);
         } else if (focusTarget === 'assignee') {
-          focusFirstInteractiveElement(assigneeSectionRef.current);
+          focusSuccess = focusFirstInteractiveElement(assigneeSectionRef.current);
+        }
+
+        // If focus failed, show a toast to guide the user
+        if (focusTarget && !focusSuccess) {
+          toast({
+            title: '편집 모드로 전환되었습니다',
+            description: '아래로 스크롤하여 필드를 수정하세요.',
+            variant: 'default',
+          });
         }
       });
     },
-    [resetForm]
+    [resetForm, toast]
   );
 
 
@@ -380,6 +394,7 @@ export function ViewWorkNoteDialog({
                     type="button"
                     onClick={() => enterEditMode('category')}
                     className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label="업무 구분 추가하기"
                   >
                     <Badge variant="outline">업무 구분 없음</Badge>
                     <span className="text-xs">클릭하여 추가</span>
@@ -425,6 +440,7 @@ export function ViewWorkNoteDialog({
                     type="button"
                     onClick={() => enterEditMode('assignee')}
                     className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label="담당자 지정하기"
                   >
                     <Badge variant="outline">담당자 없음</Badge>
                     <span className="text-xs">클릭하여 지정</span>
@@ -467,7 +483,7 @@ export function ViewWorkNoteDialog({
               </div>
             ) : (
               <div
-                className="prose prose-sm prose-headings:mt-3 prose-headings:mb-2 prose-p:my-2 prose-li:my-1 leading-relaxed max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800"
+                className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800"
                 data-color-mode={colorMode}
               >
                 <ReactMarkdown
@@ -604,7 +620,7 @@ export function ViewWorkNoteDialog({
                             <ReactMarkdown
                               remarkPlugins={remarkPlugins}
                               rehypePlugins={rehypePlugins}
-                              className="whitespace-pre-line [&>*]:m-0 [&>p]:mb-1"
+                              className="[&>*]:m-0 [&>p]:mb-1"
                             >
                               {descriptionWithBreaks}
                             </ReactMarkdown>

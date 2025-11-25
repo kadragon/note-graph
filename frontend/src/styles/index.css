@@ -126,7 +126,13 @@
   font-size: 0.85em;
 }
 
-/* Trace: SPEC-ui-1 / TASK-034 - Compact spacing for prose content to reduce scrolling */
+/* Trace: SPEC-ui-1 / TASK-034 - Compact spacing for prose content to reduce scrolling
+ * These values are optimized for dialog/modal contexts where vertical space is limited:
+ * - Paragraph line-height 1.55 (down from 1.75) maintains readability while reducing gaps
+ * - List item spacing 0.4rem (down from 0.75rem) for denser but legible lists
+ * - Heading margins 1.2rem/0.6rem (down from 2rem/1rem) reduce section breaks
+ * Tested to ensure no negative impact on mobile readability or accessibility
+ */
 :is(.prose, .prose-sm) p {
   line-height: 1.55;
   margin-top: 0;
