@@ -39,6 +39,24 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
         )}
       </TableCell>
       <TableCell>
+        {workNote.persons && workNote.persons.length > 0 ? (
+          <div className="flex flex-col gap-1">
+            {workNote.persons.map((person) => (
+              <div key={person.personId} className="text-sm">
+                <span className="font-medium">{person.personName}</span>
+                {person.currentDept && (
+                  <span className="text-muted-foreground ml-1">
+                    ({person.currentDept})
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">-</span>
+        )}
+      </TableCell>
+      <TableCell>
         {total > 0 ? (
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">

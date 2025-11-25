@@ -418,6 +418,27 @@
 - Frontend shows wait date before due date in dashboard todo items and work note dialog; edit dialog auto-fills due date when wait date is set.
 - Added TEST-todo-7/8 to cover auto-fill and recurrence wait duplication; `npm test -- tests/unit/todo-repository.test.ts` passing.
 
+### Session 29: Todo Wait Date Comparison Bugfix (2025-11-25)
+- **Bugfix** (SPEC-todo-1): Fixed wait date filtering in work notes stats to include today's date.
+- **Issue**: Work notes with todos having `waitUntil === today` were incorrectly classified as "remaining" instead of "pending".
+- **Root Cause**: Time-based comparison caused false negatives after midnight (e.g., `00:00:00 >= 15:30:00` = false).
+- **Backend**: Already correctly implemented with `wait_until <= now` in todo-repository.ts:184.
+- **Fix**: Changed comparison to use `startOfDay` normalization with `isAfter` for calendar day comparison.
+- **Implementation**: `isAfter(startOfDay(waitUntil), startOfDay(now))` ensures proper day-level granularity.
+- **Semantic Clarification**: Wait date means "확인해야 하는 날" (day to check), not "그 전까지 기다리는 날" (wait until).
+- **Review Feedback**: P2 comment addressed - normalized both dates to start of day to avoid time-based false negatives.
+- **Files Modified**: `frontend/src/hooks/useWorkNotes.ts` (added date-fns imports, calendar day comparison).
+
+### Session 30: Work Notes List - Add Persons Column (2025-11-25)
+- **Enhancement** (SPEC-worknote-1): Added person assignments display in work notes list table.
+- **Changes**: Added "담당자" column between "업무 구분" and "할일" columns.
+- **UI Display**: Shows person name with department in parentheses (e.g., "홍길동 (개발팀)").
+- **Multiple Persons**: Displayed vertically stacked when multiple persons are assigned.
+- **Empty State**: Shows "-" when no persons are assigned.
+- **Files Modified**:
+  - `frontend/src/pages/WorkNotes/components/WorkNotesTable.tsx` (added header column)
+  - `frontend/src/pages/WorkNotes/components/WorkNoteRow.tsx` (added persons cell with person name and dept)
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

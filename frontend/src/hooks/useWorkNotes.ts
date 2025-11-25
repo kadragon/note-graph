@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { startOfDay, isAfter } from 'date-fns';
 import { API } from '@/lib/api';
 import { useToast } from './use-toast';
 import { TODO_STATUS } from '@/constants/todoStatus';
@@ -30,8 +31,10 @@ export function useWorkNotesWithStats() {
                 if (todo.status === TODO_STATUS.COMPLETED) {
                   acc.completed++;
                 } else {
-                  // 미완료 상태: waitUntil이 미래면 pending, 아니면 remaining
-                  const hasFutureWaitUntil = todo.waitUntil && new Date(todo.waitUntil) > now;
+                  // 미완료 상태: waitUntil이 오늘 이후(미래)면 pending, 아니면 remaining
+                  // 날짜 단위 비교를 위해 startOfDay로 정규화
+                  const hasFutureWaitUntil = todo.waitUntil &&
+                    isAfter(startOfDay(new Date(todo.waitUntil)), startOfDay(now));
                   if (hasFutureWaitUntil) {
                     acc.pending++;
                   } else {
