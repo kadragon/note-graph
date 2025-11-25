@@ -11,6 +11,7 @@ import { authMiddleware } from '../middleware/auth';
 import { validateBody, validateQuery } from '../utils/validation';
 import { updateTodoSchema, listTodosQuerySchema } from '../schemas/todo';
 import { TodoRepository } from '../repositories/todo-repository';
+import { WorkNoteService } from '../services/work-note-service';
 import { DomainError } from '../types/errors';
 
 const todos = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -39,6 +40,7 @@ todos.get('/', async (c) => {
 
 /**
  * PATCH /todos/:todoId - Update todo (including status changes)
+ * Re-embeds the parent work note to reflect updated todo in vector store
  */
 todos.patch('/:todoId', async (c) => {
   try {
@@ -46,6 +48,28 @@ todos.patch('/:todoId', async (c) => {
     const data = await validateBody(c, updateTodoSchema);
     const repository = new TodoRepository(c.env.DB);
     const todo = await repository.update(todoId, data);
+
+    // Re-embed work note to reflect updated todo in vector store (async, non-blocking)
+    const service = new WorkNoteService(c.env);
+    service.findById(todo.workId).then(async (workNote) => {
+      if (workNote) {
+        const details = await service.findByIdWithDetails(todo.workId);
+        if (details) {
+          await service.update(todo.workId, {
+            title: details.title,
+            contentRaw: details.contentRaw,
+            category: details.category || undefined,
+            persons: details.persons.map(p => ({ personId: p.personId, role: p.role })),
+          });
+        }
+      }
+    }).catch((error) => {
+      console.error('[WorkNote] Failed to re-embed after todo update:', {
+        workId: todo.workId,
+        todoId: todo.todoId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
 
     return c.json(todo);
   } catch (error) {
@@ -59,12 +83,43 @@ todos.patch('/:todoId', async (c) => {
 
 /**
  * DELETE /todos/:todoId - Delete todo
+ * Re-embeds the parent work note to remove deleted todo from vector store
  */
 todos.delete('/:todoId', async (c) => {
   try {
     const { todoId } = c.req.param();
     const repository = new TodoRepository(c.env.DB);
+
+    // Get todo before deletion to access workId
+    const todo = await repository.findById(todoId);
+    if (!todo) {
+      return c.json({ code: 'NOT_FOUND', message: `Todo not found: ${todoId}` }, 404);
+    }
+
+    const workId = todo.workId;
     await repository.delete(todoId);
+
+    // Re-embed work note to remove deleted todo from vector store (async, non-blocking)
+    const service = new WorkNoteService(c.env);
+    service.findById(workId).then(async (workNote) => {
+      if (workNote) {
+        const details = await service.findByIdWithDetails(workId);
+        if (details) {
+          await service.update(workId, {
+            title: details.title,
+            contentRaw: details.contentRaw,
+            category: details.category || undefined,
+            persons: details.persons.map(p => ({ personId: p.personId, role: p.role })),
+          });
+        }
+      }
+    }).catch((error) => {
+      console.error('[WorkNote] Failed to re-embed after todo deletion:', {
+        workId,
+        todoId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
 
     return c.body(null, 204);
   } catch (error) {

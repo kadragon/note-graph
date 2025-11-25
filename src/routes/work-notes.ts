@@ -144,6 +144,7 @@ workNotes.get('/:workId/todos', async (c) => {
 
 /**
  * POST /work-notes/:workId/todos - Create todo for work note
+ * Re-embeds the parent work note to include new todo in vector store
  */
 workNotes.post('/:workId/todos', async (c) => {
   try {
@@ -151,6 +152,28 @@ workNotes.post('/:workId/todos', async (c) => {
     const data = await validateBody(c, createTodoSchema);
     const repository = new TodoRepository(c.env.DB);
     const todo = await repository.create(workId, data);
+
+    // Re-embed work note to include new todo in vector store (async, non-blocking)
+    const service = new WorkNoteService(c.env);
+    service.findById(workId).then(async (workNote) => {
+      if (workNote) {
+        const details = await service.findByIdWithDetails(workId);
+        if (details) {
+          await service.update(workId, {
+            title: details.title,
+            contentRaw: details.contentRaw,
+            category: details.category || undefined,
+            persons: details.persons.map(p => ({ personId: p.personId, role: p.role })),
+          });
+        }
+      }
+    }).catch((error) => {
+      console.error('[WorkNote] Failed to re-embed after todo creation:', {
+        workId,
+        todoId: todo.todoId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
 
     return c.json(todo, 201);
   } catch (error) {
