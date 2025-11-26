@@ -61,6 +61,7 @@ api.get('/', (c) => {
       departments: '/api/departments',
       taskCategories: '/api/task-categories',
       projects: '/api/projects',
+      projectFiles: '/api/projects/:projectId/files',
       workNotes: '/api/work-notes',
       todos: '/api/todos',
       search: '/api/search',

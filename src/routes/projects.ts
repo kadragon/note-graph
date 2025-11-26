@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { ProjectRepository } from '../repositories/project-repository';
+import { ProjectFileService } from '../services/project-file-service';
 import {
 	createProjectSchema,
 	updateProjectSchema,
@@ -16,7 +17,7 @@ import {
 import { validateBody, validateQuery } from '../utils/validation';
 import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
-import { NotFoundError, ConflictError } from '../types/errors';
+import { NotFoundError, ConflictError, BadRequestError } from '../types/errors';
 
 const projects = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -235,6 +236,103 @@ projects.delete('/:projectId/work-notes/:workId', async (c) => {
 	)
 		.bind(workId)
 		.run();
+
+	return c.body(null, 204);
+});
+
+/**
+ * POST /projects/:projectId/files
+ * Upload file to project
+ */
+projects.post('/:projectId/files', async (c) => {
+	const projectId = c.req.param('projectId');
+	const repository = new ProjectRepository(c.env.DB);
+
+	// Verify project exists
+	const project = await repository.findById(projectId);
+	if (!project) {
+		throw new NotFoundError('Project', projectId);
+	}
+
+	// Parse multipart form data
+	const formData = await c.req.formData();
+	const file = formData.get('file');
+
+	if (!file || typeof file === 'string') {
+		throw new BadRequestError('파일이 필요합니다');
+	}
+
+	const fileBlob = file as Blob;
+
+	// Get file name (if File object, otherwise use default)
+	const originalName = (file as File).name || 'uploaded-file';
+
+	// Get authenticated user email
+	const user = c.get('user');
+
+	// Upload file using service
+	const fileService = new ProjectFileService(c.env.R2_BUCKET, c.env.DB);
+	const uploadedFile = await fileService.uploadFile({
+		projectId,
+		file: fileBlob,
+		originalName,
+		uploadedBy: user.email,
+	});
+
+	return c.json(uploadedFile, 201);
+});
+
+/**
+ * GET /projects/:projectId/files
+ * List project files
+ */
+projects.get('/:projectId/files', async (c) => {
+	const projectId = c.req.param('projectId');
+	const fileService = new ProjectFileService(c.env.R2_BUCKET, c.env.DB);
+
+	const files = await fileService.listFiles(projectId);
+
+	return c.json(files, 200);
+});
+
+/**
+ * GET /projects/:projectId/files/:fileId
+ * Get file metadata
+ */
+projects.get('/:projectId/files/:fileId', async (c) => {
+	const fileId = c.req.param('fileId');
+	const fileService = new ProjectFileService(c.env.R2_BUCKET, c.env.DB);
+
+	const file = await fileService.getFileById(fileId);
+	if (!file) {
+		throw new NotFoundError('File', fileId);
+	}
+
+	return c.json(file, 200);
+});
+
+/**
+ * GET /projects/:projectId/files/:fileId/download
+ * Download file (stream from R2)
+ */
+projects.get('/:projectId/files/:fileId/download', async (c) => {
+	const fileId = c.req.param('fileId');
+	const fileService = new ProjectFileService(c.env.R2_BUCKET, c.env.DB);
+
+	const { body, headers } = await fileService.streamFile(fileId);
+
+	return new Response(body, { headers });
+});
+
+/**
+ * DELETE /projects/:projectId/files/:fileId
+ * Delete file
+ */
+projects.delete('/:projectId/files/:fileId', async (c) => {
+	const fileId = c.req.param('fileId');
+	const fileService = new ProjectFileService(c.env.R2_BUCKET, c.env.DB);
+
+	await fileService.deleteFile(fileId);
 
 	return c.body(null, 204);
 });
