@@ -1,12 +1,12 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task: TASK-041
+current_task: null
 notes: |
-  Starting TASK-041 (SPEC-project-1): Extend RAG service for PROJECT scope.
+  Completed TASK-041 (Extend RAG service for PROJECT scope).
 
-  Need to:
-  1. Add PROJECT to RAG scope enum
-  2. Update RAG query schema to accept projectId
-  3. Modify RagService to filter by projectId metadata
-  4. Update embedding metadata to include projectId
+  Phase 2 (Storage & RAG) completed: 3/4 tasks
+  - ✅ TASK-039: R2 file upload and storage
+  - ✅ TASK-040: File download and deletion
+  - ✅ TASK-041: Extend RAG service for PROJECT scope
+  - ⏭️ TASK-042: File text extraction and embedding pipeline (optional enhancement)
