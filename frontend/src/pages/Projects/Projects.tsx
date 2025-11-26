@@ -1,5 +1,5 @@
 // Trace: SPEC-project-1, TASK-043
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Filter, Plus, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +40,12 @@ export default function Projects() {
   const [endDateFilter, setEndDateFilter] = useState<string>('');
 
   const { data: persons = [] } = usePersons();
-  const { data: projects = [], isLoading } = useProjects();
+  const { data: projects = [], isLoading } = useProjects({
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    leaderPersonId: leaderFilter === 'all' ? undefined : leaderFilter,
+    startDate: startDateFilter || undefined,
+    endDate: endDateFilter || undefined,
+  });
   const deleteMutation = useDeleteProject();
 
   const handleView = (project: Project) => {
@@ -60,27 +65,6 @@ export default function Projects() {
       setProjectToDelete(null);
     }
   };
-
-  const filteredProjects = useMemo(() => {
-    return projects.filter((project) => {
-      if (statusFilter !== 'all' && project.status !== statusFilter) return false;
-      if (leaderFilter !== 'all' && project.leaderPersonId !== leaderFilter) return false;
-
-      if (startDateFilter) {
-        const start = new Date(startDateFilter).getTime();
-        const created = new Date(project.createdAt).getTime();
-        if (created < start) return false;
-      }
-
-      if (endDateFilter) {
-        const end = new Date(endDateFilter).getTime();
-        const created = new Date(project.createdAt).getTime();
-        if (created > end) return false;
-      }
-
-      return true;
-    });
-  }, [projects, statusFilter, leaderFilter, startDateFilter, endDateFilter]);
 
   const resetFilters = () => {
     setStatusFilter('all');
@@ -163,13 +147,13 @@ export default function Projects() {
             <div className="text-center py-8 text-muted-foreground">
               로딩 중...
             </div>
-          ) : filteredProjects.length === 0 ? (
+          ) : projects.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               프로젝트가 없습니다. 새 프로젝트를 만들어보세요.
             </div>
           ) : (
             <ProjectsTable
-              projects={filteredProjects}
+              projects={projects}
               onView={handleView}
               onDelete={handleDeleteClick}
             />

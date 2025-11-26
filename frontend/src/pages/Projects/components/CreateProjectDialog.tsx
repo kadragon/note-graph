@@ -44,6 +44,7 @@ export function CreateProjectDialog({
   const [deptName, setDeptName] = useState('');
   const [tags, setTags] = useState('');
   const [participantIds, setParticipantIds] = useState<string[]>([]);
+  const [participantSearch, setParticipantSearch] = useState('');
 
   const createMutation = useCreateProject();
   const { data: persons = [] } = usePersons();
@@ -81,6 +82,7 @@ export function CreateProjectDialog({
       setDeptName('');
       setTags('');
       setParticipantIds([]);
+      setParticipantSearch('');
       onOpenChange(false);
     } catch {
       // Error is handled by the mutation hook
@@ -220,30 +222,54 @@ export function CreateProjectDialog({
 
             <div className="grid gap-2">
               <Label>참여자</Label>
+              <Input
+                placeholder="참여자 검색..."
+                value={participantSearch}
+                onChange={(e) => setParticipantSearch(e.target.value)}
+                className="mb-2"
+              />
               <div className="grid grid-cols-2 gap-2 max-h-48 overflow-auto border rounded-md p-3">
-                {persons.map((person) => {
-                  const checked = participantIds.includes(person.personId);
+                {persons
+                  .filter((person) => {
+                    if (!participantSearch) return true;
+                    const search = participantSearch.toLowerCase();
+                    return (
+                      person.name.toLowerCase().includes(search) ||
+                      person.personId.toLowerCase().includes(search)
+                    );
+                  })
+                  .map((person) => {
+                    const checked = participantIds.includes(person.personId);
+                    return (
+                      <label
+                        key={person.personId}
+                        className="flex items-center gap-2 text-sm cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(value) => {
+                            if (value) {
+                              setParticipantIds((prev) => [...prev, person.personId]);
+                            } else {
+                              setParticipantIds((prev) => prev.filter((id) => id !== person.personId));
+                            }
+                          }}
+                        />
+                        <span>{person.name} ({person.personId})</span>
+                      </label>
+                    );
+                  })}
+                {persons.filter((person) => {
+                  if (!participantSearch) return true;
+                  const search = participantSearch.toLowerCase();
                   return (
-                    <label
-                      key={person.personId}
-                      className="flex items-center gap-2 text-sm cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(value) => {
-                          if (value) {
-                            setParticipantIds((prev) => [...prev, person.personId]);
-                          } else {
-                            setParticipantIds((prev) => prev.filter((id) => id !== person.personId));
-                          }
-                        }}
-                      />
-                      <span>{person.name} ({person.personId})</span>
-                    </label>
+                    person.name.toLowerCase().includes(search) ||
+                    person.personId.toLowerCase().includes(search)
                   );
-                })}
-                {persons.length === 0 && (
-                  <p className="text-sm text-muted-foreground col-span-2">등록된 사람이 없습니다.</p>
+                }).length === 0 && (
+                  <p className="text-sm text-muted-foreground col-span-2">
+                    {persons.length === 0 ? '등록된 사람이 없습니다.' : '검색 결과가 없습니다.'}
+                  </p>
                 )}
               </div>
             </div>

@@ -19,7 +19,7 @@
 | **프로젝트-업무노트 관계** | 1:N (프로젝트가 업무노트 포함) | 업무노트는 하나의 프로젝트 컨텍스트에만 속함 |
 | **RAG 범위** | PROJECT 필터 추가 | 기존 GLOBAL/PERSON/DEPT/WORK와 동일한 메타데이터 필터링 방식 |
 | **파일 저장** | R2 영구 저장 | PDF 임시 저장과 달리, 프로젝트 자료는 영구 보관 필요 |
-| **파일 타입** | PDF, 이미지, Office 문서 | 텍스트 추출 가능한 파일은 자동 임베딩 |
+| **파일 타입** | PDF, TXT, Markdown, 이미지, Office 문서 | PDF/TXT/Markdown만 텍스트 추출 및 자동 임베딩 지원 |
 | **필수 속성** | 이름, 설명, 상태, 기간, 담당자, 태그 | 프로젝트 추적에 필요한 최소 정보 |
 
 ## 🏗️ Architecture
@@ -59,11 +59,10 @@ work_notes (기존 테이블 확장)
 projects/
   {projectId}/
     files/
-      {fileId}.pdf          # 활성 파일
-      {fileId}.png
-    archive/
-      {fileId}.docx         # 삭제된 파일 (소프트 삭제)
+      {fileId}              # 파일 (확장자 없음, R2 키로 관리)
 ```
+
+**Note**: 현재 구현에서는 파일 삭제 시 R2에서 완전 삭제됩니다. DB에는 soft delete(deleted_at) 기록이 남지만, R2의 archive/ 디렉토리는 사용하지 않습니다.
 
 ### Vectorize Metadata Extension
 
@@ -95,8 +94,8 @@ projects/
 ### File Management
 - `POST   /projects/:projectId/files` - 파일 업로드 (multipart/form-data, max 50MB)
 - `GET    /projects/:projectId/files` - 파일 목록
-- `GET    /projects/:projectId/files/:fileId/download` - Presigned URL (1시간 유효)
-- `DELETE /projects/:projectId/files/:fileId` - 소프트 삭제 (archive로 이동)
+- `GET    /projects/:projectId/files/:fileId/download` - 파일 스트리밍 다운로드 (Worker route를 통한 직접 스트리밍, R2는 presigned URL 미지원)
+- `DELETE /projects/:projectId/files/:fileId` - 소프트 삭제 (DB에 deleted_at 기록, R2에서는 hard delete)
 
 ### RAG Extension
 - `POST /rag/query { scope: "PROJECT", projectId: "PROJECT-001", query: "..." }`
@@ -142,17 +141,24 @@ See [spec.yaml](./spec.yaml) for full GWT scenarios.
 
 ### File Processing Pipeline
 ```
-Upload → R2 Storage → Queue Message → Extract Text (PDF/DOCX/TXT)
+Upload → R2 Storage → [Synchronous] Extract Text (PDF/TXT/Markdown)
   → Chunk → Embed with projectId → Update embedded_at
 ```
 
-### Soft Delete with Archive
+**Implementation Note**: 현재 구현은 동기식 처리를 사용합니다. 파일 업로드 후 즉시 텍스트 추출 및 임베딩을 수행하여, 업로드 완료 시점에 RAG 검색이 가능하도록 합니다.
+
+**Supported Text Extraction**: PDF, TXT, Markdown만 지원됩니다. DOCX는 Cloudflare Workers 환경에서 호환 라이브러리 부족으로 미지원입니다.
+
+### Soft Delete Implementation
 ```
 DELETE /projects/:projectId/files/:fileId
-  → Set deleted_at timestamp in DB
-  → Move R2 object: files/{fileId} → archive/{fileId}
-  → Keep metadata for audit trail
+  → Set deleted_at timestamp in DB (soft delete)
+  → Delete from R2 (hard delete)
+  → Delete embeddings from Vectorize
+  → Metadata preserved in DB for audit trail
 ```
+
+**Implementation Note**: DB에는 soft delete를 사용하지만, R2에서는 스토리지 비용 절감을 위해 hard delete를 수행합니다. 필요시 archive 기능은 추후 추가 가능합니다.
 
 ### 1:N Relationship Enforcement
 ```sql
