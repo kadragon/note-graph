@@ -2,6 +2,32 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-042
+    title: 'Implement file text extraction and embedding pipeline'
+    spec_id: SPEC-project-1
+    completed_at: '2025-11-26T16:30:00Z'
+    outcome: |
+      Implemented synchronous file text extraction and embedding pipeline for project files.
+      Created FileTextExtractionService supporting PDF (via unpdf) and TXT/Markdown files.
+      Extended ChunkingService with chunkFileContent() method for file-specific chunking.
+      Extended VectorizeService with upsertFileChunks() and deleteFileChunks() methods.
+      Integrated into ProjectFileService: upload automatically extracts text and creates
+      embeddings with project_id metadata. Delete operation removes embeddings from Vectorize.
+      File chunks stored with scope='FILE' for distinction from work notes. Updated all
+      ProjectFileService instantiations in routes to pass Env parameter.
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ All service methods properly typed
+      ✓ Embeddings include project_id metadata
+      ✓ FILE scope chunks separate from WORK scope
+      ✓ Graceful error handling (upload succeeds even if embedding fails)
+    estimated_effort: 5h
+    actual_effort: ~1.5h
+    notes: |
+      Synchronous processing used instead of queue for free tier compatibility.
+      DOCX not supported due to Workers environment limitations (no compatible libraries).
+      Text extraction failures logged but don't fail upload - files still usable.
+
   - task_id: TASK-041
     title: "Extend RAG service for PROJECT scope"
     spec_id: SPEC-project-1

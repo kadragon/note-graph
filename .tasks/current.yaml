@@ -2,15 +2,24 @@
 # Only one task should be active at a time
 
 current_task:
-  task_id: TASK-042
-  spec_id: SPEC-project-1
-  title: "Implement file text extraction and embedding pipeline"
-  started_at: "2025-11-26T15:00:00Z"
+  task_id: null
 notes: |
-  Session 37: Reconciled task tracker with actual implementation.
-  TASK-039 (R2 file upload), TASK-040 (R2 file download), and TASK-041 (PROJECT scope RAG)
-  were implemented but not recorded. All three tasks moved to done.yaml.
+  Session 37: Reconciled task tracker and implemented TASK-042.
 
-  Starting TASK-042: File text extraction and embedding pipeline.
-  This will create async file processing queue for PDF/DOCX/TXT files with text extraction,
-  chunking, and embedding with projectId metadata.
+  Completed TASK-042 (File text extraction and embedding pipeline).
+  Synchronous processing implemented for PDF and TXT files (DOCX not supported in Workers).
+  File chunks now embedded with project_id metadata and scope='FILE'.
+
+  Project management feature core implementation complete:
+  - TASK-035: Database schema ✓
+  - TASK-036: Project repository ✓
+  - TASK-037: Project API endpoints ✓
+  - TASK-038: Work note association ✓
+  - TASK-039: R2 file upload ✓
+  - TASK-040: R2 file download/delete ✓
+  - TASK-041: PROJECT scope RAG ✓
+  - TASK-042: File text extraction and embedding ✓
+
+  Remaining: TASK-044 (comprehensive tests)
+
+  Ready for next task or merge to main.

@@ -612,7 +612,7 @@
 - PROJECT scope now restricts RAG results to work notes assigned to specified project.
 - Existing scopes (GLOBAL, PERSON, DEPT, WORK) remain fully functional.
 
-### Session 37: Task Tracker Reconciliation (2025-11-26)
+### Session 37: Task Tracker Reconciliation and File Embedding Pipeline (2025-11-26)
 - **Task Management**: Discovered task tracker was out of sync with actual implementation.
 - Git commits showed TASK-039, TASK-040, and TASK-041 were completed but not recorded in `.tasks/done.yaml`.
 - Reconciled task tracker:
@@ -621,4 +621,38 @@
   - Updated metadata: 14 → 11 total tasks, 47h → 37h estimated effort.
   - Set current.yaml to TASK-042 (File text extraction and embedding pipeline).
 - **Pattern Learned**: Task tracker must be updated immediately after completing implementation to maintain operational truth.
-- Ready to begin TASK-042: Async file processing queue for text extraction and embedding.
+- **TASK-042 Completed**: Implemented file text extraction and embedding pipeline.
+- **Architecture Decision**: Used synchronous processing instead of queue-based approach.
+  - Rationale: Cloudflare Queue requires paid tier; synchronous works for typical file sizes.
+  - Workers execution limit sufficient for small-to-medium files.
+  - Trade-off: Large files may timeout, but acceptable for MVP.
+- **Text Extraction**:
+  - Created FileTextExtractionService supporting PDF and TXT/Markdown files.
+  - PDF: Reuses existing PdfExtractionService (unpdf library).
+  - TXT: Direct Blob.text() reading.
+  - DOCX: Not supported - no Workers-compatible libraries available.
+- **Chunking and Embedding**:
+  - Extended ChunkingService with chunkFileContent() method.
+  - File chunks include project_id metadata for PROJECT scope filtering.
+  - Chunks stored with scope='FILE' to distinguish from work note chunks.
+  - Extended VectorizeService with upsertFileChunks() and deleteFileChunks() methods.
+- **Integration**:
+  - ProjectFileService.uploadFile() automatically extracts text and embeds for supported types.
+  - Updates project_files.embedded_at timestamp after successful embedding.
+  - Graceful degradation: upload succeeds even if embedding fails (logged, not fatal).
+  - Delete operation removes embeddings from Vectorize if file was embedded.
+- **Technical Details**:
+  - All chunks include created_at_bucket metadata (empty for files).
+  - Proper type safety with undefined check for embeddings.
+  - Constructor parameter order: (env, r2, db) for consistency.
+- **Project Management Feature Status**: Core implementation complete (8/10 tasks).
+  - ✅ TASK-035: Database schema
+  - ✅ TASK-036: Project repository
+  - ✅ TASK-037: Project API endpoints
+  - ✅ TASK-038: Work note association
+  - ✅ TASK-039: R2 file upload
+  - ✅ TASK-040: R2 file download/delete
+  - ✅ TASK-041: PROJECT scope RAG
+  - ✅ TASK-042: File text extraction and embedding
+  - ⏭️ TASK-043: Frontend UI (already completed earlier)
+  - ⏳ TASK-044: Comprehensive tests (remaining)
