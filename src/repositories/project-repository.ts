@@ -313,16 +313,16 @@ export class ProjectRepository {
     `
 			)
 			.bind(projectId)
-			.all<ProjectParticipant>();
+			.all<Record<string, unknown>>();
 
 		return (results.results || []).map((r) => ({
-			id: r.id,
-			projectId: r.projectId,
-			personId: r.personId,
-			role: r.role,
-			joinedAt: r.joinedAt,
-			personName: r.personName,
-			currentDept: r.currentDept,
+			id: r.id as number,
+			projectId: r.project_id as string,
+			personId: r.person_id as string,
+			role: r.role as string,
+			joinedAt: r.joined_at as string,
+			personName: r.person_name as string,
+			currentDept: (r.current_dept as string) || null,
 		}));
 	}
 
@@ -388,15 +388,15 @@ export class ProjectRepository {
     `
 			)
 			.bind(projectId)
-			.all<ProjectWorkNote>();
+			.all<Record<string, unknown>>();
 
 		return (results.results || []).map((r) => ({
-			id: r.id,
-			projectId: r.projectId,
-			workId: r.workId,
-			assignedAt: r.assignedAt,
-			workTitle: r.workTitle,
-			workCategory: r.workCategory,
+			id: r.id as number,
+			projectId: r.project_id as string,
+			workId: r.work_id as string,
+			assignedAt: r.assigned_at as string,
+			workTitle: r.work_title as string,
+			workCategory: (r.work_category as string) || null,
 		}));
 	}
 
@@ -413,19 +413,19 @@ export class ProjectRepository {
     `
 			)
 			.bind(projectId)
-			.all<ProjectFile>();
+			.all<Record<string, unknown>>();
 
 		return (results.results || []).map((r) => ({
-			fileId: r.fileId,
-			projectId: r.projectId,
-			r2Key: r.r2Key,
-			originalName: r.originalName,
-			fileType: r.fileType,
-			fileSize: r.fileSize,
-			uploadedBy: r.uploadedBy,
-			uploadedAt: r.uploadedAt,
-			embeddedAt: r.embeddedAt,
-			deletedAt: r.deletedAt,
+			fileId: r.file_id as string,
+			projectId: r.project_id as string,
+			r2Key: r.r2_key as string,
+			originalName: r.original_name as string,
+			fileType: r.file_type as string,
+			fileSize: r.file_size as number,
+			uploadedBy: r.uploaded_by as string,
+			uploadedAt: r.uploaded_at as string,
+			embeddedAt: (r.embedded_at as string) || null,
+			deletedAt: (r.deleted_at as string) || null,
 		}));
 	}
 

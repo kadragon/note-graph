@@ -4,5 +4,6 @@
 current_task:
   task_id: null
 notes: |
-  Completed TASK-043 (SPEC-project-1) frontend UI. Next priority: resume backend
-  Phase 1 with TASK-036 (Project repository & types).
+  Completed TASK-038 (Work note to project association). projectId support added
+  to work note schemas and repository, 1:N relationship enforced, 8 tests passing.
+  Ready for next task: TASK-039 (R2 file upload and storage) or TASK-040 (R2 file download).

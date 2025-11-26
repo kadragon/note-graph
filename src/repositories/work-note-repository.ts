@@ -373,10 +373,10 @@ export class WorkNoteRepository {
       // Insert work note
       this.db
         .prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?)`
+          `INSERT INTO work_notes (work_id, title, content_raw, category, project_id, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
         )
-        .bind(workId, data.title, data.contentRaw, data.category || null, now, now),
+        .bind(workId, data.title, data.contentRaw, data.category || null, data.projectId || null, now, now),
 
       // Insert first version
       this.db
@@ -454,6 +454,18 @@ export class WorkNoteRepository {
       }
     }
 
+    // Add project association if projectId provided
+    if (data.projectId) {
+      statements.push(
+        this.db
+          .prepare(
+            `INSERT INTO project_work_notes (project_id, work_id, assigned_at)
+             VALUES (?, ?, ?)`
+          )
+          .bind(data.projectId, workId, now)
+      );
+    }
+
     await this.db.batch(statements);
 
     // Return the created work note without extra DB roundtrip
@@ -462,7 +474,7 @@ export class WorkNoteRepository {
       title: data.title,
       contentRaw: data.contentRaw,
       category: data.category || null,
-      projectId: null, // Not set during creation, only via project association
+      projectId: data.projectId || null,
       createdAt: now,
       updatedAt: now,
       embeddedAt: null,
@@ -496,6 +508,10 @@ export class WorkNoteRepository {
     if (data.category !== undefined) {
       updateFields.push('category = ?');
       updateParams.push(data.category || null);
+    }
+    if (data.projectId !== undefined) {
+      updateFields.push('project_id = ?');
+      updateParams.push(data.projectId || null);
     }
 
     if (updateFields.length > 0) {
@@ -638,6 +654,26 @@ export class WorkNoteRepository {
       }
     }
 
+    // Update project association if provided
+    if (data.projectId !== undefined) {
+      // Delete existing project association
+      statements.push(
+        this.db.prepare(`DELETE FROM project_work_notes WHERE work_id = ?`).bind(workId)
+      );
+
+      // Add new project association if projectId is not null
+      if (data.projectId) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT INTO project_work_notes (project_id, work_id, assigned_at)
+               VALUES (?, ?, ?)`
+            )
+            .bind(data.projectId, workId, now)
+        );
+      }
+    }
+
     if (statements.length > 0) {
       await this.db.batch(statements);
     }
@@ -649,6 +685,7 @@ export class WorkNoteRepository {
       title: data.title !== undefined ? data.title : existing.title,
       contentRaw: data.contentRaw !== undefined ? data.contentRaw : existing.contentRaw,
       category: data.category !== undefined ? (data.category || null) : existing.category,
+      projectId: data.projectId !== undefined ? (data.projectId || null) : existing.projectId,
       updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
       embeddedAt: updateFields.length > 0 ? null : existing.embeddedAt,
     };

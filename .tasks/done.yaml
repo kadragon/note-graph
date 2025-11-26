@@ -2,6 +2,80 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-038
+    title: "Implement work note to project association"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T14:32:30Z"
+    outcome: |
+      Implemented comprehensive work note to project association with 1:N relationship enforcement.
+      Updated Zod schemas: createWorkNoteSchema and updateWorkNoteSchema now accept optional projectId
+      (nullable for updates to support unassignment). Updated WorkNoteRepository create method to
+      insert project_id and create project_work_notes association atomically. Updated WorkNoteRepository
+      update method to handle projectId changes (remove old association, add new one). Updated return
+      objects to include projectId. Verified existing project association endpoints (POST/DELETE
+      /projects/:id/work-notes) continue to work correctly and enforce 1:N constraint. Created 8
+      comprehensive integration tests covering: create with projectId, create without projectId,
+      get detail with projectId, assign via update, change project via update, unassign via update,
+      1:N constraint enforcement (409 conflict), and endpoint consistency.
+    test_results: |
+      ✓ All 8 integration tests passing in tests/integration/work-note-project-association.test.ts
+      ✓ Work notes can be created with projectId
+      ✓ Work notes can be assigned/reassigned/unassigned via PUT
+      ✓ 1:N relationship enforced (409 when trying to assign to second project)
+      ✓ project_work_notes association table kept in sync
+      ✓ work_notes.project_id column kept in sync
+      ✓ Project association endpoints maintain consistency
+    estimated_effort: 3h
+    actual_effort: ~0.5h
+
+  - task_id: TASK-037
+    title: "Implement Project CRUD API endpoints"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T14:28:00Z"
+    outcome: |
+      Implemented comprehensive Project API endpoints with Zod validation and
+      full integration tests. Routes already existed and included all required endpoints:
+      POST /projects (create), GET /projects (list with filters), GET /projects/:projectId (detail),
+      PUT /projects/:projectId (update), DELETE /projects/:projectId (soft delete),
+      GET /projects/:projectId/stats (statistics), POST/DELETE /projects/:projectId/participants
+      (participant management), POST/DELETE/GET /projects/:projectId/work-notes (work note association).
+      Verified Zod schemas for request validation (createProjectSchema, updateProjectSchema,
+      listProjectsQuerySchema, addParticipantSchema, assignWorkNoteSchema). Routes properly
+      mounted in main app at /api/projects. Created 23 comprehensive integration tests covering
+      all endpoints, filtering, error handling (404, 409), and business logic (1:N work note constraint).
+    test_results: |
+      ✓ All 23 integration tests passing in tests/integration/project-routes.test.ts
+      ✓ CRUD operations verified (create, list, get, update, delete)
+      ✓ Filtering by status, leader, department verified
+      ✓ Participant management tested (add, remove, duplicate conflict)
+      ✓ Work note association tested (assign, remove, project conflict)
+      ✓ Statistics endpoint verified
+      ✓ Proper error handling (404 NotFoundError, 409 ConflictError)
+      ✓ Zod validation working correctly
+    estimated_effort: 4h
+    actual_effort: ~0.5h (routes pre-existed, added comprehensive tests)
+
+  - task_id: TASK-036
+    title: "Implement Project repository and types"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T14:20:30Z"
+    outcome: |
+      Implemented comprehensive ProjectRepository with full CRUD operations and
+      project statistics. Created all TypeScript types (Project, ProjectParticipant,
+      ProjectWorkNote, ProjectFile, ProjectStats, ProjectDetail, ProjectFilters).
+      Repository methods include: findById, findAll (with status/leader/dept/participant/date filters),
+      getDetail, create, update, delete (soft delete), getParticipants, addParticipant,
+      removeParticipant, getWorkNotes, getFiles, getStatistics. Fixed snake_case to camelCase
+      mapping in getParticipants, getWorkNotes, and getFiles methods. Created 32 comprehensive
+      unit tests covering all CRUD operations, filtering, error handling, and edge cases.
+    test_results: |
+      ✓ All 32 tests passing in tests/unit/project-repository.test.ts
+      ✓ Proper error handling with NotFoundError and ConflictError
+      ✓ Soft delete functionality verified
+      ✓ Statistics aggregation with todos and files verified
+    estimated_effort: 4h
+    actual_effort: ~1h
+
   - task_id: TASK-043
     title: "Create project management frontend UI"
     spec_id: SPEC-project-1

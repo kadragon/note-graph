@@ -1,0 +1,620 @@
+// Trace: SPEC-project-1, TASK-037
+// Integration tests for Project API routes
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import { env, SELF } from 'cloudflare:test';
+import type { Env } from '../../src/types/env';
+import type { Project, ProjectDetail, ProjectStats } from '../../src/types/project';
+
+const testEnv = env as unknown as Env;
+
+// Helper to create authenticated fetch request
+const authFetch = (url: string, options?: RequestInit) => {
+	return SELF.fetch(url, {
+		...options,
+		headers: {
+			'Cf-Access-Authenticated-User-Email': 'test@example.com',
+			'Content-Type': 'application/json',
+			...options?.headers,
+		},
+	});
+};
+
+describe('Project API Routes', () => {
+	beforeEach(async () => {
+		// Clean up test data
+		await testEnv.DB.batch([
+			testEnv.DB.prepare('DELETE FROM project_files'),
+			testEnv.DB.prepare('DELETE FROM project_work_notes'),
+			testEnv.DB.prepare('DELETE FROM project_participants'),
+			testEnv.DB.prepare('DELETE FROM projects'),
+			testEnv.DB.prepare('DELETE FROM todos'),
+			testEnv.DB.prepare('DELETE FROM work_note_person'),
+			testEnv.DB.prepare('DELETE FROM work_notes'),
+			testEnv.DB.prepare('DELETE FROM person_dept_history'),
+			testEnv.DB.prepare('DELETE FROM persons'),
+			testEnv.DB.prepare('DELETE FROM departments'),
+		]);
+	});
+
+	describe('POST /api/projects', () => {
+		it('should create project with all required fields', async () => {
+			// Arrange
+			const projectData = {
+				name: '테스트 프로젝트',
+				description: '프로젝트 설명',
+				status: '진행중' as const,
+				priority: '높음' as const,
+			};
+
+			// Act
+			const response = await authFetch('http://localhost/api/projects', {
+				method: 'POST',
+				body: JSON.stringify(projectData),
+			});
+
+			// Assert
+			expect(response.status).toBe(201);
+			const project = await response.json<Project>();
+			expect(project.projectId).toMatch(/^PROJECT-/);
+			expect(project.name).toBe(projectData.name);
+			expect(project.description).toBe(projectData.description);
+			expect(project.status).toBe('진행중');
+			expect(project.priority).toBe('높음');
+			expect(project.createdAt).toBeDefined();
+		});
+
+		it('should create project with participants', async () => {
+			// Arrange - Create persons first
+			const now = new Date().toISOString();
+			await testEnv.DB.batch([
+				testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
+					'PERSON-001',
+					'홍길동',
+					now,
+					now
+				),
+				testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
+					'PERSON-002',
+					'이순신',
+					now,
+					now
+				),
+			]);
+
+			const projectData = {
+				name: '팀 프로젝트',
+				participantPersonIds: ['PERSON-001', 'PERSON-002'],
+			};
+
+			// Act
+			const response = await authFetch('http://localhost/api/projects', {
+				method: 'POST',
+				body: JSON.stringify(projectData),
+			});
+
+			// Assert
+			expect(response.status).toBe(201);
+			const project = await response.json<Project>();
+
+			// Verify participants were created
+			const participantsCheck = await testEnv.DB.prepare(
+				'SELECT COUNT(*) as count FROM project_participants WHERE project_id = ?'
+			)
+				.bind(project.projectId)
+				.first<{ count: number }>();
+			expect(participantsCheck?.count).toBe(2);
+		});
+
+		it('should reject invalid project data', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects', {
+				method: 'POST',
+				body: JSON.stringify({ name: '' }), // Empty name
+			});
+
+			// Assert
+			expect(response.status).toBe(400);
+		});
+	});
+
+	describe('GET /api/projects', () => {
+		beforeEach(async () => {
+			// Setup test data
+			const now = new Date().toISOString();
+			await testEnv.DB.batch([
+				testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
+				testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
+					'PERSON-001',
+					'홍길동',
+					now,
+					now
+				),
+				testEnv.DB.prepare(
+					`INSERT INTO projects (
+						project_id, name, status, leader_person_id, dept_name, created_at, updated_at
+					) VALUES (?, ?, ?, ?, ?, ?, ?)`
+				).bind('PROJECT-001', '프로젝트1', '진행중', 'PERSON-001', '개발팀', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO projects (
+						project_id, name, status, leader_person_id, created_at, updated_at
+					) VALUES (?, ?, ?, ?, ?, ?)`
+				).bind('PROJECT-002', '프로젝트2', '완료', 'PERSON-001', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO projects (
+						project_id, name, status, created_at, updated_at
+					) VALUES (?, ?, ?, ?, ?)`
+				).bind('PROJECT-003', '프로젝트3', '보류', now, now),
+			]);
+		});
+
+		it('should list all projects', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects');
+
+			// Assert
+			expect(response.status).toBe(200);
+			const projects = await response.json<Project[]>();
+			expect(projects).toHaveLength(3);
+		});
+
+		it('should filter projects by status', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects?status=진행중');
+
+			// Assert
+			expect(response.status).toBe(200);
+			const projects = await response.json<Project[]>();
+			expect(projects).toHaveLength(1);
+			expect(projects[0].status).toBe('진행중');
+		});
+
+		it('should filter projects by leader', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects?leaderPersonId=PERSON-001');
+
+			// Assert
+			expect(response.status).toBe(200);
+			const projects = await response.json<Project[]>();
+			expect(projects).toHaveLength(2);
+			expect(projects.every((p) => p.leaderPersonId === 'PERSON-001')).toBe(true);
+		});
+
+		it('should filter projects by department', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects?deptName=개발팀');
+
+			// Assert
+			expect(response.status).toBe(200);
+			const projects = await response.json<Project[]>();
+			expect(projects).toHaveLength(1);
+			expect(projects[0].deptName).toBe('개발팀');
+		});
+	});
+
+	describe('GET /api/projects/:projectId', () => {
+		let projectId: string;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-DETAIL-001';
+			await testEnv.DB.prepare(
+				`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+			)
+				.bind(projectId, '상세 프로젝트', '진행중', now, now)
+				.run();
+		});
+
+		it('should return project detail with associations', async () => {
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}`);
+
+			// Assert
+			expect(response.status).toBe(200);
+			const project = await response.json<ProjectDetail>();
+			expect(project.projectId).toBe(projectId);
+			expect(project.name).toBe('상세 프로젝트');
+			expect(project.participants).toBeDefined();
+			expect(project.workNotes).toBeDefined();
+			expect(project.files).toBeDefined();
+			expect(project.stats).toBeDefined();
+		});
+
+		it('should return 404 for non-existent project', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects/NONEXISTENT');
+
+			// Assert
+			expect(response.status).toBe(404);
+		});
+	});
+
+	describe('PUT /api/projects/:projectId', () => {
+		let projectId: string;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-UPDATE-001';
+			await testEnv.DB.prepare(
+				`INSERT INTO projects (project_id, name, description, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+			)
+				.bind(projectId, '초기 이름', '초기 설명', '진행중', now, now)
+				.run();
+		});
+
+		it('should update project fields', async () => {
+			// Arrange
+			const updateData = {
+				name: '변경된 이름',
+				status: '완료' as const,
+				actualEndDate: new Date().toISOString(),
+			};
+
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}`, {
+				method: 'PUT',
+				body: JSON.stringify(updateData),
+			});
+
+			// Assert
+			expect(response.status).toBe(200);
+			const updated = await response.json<Project>();
+			expect(updated.name).toBe('변경된 이름');
+			expect(updated.status).toBe('완료');
+			expect(updated.actualEndDate).toBeDefined();
+		});
+
+		it('should return 404 for non-existent project', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects/NONEXISTENT', {
+				method: 'PUT',
+				body: JSON.stringify({ name: '새 이름' }),
+			});
+
+			// Assert
+			expect(response.status).toBe(404);
+		});
+	});
+
+	describe('DELETE /api/projects/:projectId', () => {
+		let projectId: string;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-DELETE-001';
+			await testEnv.DB.prepare(
+				`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+			)
+				.bind(projectId, '삭제 테스트', '진행중', now, now)
+				.run();
+		});
+
+		it('should soft delete project', async () => {
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}`, {
+				method: 'DELETE',
+			});
+
+			// Assert
+			expect(response.status).toBe(204);
+
+			// Verify soft delete
+			const deleted = await testEnv.DB.prepare('SELECT deleted_at FROM projects WHERE project_id = ?')
+				.bind(projectId)
+				.first<{ deleted_at: string }>();
+			expect(deleted?.deleted_at).toBeDefined();
+		});
+
+		it('should return 404 for non-existent project', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects/NONEXISTENT', {
+				method: 'DELETE',
+			});
+
+			// Assert
+			expect(response.status).toBe(404);
+		});
+	});
+
+	describe('GET /api/projects/:projectId/stats', () => {
+		let projectId: string;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-STATS-001';
+			await testEnv.DB.batch([
+				// Create project
+				testEnv.DB.prepare(
+					`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind(projectId, '통계 테스트', '진행중', now, now),
+
+				// Create work notes
+				testEnv.DB.prepare(
+					`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind('WORK-001', '업무1', '내용1', now, now),
+
+				// Associate work note
+				testEnv.DB.prepare(
+					`INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+				).bind(projectId, 'WORK-001', now),
+
+				// Create todos
+				testEnv.DB.prepare(
+					`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+				).bind('TODO-001', 'WORK-001', '할일1', '완료', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+				).bind('TODO-002', 'WORK-001', '할일2', '진행중', now, now),
+			]);
+		});
+
+		it('should return project statistics', async () => {
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}/stats`);
+
+			// Assert
+			expect(response.status).toBe(200);
+			const stats = await response.json<ProjectStats>();
+			expect(stats.projectId).toBe(projectId);
+			expect(stats.totalWorkNotes).toBe(1);
+			expect(stats.totalTodos).toBe(2);
+			expect(stats.completedTodos).toBe(1);
+			expect(stats.pendingTodos).toBe(1);
+		});
+
+		it('should return 404 for non-existent project', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects/NONEXISTENT/stats');
+
+			// Assert
+			expect(response.status).toBe(404);
+		});
+	});
+
+	describe('POST /api/projects/:projectId/participants', () => {
+		let projectId: string;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-PART-001';
+			await testEnv.DB.batch([
+				testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
+					'PERSON-001',
+					'홍길동',
+					now,
+					now
+				),
+				testEnv.DB.prepare(
+					`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind(projectId, '참여자 테스트', '진행중', now, now),
+			]);
+		});
+
+		it('should add participant to project', async () => {
+			// Arrange
+			const data = {
+				personId: 'PERSON-001',
+				role: '검토자',
+			};
+
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}/participants`, {
+				method: 'POST',
+				body: JSON.stringify(data),
+			});
+
+			// Assert
+			expect(response.status).toBe(201);
+
+			// Verify participant was added
+			const participant = await testEnv.DB.prepare(
+				'SELECT * FROM project_participants WHERE project_id = ? AND person_id = ?'
+			)
+				.bind(projectId, 'PERSON-001')
+				.first<{ role: string }>();
+			expect(participant?.role).toBe('검토자');
+		});
+
+		it('should return 404 for non-existent project', async () => {
+			// Act
+			const response = await authFetch('http://localhost/api/projects/NONEXISTENT/participants', {
+				method: 'POST',
+				body: JSON.stringify({ personId: 'PERSON-001' }),
+			});
+
+			// Assert
+			expect(response.status).toBe(404);
+		});
+
+		it('should return 409 when adding duplicate participant', async () => {
+			// Arrange - Add participant first
+			await testEnv.DB.prepare(
+				`INSERT INTO project_participants (project_id, person_id, role, joined_at) VALUES (?, ?, ?, ?)`
+			)
+				.bind(projectId, 'PERSON-001', '참여자', new Date().toISOString())
+				.run();
+
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}/participants`, {
+				method: 'POST',
+				body: JSON.stringify({ personId: 'PERSON-001' }),
+			});
+
+			// Assert
+			expect(response.status).toBe(409);
+		});
+	});
+
+	describe('DELETE /api/projects/:projectId/participants/:personId', () => {
+		let projectId: string;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-RM-PART';
+			await testEnv.DB.batch([
+				testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
+					'PERSON-001',
+					'홍길동',
+					now,
+					now
+				),
+				testEnv.DB.prepare(
+					`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind(projectId, '참여자 제거', '진행중', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_participants (project_id, person_id, role, joined_at) VALUES (?, ?, ?, ?)`
+				).bind(projectId, 'PERSON-001', '참여자', now),
+			]);
+		});
+
+		it('should remove participant from project', async () => {
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}/participants/PERSON-001`, {
+				method: 'DELETE',
+			});
+
+			// Assert
+			expect(response.status).toBe(204);
+
+			// Verify participant was removed
+			const participant = await testEnv.DB.prepare(
+				'SELECT * FROM project_participants WHERE project_id = ? AND person_id = ?'
+			)
+				.bind(projectId, 'PERSON-001')
+				.first();
+			expect(participant).toBeNull();
+		});
+	});
+
+	describe('POST /api/projects/:projectId/work-notes', () => {
+		let projectId: string;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-WORK-001';
+			await testEnv.DB.batch([
+				testEnv.DB.prepare(
+					`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind(projectId, '업무 할당 테스트', '진행중', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind('WORK-001', '업무1', '내용1', now, now),
+			]);
+		});
+
+		it('should assign work note to project', async () => {
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}/work-notes`, {
+				method: 'POST',
+				body: JSON.stringify({ workId: 'WORK-001' }),
+			});
+
+			// Assert
+			expect(response.status).toBe(201);
+
+			// Verify association
+			const association = await testEnv.DB.prepare(
+				'SELECT * FROM project_work_notes WHERE project_id = ? AND work_id = ?'
+			)
+				.bind(projectId, 'WORK-001')
+				.first();
+			expect(association).toBeDefined();
+		});
+
+		it('should return 409 when work note already assigned to another project', async () => {
+			// Arrange - Create another project and assign the work note
+			const now = new Date().toISOString();
+			await testEnv.DB.batch([
+				testEnv.DB.prepare(
+					`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind('PROJECT-OTHER', '다른 프로젝트', '진행중', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+				).bind('PROJECT-OTHER', 'WORK-001', now),
+			]);
+
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}/work-notes`, {
+				method: 'POST',
+				body: JSON.stringify({ workId: 'WORK-001' }),
+			});
+
+			// Assert
+			expect(response.status).toBe(409);
+		});
+	});
+
+	describe('DELETE /api/projects/:projectId/work-notes/:workId', () => {
+		let projectId: string;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-WORK-RM';
+			await testEnv.DB.batch([
+				testEnv.DB.prepare(
+					`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind(projectId, '업무 제거 테스트', '진행중', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind('WORK-001', '업무1', '내용1', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+				).bind(projectId, 'WORK-001', now),
+			]);
+		});
+
+		it('should remove work note from project', async () => {
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}/work-notes/WORK-001`, {
+				method: 'DELETE',
+			});
+
+			// Assert
+			expect(response.status).toBe(204);
+
+			// Verify association removed
+			const association = await testEnv.DB.prepare(
+				'SELECT * FROM project_work_notes WHERE project_id = ? AND work_id = ?'
+			)
+				.bind(projectId, 'WORK-001')
+				.first();
+			expect(association).toBeNull();
+		});
+	});
+
+	describe('GET /api/projects/:projectId/work-notes', () => {
+		let projectId: string;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-LIST-WORK';
+			await testEnv.DB.batch([
+				testEnv.DB.prepare(
+					`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind(projectId, '업무 목록 테스트', '진행중', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind('WORK-001', '업무1', '내용1', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				).bind('WORK-002', '업무2', '내용2', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+				).bind(projectId, 'WORK-001', now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+				).bind(projectId, 'WORK-002', now),
+			]);
+		});
+
+		it('should list project work notes', async () => {
+			// Act
+			const response = await authFetch(`http://localhost/api/projects/${projectId}/work-notes`);
+
+			// Assert
+			expect(response.status).toBe(200);
+			const workNotes = await response.json();
+			expect(workNotes).toHaveLength(2);
+		});
+	});
+});

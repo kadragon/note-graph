@@ -213,7 +213,12 @@ dependencies:
   - existing_spec: "SPEC-rag-1 (RAG scope filtering and metadata)"
   - existing_spec: "SPEC-pdf-1 (PDF processing pipeline)"
 
-linked_tasks: []
+linked_tasks:
+  - TASK-035  # Database schema migration (completed)
+  - TASK-036  # Project repository and types (completed)
+  - TASK-037  # Project CRUD API endpoints (completed)
+  - TASK-038  # Work note to project association (completed)
+  - TASK-043  # Frontend UI (completed)
 
 implementation_notes: |
   ## Database Schema Changes

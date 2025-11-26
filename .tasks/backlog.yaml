@@ -3,55 +3,6 @@
 
 tasks:
   # New: Project Management Feature
-  - task_id: TASK-036
-    spec_id: SPEC-project-1
-    title: "Implement Project repository and types"
-    description: |
-      Create TypeScript types for Project entities and implement
-      ProjectRepository with D1 operations (CRUD, statistics).
-      Follow existing repository patterns.
-    priority: 1
-    status: pending
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "Project, ProjectParticipant, ProjectFile, ProjectStats types defined"
-      - "ProjectRepository implements findById, findAll, create, update, delete, getStatistics"
-      - "Unit tests for repository methods passing"
-      - "Proper error handling with domain errors"
-
-  - task_id: TASK-037
-    spec_id: SPEC-project-1
-    title: "Implement Project CRUD API endpoints"
-    description: |
-      Create API routes for project management: create, list, get, update, delete.
-      Include filtering (status, assignee, date range) and statistics endpoint.
-    priority: 1
-    status: pending
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "POST /projects creates project with all required fields"
-      - "GET /projects supports status, personId, dateRange filters"
-      - "GET /projects/:projectId returns project with associations"
-      - "PUT /projects/:projectId updates project metadata"
-      - "DELETE /projects/:projectId soft-deletes project"
-      - "GET /projects/:projectId/stats returns todo and file counts"
-
-  - task_id: TASK-038
-    spec_id: SPEC-project-1
-    title: "Implement work note to project association"
-    description: |
-      Add project_id support to WorkNoteRepository and create project-work-note
-      association endpoints. Enforce 1:N relationship (work note belongs to max one project).
-    priority: 1
-    status: pending
-    estimated_effort: 3h
-    acceptance_criteria:
-      - "POST /work-notes accepts optional projectId and auto-assigns"
-      - "POST /projects/:projectId/work-notes assigns existing work note"
-      - "DELETE /projects/:projectId/work-notes/:workId removes association"
-      - "Assigning work note to second project returns 409 Conflict"
-      - "Work note detail includes projectId when assigned"
-
   - task_id: TASK-039
     spec_id: SPEC-project-1
     title: "Implement R2 file upload and storage"

@@ -535,3 +535,57 @@
 - **TASK-043**: Implemented project management UI per SPEC-project-1.
 - Added project nav/route, list filters (status/leader/date), create dialog (status, priority, dates, leader, dept, tags, participants), detail dialog tabs (info + stats, work note assignment, todo tab using project todos/stats, file tab with drag-and-drop upload/download/delete).
 - API client extended for project filters/todos and work note normalization; new project hooks. Vite build passes (`npm run build:frontend`).
+
+### Session 36: Project Repository and Types (2025-11-26)
+- **TASK-036 Completed**: Implemented ProjectRepository with full CRUD operations and comprehensive unit tests.
+- Created TypeScript types for all project entities (Project, ProjectParticipant, ProjectWorkNote, ProjectFile, ProjectStats, ProjectDetail, ProjectFilters).
+- Implemented ProjectRepository methods: findById, findAll (with multiple filter options), getDetail, create, update, delete (soft delete), getParticipants, addParticipant, removeParticipant, getWorkNotes, getFiles, getStatistics.
+- Fixed critical snake_case to camelCase mapping issue in getParticipants, getWorkNotes, and getFiles methods.
+- Created 32 comprehensive unit tests covering:
+  - CRUD operations (create, read, update, delete)
+  - Filtering (by status, leader, department, participant, date range)
+  - Soft delete functionality
+  - Participant management (add, remove, conflict handling)
+  - Statistics aggregation (work notes, todos, files)
+  - Project detail with all associations
+  - Error handling (NotFoundError, ConflictError)
+- All tests passing (32/32) in tests/unit/project-repository.test.ts.
+- Repository follows existing patterns (PersonRepository, WorkNoteRepository) for consistency.
+- **TASK-037 Completed**: Implemented Project CRUD API endpoints with comprehensive integration tests.
+- Verified existing routes implementation in src/routes/projects.ts covering all required endpoints:
+  - POST /api/projects - Create project with validation and participants
+  - GET /api/projects - List with filtering (status, leader, dept, participant, date range)
+  - GET /api/projects/:projectId - Get detail with all associations
+  - PUT /api/projects/:projectId - Update project fields
+  - DELETE /api/projects/:projectId - Soft delete
+  - GET /api/projects/:projectId/stats - Project statistics
+  - POST/DELETE /api/projects/:projectId/participants - Participant management
+  - POST/DELETE/GET /api/projects/:projectId/work-notes - Work note association (enforces 1:N constraint)
+- Verified Zod validation schemas in src/schemas/project.ts (createProjectSchema, updateProjectSchema, listProjectsQuerySchema, addParticipantSchema, assignWorkNoteSchema).
+- Routes properly mounted in src/index.ts at /api/projects.
+- Created 23 comprehensive integration tests in tests/integration/project-routes.test.ts:
+  - All CRUD operations tested with success and error cases
+  - Filtering tested for all query parameters
+  - Participant management with duplicate detection
+  - Work note association with project conflict detection (409 when already assigned)
+  - Statistics endpoint validation
+  - Error handling verified (404 NotFoundError, 409 ConflictError, 400 ValidationError)
+- All integration tests passing (23/23).
+- **TASK-038 Completed**: Implemented work note to project association with 1:N relationship enforcement.
+- Updated Zod validation schemas (src/schemas/work-note.ts):
+  - Added optional `projectId` field to createWorkNoteSchema
+  - Added nullable `projectId` field to updateWorkNoteSchema (allows null to unassign)
+- Updated WorkNoteRepository (src/repositories/work-note-repository.ts):
+  - Modified create() to insert project_id column and create project_work_notes association atomically
+  - Modified update() to handle projectId changes (remove old association, add new if provided, or remove if null)
+  - Updated return objects to include projectId from data instead of hardcoded null
+- Verified project association endpoints maintain 1:N constraint (work note can only belong to one project at a time).
+- Created 8 comprehensive integration tests in tests/integration/work-note-project-association.test.ts:
+  - Create work note with/without projectId
+  - Get work note detail includes projectId
+  - Assign/reassign/unassign project via PUT
+  - 1:N constraint enforcement (409 Conflict when trying to assign to second project)
+  - Endpoint consistency verification
+- All tests passing (8/8).
+- Work notes and projects are now fully integrated with proper association management.
+- Ready for next task: TASK-039 (R2 file upload) or TASK-040 (R2 file download).
