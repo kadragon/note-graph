@@ -1,0 +1,242 @@
+// Trace: SPEC-project-1, TASK-037
+/**
+ * API routes for Project management
+ */
+
+import { Hono } from 'hono';
+import type { Env } from '../types/env';
+import { ProjectRepository } from '../repositories/project-repository';
+import {
+	createProjectSchema,
+	updateProjectSchema,
+	listProjectsQuerySchema,
+	addParticipantSchema,
+	assignWorkNoteSchema,
+} from '../schemas/project';
+import { validateBody, validateQuery } from '../utils/validation';
+import type { AuthUser } from '../types/auth';
+import { authMiddleware } from '../middleware/auth';
+import { NotFoundError, ConflictError } from '../types/errors';
+
+const projects = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+
+// All project routes require authentication
+projects.use('*', authMiddleware);
+
+/**
+ * POST /projects
+ * Create a new project
+ */
+projects.post('/', async (c) => {
+	const data = await validateBody(c, createProjectSchema);
+	const repository = new ProjectRepository(c.env.DB);
+
+	const project = await repository.create(data);
+
+	return c.json(project, 201);
+});
+
+/**
+ * GET /projects
+ * List projects with optional filters
+ */
+projects.get('/', async (c) => {
+	const query = validateQuery(c, listProjectsQuerySchema);
+	const repository = new ProjectRepository(c.env.DB);
+
+	const projects = await repository.findAll(query);
+
+	return c.json(projects, 200);
+});
+
+/**
+ * GET /projects/:projectId
+ * Get project detail with associations
+ */
+projects.get('/:projectId', async (c) => {
+	const projectId = c.req.param('projectId');
+	const repository = new ProjectRepository(c.env.DB);
+
+	const project = await repository.getDetail(projectId);
+	if (!project) {
+		throw new NotFoundError('Project', projectId);
+	}
+
+	return c.json(project, 200);
+});
+
+/**
+ * PUT /projects/:projectId
+ * Update project
+ */
+projects.put('/:projectId', async (c) => {
+	const projectId = c.req.param('projectId');
+	const data = await validateBody(c, updateProjectSchema);
+	const repository = new ProjectRepository(c.env.DB);
+
+	const updated = await repository.update(projectId, data);
+
+	return c.json(updated, 200);
+});
+
+/**
+ * DELETE /projects/:projectId
+ * Soft delete project
+ */
+projects.delete('/:projectId', async (c) => {
+	const projectId = c.req.param('projectId');
+	const repository = new ProjectRepository(c.env.DB);
+
+	await repository.delete(projectId);
+
+	return c.body(null, 204);
+});
+
+/**
+ * GET /projects/:projectId/stats
+ * Get project statistics
+ */
+projects.get('/:projectId/stats', async (c) => {
+	const projectId = c.req.param('projectId');
+	const repository = new ProjectRepository(c.env.DB);
+
+	// Verify project exists
+	const project = await repository.findById(projectId);
+	if (!project) {
+		throw new NotFoundError('Project', projectId);
+	}
+
+	const stats = await repository.getStatistics(projectId);
+
+	return c.json(stats, 200);
+});
+
+/**
+ * POST /projects/:projectId/participants
+ * Add participant to project
+ */
+projects.post('/:projectId/participants', async (c) => {
+	const projectId = c.req.param('projectId');
+	const data = await validateBody(c, addParticipantSchema);
+	const repository = new ProjectRepository(c.env.DB);
+
+	// Verify project exists
+	const project = await repository.findById(projectId);
+	if (!project) {
+		throw new NotFoundError('Project', projectId);
+	}
+
+	await repository.addParticipant(projectId, data.personId, data.role);
+
+	return c.body(null, 201);
+});
+
+/**
+ * DELETE /projects/:projectId/participants/:personId
+ * Remove participant from project
+ */
+projects.delete('/:projectId/participants/:personId', async (c) => {
+	const projectId = c.req.param('projectId'); const personId = c.req.param('personId');
+	const repository = new ProjectRepository(c.env.DB);
+
+	await repository.removeParticipant(projectId, personId);
+
+	return c.body(null, 204);
+});
+
+/**
+ * GET /projects/:projectId/work-notes
+ * List project work notes
+ */
+projects.get('/:projectId/work-notes', async (c) => {
+	const projectId = c.req.param('projectId');
+	const repository = new ProjectRepository(c.env.DB);
+
+	const workNotes = await repository.getWorkNotes(projectId);
+
+	return c.json(workNotes, 200);
+});
+
+/**
+ * POST /projects/:projectId/work-notes
+ * Assign work note to project
+ */
+projects.post('/:projectId/work-notes', async (c) => {
+	const projectId = c.req.param('projectId');
+	const data = await validateBody(c, assignWorkNoteSchema);
+	const repository = new ProjectRepository(c.env.DB);
+
+	// Verify project exists
+	const project = await repository.findById(projectId);
+	if (!project) {
+		throw new NotFoundError('Project', projectId);
+	}
+
+	// Check if work note already assigned to another project
+	const existing = await c.env.DB.prepare(
+		`
+    SELECT project_id FROM project_work_notes WHERE work_id = ?
+  `
+	)
+		.bind(data.workId)
+		.first<{ project_id: string }>();
+
+	if (existing) {
+		throw new ConflictError(
+			`업무노트는 이미 다른 프로젝트(${existing.project_id})에 할당되어 있습니다`
+		);
+	}
+
+	// Insert association
+	const now = new Date().toISOString();
+	await c.env.DB.prepare(
+		`
+    INSERT INTO project_work_notes (project_id, work_id, assigned_at)
+    VALUES (?, ?, ?)
+  `
+	)
+		.bind(projectId, data.workId, now)
+		.run();
+
+	// Also update work_notes.project_id for convenience
+	await c.env.DB.prepare(
+		`
+    UPDATE work_notes SET project_id = ? WHERE work_id = ?
+  `
+	)
+		.bind(projectId, data.workId)
+		.run();
+
+	return c.body(null, 201);
+});
+
+/**
+ * DELETE /projects/:projectId/work-notes/:workId
+ * Remove work note from project
+ */
+projects.delete('/:projectId/work-notes/:workId', async (c) => {
+	const projectId = c.req.param('projectId'); const workId = c.req.param('workId');
+
+	// Remove association
+	await c.env.DB.prepare(
+		`
+    DELETE FROM project_work_notes
+    WHERE project_id = ? AND work_id = ?
+  `
+	)
+		.bind(projectId, workId)
+		.run();
+
+	// Clear work_notes.project_id
+	await c.env.DB.prepare(
+		`
+    UPDATE work_notes SET project_id = NULL WHERE work_id = ?
+  `
+	)
+		.bind(workId)
+		.run();
+
+	return c.body(null, 204);
+});
+
+export { projects };
