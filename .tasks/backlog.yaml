@@ -2,6 +2,173 @@
 # Tasks ordered by priority (highest first)
 
 tasks:
+  # New: Project Management Feature
+  - task_id: TASK-035
+    spec_id: SPEC-project-1
+    title: "Create database schema for project management"
+    description: |
+      Create migration 0014_add_project_management.sql with new tables:
+      projects, project_participants, project_work_notes, project_files.
+      Add project_id column to work_notes table.
+      Create all necessary indexes for efficient queries.
+    priority: 1
+    status: pending
+    estimated_effort: 3h
+    acceptance_criteria:
+      - "Migration creates 4 new tables with proper FKs and constraints"
+      - "work_notes.project_id column added with index"
+      - "All indexes created for foreign keys and common filters"
+      - "Migration runs successfully with npm run db:migrate:local"
+
+  - task_id: TASK-036
+    spec_id: SPEC-project-1
+    title: "Implement Project repository and types"
+    description: |
+      Create TypeScript types for Project entities and implement
+      ProjectRepository with D1 operations (CRUD, statistics).
+      Follow existing repository patterns.
+    priority: 1
+    status: pending
+    estimated_effort: 4h
+    acceptance_criteria:
+      - "Project, ProjectParticipant, ProjectFile, ProjectStats types defined"
+      - "ProjectRepository implements findById, findAll, create, update, delete, getStatistics"
+      - "Unit tests for repository methods passing"
+      - "Proper error handling with domain errors"
+
+  - task_id: TASK-037
+    spec_id: SPEC-project-1
+    title: "Implement Project CRUD API endpoints"
+    description: |
+      Create API routes for project management: create, list, get, update, delete.
+      Include filtering (status, assignee, date range) and statistics endpoint.
+    priority: 1
+    status: pending
+    estimated_effort: 4h
+    acceptance_criteria:
+      - "POST /projects creates project with all required fields"
+      - "GET /projects supports status, personId, dateRange filters"
+      - "GET /projects/:projectId returns project with associations"
+      - "PUT /projects/:projectId updates project metadata"
+      - "DELETE /projects/:projectId soft-deletes project"
+      - "GET /projects/:projectId/stats returns todo and file counts"
+
+  - task_id: TASK-038
+    spec_id: SPEC-project-1
+    title: "Implement work note to project association"
+    description: |
+      Add project_id support to WorkNoteRepository and create project-work-note
+      association endpoints. Enforce 1:N relationship (work note belongs to max one project).
+    priority: 1
+    status: pending
+    estimated_effort: 3h
+    acceptance_criteria:
+      - "POST /work-notes accepts optional projectId and auto-assigns"
+      - "POST /projects/:projectId/work-notes assigns existing work note"
+      - "DELETE /projects/:projectId/work-notes/:workId removes association"
+      - "Assigning work note to second project returns 409 Conflict"
+      - "Work note detail includes projectId when assigned"
+
+  - task_id: TASK-039
+    spec_id: SPEC-project-1
+    title: "Implement R2 file upload and storage"
+    description: |
+      Create ProjectFileService for file upload to R2, metadata storage in D1.
+      Support multipart/form-data, validation (type, size), and R2 key structure.
+    priority: 1
+    status: pending
+    estimated_effort: 4h
+    acceptance_criteria:
+      - "POST /projects/:projectId/files uploads file to R2"
+      - "File stored at projects/:projectId/files/:fileId in R2"
+      - "File metadata (name, type, size, uploadedAt) saved in project_files table"
+      - "File type validation (PDF, images, Office docs)"
+      - "File size limit (50MB) enforced with error message"
+
+  - task_id: TASK-040
+    spec_id: SPEC-project-1
+    title: "Implement file download and deletion"
+    description: |
+      Create endpoints for listing files, generating presigned download URLs,
+      and deleting files from R2 and DB. Support soft delete with archive.
+    priority: 1
+    status: pending
+    estimated_effort: 3h
+    acceptance_criteria:
+      - "GET /projects/:projectId/files lists all project files"
+      - "GET /projects/:projectId/files/:fileId/download returns presigned URL (1hr expiry)"
+      - "DELETE /projects/:projectId/files/:fileId soft-deletes file"
+      - "Soft-deleted files moved to archive/ prefix in R2"
+      - "File metadata includes deleted_at timestamp"
+
+  - task_id: TASK-041
+    spec_id: SPEC-project-1
+    title: "Extend RAG service for PROJECT scope"
+    description: |
+      Add PROJECT scope to RagService with projectId filtering.
+      Update embedding metadata to include projectId for all chunks.
+      Update Vectorize queries to filter by project metadata.
+    priority: 1
+    status: pending
+    estimated_effort: 3h
+    acceptance_criteria:
+      - "POST /rag/query accepts scope=PROJECT with projectId parameter"
+      - "Chunk metadata includes projectId field"
+      - "Vectorize query filters results by metadata.projectId"
+      - "RAG results from PROJECT scope only include work notes in that project"
+      - "Existing scopes (GLOBAL, PERSON, DEPT, WORK) still functional"
+
+  - task_id: TASK-042
+    spec_id: SPEC-project-1
+    title: "Implement file text extraction and embedding pipeline"
+    description: |
+      Create async file processing queue for text-extractable files (PDF, DOCX, TXT).
+      Extract text, chunk, embed with project metadata. Reuse existing PDF pipeline patterns.
+    priority: 2
+    status: pending
+    estimated_effort: 5h
+    acceptance_criteria:
+      - "FILE_PROCESSING_QUEUE created in wrangler.toml"
+      - "Upload of PDF/DOCX triggers queue message"
+      - "Queue consumer extracts text from PDF, DOCX, TXT"
+      - "Extracted text chunked and embedded with projectId metadata"
+      - "project_files.embedded_at updated after successful embedding"
+
+  - task_id: TASK-043
+    spec_id: SPEC-project-1
+    title: "Create project management frontend UI"
+    description: |
+      Build project list, create, detail, and edit views in React frontend.
+      Include file upload/download UI and project statistics dashboard.
+    priority: 2
+    status: pending
+    estimated_effort: 8h
+    acceptance_criteria:
+      - "Project list page with status/assignee/date filters"
+      - "Create project dialog with all required fields"
+      - "Project detail view showing work notes, files, todos, statistics"
+      - "File upload UI with drag-and-drop support"
+      - "File list with download and delete actions"
+      - "Work note assignment UI within project detail"
+
+  - task_id: TASK-044
+    spec_id: SPEC-project-1
+    title: "Write comprehensive tests for project management"
+    description: |
+      Create unit tests for ProjectRepository, ProjectFileService.
+      Create integration tests for all API endpoints.
+      Test RAG PROJECT scope filtering.
+    priority: 2
+    status: pending
+    estimated_effort: 4h
+    acceptance_criteria:
+      - "Unit tests for project repository CRUD operations"
+      - "Integration tests for all 21 acceptance test scenarios"
+      - "RAG PROJECT scope tests with multi-project data"
+      - "File upload/download tests with R2 mock"
+      - "All tests passing with >80% coverage"
+
+  # Existing backlog items
   - task_id: TASK-024
     spec_id: SPEC-worknote-1
     title: "Add searchable assignee selector for work notes"
@@ -39,7 +206,7 @@ tasks:
       Add loading/error feedback, keyboard navigation, and limit search results
       to 5 items with debounced async queries for the department selector in the
       person creation form.
-    priority: 2
+    priority: 4
     status: pending
     estimated_effort: 2h
     acceptance_criteria:
@@ -54,7 +221,7 @@ tasks:
       When the department list is large, typing in the person creation form
       should trigger debounced, asynchronous department search and update the
       selectable list without reloading the page.
-    priority: 2
+    priority: 4
     status: pending
     estimated_effort: 2h
     acceptance_criteria:
@@ -102,13 +269,20 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 6
-  total_estimated_effort: 21 hours
+  total_tasks: 16
+  total_estimated_effort: 58 hours
   phases:
+    - name: "Project Management (NEW)"
+      tasks: [TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-042, TASK-043, TASK-044]
+      effort: 37h
+      priority: 1
+
     - name: "Entity Management"
       tasks: [TASK-024, TASK-025, TASK-020, TASK-021]
       effort: 11h
+      priority: 3-4
 
     - name: "Deployment & Docs"
       tasks: [TASK-018, TASK-019]
       effort: 10h
+      priority: 6

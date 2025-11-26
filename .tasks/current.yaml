@@ -1,8 +1,7 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task: null
+current_task: TASK-035
 notes: |
-  TASK-034 (SPEC-ui-1) completed: quick-edit for empty category/assignee chips,
-  top save controls, compact content spacing, and todo typography/line-break polish.
-  Tests: npm test -- tests/unit/text-format.test.ts.
+  Starting TASK-035 (SPEC-project-1): Create database schema migration for project management.
+  Creating migration 0014_add_project_management.sql with 4 new tables and indexes.

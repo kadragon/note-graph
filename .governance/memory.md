@@ -500,3 +500,26 @@
   - Dead-letter queue enables manual inspection and retry of permanent failures
   - FK cascade delete ensures retry queue stays clean when work notes are deleted
   - Idempotent operations allow safe retry without side effects
+
+### Session 33: Project Management Feature Planning (2025-11-26)
+- **Specification Created**: SPEC-project-1 for comprehensive project management
+- **Requirements Gathered**: User input clarified project-work note relationship (1:N), RAG scope (PROJECT filter), file types (PDF, images, Office docs), and required attributes
+- **Architecture Decisions**:
+  - Projects contain work notes (1:N) - work notes belong to at most one project
+  - R2 storage for permanent file attachments (PDF, images, Office documents)
+  - PROJECT scope added to RAG with projectId metadata filtering
+  - File processing queue for text extraction and embedding from uploaded documents
+  - Soft delete for projects and files with archive mechanism
+- **Database Design**: 4 new tables (projects, project_participants, project_work_notes, project_files) with proper FKs and indexes
+- **Task Breakdown**: 10 tasks (TASK-035 to TASK-044) totaling 37 hours estimated effort
+  - Phase 1 (Backend): Schema, repositories, APIs, work note association (14h)
+  - Phase 2 (Storage & RAG): R2 file management, RAG extension, file processing pipeline (11h)
+  - Phase 3 (Frontend & Testing): UI components, comprehensive tests (12h)
+- **Key Features Planned**:
+  - Full project CRUD with status tracking, team management, date ranges
+  - File upload/download with presigned URLs and 50MB size limit
+  - PROJECT scope RAG filtering for project-specific knowledge retrieval
+  - Async file text extraction and embedding for PDF, DOCX, TXT files
+  - Project statistics dashboard (todo counts, file metrics)
+- **Integration Points**: Extends existing work note, RAG, and file processing systems
+- **Status**: Specification and task backlog complete, ready to begin implementation with TASK-035
