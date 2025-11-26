@@ -2,6 +2,10 @@
 # Tasks ordered by priority (highest first)
 
 tasks:
+  # Removed TASK-042 (completed in Session 37)
+  # Removed TASK-044 (moved to current.yaml)
+
+  # Existing backlog items
   - task_id: TASK-024
     spec_id: SPEC-worknote-1
     title: "Add searchable assignee selector for work notes"
@@ -39,7 +43,7 @@ tasks:
       Add loading/error feedback, keyboard navigation, and limit search results
       to 5 items with debounced async queries for the department selector in the
       person creation form.
-    priority: 2
+    priority: 4
     status: pending
     estimated_effort: 2h
     acceptance_criteria:
@@ -54,7 +58,7 @@ tasks:
       When the department list is large, typing in the person creation form
       should trigger debounced, asynchronous department search and update the
       selectable list without reloading the page.
-    priority: 2
+    priority: 4
     status: pending
     estimated_effort: 2h
     acceptance_criteria:
@@ -108,7 +112,9 @@ metadata:
     - name: "Entity Management"
       tasks: [TASK-024, TASK-025, TASK-020, TASK-021]
       effort: 11h
+      priority: 3-4
 
     - name: "Deployment & Docs"
       tasks: [TASK-018, TASK-019]
       effort: 10h
+      priority: 6

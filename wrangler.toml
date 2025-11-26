@@ -47,6 +47,14 @@ remote = true
 # Configure via CLI: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
 
 # ============================================================================
+# R2 Bucket (for project files)
+# ============================================================================
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "worknote-files"
+# Configure via CLI: wrangler r2 bucket create worknote-files
+
+# ============================================================================
 # AI Gateway (for OpenAI API)
 # ============================================================================
 [ai]

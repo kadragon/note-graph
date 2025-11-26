@@ -74,6 +74,10 @@ export class EmbeddingService {
   }
 }
 
+// Import for chunk ID generation
+import { ChunkingService } from './chunking-service.js';
+import type { TextChunk } from '../types/search';
+
 /**
  * Vectorize service for managing vector embeddings
  */
@@ -154,6 +158,40 @@ export class VectorizeService {
   }
 
   /**
+   * Upsert file chunks into Vectorize
+   * Similar to upsertWorkNoteChunks but for file content
+   *
+   * @param fileId - File ID
+   * @param chunks - Text chunks with metadata
+   */
+  async upsertFileChunks(fileId: string, chunks: TextChunk[]): Promise<void> {
+    // Generate embeddings for all chunks
+    const texts = chunks.map((c) => c.text);
+    const embeddings = await this.embeddingService.generateEmbeddings(texts);
+
+    // Prepare vectors for Vectorize
+    const vectors = chunks.map((chunk, index) => {
+      const embedding = embeddings[index];
+      if (!embedding) {
+        throw new Error(`No embedding generated for chunk ${index}`);
+      }
+      return {
+        id: ChunkingService.generateChunkId(fileId, chunk.metadata.chunk_index),
+        values: embedding,
+        metadata: {
+          work_id: fileId, // Use fileId as work_id for consistency
+          scope: 'FILE',
+          chunk_index: String(chunk.metadata.chunk_index),
+          project_id: chunk.metadata.project_id || '',
+        },
+      };
+    });
+
+    // Upsert all chunks into Vectorize
+    await this.vectorize.upsert(vectors);
+  }
+
+  /**
    * Delete work note embedding from Vectorize
    *
    * @param workId - Work note ID
@@ -190,6 +228,30 @@ export class VectorizeService {
       }
     } catch (error) {
       console.error('Error deleting work note chunks:', error);
+      // Non-fatal: log and continue
+    }
+  }
+
+  /**
+   * Delete all chunks for a file from Vectorize
+   *
+   * @param fileId - File ID
+   */
+  async deleteFileChunks(fileId: string): Promise<void> {
+    try {
+      // Query for all chunks with this fileId (using dummy embedding)
+      const results = await this.vectorize.query(new Array(1536).fill(0), {
+        topK: 500,
+        filter: { work_id: fileId, scope: 'FILE' },
+        returnMetadata: false,
+      });
+
+      if (results.matches.length > 0) {
+        const chunkIds = results.matches.map((m) => m.id);
+        await this.vectorize.deleteByIds(chunkIds);
+      }
+    } catch (error) {
+      console.error('Error deleting file chunks:', error);
       // Non-fatal: log and continue
     }
   }

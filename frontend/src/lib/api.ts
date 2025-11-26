@@ -36,6 +36,15 @@ import type {
   PDFJob,
   EmbeddingStats,
   BatchProcessResult,
+  Project,
+  ProjectDetail,
+  CreateProjectRequest,
+  UpdateProjectRequest,
+  ProjectFile,
+  ProjectStats,
+  AssignWorkNoteRequest,
+  ProjectFilters,
+  Todo,
 } from '@/types/api';
 
 /**
@@ -519,6 +528,125 @@ class APIClient {
 
   getPDFJob(jobId: string) {
     return this.request<PDFJob>(`/pdf-jobs/${jobId}`);
+  }
+
+  // Projects
+  getProjects(filters?: ProjectFilters) {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set('status', filters.status);
+    if (filters?.leaderPersonId) params.set('leaderPersonId', filters.leaderPersonId);
+    if (filters?.startDate) params.set('startDate', filters.startDate);
+    if (filters?.endDate) params.set('endDate', filters.endDate);
+    const qs = params.toString();
+    return this.request<Project[]>(`/projects${qs ? `?${qs}` : ''}`);
+  }
+
+  getProject(projectId: string) {
+    return this.request<ProjectDetail>(`/projects/${projectId}`).then((project) => ({
+      ...project,
+      workNotes: project.workNotes?.map((wn: any) => {
+        if (wn.id && wn.content) return wn as WorkNote;
+        const workId = wn.workId ?? wn.id;
+        const contentRaw = wn.contentRaw ?? wn.content ?? '';
+        return this.transformWorkNoteFromBackend({ ...wn, workId, contentRaw });
+      }),
+    }));
+  }
+
+  createProject(data: CreateProjectRequest) {
+    return this.request<Project>('/projects', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  updateProject(projectId: string, data: UpdateProjectRequest) {
+    return this.request<Project>(`/projects/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteProject(projectId: string) {
+    return this.request<void>(`/projects/${projectId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  getProjectStats(projectId: string) {
+    return this.request<ProjectStats>(`/projects/${projectId}/stats`);
+  }
+
+  getProjectTodos(projectId: string) {
+    return this.request<Todo[]>(`/projects/${projectId}/todos`);
+  }
+
+  // Project Work Notes
+  getProjectWorkNotes(projectId: string) {
+    return this.request<Array<BackendWorkNote & Partial<WorkNote>>>(`/projects/${projectId}/work-notes`).then(
+      (items) =>
+        items.map((wn) => {
+          if ((wn as unknown as WorkNote).content && (wn as unknown as WorkNote).id) {
+            return wn as unknown as WorkNote;
+          }
+          return this.transformWorkNoteFromBackend({
+            ...wn,
+            workId: wn.workId ?? (wn as any).id,
+            contentRaw: wn.contentRaw ?? (wn as any).content ?? '',
+          } as BackendWorkNote);
+        })
+    );
+  }
+
+  assignWorkNoteToProject(projectId: string, data: AssignWorkNoteRequest) {
+    return this.request<void>(`/projects/${projectId}/work-notes`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  removeWorkNoteFromProject(projectId: string, workId: string) {
+    return this.request<void>(`/projects/${projectId}/work-notes/${workId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Project Files
+  getProjectFiles(projectId: string) {
+    return this.request<ProjectFile[]>(`/projects/${projectId}/files`);
+  }
+
+  uploadProjectFile(projectId: string, file: File) {
+    return this.uploadFile<ProjectFile>(`/projects/${projectId}/files`, file);
+  }
+
+  getProjectFile(projectId: string, fileId: string) {
+    return this.request<ProjectFile>(`/projects/${projectId}/files/${fileId}`);
+  }
+
+  async downloadProjectFile(projectId: string, fileId: string): Promise<Blob> {
+    const headers: Record<string, string> = {};
+
+    // In development, use test auth header
+    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
+      headers['X-Test-User-Email'] = 'test@example.com';
+    }
+
+    const response = await fetch(`${this.baseURL}/projects/${projectId}/files/${fileId}/download`, {
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`파일 다운로드 실패: ${response.status}`);
+    }
+
+    return response.blob();
+  }
+
+  deleteProjectFile(projectId: string, fileId: string) {
+    return this.request<void>(`/projects/${projectId}/files/${fileId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Admin - Vector Store Management

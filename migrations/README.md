@@ -5,6 +5,8 @@ This directory contains D1 database migrations for the work note management syst
 ## Migration Files
 
 - `0001_initial_schema.sql` - Initial schema with all core tables, FTS5, triggers, and indexes
+- `0002_add_task_categories.sql` → `0013_drop_embedding_retry_queue.sql` - Iterative enhancements (task categories, embedding retry queue lifecycle, phone/ employment fields, custom repeat settings, embedded_at)
+- `0014_add_project_management.sql` - Adds project management tables (projects, participants, work note links, files) and `project_id` column on `work_notes` with supporting indexes (Trace: SPEC-project-1, TASK-035)
 
 ## Schema Overview
 
@@ -19,6 +21,13 @@ This directory contains D1 database migrations for the work note management syst
 7. **work_note_versions** - Version history (max 5 versions per work note)
 8. **todos** - Task management with recurrence support
 9. **pdf_jobs** - PDF processing job tracking
+
+### Project Management Tables (SPEC-project-1)
+
+10. **projects** - Project entity with status, priority, dates, leader, department, soft delete
+11. **project_participants** - Project team members with roles
+12. **project_work_notes** - 1:N association enforcing single-project membership per work note
+13. **project_files** - R2 file attachments with soft delete and embedding timestamps
 
 ### Full-Text Search
 

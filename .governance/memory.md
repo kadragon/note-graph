@@ -500,3 +500,166 @@
   - Dead-letter queue enables manual inspection and retry of permanent failures
   - FK cascade delete ensures retry queue stays clean when work notes are deleted
   - Idempotent operations allow safe retry without side effects
+
+### Session 33: Project Management Feature Planning (2025-11-26)
+- **Specification Created**: SPEC-project-1 for comprehensive project management
+- **Requirements Gathered**: User input clarified project-work note relationship (1:N), RAG scope (PROJECT filter), file types (PDF, images, Office docs), and required attributes
+- **Architecture Decisions**:
+  - Projects contain work notes (1:N) - work notes belong to at most one project
+  - R2 storage for permanent file attachments (PDF, images, Office documents)
+  - PROJECT scope added to RAG with projectId metadata filtering
+  - File processing queue for text extraction and embedding from uploaded documents
+  - Soft delete for projects and files with archive mechanism
+- **Database Design**: 4 new tables (projects, project_participants, project_work_notes, project_files) with proper FKs and indexes
+- **Task Breakdown**: 10 tasks (TASK-035 to TASK-044) totaling 37 hours estimated effort
+  - Phase 1 (Backend): Schema, repositories, APIs, work note association (14h)
+  - Phase 2 (Storage & RAG): R2 file management, RAG extension, file processing pipeline (11h)
+  - Phase 3 (Frontend & Testing): UI components, comprehensive tests (12h)
+- **Key Features Planned**:
+  - Full project CRUD with status tracking, team management, date ranges
+  - File upload/download with presigned URLs and 50MB size limit
+  - PROJECT scope RAG filtering for project-specific knowledge retrieval
+  - Async file text extraction and embedding for PDF, DOCX, TXT files
+  - Project statistics dashboard (todo counts, file metrics)
+- **Integration Points**: Extends existing work note, RAG, and file processing systems
+- **Status**: Specification and task backlog complete, ready to begin implementation with TASK-035
+
+### Session 34: Project Schema Migration (2025-11-26)
+- **TASK-035**: Added migration `0014_add_project_management.sql` with projects, participants, work note association, project files, and `project_id` on work_notes plus indexes.
+- Created unit test `tests/unit/migration-project-management.test.ts` to assert tables, indexes, and FK links for project schema.
+- Synced test fallback schema in `tests/setup.ts` to include project tables/indices and work_notes.project_id.
+- Updated `migrations/README.md` and fixed wrangler migration parsing by rephrasing transaction comment in 0011.
+- Verified migrations on a clean local D1 DB: `npm run db:migrate:local` now applies through 0014 after resetting `.wrangler/state/v3/d1` data.
+
+### Session 35: Project Frontend UI (2025-11-26)
+- **TASK-043**: Implemented project management UI per SPEC-project-1.
+- Added project nav/route, list filters (status/leader/date), create dialog (status, priority, dates, leader, dept, tags, participants), detail dialog tabs (info + stats, work note assignment, todo tab using project todos/stats, file tab with drag-and-drop upload/download/delete).
+- API client extended for project filters/todos and work note normalization; new project hooks. Vite build passes (`npm run build:frontend`).
+
+### Session 36: Project Repository and Types (2025-11-26)
+- **TASK-036 Completed**: Implemented ProjectRepository with full CRUD operations and comprehensive unit tests.
+- Created TypeScript types for all project entities (Project, ProjectParticipant, ProjectWorkNote, ProjectFile, ProjectStats, ProjectDetail, ProjectFilters).
+- Implemented ProjectRepository methods: findById, findAll (with multiple filter options), getDetail, create, update, delete (soft delete), getParticipants, addParticipant, removeParticipant, getWorkNotes, getFiles, getStatistics.
+- Fixed critical snake_case to camelCase mapping issue in getParticipants, getWorkNotes, and getFiles methods.
+- Created 32 comprehensive unit tests covering:
+  - CRUD operations (create, read, update, delete)
+  - Filtering (by status, leader, department, participant, date range)
+  - Soft delete functionality
+  - Participant management (add, remove, conflict handling)
+  - Statistics aggregation (work notes, todos, files)
+  - Project detail with all associations
+  - Error handling (NotFoundError, ConflictError)
+- All tests passing (32/32) in tests/unit/project-repository.test.ts.
+- Repository follows existing patterns (PersonRepository, WorkNoteRepository) for consistency.
+- **TASK-037 Completed**: Implemented Project CRUD API endpoints with comprehensive integration tests.
+- Verified existing routes implementation in src/routes/projects.ts covering all required endpoints:
+  - POST /api/projects - Create project with validation and participants
+  - GET /api/projects - List with filtering (status, leader, dept, participant, date range)
+  - GET /api/projects/:projectId - Get detail with all associations
+  - PUT /api/projects/:projectId - Update project fields
+  - DELETE /api/projects/:projectId - Soft delete
+  - GET /api/projects/:projectId/stats - Project statistics
+  - POST/DELETE /api/projects/:projectId/participants - Participant management
+  - POST/DELETE/GET /api/projects/:projectId/work-notes - Work note association (enforces 1:N constraint)
+- Verified Zod validation schemas in src/schemas/project.ts (createProjectSchema, updateProjectSchema, listProjectsQuerySchema, addParticipantSchema, assignWorkNoteSchema).
+- Routes properly mounted in src/index.ts at /api/projects.
+- Created 23 comprehensive integration tests in tests/integration/project-routes.test.ts:
+  - All CRUD operations tested with success and error cases
+  - Filtering tested for all query parameters
+  - Participant management with duplicate detection
+  - Work note association with project conflict detection (409 when already assigned)
+  - Statistics endpoint validation
+  - Error handling verified (404 NotFoundError, 409 ConflictError, 400 ValidationError)
+- All integration tests passing (23/23).
+- **TASK-038 Completed**: Implemented work note to project association with 1:N relationship enforcement.
+- Updated Zod validation schemas (src/schemas/work-note.ts):
+  - Added optional `projectId` field to createWorkNoteSchema
+  - Added nullable `projectId` field to updateWorkNoteSchema (allows null to unassign)
+- Updated WorkNoteRepository (src/repositories/work-note-repository.ts):
+  - Modified create() to insert project_id column and create project_work_notes association atomically
+  - Modified update() to handle projectId changes (remove old association, add new if provided, or remove if null)
+  - Updated return objects to include projectId from data instead of hardcoded null
+- Verified project association endpoints maintain 1:N constraint (work note can only belong to one project at a time).
+- Created 8 comprehensive integration tests in tests/integration/work-note-project-association.test.ts:
+  - Create work note with/without projectId
+  - Get work note detail includes projectId
+  - Assign/reassign/unassign project via PUT
+  - 1:N constraint enforcement (409 Conflict when trying to assign to second project)
+  - Endpoint consistency verification
+- All tests passing (8/8).
+- Work notes and projects are now fully integrated with proper association management.
+- **TASK-039 Completed**: Implemented R2 file upload and storage for project attachments.
+- Added R2_BUCKET binding (worknote-files) to wrangler.toml and Env interface.
+- Created ProjectFileService with comprehensive file upload functionality.
+- File validation: MIME type checking (PDF, images, Office docs, text), 50MB size limit.
+- R2 storage structure: projects/{projectId}/files/{fileId} with custom metadata.
+- POST /projects/:projectId/files endpoint accepts multipart/form-data uploads.
+- Metadata stored in project_files table: originalName, mimeType, size, uploadedBy, uploadedAt.
+- Korean error messages for validation failures.
+- **TASK-040 Completed**: Implemented file download, listing, and deletion.
+- GET /projects/:projectId/files - Lists all project files with metadata.
+- GET /projects/:projectId/files/:fileId/download - Streams file from R2 with proper headers.
+- DELETE /projects/:projectId/files/:fileId - Soft delete (removes from R2 and DB).
+- Proper MIME type headers for download responses.
+- Error handling for file not found (404 NotFoundError).
+- **TASK-041 Completed**: Extended RAG service with PROJECT scope filtering.
+- Added 'project' to RagScope enum and projectId to RagQueryFilters.
+- Updated Zod schema (RagQueryRequestSchema) to accept projectId parameter.
+- Extended ChunkMetadata interface with project_id field.
+- Updated embedWorkNote() to include projectId in chunk metadata.
+- Modified buildVectorFilter() to filter by project_id metadata in Vectorize.
+- Updated WorkNoteRepository to select project_id column in all queries.
+- PROJECT scope now restricts RAG results to work notes assigned to specified project.
+- Existing scopes (GLOBAL, PERSON, DEPT, WORK) remain fully functional.
+
+### Session 37: Task Tracker Reconciliation and File Embedding Pipeline (2025-11-26)
+- **Task Management**: Discovered task tracker was out of sync with actual implementation.
+- Git commits showed TASK-039, TASK-040, and TASK-041 were completed but not recorded in `.tasks/done.yaml`.
+- Reconciled task tracker:
+  - Moved TASK-039, TASK-040, TASK-041 from pending to done.yaml with completion details.
+  - Updated backlog.yaml to remove completed tasks.
+  - Updated metadata: 14 → 11 total tasks, 47h → 37h estimated effort.
+  - Set current.yaml to TASK-042 (File text extraction and embedding pipeline).
+- **Pattern Learned**: Task tracker must be updated immediately after completing implementation to maintain operational truth.
+- **TASK-042 Completed**: Implemented file text extraction and embedding pipeline.
+- **Architecture Decision**: Used synchronous processing instead of queue-based approach.
+  - Rationale: Cloudflare Queue requires paid tier; synchronous works for typical file sizes.
+  - Workers execution limit sufficient for small-to-medium files.
+  - Trade-off: Large files may timeout, but acceptable for MVP.
+- **Text Extraction**:
+  - Created FileTextExtractionService supporting PDF and TXT/Markdown files.
+  - PDF: Reuses existing PdfExtractionService (unpdf library).
+  - TXT: Direct Blob.text() reading.
+  - DOCX: Not supported - no Workers-compatible libraries available.
+- **Chunking and Embedding**:
+  - Extended ChunkingService with chunkFileContent() method.
+  - File chunks include project_id metadata for PROJECT scope filtering.
+  - Chunks stored with scope='FILE' to distinguish from work note chunks.
+  - Extended VectorizeService with upsertFileChunks() and deleteFileChunks() methods.
+- **Integration**:
+  - ProjectFileService.uploadFile() automatically extracts text and embeds for supported types.
+  - Updates project_files.embedded_at timestamp after successful embedding.
+  - Graceful degradation: upload succeeds even if embedding fails (logged, not fatal).
+  - Delete operation removes embeddings from Vectorize if file was embedded.
+- **Technical Details**:
+  - All chunks include created_at_bucket metadata (empty for files).
+  - Proper type safety with undefined check for embeddings.
+  - Constructor parameter order: (env, r2, db) for consistency.
+- **Project Management Feature Status**: Core implementation complete (8/10 tasks).
+  - ✅ TASK-035: Database schema
+  - ✅ TASK-036: Project repository
+  - ✅ TASK-037: Project API endpoints
+  - ✅ TASK-038: Work note association
+  - ✅ TASK-039: R2 file upload
+  - ✅ TASK-040: R2 file download/delete
+  - ✅ TASK-041: PROJECT scope RAG
+  - ✅ TASK-042: File text extraction and embedding
+  - ⏭️ TASK-043: Frontend UI (already completed earlier)
+  - ⏳ TASK-044: Comprehensive tests (remaining)
+
+### Session 38: Project Management Tests (2025-11-26)
+- Added ProjectFileService unit tests covering upload/list/download/delete, MIME/size validation, and embedding metadata (R2 + Vectorize mocks).
+- Added RagService PROJECT scope unit tests verifying metadata filter application and similarity threshold (>0.5) handling.
+- Added integration test for project file routes using injected mock R2 bucket + mocked service methods; upload/list/download/delete and size-limit paths pass under miniflare constraints.
+- Project routes now allow test-only R2 injection via `globalThis.__TEST_R2_BUCKET` fallback (non-production impact).
+- Targeted tests passing: `npm test -- tests/unit/project-file-service.test.ts tests/unit/rag-service.project.test.ts tests/integration/project-files.test.ts`.

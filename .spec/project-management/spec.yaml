@@ -1,0 +1,391 @@
+spec_id: SPEC-project-1
+title: "Project Management Feature"
+description: |
+  프로젝트 관리 기능 추가: 1개 프로젝트에 N개의 업무노트 및 N개의 파일을 연결하여 관리.
+  R2 스토리지를 사용한 파일 관리 및 프로젝트 기반 RAG 검색 지원.
+
+given_when_then:
+  # Project CRUD
+  - given: "User has authenticated access"
+    when: "User creates a new project with name, description, status, dates, and team info"
+    then: "System creates project with unique ID and returns project details"
+
+  - given: "Projects exist in the system"
+    when: "User lists all projects with optional filters (status, assignee, date range)"
+    then: "System returns filtered project list with summary statistics"
+
+  - given: "A project exists"
+    when: "User views project detail"
+    then: "System returns project info with associated work notes, files, and todos"
+
+  - given: "A project exists"
+    when: "User updates project metadata (name, status, dates, team)"
+    then: "System updates project and returns updated details"
+
+  - given: "A project exists with no dependencies"
+    when: "User deletes project"
+    then: "System marks project as deleted and archives associated files in R2"
+
+  # Work Note Association
+  - given: "A project exists and work notes exist"
+    when: "User assigns work notes to project"
+    then: "System creates associations and updates project statistics"
+
+  - given: "Work notes are assigned to project"
+    when: "User removes work note from project"
+    then: "System removes association and recalculates statistics"
+
+  - given: "User creates new work note"
+    when: "User specifies project during creation"
+    then: "System auto-assigns work note to project"
+
+  # File Management
+  - given: "A project exists"
+    when: "User uploads files (PDF, images, Office docs) to project"
+    then: "System stores files in R2 with metadata and creates file records"
+
+  - given: "Files are attached to project"
+    when: "User views project files"
+    then: "System returns file list with metadata (name, type, size, upload date)"
+
+  - given: "Files are attached to project"
+    when: "User downloads file"
+    then: "System generates presigned R2 URL and returns download link"
+
+  - given: "Files are attached to project"
+    when: "User deletes file"
+    then: "System removes file from R2 and deletes file record"
+
+  # RAG Integration
+  - given: "Work notes are assigned to project"
+    when: "User queries RAG with PROJECT scope and project ID"
+    then: "System searches only work notes within that project and returns contextualized answers"
+
+  - given: "Files (PDF, text-extractable docs) are attached to project"
+    when: "System processes uploaded file"
+    then: "System extracts text content and creates embeddings scoped to project"
+
+  - given: "User queries RAG with PROJECT scope"
+    when: "Multiple projects have similar content"
+    then: "System returns results only from specified project with similarity scores"
+
+  # Statistics and Dashboard
+  - given: "A project has work notes and todos"
+    when: "User views project dashboard"
+    then: "System displays statistics (total/pending/completed todos, recent activity, file count)"
+
+acceptance_tests:
+  # Project CRUD Tests
+  - id: TEST-project-1
+    desc: "Create project with all required fields returns valid project ID"
+    given: "Valid project data with name, description, status, dates, team"
+    when: "POST /projects with complete payload"
+    then: "Returns 201 with projectId, all fields match input"
+
+  - id: TEST-project-2
+    desc: "List projects with status filter returns only matching projects"
+    given: "Projects with different statuses (진행중, 완료, 보류)"
+    when: "GET /projects?status=진행중"
+    then: "Returns 200 with only 진행중 projects"
+
+  - id: TEST-project-3
+    desc: "Get project detail includes associated work notes and files"
+    given: "Project with 3 work notes and 2 files"
+    when: "GET /projects/:projectId"
+    then: "Returns 200 with project data, workNotes array (length 3), files array (length 2)"
+
+  - id: TEST-project-4
+    desc: "Update project status updates metadata"
+    given: "Project with status=진행중"
+    when: "PUT /projects/:projectId with status=완료 and actualEndDate"
+    then: "Returns 200, status updated, actualEndDate set"
+
+  - id: TEST-project-5
+    desc: "Delete project without dependencies succeeds"
+    given: "Project with no work notes or files"
+    when: "DELETE /projects/:projectId"
+    then: "Returns 204, project marked deleted_at"
+
+  - id: TEST-project-6
+    desc: "Delete project with files archives files in R2"
+    given: "Project with files in R2"
+    when: "DELETE /projects/:projectId"
+    then: "Returns 204, files moved to archive prefix in R2"
+
+  # Work Note Association Tests
+  - id: TEST-project-7
+    desc: "Assign work note to project creates association"
+    given: "Project and work note exist, not yet associated"
+    when: "POST /projects/:projectId/work-notes with workId"
+    then: "Returns 201, association created, work note now in project detail"
+
+  - id: TEST-project-8
+    desc: "Create work note with projectId auto-assigns to project"
+    given: "Project exists"
+    when: "POST /work-notes with projectId in payload"
+    then: "Returns 201, work note created and associated to project"
+
+  - id: TEST-project-9
+    desc: "Remove work note from project removes association only"
+    given: "Work note assigned to project"
+    when: "DELETE /projects/:projectId/work-notes/:workId"
+    then: "Returns 204, association removed, work note still exists independently"
+
+  - id: TEST-project-10
+    desc: "Work note can belong to only one project (1:N relationship)"
+    given: "Work note already assigned to projectA"
+    when: "POST /projects/projectB/work-notes with same workId"
+    then: "Returns 409 Conflict with error message"
+
+  # File Management Tests
+  - id: TEST-project-11
+    desc: "Upload PDF file to project stores in R2"
+    given: "Project exists, valid PDF file"
+    when: "POST /projects/:projectId/files with multipart PDF"
+    then: "Returns 201 with fileId, file stored in R2 at projects/:projectId/files/:fileId"
+
+  - id: TEST-project-12
+    desc: "Upload image file to project stores in R2"
+    given: "Project exists, valid PNG image"
+    when: "POST /projects/:projectId/files with multipart PNG"
+    then: "Returns 201 with fileId, file stored in R2 with image/* content-type"
+
+  - id: TEST-project-13
+    desc: "List project files returns metadata"
+    given: "Project with 3 files (PDF, PNG, DOCX)"
+    when: "GET /projects/:projectId/files"
+    then: "Returns 200 with array of 3 files with name, type, size, uploadedAt"
+
+  - id: TEST-project-14
+    desc: "Download file returns presigned R2 URL"
+    given: "File attached to project"
+    when: "GET /projects/:projectId/files/:fileId/download"
+    then: "Returns 200 with presigned URL valid for 1 hour"
+
+  - id: TEST-project-15
+    desc: "Delete file removes from R2 and DB"
+    given: "File attached to project"
+    when: "DELETE /projects/:projectId/files/:fileId"
+    then: "Returns 204, file removed from R2, file record deleted"
+
+  - id: TEST-project-16
+    desc: "Upload file exceeding size limit fails"
+    given: "Valid project, file > 50MB"
+    when: "POST /projects/:projectId/files with large file"
+    then: "Returns 400 with file size limit error"
+
+  # RAG Integration Tests
+  - id: TEST-project-17
+    desc: "RAG query with PROJECT scope filters by projectId"
+    given: "ProjectA with work notes about feature X, ProjectB with work notes about feature Y"
+    when: "POST /rag/query with scope=PROJECT, projectId=A, query about feature X"
+    then: "Returns 200 with answers referencing only ProjectA work notes"
+
+  - id: TEST-project-18
+    desc: "Upload PDF to project triggers embedding with project metadata"
+    given: "Project exists, PDF with extractable text"
+    when: "POST /projects/:projectId/files with PDF"
+    then: "System extracts text, creates chunks, embeddings with metadata.projectId"
+
+  - id: TEST-project-19
+    desc: "RAG results from PROJECT scope include similarity scores"
+    given: "Project with embedded work notes"
+    when: "POST /rag/query with scope=PROJECT"
+    then: "Returns results with similarityScore >= 0.5 threshold"
+
+  # Statistics Tests
+  - id: TEST-project-20
+    desc: "Project statistics include todo counts"
+    given: "Project with 10 todos: 3 완료, 5 진행중, 2 보류"
+    when: "GET /projects/:projectId/stats"
+    then: "Returns totalTodos=10, completedTodos=3, pendingTodos=5, onHoldTodos=2"
+
+  - id: TEST-project-21
+    desc: "Project statistics include file metrics"
+    given: "Project with 5 files totaling 25MB"
+    when: "GET /projects/:projectId/stats"
+    then: "Returns fileCount=5, totalFileSize=25000000 (bytes)"
+
+dependencies:
+  - governance: "patterns.md (Repository Pattern, Queue-based Processing, R2 Storage)"
+  - governance: "coding-style.md (Naming, API Design, Error Handling)"
+  - existing_spec: "SPEC-worknote-1 (Work note structure and versioning)"
+  - existing_spec: "SPEC-rag-1 (RAG scope filtering and metadata)"
+  - existing_spec: "SPEC-pdf-1 (PDF processing pipeline)"
+
+linked_tasks:
+  - TASK-035  # Database schema migration (completed)
+  - TASK-036  # Project repository and types (completed)
+  - TASK-037  # Project CRUD API endpoints (completed)
+  - TASK-038  # Work note to project association (completed)
+  - TASK-043  # Frontend UI (completed)
+
+implementation_notes: |
+  ## Database Schema Changes
+
+  ### New Tables
+  1. `projects` - Main project entity
+     - project_id (PK, TEXT, PROJECT-{nanoid})
+     - name (TEXT, NOT NULL)
+     - description (TEXT)
+     - status (TEXT, CHECK: 진행중|완료|보류|중단)
+     - tags (TEXT, comma-separated or JSON)
+     - priority (TEXT, CHECK: 높음|중간|낮음)
+     - start_date (TEXT, ISO 8601)
+     - target_end_date (TEXT, ISO 8601)
+     - actual_end_date (TEXT, ISO 8601, nullable)
+     - leader_person_id (FK to persons)
+     - dept_name (FK to departments, nullable)
+     - created_at (TEXT, ISO 8601)
+     - updated_at (TEXT, ISO 8601)
+     - deleted_at (TEXT, ISO 8601, nullable for soft delete)
+
+  2. `project_participants` - Project team members
+     - id (PK, INTEGER AUTOINCREMENT)
+     - project_id (FK to projects, CASCADE)
+     - person_id (FK to persons, CASCADE)
+     - role (TEXT, e.g., '리더', '참여자', '검토자')
+     - joined_at (TEXT, ISO 8601)
+
+  3. `project_work_notes` - Work note associations
+     - id (PK, INTEGER AUTOINCREMENT)
+     - project_id (FK to projects, CASCADE)
+     - work_id (FK to work_notes, CASCADE)
+     - assigned_at (TEXT, ISO 8601)
+     - UNIQUE(work_id) -- 1:N relationship, work note belongs to at most one project
+
+  4. `project_files` - File attachments
+     - file_id (PK, TEXT, FILE-{nanoid})
+     - project_id (FK to projects, CASCADE)
+     - r2_key (TEXT, NOT NULL, projects/:projectId/files/:fileId)
+     - original_name (TEXT, NOT NULL)
+     - file_type (TEXT, NOT NULL, MIME type)
+     - file_size (INTEGER, bytes)
+     - uploaded_by (TEXT, email from auth)
+     - uploaded_at (TEXT, ISO 8601)
+     - embedded_at (TEXT, ISO 8601, nullable - for text-extractable files)
+     - deleted_at (TEXT, ISO 8601, nullable for soft delete)
+
+  ### Modified Tables
+  1. `work_notes` - Add optional project reference
+     - Add column: project_id (FK to projects, SET NULL on delete)
+     - Add index: idx_work_notes_project_id
+
+  ### Indexes
+  - idx_projects_status ON projects(status)
+  - idx_projects_leader ON projects(leader_person_id)
+  - idx_projects_dept ON projects(dept_name)
+  - idx_projects_dates ON projects(start_date, target_end_date)
+  - idx_project_participants_person ON project_participants(person_id)
+  - idx_project_work_notes_work ON project_work_notes(work_id)
+  - idx_project_files_project ON project_files(project_id)
+  - idx_project_files_r2_key ON project_files(r2_key)
+
+  ## R2 Storage Structure
+  ```
+  projects/
+    {projectId}/
+      files/
+        {fileId}.{ext}      # Active files
+      archive/
+        {fileId}.{ext}      # Soft-deleted files
+  ```
+
+  ## Vectorize Metadata Extension
+  Add `projectId` to chunk metadata for PROJECT scope filtering:
+  ```typescript
+  metadata: {
+    workId: string;
+    projectId: string | null;  // NEW
+    scope: 'GLOBAL' | 'PERSON' | 'DEPT' | 'WORK' | 'PROJECT';  // Add PROJECT
+    entityId: string;
+    createdAtBucket: string;
+  }
+  ```
+
+  ## API Endpoints
+
+  ### Project CRUD
+  - POST   /projects                    - Create project
+  - GET    /projects                    - List projects (with filters)
+  - GET    /projects/:projectId         - Get project detail
+  - PUT    /projects/:projectId         - Update project
+  - DELETE /projects/:projectId         - Delete project (soft delete)
+  - GET    /projects/:projectId/stats   - Get project statistics
+
+  ### Work Note Association
+  - POST   /projects/:projectId/work-notes           - Assign work note to project
+  - GET    /projects/:projectId/work-notes           - List project work notes
+  - DELETE /projects/:projectId/work-notes/:workId   - Remove work note from project
+
+  ### File Management
+  - POST   /projects/:projectId/files                - Upload file (multipart/form-data)
+  - GET    /projects/:projectId/files                - List project files
+  - GET    /projects/:projectId/files/:fileId        - Get file metadata
+  - GET    /projects/:projectId/files/:fileId/download - Get presigned download URL
+  - DELETE /projects/:projectId/files/:fileId        - Delete file
+
+  ### RAG Extension
+  - Extend POST /rag/query to support:
+    ```typescript
+    {
+      query: string;
+      scope: 'GLOBAL' | 'PERSON' | 'DEPT' | 'WORK' | 'PROJECT';  // Add PROJECT
+      projectId?: string;  // Required when scope=PROJECT
+      // ... existing filters
+    }
+    ```
+
+  ## Service Layer
+
+  ### ProjectRepository
+  - findById(projectId): Project | null
+  - findAll(filters: ProjectFilters): Project[]
+  - create(data: CreateProjectData): Project
+  - update(projectId, data: UpdateProjectData): Project
+  - delete(projectId): void (soft delete)
+  - getStatistics(projectId): ProjectStats
+
+  ### ProjectFileService
+  - uploadFile(projectId, file, metadata): ProjectFile
+  - listFiles(projectId): ProjectFile[]
+  - getFile(fileId): ProjectFile | null
+  - getDownloadUrl(fileId): string (presigned URL)
+  - deleteFile(fileId): void
+  - extractTextAndEmbed(fileId): void (async, queue-based)
+
+  ### Modified Services
+  - WorkNoteService.create: Accept optional projectId
+  - RagService.query: Support PROJECT scope with projectId filter
+  - EmbeddingService: Add projectId to chunk metadata
+
+  ## File Processing Pipeline
+  Similar to existing PDF pipeline, but for multiple file types:
+
+  1. Upload → R2 storage → DB record
+  2. For text-extractable files (PDF, DOCX, TXT):
+     - Queue message → FILE_PROCESSING_QUEUE
+     - Consumer extracts text
+     - Creates chunks and embeddings with project metadata
+     - Updates embedded_at timestamp
+  3. For non-text files (images): Store only, no embedding
+
+  ## Migration Strategy
+  1. Create migration 0014_add_project_management.sql
+  2. Add new tables and indexes
+  3. Alter work_notes table (add project_id column)
+  4. Update existing services incrementally
+  5. Test with isolated project creation before full integration
+
+  ## Size Limits
+  - File upload: 50MB per file (configurable)
+  - Total project storage: No hard limit (monitor via stats)
+  - Presigned URL expiry: 1 hour
+
+  ## Error Scenarios
+  - Upload file to non-existent project → 404
+  - Assign work note already in another project → 409 Conflict
+  - Upload file exceeding size limit → 400
+  - Invalid file type → 400
+  - R2 storage failure → 500 with retry mechanism
+  - Delete project with work notes → Option 1: Cascade delete associations, Option 2: Require manual dissociation first (recommend Option 2 for safety)

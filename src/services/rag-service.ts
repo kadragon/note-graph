@@ -1,4 +1,4 @@
-// Trace: SPEC-rag-1, TASK-012
+// Trace: SPEC-rag-1, TASK-012, TASK-041
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Env } from '../types/env';
 import type { RagQueryFilters, RagQueryResponse, RagContextSnippet } from '../types/search';
@@ -97,6 +97,11 @@ export class RagService {
       case 'work':
         // workId is guaranteed to exist due to route-level validation
         vectorFilter.work_id = filters.workId!;
+        break;
+
+      case 'project':
+        // projectId is guaranteed to exist due to route-level validation
+        vectorFilter.project_id = filters.projectId!;
         break;
 
       case 'person':
