@@ -105,6 +105,73 @@ export class ChunkingService {
   }
 
   /**
+   * Chunk file content into overlapping segments
+   * Similar to chunkWorkNote but for file content
+   *
+   * @param fileId - File ID
+   * @param fileName - File name
+   * @param content - File text content
+   * @param metadata - Additional metadata (project_id, etc.)
+   * @returns Array of text chunks with metadata
+   */
+  chunkFileContent(
+    fileId: string,
+    fileName: string,
+    content: string,
+    metadata: { project_id?: string }
+  ): TextChunk[] {
+    // Include filename for context
+    const fullText = `파일명: ${fileName}\n\n${content}`;
+
+    // Convert to pseudo-tokens (character-based approximation)
+    const chunkSizeChars = this.config.chunkSize * this.CHARS_PER_TOKEN;
+    const stepChars = Math.floor(chunkSizeChars * (1 - this.config.overlapRatio));
+
+    const chunks: TextChunk[] = [];
+
+    // If text is shorter than chunk size, return single chunk
+    if (fullText.length <= chunkSizeChars) {
+      chunks.push({
+        text: fullText,
+        metadata: {
+          work_id: fileId, // Use fileId as work_id for consistency
+          scope: 'FILE',
+          chunk_index: 0,
+          project_id: metadata.project_id,
+          created_at_bucket: '', // Empty for file chunks
+        },
+      });
+      return chunks;
+    }
+
+    // Sliding window chunking with overlap
+    let chunkIndex = 0;
+    for (let i = 0; i < fullText.length; i += stepChars) {
+      const chunkText = fullText.slice(i, i + chunkSizeChars);
+
+      // Skip very small final chunks (< MIN_CHUNK_RATIO of chunk size)
+      if (chunkText.length < chunkSizeChars * this.MIN_CHUNK_RATIO && i > 0) {
+        break;
+      }
+
+      chunks.push({
+        text: chunkText,
+        metadata: {
+          work_id: fileId, // Use fileId as work_id for consistency
+          scope: 'FILE',
+          chunk_index: chunkIndex,
+          project_id: metadata.project_id,
+          created_at_bucket: '', // Empty for file chunks
+        },
+      });
+
+      chunkIndex++;
+    }
+
+    return chunks;
+  }
+
+  /**
    * Estimate token count from text
    *
    * @param text - Text to estimate

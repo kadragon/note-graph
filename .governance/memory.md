@@ -588,4 +588,37 @@
   - Endpoint consistency verification
 - All tests passing (8/8).
 - Work notes and projects are now fully integrated with proper association management.
-- Ready for next task: TASK-039 (R2 file upload) or TASK-040 (R2 file download).
+- **TASK-039 Completed**: Implemented R2 file upload and storage for project attachments.
+- Added R2_BUCKET binding (worknote-files) to wrangler.toml and Env interface.
+- Created ProjectFileService with comprehensive file upload functionality.
+- File validation: MIME type checking (PDF, images, Office docs, text), 50MB size limit.
+- R2 storage structure: projects/{projectId}/files/{fileId} with custom metadata.
+- POST /projects/:projectId/files endpoint accepts multipart/form-data uploads.
+- Metadata stored in project_files table: originalName, mimeType, size, uploadedBy, uploadedAt.
+- Korean error messages for validation failures.
+- **TASK-040 Completed**: Implemented file download, listing, and deletion.
+- GET /projects/:projectId/files - Lists all project files with metadata.
+- GET /projects/:projectId/files/:fileId/download - Streams file from R2 with proper headers.
+- DELETE /projects/:projectId/files/:fileId - Soft delete (removes from R2 and DB).
+- Proper MIME type headers for download responses.
+- Error handling for file not found (404 NotFoundError).
+- **TASK-041 Completed**: Extended RAG service with PROJECT scope filtering.
+- Added 'project' to RagScope enum and projectId to RagQueryFilters.
+- Updated Zod schema (RagQueryRequestSchema) to accept projectId parameter.
+- Extended ChunkMetadata interface with project_id field.
+- Updated embedWorkNote() to include projectId in chunk metadata.
+- Modified buildVectorFilter() to filter by project_id metadata in Vectorize.
+- Updated WorkNoteRepository to select project_id column in all queries.
+- PROJECT scope now restricts RAG results to work notes assigned to specified project.
+- Existing scopes (GLOBAL, PERSON, DEPT, WORK) remain fully functional.
+
+### Session 37: Task Tracker Reconciliation (2025-11-26)
+- **Task Management**: Discovered task tracker was out of sync with actual implementation.
+- Git commits showed TASK-039, TASK-040, and TASK-041 were completed but not recorded in `.tasks/done.yaml`.
+- Reconciled task tracker:
+  - Moved TASK-039, TASK-040, TASK-041 from pending to done.yaml with completion details.
+  - Updated backlog.yaml to remove completed tasks.
+  - Updated metadata: 14 → 11 total tasks, 47h → 37h estimated effort.
+  - Set current.yaml to TASK-042 (File text extraction and embedding pipeline).
+- **Pattern Learned**: Task tracker must be updated immediately after completing implementation to maintain operational truth.
+- Ready to begin TASK-042: Async file processing queue for text extraction and embedding.

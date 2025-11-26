@@ -2,6 +2,69 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-041
+    title: "Extend RAG service for PROJECT scope"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T10:48:14Z"
+    outcome: |
+      Extended RAG service to support PROJECT scope filtering with projectId metadata.
+      Added 'project' to RagScope type enum, projectId to filters and schemas. Updated
+      buildVectorFilter() to filter chunks by project_id metadata in Vectorize. Extended
+      ChunkMetadata to include project_id field. Updated embedWorkNote() and related
+      methods to include projectId from work notes. Updated WorkNoteRepository queries
+      to select project_id column across all methods. PROJECT scope now restricts RAG
+      results to work notes assigned to specified project.
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ RAG PROJECT scope filters chunks by project metadata
+      ✓ Work note embeddings include projectId metadata
+      ✓ Vectorize query correctly filters by project_id
+      ✓ Existing scopes (GLOBAL, PERSON, DEPT, WORK) still functional
+    estimated_effort: 3h
+    actual_effort: ~1h
+
+  - task_id: TASK-040
+    title: "Implement R2 file download and deletion"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T10:42:30Z"
+    outcome: |
+      Implemented file download and deletion endpoints in ProjectFileService.
+      Created GET /projects/:projectId/files endpoint for listing all project files.
+      Created GET /projects/:projectId/files/:fileId/download endpoint that streams
+      file content from R2 with proper MIME type headers. Created DELETE endpoint
+      for soft delete that removes file from both R2 and database. Supports metadata
+      retrieval with originalName, size, uploadedBy, and timestamps.
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ File listing returns all project files with metadata
+      ✓ Download endpoint streams files from R2 correctly
+      ✓ Delete endpoint removes from R2 and marks deleted in DB
+      ✓ Proper error handling (404 NotFoundError)
+    estimated_effort: 3h
+    actual_effort: ~0.5h (implemented together with TASK-039)
+
+  - task_id: TASK-039
+    title: "Implement R2 file upload and storage"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T10:42:30Z"
+    outcome: |
+      Implemented comprehensive R2 file upload system for project attachments.
+      Created ProjectFileService with file validation (MIME type, 50MB size limit).
+      Supports PDF, images, Office docs, and text files. Added R2_BUCKET binding
+      in wrangler.toml. Created POST /projects/:projectId/files endpoint for
+      multipart/form-data uploads. File stored at projects/{projectId}/files/{fileId}
+      in R2 with custom metadata. Metadata (name, type, size, uploadedAt, uploadedBy)
+      saved in project_files table. File type validation with Korean error messages.
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ File upload validates MIME type and size
+      ✓ Files stored in R2 with proper path structure
+      ✓ Metadata saved correctly in project_files table
+      ✓ File size limit enforced (50MB max)
+      ✓ Proper error messages for validation failures
+    estimated_effort: 4h
+    actual_effort: ~1h
+
   - task_id: TASK-038
     title: "Implement work note to project association"
     spec_id: SPEC-project-1

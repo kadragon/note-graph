@@ -1,13 +1,18 @@
-// Trace: SPEC-project-1, TASK-039
+// Trace: SPEC-project-1, TASK-039, TASK-042
 /**
  * Service for managing project file uploads and R2 storage
+ * Includes automatic text extraction and embedding for supported file types
  */
 
 import type { R2Bucket } from '@cloudflare/workers-types';
 import type { D1Database } from '@cloudflare/workers-types';
 import { nanoid } from 'nanoid';
+import type { Env } from '../types/env';
 import type { ProjectFile } from '../types/project';
 import { BadRequestError, NotFoundError } from '../types/errors';
+import { FileTextExtractionService } from './file-text-extraction-service.js';
+import { ChunkingService } from './chunking-service.js';
+import { EmbeddingService, VectorizeService } from './embedding-service.js';
 
 // Configuration
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -40,13 +45,25 @@ interface UploadFileParams {
 }
 
 export class ProjectFileService {
+	private textExtractor: FileTextExtractionService;
+	private chunkingService: ChunkingService;
+	private vectorizeService: VectorizeService;
+
 	constructor(
+		env: Env,
 		private r2: R2Bucket,
 		private db: D1Database
-	) {}
+	) {
+		this.textExtractor = new FileTextExtractionService();
+		this.chunkingService = new ChunkingService();
+
+		const embeddingService = new EmbeddingService(env);
+		this.vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
+	}
 
 	/**
 	 * Upload file to R2 and create DB record
+	 * Automatically extracts text and creates embeddings for supported file types
 	 */
 	async uploadFile(params: UploadFileParams): Promise<ProjectFile> {
 		const { projectId, file, originalName, uploadedBy } = params;
@@ -96,7 +113,7 @@ export class ProjectFileService {
 			.bind(fileId, projectId, r2Key, originalName, file.type, file.size, uploadedBy, now)
 			.run();
 
-		return {
+		const projectFile: ProjectFile = {
 			fileId,
 			projectId,
 			r2Key,
@@ -108,6 +125,21 @@ export class ProjectFileService {
 			embeddedAt: null,
 			deletedAt: null,
 		};
+
+		// Extract text and create embeddings for supported file types
+		// This is done synchronously to ensure embeddings are available immediately
+		if (FileTextExtractionService.isTextExtractable(file.type)) {
+			try {
+				await this.embedFile(fileId, projectId, file, originalName);
+				projectFile.embeddedAt = new Date().toISOString();
+			} catch (error) {
+				// Log error but don't fail the upload
+				// File is still usable, just not searchable via RAG
+				console.error(`Failed to embed file ${fileId}:`, error);
+			}
+		}
+
+		return projectFile;
 	}
 
 	/**
@@ -193,7 +225,77 @@ export class ProjectFileService {
 	}
 
 	/**
+	 * Extract text from file and create embeddings
+	 *
+	 * @param fileId - File ID
+	 * @param projectId - Project ID
+	 * @param file - File blob
+	 * @param originalName - Original filename
+	 */
+	private async embedFile(
+		fileId: string,
+		projectId: string,
+		file: Blob,
+		originalName: string
+	): Promise<void> {
+		// Extract text
+		const extractionResult = await this.textExtractor.extractText(file, file.type);
+
+		if (!extractionResult.success) {
+			console.warn(
+				`Text extraction failed for ${fileId}: ${extractionResult.reason}`
+			);
+			return;
+		}
+
+		const text = extractionResult.text!;
+
+		// Create chunks with project metadata
+		const chunks = this.chunkingService.chunkFileContent(
+			fileId,
+			originalName,
+			text,
+			{
+				project_id: projectId,
+			}
+		);
+
+		if (chunks.length === 0) {
+			console.warn(`No chunks created for file ${fileId}`);
+			return;
+		}
+
+		// Embed chunks into Vectorize
+		await this.vectorizeService.upsertFileChunks(fileId, chunks);
+
+		// Update embedded_at timestamp
+		await this.updateEmbeddedAt(fileId);
+
+		console.log(
+			`Successfully embedded ${chunks.length} chunks for file ${fileId}`
+		);
+	}
+
+	/**
+	 * Update embedded_at timestamp
+	 */
+	private async updateEmbeddedAt(fileId: string): Promise<void> {
+		const now = new Date().toISOString();
+		await this.db
+			.prepare(
+				`
+      UPDATE project_files
+      SET embedded_at = ?
+      WHERE file_id = ?
+    `
+			)
+			.bind(now, fileId)
+			.run();
+	}
+
+	/**
 	 * Delete file from R2 and mark as deleted in DB
+	 * Also removes embeddings from Vectorize if file was embedded
 	 */
 	async deleteFile(fileId: string): Promise<void> {
 		const file = await this.getFileById(fileId);
@@ -216,6 +318,16 @@ export class ProjectFileService {
 
 		// Delete from R2 (or move to archive - for now just delete)
 		await this.r2.delete(file.r2Key);
+
+		// Delete embeddings from Vectorize if file was embedded
+		if (file.embeddedAt) {
+			try {
+				await this.vectorizeService.deleteFileChunks(fileId);
+			} catch (error) {
+				console.error(`Failed to delete embeddings for file ${fileId}:`, error);
+				// Non-fatal: log and continue
+			}
+		}
 	}
 
 	/**

@@ -3,55 +3,6 @@
 
 tasks:
   # New: Project Management Feature
-  - task_id: TASK-039
-    spec_id: SPEC-project-1
-    title: "Implement R2 file upload and storage"
-    description: |
-      Create ProjectFileService for file upload to R2, metadata storage in D1.
-      Support multipart/form-data, validation (type, size), and R2 key structure.
-    priority: 1
-    status: pending
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "POST /projects/:projectId/files uploads file to R2"
-      - "File stored at projects/:projectId/files/:fileId in R2"
-      - "File metadata (name, type, size, uploadedAt) saved in project_files table"
-      - "File type validation (PDF, images, Office docs)"
-      - "File size limit (50MB) enforced with error message"
-
-  - task_id: TASK-040
-    spec_id: SPEC-project-1
-    title: "Implement file download and deletion"
-    description: |
-      Create endpoints for listing files, generating presigned download URLs,
-      and deleting files from R2 and DB. Support soft delete with archive.
-    priority: 1
-    status: pending
-    estimated_effort: 3h
-    acceptance_criteria:
-      - "GET /projects/:projectId/files lists all project files"
-      - "GET /projects/:projectId/files/:fileId/download returns presigned URL (1hr expiry)"
-      - "DELETE /projects/:projectId/files/:fileId soft-deletes file"
-      - "Soft-deleted files moved to archive/ prefix in R2"
-      - "File metadata includes deleted_at timestamp"
-
-  - task_id: TASK-041
-    spec_id: SPEC-project-1
-    title: "Extend RAG service for PROJECT scope"
-    description: |
-      Add PROJECT scope to RagService with projectId filtering.
-      Update embedding metadata to include projectId for all chunks.
-      Update Vectorize queries to filter by project metadata.
-    priority: 1
-    status: pending
-    estimated_effort: 3h
-    acceptance_criteria:
-      - "POST /rag/query accepts scope=PROJECT with projectId parameter"
-      - "Chunk metadata includes projectId field"
-      - "Vectorize query filters results by metadata.projectId"
-      - "RAG results from PROJECT scope only include work notes in that project"
-      - "Existing scopes (GLOBAL, PERSON, DEPT, WORK) still functional"
-
   - task_id: TASK-042
     spec_id: SPEC-project-1
     title: "Implement file text extraction and embedding pipeline"
@@ -186,12 +137,12 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 14
-  total_estimated_effort: 47 hours
+  total_tasks: 11
+  total_estimated_effort: 37 hours
   phases:
     - name: "Project Management (NEW)"
-      tasks: [TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-042, TASK-044]
-      effort: 26h
+      tasks: [TASK-042, TASK-044]
+      effort: 9h
       priority: 1
 
     - name: "Entity Management"
