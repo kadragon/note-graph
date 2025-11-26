@@ -656,3 +656,10 @@
   - ✅ TASK-042: File text extraction and embedding
   - ⏭️ TASK-043: Frontend UI (already completed earlier)
   - ⏳ TASK-044: Comprehensive tests (remaining)
+
+### Session 38: Project Management Tests (2025-11-26)
+- Added ProjectFileService unit tests covering upload/list/download/delete, MIME/size validation, and embedding metadata (R2 + Vectorize mocks).
+- Added RagService PROJECT scope unit tests verifying metadata filter application and similarity threshold (>0.5) handling.
+- Added integration test for project file routes using injected mock R2 bucket + mocked service methods; upload/list/download/delete and size-limit paths pass under miniflare constraints.
+- Project routes now allow test-only R2 injection via `globalThis.__TEST_R2_BUCKET` fallback (non-production impact).
+- Targeted tests passing: `npm test -- tests/unit/project-file-service.test.ts tests/unit/rag-service.project.test.ts tests/integration/project-files.test.ts`.

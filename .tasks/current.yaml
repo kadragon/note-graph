@@ -2,24 +2,26 @@
 # Only one task should be active at a time
 
 current_task:
-  task_id: null
+  task_id: TASK-044
+  spec_id: SPEC-project-1
+  title: "Write comprehensive tests for project management"
+  status: in_progress
+  started_at: "2025-11-26"
+
 notes: |
-  Session 37: Reconciled task tracker and implemented TASK-042.
+  Session 38: Starting TASK-044 (Comprehensive tests for project management).
 
-  Completed TASK-042 (File text extraction and embedding pipeline).
-  Synchronous processing implemented for PDF and TXT files (DOCX not supported in Workers).
-  File chunks now embedded with project_id metadata and scope='FILE'.
+  Project management feature implementation complete (TASK-035 through TASK-042).
+  Now implementing comprehensive test suite covering:
+  - ProjectRepository unit tests
+  - ProjectFileService unit tests
+  - All 21 acceptance test scenarios from SPEC-project-1
+  - RAG PROJECT scope tests with multi-project data
+  - File upload/download tests with R2 mock
+  - Target: >80% coverage for project management modules
 
-  Project management feature core implementation complete:
-  - TASK-035: Database schema ✓
-  - TASK-036: Project repository ✓
-  - TASK-037: Project API endpoints ✓
-  - TASK-038: Work note association ✓
-  - TASK-039: R2 file upload ✓
-  - TASK-040: R2 file download/delete ✓
-  - TASK-041: PROJECT scope RAG ✓
-  - TASK-042: File text extraction and embedding ✓
-
-  Remaining: TASK-044 (comprehensive tests)
-
-  Ready for next task or merge to main.
+  Progress (2025-11-26):
+  - Added ProjectFileService unit tests (upload/list/download/delete/limits) with R2 + Vectorize mocks.
+  - Added RagService PROJECT scope unit tests (metadata filter + similarity threshold).
+  - Targeted tests passing: `npm test -- tests/unit/project-file-service.test.ts tests/unit/rag-service.project.test.ts`.
+  - Added integration test for project file routes using injected mock R2 + service mocks; upload/list/download/delete + size-limit now pass in test env.

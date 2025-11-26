@@ -270,8 +270,11 @@ projects.post('/:projectId/files', async (c) => {
 	// Get authenticated user email
 	const user = c.get('user');
 
+	// Allow test environment to inject mock R2 bucket
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+
 	// Upload file using service
-	const fileService = new ProjectFileService(c.env, c.env.R2_BUCKET, c.env.DB);
+	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 	const uploadedFile = await fileService.uploadFile({
 		projectId,
 		file: fileBlob,
@@ -288,7 +291,8 @@ projects.post('/:projectId/files', async (c) => {
  */
 projects.get('/:projectId/files', async (c) => {
 	const projectId = c.req.param('projectId');
-	const fileService = new ProjectFileService(c.env, c.env.R2_BUCKET, c.env.DB);
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
 	const files = await fileService.listFiles(projectId);
 
@@ -301,7 +305,8 @@ projects.get('/:projectId/files', async (c) => {
  */
 projects.get('/:projectId/files/:fileId', async (c) => {
 	const fileId = c.req.param('fileId');
-	const fileService = new ProjectFileService(c.env, c.env.R2_BUCKET, c.env.DB);
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
 	const file = await fileService.getFileById(fileId);
 	if (!file) {
@@ -317,7 +322,8 @@ projects.get('/:projectId/files/:fileId', async (c) => {
  */
 projects.get('/:projectId/files/:fileId/download', async (c) => {
 	const fileId = c.req.param('fileId');
-	const fileService = new ProjectFileService(c.env, c.env.R2_BUCKET, c.env.DB);
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
 	const { body, headers } = await fileService.streamFile(fileId);
 
@@ -330,7 +336,8 @@ projects.get('/:projectId/files/:fileId/download', async (c) => {
  */
 projects.delete('/:projectId/files/:fileId', async (c) => {
 	const fileId = c.req.param('fileId');
-	const fileService = new ProjectFileService(c.env, c.env.R2_BUCKET, c.env.DB);
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
 	await fileService.deleteFile(fileId);
 

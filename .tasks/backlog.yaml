@@ -2,39 +2,8 @@
 # Tasks ordered by priority (highest first)
 
 tasks:
-  # New: Project Management Feature
-  - task_id: TASK-042
-    spec_id: SPEC-project-1
-    title: "Implement file text extraction and embedding pipeline"
-    description: |
-      Create async file processing queue for text-extractable files (PDF, DOCX, TXT).
-      Extract text, chunk, embed with project metadata. Reuse existing PDF pipeline patterns.
-    priority: 2
-    status: pending
-    estimated_effort: 5h
-    acceptance_criteria:
-      - "FILE_PROCESSING_QUEUE created in wrangler.toml"
-      - "Upload of PDF/DOCX triggers queue message"
-      - "Queue consumer extracts text from PDF, DOCX, TXT"
-      - "Extracted text chunked and embedded with projectId metadata"
-      - "project_files.embedded_at updated after successful embedding"
-
-  - task_id: TASK-044
-    spec_id: SPEC-project-1
-    title: "Write comprehensive tests for project management"
-    description: |
-      Create unit tests for ProjectRepository, ProjectFileService.
-      Create integration tests for all API endpoints.
-      Test RAG PROJECT scope filtering.
-    priority: 2
-    status: pending
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "Unit tests for project repository CRUD operations"
-      - "Integration tests for all 21 acceptance test scenarios"
-      - "RAG PROJECT scope tests with multi-project data"
-      - "File upload/download tests with R2 mock"
-      - "All tests passing with >80% coverage"
+  # Removed TASK-042 (completed in Session 37)
+  # Removed TASK-044 (moved to current.yaml)
 
   # Existing backlog items
   - task_id: TASK-024
@@ -137,14 +106,9 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 11
-  total_estimated_effort: 37 hours
+  total_tasks: 6
+  total_estimated_effort: 21 hours
   phases:
-    - name: "Project Management (NEW)"
-      tasks: [TASK-042, TASK-044]
-      effort: 9h
-      priority: 1
-
     - name: "Entity Management"
       tasks: [TASK-024, TASK-025, TASK-020, TASK-021]
       effort: 11h
