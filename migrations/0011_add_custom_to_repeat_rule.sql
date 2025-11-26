@@ -4,8 +4,8 @@
 -- SQLite doesn't support ALTER TABLE to modify CHECK constraints
 -- So we need to recreate the table with the updated constraint
 
--- Note: D1 doesn't support BEGIN TRANSACTION/COMMIT SQL statements
--- D1 batch API provides atomicity automatically
+-- Note: D1 doesn't support explicit transaction statements; the migrations
+-- engine wraps each file in a transaction automatically
 
 -- Step 1: Create new table with updated CHECK constraint
 CREATE TABLE todos_new (

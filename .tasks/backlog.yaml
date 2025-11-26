@@ -3,23 +3,6 @@
 
 tasks:
   # New: Project Management Feature
-  - task_id: TASK-035
-    spec_id: SPEC-project-1
-    title: "Create database schema for project management"
-    description: |
-      Create migration 0014_add_project_management.sql with new tables:
-      projects, project_participants, project_work_notes, project_files.
-      Add project_id column to work_notes table.
-      Create all necessary indexes for efficient queries.
-    priority: 1
-    status: pending
-    estimated_effort: 3h
-    acceptance_criteria:
-      - "Migration creates 4 new tables with proper FKs and constraints"
-      - "work_notes.project_id column added with index"
-      - "All indexes created for foreign keys and common filters"
-      - "Migration runs successfully with npm run db:migrate:local"
-
   - task_id: TASK-036
     spec_id: SPEC-project-1
     title: "Implement Project repository and types"
@@ -133,23 +116,6 @@ tasks:
       - "Queue consumer extracts text from PDF, DOCX, TXT"
       - "Extracted text chunked and embedded with projectId metadata"
       - "project_files.embedded_at updated after successful embedding"
-
-  - task_id: TASK-043
-    spec_id: SPEC-project-1
-    title: "Create project management frontend UI"
-    description: |
-      Build project list, create, detail, and edit views in React frontend.
-      Include file upload/download UI and project statistics dashboard.
-    priority: 2
-    status: pending
-    estimated_effort: 8h
-    acceptance_criteria:
-      - "Project list page with status/assignee/date filters"
-      - "Create project dialog with all required fields"
-      - "Project detail view showing work notes, files, todos, statistics"
-      - "File upload UI with drag-and-drop support"
-      - "File list with download and delete actions"
-      - "Work note assignment UI within project detail"
 
   - task_id: TASK-044
     spec_id: SPEC-project-1
@@ -269,12 +235,12 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 16
-  total_estimated_effort: 58 hours
+  total_tasks: 14
+  total_estimated_effort: 47 hours
   phases:
     - name: "Project Management (NEW)"
-      tasks: [TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-042, TASK-043, TASK-044]
-      effort: 37h
+      tasks: [TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-042, TASK-044]
+      effort: 26h
       priority: 1
 
     - name: "Entity Management"

@@ -523,3 +523,15 @@
   - Project statistics dashboard (todo counts, file metrics)
 - **Integration Points**: Extends existing work note, RAG, and file processing systems
 - **Status**: Specification and task backlog complete, ready to begin implementation with TASK-035
+
+### Session 34: Project Schema Migration (2025-11-26)
+- **TASK-035**: Added migration `0014_add_project_management.sql` with projects, participants, work note association, project files, and `project_id` on work_notes plus indexes.
+- Created unit test `tests/unit/migration-project-management.test.ts` to assert tables, indexes, and FK links for project schema.
+- Synced test fallback schema in `tests/setup.ts` to include project tables/indices and work_notes.project_id.
+- Updated `migrations/README.md` and fixed wrangler migration parsing by rephrasing transaction comment in 0011.
+- Verified migrations on a clean local D1 DB: `npm run db:migrate:local` now applies through 0014 after resetting `.wrangler/state/v3/d1` data.
+
+### Session 35: Project Frontend UI (2025-11-26)
+- **TASK-043**: Implemented project management UI per SPEC-project-1.
+- Added project nav/route, list filters (status/leader/date), create dialog (status, priority, dates, leader, dept, tags, participants), detail dialog tabs (info + stats, work note assignment, todo tab using project todos/stats, file tab with drag-and-drop upload/download/delete).
+- API client extended for project filters/todos and work note normalization; new project hooks. Vite build passes (`npm run build:frontend`).

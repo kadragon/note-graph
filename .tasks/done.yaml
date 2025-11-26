@@ -2,6 +2,38 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-043
+    title: "Create project management frontend UI"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T02:43:00Z"
+    outcome: |
+      Built project management UI: list page with status/leader/date filters,
+      create dialog (status, priority, dates, leader, dept, tags, participants),
+      detail dialog with info, participants, stats, work note association tab,
+      todo tab (stats + list), and file tab (drag/drop upload, download, delete).
+      Added project routes/navigation, API client support, and hooks.
+      Vite frontend build succeeds.
+    test_results: |
+      ✓ npm run build:frontend
+    estimated_effort: 8h
+    actual_effort: ~0.5h (UI only; backend APIs assumed available per spec)
+
+  - task_id: TASK-035
+    title: "Create database schema for project management"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T02:37:58Z"
+    outcome: |
+      Added migration `0014_add_project_management.sql` introducing projects, project_participants,
+      project_work_notes, and project_files tables, plus `project_id` on work_notes with supporting
+      indexes. Synced test fallback schema to include new tables/indices, added schema verification
+      unit test, refreshed migration README, and ensured wrangler migration parsing succeeds.
+      Confirmed full migration chain runs cleanly on a fresh local D1 database.
+    test_results: |
+      ✓ npm test -- migration-project-management.test.ts
+      ✓ npm run db:migrate:local
+    estimated_effort: 3h
+    actual_effort: ~1.5h
+
   - task_id: TASK-033
     title: "Align todo wait/due defaults and recurrence"
     spec_id: SPEC-todo-1
