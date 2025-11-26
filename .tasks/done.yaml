@@ -2,6 +2,201 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-042
+    title: 'Implement file text extraction and embedding pipeline'
+    spec_id: SPEC-project-1
+    completed_at: '2025-11-26T16:30:00Z'
+    outcome: |
+      Implemented synchronous file text extraction and embedding pipeline for project files.
+      Created FileTextExtractionService supporting PDF (via unpdf) and TXT/Markdown files.
+      Extended ChunkingService with chunkFileContent() method for file-specific chunking.
+      Extended VectorizeService with upsertFileChunks() and deleteFileChunks() methods.
+      Integrated into ProjectFileService: upload automatically extracts text and creates
+      embeddings with project_id metadata. Delete operation removes embeddings from Vectorize.
+      File chunks stored with scope='FILE' for distinction from work notes. Updated all
+      ProjectFileService instantiations in routes to pass Env parameter.
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ All service methods properly typed
+      ✓ Embeddings include project_id metadata
+      ✓ FILE scope chunks separate from WORK scope
+      ✓ Graceful error handling (upload succeeds even if embedding fails)
+    estimated_effort: 5h
+    actual_effort: ~1.5h
+    notes: |
+      Synchronous processing used instead of queue for free tier compatibility.
+      DOCX not supported due to Workers environment limitations (no compatible libraries).
+      Text extraction failures logged but don't fail upload - files still usable.
+
+  - task_id: TASK-041
+    title: "Extend RAG service for PROJECT scope"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T10:48:14Z"
+    outcome: |
+      Extended RAG service to support PROJECT scope filtering with projectId metadata.
+      Added 'project' to RagScope type enum, projectId to filters and schemas. Updated
+      buildVectorFilter() to filter chunks by project_id metadata in Vectorize. Extended
+      ChunkMetadata to include project_id field. Updated embedWorkNote() and related
+      methods to include projectId from work notes. Updated WorkNoteRepository queries
+      to select project_id column across all methods. PROJECT scope now restricts RAG
+      results to work notes assigned to specified project.
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ RAG PROJECT scope filters chunks by project metadata
+      ✓ Work note embeddings include projectId metadata
+      ✓ Vectorize query correctly filters by project_id
+      ✓ Existing scopes (GLOBAL, PERSON, DEPT, WORK) still functional
+    estimated_effort: 3h
+    actual_effort: ~1h
+
+  - task_id: TASK-040
+    title: "Implement R2 file download and deletion"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T10:42:30Z"
+    outcome: |
+      Implemented file download and deletion endpoints in ProjectFileService.
+      Created GET /projects/:projectId/files endpoint for listing all project files.
+      Created GET /projects/:projectId/files/:fileId/download endpoint that streams
+      file content from R2 with proper MIME type headers. Created DELETE endpoint
+      for soft delete that removes file from both R2 and database. Supports metadata
+      retrieval with originalName, size, uploadedBy, and timestamps.
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ File listing returns all project files with metadata
+      ✓ Download endpoint streams files from R2 correctly
+      ✓ Delete endpoint removes from R2 and marks deleted in DB
+      ✓ Proper error handling (404 NotFoundError)
+    estimated_effort: 3h
+    actual_effort: ~0.5h (implemented together with TASK-039)
+
+  - task_id: TASK-039
+    title: "Implement R2 file upload and storage"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T10:42:30Z"
+    outcome: |
+      Implemented comprehensive R2 file upload system for project attachments.
+      Created ProjectFileService with file validation (MIME type, 50MB size limit).
+      Supports PDF, images, Office docs, and text files. Added R2_BUCKET binding
+      in wrangler.toml. Created POST /projects/:projectId/files endpoint for
+      multipart/form-data uploads. File stored at projects/{projectId}/files/{fileId}
+      in R2 with custom metadata. Metadata (name, type, size, uploadedAt, uploadedBy)
+      saved in project_files table. File type validation with Korean error messages.
+    test_results: |
+      ✓ TypeScript compilation passes with strict mode
+      ✓ File upload validates MIME type and size
+      ✓ Files stored in R2 with proper path structure
+      ✓ Metadata saved correctly in project_files table
+      ✓ File size limit enforced (50MB max)
+      ✓ Proper error messages for validation failures
+    estimated_effort: 4h
+    actual_effort: ~1h
+
+  - task_id: TASK-038
+    title: "Implement work note to project association"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T14:32:30Z"
+    outcome: |
+      Implemented comprehensive work note to project association with 1:N relationship enforcement.
+      Updated Zod schemas: createWorkNoteSchema and updateWorkNoteSchema now accept optional projectId
+      (nullable for updates to support unassignment). Updated WorkNoteRepository create method to
+      insert project_id and create project_work_notes association atomically. Updated WorkNoteRepository
+      update method to handle projectId changes (remove old association, add new one). Updated return
+      objects to include projectId. Verified existing project association endpoints (POST/DELETE
+      /projects/:id/work-notes) continue to work correctly and enforce 1:N constraint. Created 8
+      comprehensive integration tests covering: create with projectId, create without projectId,
+      get detail with projectId, assign via update, change project via update, unassign via update,
+      1:N constraint enforcement (409 conflict), and endpoint consistency.
+    test_results: |
+      ✓ All 8 integration tests passing in tests/integration/work-note-project-association.test.ts
+      ✓ Work notes can be created with projectId
+      ✓ Work notes can be assigned/reassigned/unassigned via PUT
+      ✓ 1:N relationship enforced (409 when trying to assign to second project)
+      ✓ project_work_notes association table kept in sync
+      ✓ work_notes.project_id column kept in sync
+      ✓ Project association endpoints maintain consistency
+    estimated_effort: 3h
+    actual_effort: ~0.5h
+
+  - task_id: TASK-037
+    title: "Implement Project CRUD API endpoints"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T14:28:00Z"
+    outcome: |
+      Implemented comprehensive Project API endpoints with Zod validation and
+      full integration tests. Routes already existed and included all required endpoints:
+      POST /projects (create), GET /projects (list with filters), GET /projects/:projectId (detail),
+      PUT /projects/:projectId (update), DELETE /projects/:projectId (soft delete),
+      GET /projects/:projectId/stats (statistics), POST/DELETE /projects/:projectId/participants
+      (participant management), POST/DELETE/GET /projects/:projectId/work-notes (work note association).
+      Verified Zod schemas for request validation (createProjectSchema, updateProjectSchema,
+      listProjectsQuerySchema, addParticipantSchema, assignWorkNoteSchema). Routes properly
+      mounted in main app at /api/projects. Created 23 comprehensive integration tests covering
+      all endpoints, filtering, error handling (404, 409), and business logic (1:N work note constraint).
+    test_results: |
+      ✓ All 23 integration tests passing in tests/integration/project-routes.test.ts
+      ✓ CRUD operations verified (create, list, get, update, delete)
+      ✓ Filtering by status, leader, department verified
+      ✓ Participant management tested (add, remove, duplicate conflict)
+      ✓ Work note association tested (assign, remove, project conflict)
+      ✓ Statistics endpoint verified
+      ✓ Proper error handling (404 NotFoundError, 409 ConflictError)
+      ✓ Zod validation working correctly
+    estimated_effort: 4h
+    actual_effort: ~0.5h (routes pre-existed, added comprehensive tests)
+
+  - task_id: TASK-036
+    title: "Implement Project repository and types"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T14:20:30Z"
+    outcome: |
+      Implemented comprehensive ProjectRepository with full CRUD operations and
+      project statistics. Created all TypeScript types (Project, ProjectParticipant,
+      ProjectWorkNote, ProjectFile, ProjectStats, ProjectDetail, ProjectFilters).
+      Repository methods include: findById, findAll (with status/leader/dept/participant/date filters),
+      getDetail, create, update, delete (soft delete), getParticipants, addParticipant,
+      removeParticipant, getWorkNotes, getFiles, getStatistics. Fixed snake_case to camelCase
+      mapping in getParticipants, getWorkNotes, and getFiles methods. Created 32 comprehensive
+      unit tests covering all CRUD operations, filtering, error handling, and edge cases.
+    test_results: |
+      ✓ All 32 tests passing in tests/unit/project-repository.test.ts
+      ✓ Proper error handling with NotFoundError and ConflictError
+      ✓ Soft delete functionality verified
+      ✓ Statistics aggregation with todos and files verified
+    estimated_effort: 4h
+    actual_effort: ~1h
+
+  - task_id: TASK-043
+    title: "Create project management frontend UI"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T02:43:00Z"
+    outcome: |
+      Built project management UI: list page with status/leader/date filters,
+      create dialog (status, priority, dates, leader, dept, tags, participants),
+      detail dialog with info, participants, stats, work note association tab,
+      todo tab (stats + list), and file tab (drag/drop upload, download, delete).
+      Added project routes/navigation, API client support, and hooks.
+      Vite frontend build succeeds.
+    test_results: |
+      ✓ npm run build:frontend
+    estimated_effort: 8h
+    actual_effort: ~0.5h (UI only; backend APIs assumed available per spec)
+
+  - task_id: TASK-035
+    title: "Create database schema for project management"
+    spec_id: SPEC-project-1
+    completed_at: "2025-11-26T02:37:58Z"
+    outcome: |
+      Added migration `0014_add_project_management.sql` introducing projects, project_participants,
+      project_work_notes, and project_files tables, plus `project_id` on work_notes with supporting
+      indexes. Synced test fallback schema to include new tables/indices, added schema verification
+      unit test, refreshed migration README, and ensured wrangler migration parsing succeeds.
+      Confirmed full migration chain runs cleanly on a fresh local D1 database.
+    test_results: |
+      ✓ npm test -- migration-project-management.test.ts
+      ✓ npm run db:migrate:local
+    estimated_effort: 3h
+    actual_effort: ~1.5h
+
   - task_id: TASK-033
     title: "Align todo wait/due defaults and recurrence"
     spec_id: SPEC-todo-1

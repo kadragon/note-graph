@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-1, TASK-007, TASK-003
+// Trace: SPEC-worknote-1, TASK-007, TASK-003, TASK-041
 /**
  * Type definitions for WorkNote and related entities
  */
@@ -13,6 +13,7 @@ export interface WorkNote {
   title: string;
   contentRaw: string;
   category: string | null;
+  projectId: string | null; // FK to projects (optional)
   createdAt: string; // ISO 8601 timestamp
   updatedAt: string; // ISO 8601 timestamp
   embeddedAt: string | null; // ISO 8601 timestamp, null = not embedded

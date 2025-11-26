@@ -1,4 +1,4 @@
-// Trace: SPEC-rag-2, TASK-022
+// Trace: SPEC-rag-2, TASK-022, TASK-041
 // Embedding processor for bulk reindexing operations
 
 import type { D1Result } from '@cloudflare/workers-types';
@@ -29,6 +29,7 @@ interface ChunkToEmbed {
     chunk_index: number;
     person_ids?: string;
     dept_name?: string;
+    project_id?: string;
     category?: string;
     created_at_bucket: string;
   };
@@ -165,7 +166,7 @@ export class EmbeddingProcessor {
    * Shared logic for retry processing and bulk reindex
    */
   private async embedWorkNote(workNote: WorkNote): Promise<void> {
-    // Get work note details for person_ids and dept_name
+    // Get work note details for person_ids, dept_name, and project_id
     const details = await this.repository.findByIdWithDetails(workNote.workId);
     const personIds = details?.persons.map((p) => p.personId) || [];
     const deptName = await this.repository.getDeptNameForPerson(personIds[0] || '');
@@ -173,6 +174,7 @@ export class EmbeddingProcessor {
     const metadata = {
       person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
       dept_name: deptName || undefined,
+      project_id: workNote.projectId || undefined,
       category: workNote.category || undefined,
       created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
     };
@@ -335,6 +337,7 @@ export class EmbeddingProcessor {
     const metadata = {
       person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
       dept_name: deptName,
+      project_id: workNote.projectId || undefined,
       category: workNote.category || undefined,
       created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
     };

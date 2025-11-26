@@ -23,6 +23,7 @@ import rag from './routes/rag';
 import aiDraft from './routes/ai-draft';
 import pdf from './routes/pdf';
 import admin from './routes/admin';
+import { projects } from './routes/projects';
 
 // Re-export Env type for compatibility
 export type { Env };
@@ -59,6 +60,8 @@ api.get('/', (c) => {
       persons: '/api/persons',
       departments: '/api/departments',
       taskCategories: '/api/task-categories',
+      projects: '/api/projects',
+      projectFiles: '/api/projects/:projectId/files',
       workNotes: '/api/work-notes',
       todos: '/api/todos',
       search: '/api/search',
@@ -77,6 +80,7 @@ api.get('/me', authMiddleware, getMeHandler);
 api.route('/persons', persons);
 api.route('/departments', departments);
 api.route('/task-categories', taskCategories);
+api.route('/projects', projects);
 api.route('/work-notes', workNotes);
 api.route('/todos', todos);
 api.route('/search', search);

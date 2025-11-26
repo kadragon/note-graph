@@ -1,8 +1,27 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task: null
+current_task:
+  task_id: TASK-044
+  spec_id: SPEC-project-1
+  title: "Write comprehensive tests for project management"
+  status: in_progress
+  started_at: "2025-11-26"
+
 notes: |
-  TASK-034 (SPEC-ui-1) completed: quick-edit for empty category/assignee chips,
-  top save controls, compact content spacing, and todo typography/line-break polish.
-  Tests: npm test -- tests/unit/text-format.test.ts.
+  Session 38: Starting TASK-044 (Comprehensive tests for project management).
+
+  Project management feature implementation complete (TASK-035 through TASK-042).
+  Now implementing comprehensive test suite covering:
+  - ProjectRepository unit tests
+  - ProjectFileService unit tests
+  - All 21 acceptance test scenarios from SPEC-project-1
+  - RAG PROJECT scope tests with multi-project data
+  - File upload/download tests with R2 mock
+  - Target: >80% coverage for project management modules
+
+  Progress (2025-11-26):
+  - Added ProjectFileService unit tests (upload/list/download/delete/limits) with R2 + Vectorize mocks.
+  - Added RagService PROJECT scope unit tests (metadata filter + similarity threshold).
+  - Targeted tests passing: `npm test -- tests/unit/project-file-service.test.ts tests/unit/rag-service.project.test.ts`.
+  - Added integration test for project file routes using injected mock R2 + service mocks; upload/list/download/delete + size-limit now pass in test env.

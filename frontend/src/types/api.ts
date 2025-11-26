@@ -241,7 +241,7 @@ export interface UnifiedSearchResult {
 }
 
 // RAG types
-export type RAGScope = 'global' | 'person' | 'department' | 'work';
+export type RAGScope = 'global' | 'person' | 'department' | 'work' | 'project';
 
 export interface RAGQueryRequest {
   query: string;
@@ -249,6 +249,7 @@ export interface RAGQueryRequest {
   personId?: string;
   deptName?: string;
   workId?: string;
+  projectId?: string;
   topK?: number;
 }
 
@@ -321,4 +322,101 @@ export interface BatchProcessResult {
   processed: number;
   succeeded: number;
   failed: number;
+}
+
+// Project types
+export type ProjectStatus = '진행중' | '완료' | '보류' | '중단';
+export type ProjectPriority = '높음' | '중간' | '낮음';
+export type ProjectParticipantRole = '리더' | '참여자' | '검토자';
+
+export interface ProjectFilters {
+  status?: ProjectStatus;
+  leaderPersonId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface Project {
+  projectId: string;
+  name: string;
+  description?: string | null;
+  status: ProjectStatus;
+  tags?: string | null;
+  priority?: ProjectPriority | null;
+  startDate?: string | null;
+  targetEndDate?: string | null;
+  actualEndDate?: string | null;
+  leaderPersonId?: string | null;
+  deptName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface ProjectParticipant {
+  id: number;
+  projectId: string;
+  personId: string;
+  role: ProjectParticipantRole;
+  joinedAt: string;
+  personName?: string;
+}
+
+export interface ProjectFile {
+  fileId: string;
+  projectId: string;
+  r2Key: string;
+  originalName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedBy: string;
+  uploadedAt: string;
+  embeddedAt?: string | null;
+  deletedAt?: string | null;
+}
+
+export interface ProjectStats {
+  totalTodos: number;
+  completedTodos: number;
+  pendingTodos: number;
+  onHoldTodos: number;
+  fileCount: number;
+  totalFileSize: number;
+}
+
+export interface ProjectDetail extends Project {
+  participants?: ProjectParticipant[];
+  workNotes?: WorkNote[];
+  files?: ProjectFile[];
+  stats?: ProjectStats;
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  description?: string;
+  status?: ProjectStatus;
+  tags?: string;
+  priority?: ProjectPriority;
+  startDate?: string;
+  targetEndDate?: string;
+  leaderPersonId?: string;
+  deptName?: string;
+  participantIds?: string[];
+}
+
+export interface UpdateProjectRequest {
+  name?: string;
+  description?: string;
+  status?: ProjectStatus;
+  tags?: string;
+  priority?: ProjectPriority;
+  startDate?: string;
+  targetEndDate?: string;
+  actualEndDate?: string;
+  leaderPersonId?: string;
+  deptName?: string;
+}
+
+export interface AssignWorkNoteRequest {
+  workId: string;
 }
