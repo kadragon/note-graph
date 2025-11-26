@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-1, TASK-007, TASK-003
+// Trace: SPEC-worknote-1, TASK-007, TASK-003, TASK-041
 /**
  * Work note repository for D1 database operations
  */
@@ -30,8 +30,8 @@ export class WorkNoteRepository {
     const result = await this.db
       .prepare(
         `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, created_at as createdAt, updated_at as updatedAt,
-                embedded_at as embeddedAt
+                category, project_id as projectId, created_at as createdAt,
+                updated_at as updatedAt, embedded_at as embeddedAt
          FROM work_notes
          WHERE work_id = ?`
       )
@@ -104,8 +104,8 @@ export class WorkNoteRepository {
     const result = await this.db
       .prepare(
         `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, created_at as createdAt, updated_at as updatedAt,
-                embedded_at as embeddedAt
+                category, project_id as projectId, created_at as createdAt,
+                updated_at as updatedAt, embedded_at as embeddedAt
          FROM work_notes
          WHERE work_id IN (${placeholders})`
       )
@@ -167,8 +167,8 @@ export class WorkNoteRepository {
     const workNotesResult = await this.db
       .prepare(
         `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, created_at as createdAt, updated_at as updatedAt,
-                embedded_at as embeddedAt
+                category, project_id as projectId, created_at as createdAt,
+                updated_at as updatedAt, embedded_at as embeddedAt
          FROM work_notes
          WHERE work_id IN (${placeholders})`
       )
@@ -231,8 +231,8 @@ export class WorkNoteRepository {
   async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
     let sql = `
       SELECT DISTINCT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
-             wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt,
-             wn.embedded_at as embeddedAt
+             wn.category, wn.project_id as projectId, wn.created_at as createdAt,
+             wn.updated_at as updatedAt, wn.embedded_at as embeddedAt
       FROM work_notes wn
     `;
 
@@ -462,6 +462,7 @@ export class WorkNoteRepository {
       title: data.title,
       contentRaw: data.contentRaw,
       category: data.category || null,
+      projectId: null, // Not set during creation, only via project association
       createdAt: now,
       updatedAt: now,
       embeddedAt: null,

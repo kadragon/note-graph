@@ -1,8 +1,12 @@
 # Current Task
 # Only one task should be active at a time
 
-current_task: TASK-039
+current_task: TASK-041
 notes: |
-  Starting TASK-039 (SPEC-project-1): Implement R2 file upload and storage.
-  Creating ProjectFileService and POST /projects/:projectId/files endpoint.
-  Supporting multipart/form-data with file validation (type, size limits).
+  Starting TASK-041 (SPEC-project-1): Extend RAG service for PROJECT scope.
+
+  Need to:
+  1. Add PROJECT to RAG scope enum
+  2. Update RAG query schema to accept projectId
+  3. Modify RagService to filter by projectId metadata
+  4. Update embedding metadata to include projectId
