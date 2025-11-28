@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-018, TASK-027
+// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-018, TASK-027, TASK-045
 /**
  * Person repository for D1 database operations
  */
@@ -47,7 +47,7 @@ export class PersonRepository {
 
   /**
    * Find all persons with optional search query
-   * Sorted by department (nulls last) then name
+   * Sorted by dept → name → position → personId → phoneExt → createdAt
    */
   async findAll(searchQuery?: string): Promise<Person[]> {
     let query = `SELECT person_id as personId, name, phone_ext as phoneExt,
@@ -63,8 +63,8 @@ export class PersonRepository {
       params.push(`%${searchQuery}%`, `%${searchQuery}%`);
     }
 
-    // Sort by department (nulls last) then name
-    query += ` ORDER BY current_dept ASC NULLS LAST, name ASC`;
+    // Sort priority: dept → name → position → personId → phoneExt → createdAt
+    query += ` ORDER BY current_dept ASC NULLS LAST, name ASC, current_position ASC NULLS LAST, person_id ASC, phone_ext ASC NULLS LAST, created_at ASC`;
 
     const stmt = this.db.prepare(query);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<Person>();

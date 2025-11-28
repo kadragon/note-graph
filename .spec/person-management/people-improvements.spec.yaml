@@ -2,14 +2,14 @@ spec_id: SPEC-person-3
 title: "Person Management Improvements - Sorting, Phone Extension, History UI"
 description: >
   Improvements to person management:
-  1. Sort persons by department then name
+  1. Sort persons by department > name > position > personId > phoneExt > createdAt (nulls last for optional fields)
   2. Add phone extension (4-digit) field
   3. Add department/position history UI in person detail
 
 given_when_then:
   - given: "Multiple persons exist with different departments"
     when: "User views person list"
-    then: "Persons are sorted by department (ascending, nulls last) then by name (ascending)"
+    then: "Persons are sorted by department → name → position → personId → phoneExt → createdAt (all ascending, nulls last for optional fields)"
 
   - given: "User creates or edits a person"
     when: "User enters a 4-digit phone extension"
@@ -21,11 +21,11 @@ given_when_then:
 
 acceptance_tests:
   - id: TEST-person-sort-1
-    desc: "Verify persons are sorted by department then name"
+    desc: "Verify persons are sorted by dept → name → position → personId → phoneExt → createdAt"
     steps:
-      - "Create persons: A (dept: 개발팀), B (dept: 기획팀), C (dept: 개발팀), D (no dept)"
+      - "Create persons: A (dept: 개발팀, name: 김가, position: 대리, phoneExt: 1234), B (dept: 개발팀, name: 김가, position: 과장, phoneExt: 5678), C (dept: 기획팀, name: 박나, position: 대리), D (no dept, name: 최다)"
       - "GET /persons"
-      - "Verify order: A, C (개발팀), B (기획팀), D (null dept last)"
+      - "Verify order: A (개발팀/김가/대리), B (개발팀/김가/과장), C (기획팀), D (null dept last)"
 
   - id: TEST-person-phone-1
     desc: "Create person with phone extension"
@@ -53,7 +53,7 @@ acceptance_tests:
 dependencies:
   governance:
     - "Phone extension is 4-digit string (e.g., '3346')"
-    - "Sort order: current_dept ASC NULLS LAST, name ASC"
+    - "Sort priority: current_dept ASC NULLS LAST → name ASC → current_position ASC NULLS LAST → person_id ASC → phone_ext ASC NULLS LAST → created_at ASC"
 
 linked_tasks:
   - "TASK-027"
@@ -72,7 +72,7 @@ database_changes:
 
 api_changes:
   - endpoint: "GET /persons"
-    change: "Sort order changed to current_dept ASC NULLS LAST, name ASC"
+    change: "Sort order changed to dept → name → position → personId → phoneExt → createdAt (ascending, nulls last for optional fields)"
 
   - endpoint: "POST /persons"
     change: "Accept optional phoneExt field"
@@ -86,7 +86,7 @@ api_changes:
 ui_changes:
   - component: "Persons.tsx"
     changes:
-      - "Add '연락처' column to person table"
+      - "Column order: 부서 > 이름 > 직책 > 사번 > 연락처 > 생성일"
       - "Display phoneExt value (e.g., '3346')"
 
   - component: "PersonDialog.tsx"

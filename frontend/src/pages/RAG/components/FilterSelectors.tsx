@@ -219,7 +219,7 @@ export function DepartmentFilterSelector({
       disabled={disabled}
       getItemId={(dept) => dept.deptName}
       getItemLabel={(dept) => dept.deptName}
-      getItemSecondaryLabel={(dept) => dept.description || undefined}
+      getItemSecondaryLabel={(dept) => dept.description || ''}
       getSearchValue={(dept) => dept.deptName}
       placeholder="부서 검색..."
       searchPlaceholder="부서명으로 검색..."

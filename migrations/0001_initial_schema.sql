@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS work_note_person (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   work_id TEXT NOT NULL REFERENCES work_notes(work_id) ON DELETE CASCADE,
   person_id TEXT NOT NULL REFERENCES persons(person_id) ON DELETE CASCADE,
-  role TEXT NOT NULL CHECK (role IN ('OWNER', 'RELATED'))
+  role TEXT NOT NULL CHECK (role IN ('OWNER', 'RELATED', 'PARTICIPANT'))
 );
 
 -- Work note relations (related work notes)

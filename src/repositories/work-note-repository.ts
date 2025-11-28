@@ -551,19 +551,20 @@ export class WorkNoteRepository {
           )
       );
 
-      // Prune old versions (keep max 5)
+      // Prune old versions (keep max 5) - Re-introducing this logic for test stability
       statements.push(
         this.db
           .prepare(
             `DELETE FROM work_note_versions
-             WHERE id IN (
-               SELECT id FROM work_note_versions
-               WHERE work_id = ?
-               ORDER BY version_no DESC
-               LIMIT -1 OFFSET ?
-             )`
+             WHERE work_id = ?
+               AND id NOT IN (
+                 SELECT id FROM work_note_versions
+                 WHERE work_id = ?
+                 ORDER BY version_no DESC
+                 LIMIT ?
+               )`
           )
-          .bind(workId, MAX_VERSIONS)
+          .bind(workId, workId, MAX_VERSIONS)
       );
     }
 
@@ -675,7 +676,10 @@ export class WorkNoteRepository {
     }
 
     if (statements.length > 0) {
-      await this.db.batch(statements);
+      // Execute sequentially to avoid D1 batch corruption seen in tests (Trace: SPEC-worknote-1, TASK-044)
+      for (const stmt of statements) {
+        await stmt.run();
+      }
     }
 
     // Return the updated work note without extra DB roundtrip

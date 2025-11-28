@@ -1,10 +1,4 @@
-# Task Backlog
-# Tasks ordered by priority (highest first)
-
 tasks:
-  # Removed TASK-042 (completed in Session 37)
-  # Removed TASK-044 (moved to current.yaml)
-
   # Existing backlog items
   - task_id: TASK-024
     spec_id: SPEC-worknote-1
@@ -106,9 +100,14 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 6
-  total_estimated_effort: 21 hours
+  total_tasks: 7
+  total_estimated_effort: 25 hours
   phases:
+    - name: "Current"
+      tasks: [TASK-044]
+      effort: 4h
+      priority: 1
+
     - name: "Entity Management"
       tasks: [TASK-024, TASK-025, TASK-020, TASK-021]
       effort: 11h

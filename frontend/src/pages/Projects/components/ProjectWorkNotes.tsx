@@ -112,7 +112,7 @@ export function ProjectWorkNotes({ projectId }: ProjectWorkNotesProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleRemove(workNote.id)}
+                      onClick={() => void handleRemove(workNote.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -5,7 +5,7 @@ import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
 import { useToast } from '@/hooks/use-toast';
 import { API } from '@/lib/api';
-import type { AIDraftTodo, AIDraftReference, WorkNoteDraft } from '@/types/api';
+import type { AIDraftTodo, AIDraftReference, AIDraftPayload, Person } from '@/types/api';
 
 // Extended todo type with stable UI identifier
 export interface SuggestedTodo extends AIDraftTodo {
@@ -33,12 +33,12 @@ export interface AIDraftFormActions {
   setSelectedReferenceIds: (ids: string[]) => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   resetForm: () => void;
-  populateDraft: (draft: WorkNoteDraft, refs?: AIDraftReference[]) => void;
+  populateDraft: (draft: AIDraftPayload, refs?: AIDraftReference[]) => void;
 }
 
 export interface AIDraftFormData {
   taskCategories: Array<{ categoryId: string; name: string }>;
-  persons: Array<{ personId: string; name: string; currentDept?: string | null; currentPosition?: string | null }>;
+  persons: Person[];
   categoriesLoading: boolean;
   personsLoading: boolean;
 }
@@ -97,7 +97,7 @@ export function useAIDraftForm(onSuccess?: () => void) {
     setDraftCategoryName(null);
   }, []);
 
-  const populateDraft = useCallback((draft: WorkNoteDraft, refs?: AIDraftReference[]) => {
+  const populateDraft = useCallback((draft: AIDraftPayload, refs?: AIDraftReference[]) => {
     setTitle(draft.title);
     setContent(draft.content);
     // Add unique IDs to todos for stable React keys

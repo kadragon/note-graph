@@ -184,7 +184,7 @@ export default function Projects() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>
+            <AlertDialogAction onClick={() => void handleDeleteConfirm()}>
               삭제
             </AlertDialogAction>
           </AlertDialogFooter>

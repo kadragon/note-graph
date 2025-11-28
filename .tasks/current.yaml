@@ -9,19 +9,22 @@ current_task:
   started_at: "2025-11-26"
 
 notes: |
-  Session 38: Starting TASK-044 (Comprehensive tests for project management).
+  Resumed TASK-044 after completing TASK-CI-OPT.
 
   Project management feature implementation complete (TASK-035 through TASK-042).
   Now implementing comprehensive test suite covering:
-  - ProjectRepository unit tests
-  - ProjectFileService unit tests
+  - ProjectRepository unit tests (Done)
+  - ProjectFileService unit tests (Done)
   - All 21 acceptance test scenarios from SPEC-project-1
-  - RAG PROJECT scope tests with multi-project data
-  - File upload/download tests with R2 mock
+  - RAG PROJECT scope tests with multi-project data (Done)
+  - File upload/download tests with R2 mock (Done)
   - Target: >80% coverage for project management modules
 
-  Progress (2025-11-26):
-  - Added ProjectFileService unit tests (upload/list/download/delete/limits) with R2 + Vectorize mocks.
-  - Added RagService PROJECT scope unit tests (metadata filter + similarity threshold).
-  - Targeted tests passing: `npm test -- tests/unit/project-file-service.test.ts tests/unit/rag-service.project.test.ts`.
-  - Added integration test for project file routes using injected mock R2 + service mocks; upload/list/download/delete + size-limit now pass in test env.
+  Progress:
+  - ProjectRepository tests: 32 tests passing
+  - ProjectFileService tests: Passing
+  - Integration tests: 23 project route tests, 8 work note association tests passing
+
+  Next:
+  - Ensure all acceptance criteria in SPEC-project-1 are covered by E2E or integration tests.
+  - DB test failure (FTS trigger corruption) resolved with migration 0016 and test schema update.

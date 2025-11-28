@@ -5,6 +5,8 @@ import { beforeAll } from 'vitest';
 import { env } from 'cloudflare:test';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Env } from '../src/types/env';
+import { existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 
 const migrationModules = import.meta.glob('../migrations/*.sql', {
   eager: true,
@@ -12,17 +14,59 @@ const migrationModules = import.meta.glob('../migrations/*.sql', {
   query: '?raw',
 }) as Record<string, string>;
 
+// Ensure we start from a clean, in-memory D1 database each test run
+// Cloudflare's test pool occasionally persists state to .wrangler/state even with d1Persist=false,
+// which caused SQLITE_CORRUPT during WorkNoteRepository version tests.
+// Trace: SPEC-worknote-1, TASK-044
+let d1StateCleared = false;
+function clearPersistedD1State(): void {
+  if (d1StateCleared) return;
+  const d1Dir = join(process.cwd(), '.wrangler', 'state', 'v3', 'd1', 'miniflare-D1DatabaseObject');
+  if (existsSync(d1Dir)) {
+    rmSync(d1Dir, { recursive: true, force: true });
+    console.log('[Test Setup] Cleared persisted D1 state for clean run');
+  }
+  d1StateCleared = true;
+}
+
 function loadMigrationStatements(): string[] {
   const entries = Object.entries(migrationModules).sort(([a], [b]) => a.localeCompare(b));
   const statements: string[] = [];
 
   for (const [, sql] of entries) {
-    // Split on semicolons at line ends; filter out comments/empties
-    sql
-      .split(/;\s*\n/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !s.startsWith('--'))
-      .forEach((stmt) => statements.push(stmt + ';'));
+    // Remove comments first to avoid false positives
+    const cleanedSql = sql.replace(/--.*$/gm, '');
+
+    // Split by semicolon
+    const rawStatements = cleanedSql.split(';');
+
+    let currentStatement = '';
+
+    for (const raw of rawStatements) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+
+      if (currentStatement) {
+        currentStatement += ';' + raw;
+      } else {
+        currentStatement = raw;
+      }
+
+      // Check if the statement is complete
+      // For triggers, we need to ensure we have a matching END
+      const isTrigger = /CREATE\s+TRIGGER/i.test(currentStatement);
+      if (isTrigger) {
+        const beginCount = (currentStatement.match(/\bBEGIN\b/gi) || []).length;
+        const endCount = (currentStatement.match(/\bEND\b/gi) || []).length;
+        if (beginCount > endCount) {
+          // Incomplete trigger, continue accumulating
+          continue;
+        }
+      }
+
+      statements.push(currentStatement.trim() + ';');
+      currentStatement = '';
+    }
   }
 
   return statements;
@@ -151,6 +195,26 @@ const manualSchemaStatements: string[] = [
      content='work_notes',
      content_rowid='rowid'
    )`,
+  `CREATE TRIGGER IF NOT EXISTS notes_fts_ai
+   AFTER INSERT ON work_notes
+   BEGIN
+     INSERT INTO notes_fts(rowid, title, content_raw, category)
+     VALUES (new.rowid, new.title, new.content_raw, new.category);
+   END`,
+  `CREATE TRIGGER IF NOT EXISTS notes_fts_au
+   AFTER UPDATE ON work_notes
+   BEGIN
+     INSERT INTO notes_fts(notes_fts, rowid, title, content_raw, category)
+     VALUES ('delete', old.rowid, old.title, old.content_raw, old.category);
+     INSERT INTO notes_fts(rowid, title, content_raw, category)
+     VALUES (new.rowid, new.title, new.content_raw, new.category);
+   END`,
+  `CREATE TRIGGER IF NOT EXISTS notes_fts_ad
+   AFTER DELETE ON work_notes
+   BEGIN
+     INSERT INTO notes_fts(notes_fts, rowid, title, content_raw, category)
+     VALUES ('delete', old.rowid, old.title, old.content_raw, old.category);
+   END`,
 
   `CREATE TABLE IF NOT EXISTS todos (
      todo_id TEXT PRIMARY KEY,
@@ -186,26 +250,6 @@ const manualSchemaStatements: string[] = [
      created_at TEXT NOT NULL DEFAULT (datetime('now')),
      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
    )`,
-
-  `CREATE TABLE IF NOT EXISTS embedding_retry_queue (
-     id TEXT PRIMARY KEY,
-     work_id TEXT NOT NULL,
-     operation_type TEXT NOT NULL,
-     attempt_count INTEGER DEFAULT 0,
-     max_attempts INTEGER DEFAULT 3,
-     next_retry_at TEXT,
-     status TEXT DEFAULT 'pending',
-     error_message TEXT,
-     error_details TEXT,
-     created_at TEXT DEFAULT (datetime('now')),
-     updated_at TEXT DEFAULT (datetime('now')),
-     dead_letter_at TEXT,
-     FOREIGN KEY (work_id) REFERENCES work_notes(work_id) ON DELETE CASCADE
-   )`,
-  `CREATE INDEX IF NOT EXISTS idx_retry_queue_next_retry ON embedding_retry_queue(status, next_retry_at) WHERE status = 'pending'`,
-  `CREATE INDEX IF NOT EXISTS idx_retry_queue_status ON embedding_retry_queue(status)`,
-  `CREATE INDEX IF NOT EXISTS idx_retry_queue_work_id ON embedding_retry_queue(work_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_retry_queue_dead_letter ON embedding_retry_queue(dead_letter_at) WHERE status = 'dead_letter'`,
 
   `CREATE TABLE IF NOT EXISTS project_participants (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -256,6 +300,10 @@ const manualSchemaStatements: string[] = [
      category_id TEXT NOT NULL REFERENCES task_categories(category_id) ON DELETE CASCADE,
      UNIQUE(work_id, category_id)
    )`,
+
+  // Migration 0015: Add composite index for person list sorting
+  `CREATE INDEX IF NOT EXISTS idx_persons_sort
+   ON persons(current_dept, name, current_position, person_id, phone_ext, created_at)`,
 ];
 
 async function applyManualSchema(db: D1Database): Promise<void> {
@@ -265,6 +313,13 @@ async function applyManualSchema(db: D1Database): Promise<void> {
 async function applyMigrationsOrFallback(db: D1Database): Promise<void> {
   try {
     const stmts = loadMigrationStatements();
+
+    if (stmts.length === 0) {
+      console.warn('[Test Setup] No migration statements found via glob, falling back to manual DDL');
+      await applyManualSchema(db);
+      return;
+    }
+
     await db.batch(stmts.map((s) => db.prepare(s)));
   } catch (error) {
     console.warn('[Test Setup] Migration exec failed, falling back to manual DDL', error);
@@ -273,6 +328,8 @@ async function applyMigrationsOrFallback(db: D1Database): Promise<void> {
 }
 
 beforeAll(async () => {
+  clearPersistedD1State();
+
   const db = (env as unknown as Env).DB;
   if (!db) {
     console.error('[Test Setup] DB binding is missing. Current bindings:', env);

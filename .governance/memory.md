@@ -663,3 +663,33 @@
 - Added integration test for project file routes using injected mock R2 bucket + mocked service methods; upload/list/download/delete and size-limit paths pass under miniflare constraints.
 - Project routes now allow test-only R2 injection via `globalThis.__TEST_R2_BUCKET` fallback (non-production impact).
 - Targeted tests passing: `npm test -- tests/unit/project-file-service.test.ts tests/unit/rag-service.project.test.ts tests/integration/project-files.test.ts`.
+
+### Session 39: Person List Ordering Hotfix (2025-11-28)
+- Implemented TASK-045 (SPEC-person-3): reordered person list columns to 부서 > 이름 > 직책 > 사번 > 연락처 > 생성일 and aligned default sort priority accordingly.
+- Backend: PersonRepository now orders by dept → name → position → personId → phoneExt → createdAt (nulls last for optional fields).
+- Frontend: Persons page mirrors the same sort logic and column order; trace updated with TASK-045.
+- Spec: Updated SPEC-person-3 acceptance criteria and sort dependency to reflect new ordering contract.
+- Tests: Updated person-repository unit test dataset to cover new multi-key sort; `npm test -- tests/unit/person-repository.test.ts` passing.
+
+### Session 40: FTS Trigger Corruption Fix (2025-11-28)
+- Issue: work-note-repository version test failed with `SQLITE_CORRUPT` during update due to incorrect FTS update trigger.
+- Fix: Added migration `0016_fix_fts_update_trigger.sql` to replace `notes_fts_au` with delete+insert pattern; updated test manual schema to include proper FTS triggers.
+- Additional safeguard: WorkNoteRepository now prunes versions with `NOT IN (LIMIT ?)` query and executes update statements sequentially.
+- Outcome: All tests (`npm test`) pass; DB corruption no longer reproduces.
+
+### Session 41: Lint and Type Check Fixes (2025-11-28)
+- **Task**: Fix all lint and type check errors across the project.
+- **Lint Fixes**:
+  - Resolved unsafe `any` usage in `useAIDraftForm.ts` and `api.ts`.
+  - Fixed `no-misused-promises` in event handlers by wrapping async functions.
+  - Removed prohibited `console.log` statements.
+  - Removed unused `eslint-disable` directives in `validation.ts`.
+- **Type Check Fixes**:
+  - Updated `AIDraftFormActions` and `AIDraftFormData` to use correct types (`AIDraftPayload`, `Person[]`).
+  - Removed duplicate `Todo` import in `api.ts`.
+  - Added `vite-env.d.ts` for CSS module support.
+  - Fixed prop type mismatch in `FilterSelectors.tsx` (optional vs required string return).
+  - Added missing `project` key to `RAG.tsx` scope descriptions.
+  - Fixed `ReactMarkdown` props usage (removed `className` and wrapped in div).
+  - Replaced `global` with `globalThis` in `api.test.ts`.
+- **Outcome**: `npm run lint` and `npm run typecheck` (including backend/app configs) pass cleanly. Codebase is now fully compliant with standards.

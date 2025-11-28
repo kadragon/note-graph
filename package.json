@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "deploy:with-migrations": "npm run build && wrangler deploy && wrangler d1 migrations apply worknote-db --remote",
-    "test": "vitest",
+    "test": "vitest --run",
     "test:coverage": "vitest --coverage",
     "db:migrate": "wrangler d1 migrations apply worknote-db",
     "db:migrate:local": "wrangler d1 migrations apply worknote-db --local",
@@ -86,7 +86,8 @@
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
       "eslint --fix",
-      "bash -c 'tsc --noEmit --project tsconfig.backend.json'"
+      "bash -c 'tsc --noEmit --project tsconfig.backend.json'",
+      "vitest related"
     ]
   }
 }
