@@ -17,12 +17,39 @@ function loadMigrationStatements(): string[] {
   const statements: string[] = [];
 
   for (const [, sql] of entries) {
-    // Split on semicolons at line ends; filter out comments/empties
-    sql
-      .split(/;\s*\n/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !s.startsWith('--'))
-      .forEach((stmt) => statements.push(stmt + ';'));
+    // Remove comments first to avoid false positives
+    const cleanedSql = sql.replace(/--.*$/gm, '');
+
+    // Split by semicolon
+    const rawStatements = cleanedSql.split(';');
+
+    let currentStatement = '';
+
+    for (const raw of rawStatements) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+
+      if (currentStatement) {
+        currentStatement += ';' + raw;
+      } else {
+        currentStatement = raw;
+      }
+
+      // Check if the statement is complete
+      // For triggers, we need to ensure we have a matching END
+      const isTrigger = /CREATE\s+TRIGGER/i.test(currentStatement);
+      if (isTrigger) {
+        const beginCount = (currentStatement.match(/\bBEGIN\b/gi) || []).length;
+        const endCount = (currentStatement.match(/\bEND\b/gi) || []).length;
+        if (beginCount > endCount) {
+          // Incomplete trigger, continue accumulating
+          continue;
+        }
+      }
+
+      statements.push(currentStatement.trim() + ';');
+      currentStatement = '';
+    }
   }
 
   return statements;
