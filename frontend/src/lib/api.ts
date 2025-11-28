@@ -44,7 +44,6 @@ import type {
   ProjectStats,
   AssignWorkNoteRequest,
   ProjectFilters,
-  Todo,
 } from '@/types/api';
 
 /**
@@ -544,11 +543,12 @@ class APIClient {
   getProject(projectId: string) {
     return this.request<ProjectDetail>(`/projects/${projectId}`).then((project) => ({
       ...project,
-      workNotes: project.workNotes?.map((wn: any) => {
-        if (wn.id && wn.content) return wn as WorkNote;
-        const workId = wn.workId ?? wn.id;
-        const contentRaw = wn.contentRaw ?? wn.content ?? '';
-        return this.transformWorkNoteFromBackend({ ...wn, workId, contentRaw });
+      workNotes: project.workNotes?.map((wn: unknown) => {
+        const item = wn as BackendWorkNote & WorkNote;
+        if (item.id && item.content) return item;
+        const workId = item.workId ?? item.id;
+        const contentRaw = item.contentRaw ?? item.content ?? '';
+        return this.transformWorkNoteFromBackend({ ...item, workId, contentRaw });
       }),
     }));
   }
@@ -591,8 +591,8 @@ class APIClient {
           }
           return this.transformWorkNoteFromBackend({
             ...wn,
-            workId: wn.workId ?? (wn as any).id,
-            contentRaw: wn.contentRaw ?? (wn as any).content ?? '',
+            workId: wn.workId ?? wn.id,
+            contentRaw: wn.contentRaw ?? wn.content ?? '',
           } as BackendWorkNote);
         })
     );

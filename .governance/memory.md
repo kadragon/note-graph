@@ -676,3 +676,20 @@
 - Fix: Added migration `0016_fix_fts_update_trigger.sql` to replace `notes_fts_au` with delete+insert pattern; updated test manual schema to include proper FTS triggers.
 - Additional safeguard: WorkNoteRepository now prunes versions with `NOT IN (LIMIT ?)` query and executes update statements sequentially.
 - Outcome: All tests (`npm test`) pass; DB corruption no longer reproduces.
+
+### Session 41: Lint and Type Check Fixes (2025-11-28)
+- **Task**: Fix all lint and type check errors across the project.
+- **Lint Fixes**:
+  - Resolved unsafe `any` usage in `useAIDraftForm.ts` and `api.ts`.
+  - Fixed `no-misused-promises` in event handlers by wrapping async functions.
+  - Removed prohibited `console.log` statements.
+  - Removed unused `eslint-disable` directives in `validation.ts`.
+- **Type Check Fixes**:
+  - Updated `AIDraftFormActions` and `AIDraftFormData` to use correct types (`AIDraftPayload`, `Person[]`).
+  - Removed duplicate `Todo` import in `api.ts`.
+  - Added `vite-env.d.ts` for CSS module support.
+  - Fixed prop type mismatch in `FilterSelectors.tsx` (optional vs required string return).
+  - Added missing `project` key to `RAG.tsx` scope descriptions.
+  - Fixed `ReactMarkdown` props usage (removed `className` and wrapped in div).
+  - Replaced `global` with `globalThis` in `api.test.ts`.
+- **Outcome**: `npm run lint` and `npm run typecheck` (including backend/app configs) pass cleanly. Codebase is now fully compliant with standards.

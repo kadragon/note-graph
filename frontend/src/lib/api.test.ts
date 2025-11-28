@@ -22,7 +22,7 @@ describe('API.createDepartment', () => {
       }),
     });
 
-    (global as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
 
     await API.createDepartment({ deptName: '교무기획부' });
 

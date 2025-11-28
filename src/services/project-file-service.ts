@@ -271,9 +271,7 @@ export class ProjectFileService {
 		// Update embedded_at timestamp
 		await this.updateEmbeddedAt(fileId);
 
-		console.log(
-			`Successfully embedded ${chunks.length} chunks for file ${fileId}`
-		);
+		// console.log(`Successfully embedded ${chunks.length} chunks for file ${fileId}`);
 	}
 
 	/**

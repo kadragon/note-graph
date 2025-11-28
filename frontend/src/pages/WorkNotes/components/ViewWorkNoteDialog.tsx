@@ -617,13 +617,14 @@ export function ViewWorkNoteDialog({
                         </p>
                         {todo.description && (
                           <div className="mt-1 text-xs text-muted-foreground leading-snug break-words">
-                            <ReactMarkdown
-                              remarkPlugins={remarkPlugins}
-                              rehypePlugins={rehypePlugins}
-                              className="[&>*]:m-0 [&>p]:mb-1"
-                            >
-                              {descriptionWithBreaks}
-                            </ReactMarkdown>
+                            <div className="[&>*]:m-0 [&>p]:mb-1">
+                              <ReactMarkdown
+                                remarkPlugins={remarkPlugins}
+                                rehypePlugins={rehypePlugins}
+                              >
+                                {descriptionWithBreaks}
+                              </ReactMarkdown>
+                            </div>
                           </div>
                         )}
                         <div className="flex flex-wrap gap-2 mt-1">
