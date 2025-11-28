@@ -87,7 +87,7 @@
     "src/**/*.{ts,tsx}": [
       "eslint --fix",
       "bash -c 'tsc --noEmit --project tsconfig.backend.json'",
-      "vitest run --related"
+      "vitest related"
     ]
   }
 }

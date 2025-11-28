@@ -670,3 +670,9 @@
 - Frontend: Persons page mirrors the same sort logic and column order; trace updated with TASK-045.
 - Spec: Updated SPEC-person-3 acceptance criteria and sort dependency to reflect new ordering contract.
 - Tests: Updated person-repository unit test dataset to cover new multi-key sort; `npm test -- tests/unit/person-repository.test.ts` passing.
+
+### Session 40: FTS Trigger Corruption Fix (2025-11-28)
+- Issue: work-note-repository version test failed with `SQLITE_CORRUPT` during update due to incorrect FTS update trigger.
+- Fix: Added migration `0016_fix_fts_update_trigger.sql` to replace `notes_fts_au` with delete+insert pattern; updated test manual schema to include proper FTS triggers.
+- Additional safeguard: WorkNoteRepository now prunes versions with `NOT IN (LIMIT ?)` query and executes update statements sequentially.
+- Outcome: All tests (`npm test`) pass; DB corruption no longer reproduces.

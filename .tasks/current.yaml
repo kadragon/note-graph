@@ -24,6 +24,7 @@ notes: |
   - ProjectRepository tests: 32 tests passing
   - ProjectFileService tests: Passing
   - Integration tests: 23 project route tests, 8 work note association tests passing
-  
+
   Next:
   - Ensure all acceptance criteria in SPEC-project-1 are covered by E2E or integration tests.
+  - DB test failure (FTS trigger corruption) resolved with migration 0016 and test schema update.

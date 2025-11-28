@@ -5,12 +5,29 @@ import { beforeAll } from 'vitest';
 import { env } from 'cloudflare:test';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Env } from '../src/types/env';
+import { existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 
 const migrationModules = import.meta.glob('../migrations/*.sql', {
   eager: true,
   import: 'default',
   query: '?raw',
 }) as Record<string, string>;
+
+// Ensure we start from a clean, in-memory D1 database each test run
+// Cloudflare's test pool occasionally persists state to .wrangler/state even with d1Persist=false,
+// which caused SQLITE_CORRUPT during WorkNoteRepository version tests.
+// Trace: SPEC-worknote-1, TASK-044
+let d1StateCleared = false;
+function clearPersistedD1State(): void {
+  if (d1StateCleared) return;
+  const d1Dir = join(process.cwd(), '.wrangler', 'state', 'v3', 'd1', 'miniflare-D1DatabaseObject');
+  if (existsSync(d1Dir)) {
+    rmSync(d1Dir, { recursive: true, force: true });
+    console.log('[Test Setup] Cleared persisted D1 state for clean run');
+  }
+  d1StateCleared = true;
+}
 
 function loadMigrationStatements(): string[] {
   const entries = Object.entries(migrationModules).sort(([a], [b]) => a.localeCompare(b));
@@ -178,6 +195,26 @@ const manualSchemaStatements: string[] = [
      content='work_notes',
      content_rowid='rowid'
    )`,
+  `CREATE TRIGGER IF NOT EXISTS notes_fts_ai
+   AFTER INSERT ON work_notes
+   BEGIN
+     INSERT INTO notes_fts(rowid, title, content_raw, category)
+     VALUES (new.rowid, new.title, new.content_raw, new.category);
+   END`,
+  `CREATE TRIGGER IF NOT EXISTS notes_fts_au
+   AFTER UPDATE ON work_notes
+   BEGIN
+     INSERT INTO notes_fts(notes_fts, rowid, title, content_raw, category)
+     VALUES ('delete', old.rowid, old.title, old.content_raw, old.category);
+     INSERT INTO notes_fts(rowid, title, content_raw, category)
+     VALUES (new.rowid, new.title, new.content_raw, new.category);
+   END`,
+  `CREATE TRIGGER IF NOT EXISTS notes_fts_ad
+   AFTER DELETE ON work_notes
+   BEGIN
+     INSERT INTO notes_fts(notes_fts, rowid, title, content_raw, category)
+     VALUES ('delete', old.rowid, old.title, old.content_raw, old.category);
+   END`,
 
   `CREATE TABLE IF NOT EXISTS todos (
      todo_id TEXT PRIMARY KEY,
@@ -291,6 +328,8 @@ async function applyMigrationsOrFallback(db: D1Database): Promise<void> {
 }
 
 beforeAll(async () => {
+  clearPersistedD1State();
+
   const db = (env as unknown as Env).DB;
   if (!db) {
     console.error('[Test Setup] DB binding is missing. Current bindings:', env);
