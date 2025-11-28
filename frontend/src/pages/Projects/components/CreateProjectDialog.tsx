@@ -178,12 +178,11 @@ export function CreateProjectDialog({
 
             <div className="grid gap-2">
               <Label htmlFor="leaderPersonId">프로젝트 리더</Label>
-              <Select value={leaderPersonId} onValueChange={setLeaderPersonId}>
+              <Select value={leaderPersonId || undefined} onValueChange={(value) => setLeaderPersonId(value)}>
                 <SelectTrigger id="leaderPersonId">
                   <SelectValue placeholder="리더를 선택하세요" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">없음</SelectItem>
                   {persons.map((person) => (
                     <SelectItem key={person.personId} value={person.personId}>
                       {person.name} ({person.personId})
@@ -195,12 +194,11 @@ export function CreateProjectDialog({
 
             <div className="grid gap-2">
               <Label htmlFor="deptName">담당 부서</Label>
-              <Select value={deptName} onValueChange={setDeptName}>
+              <Select value={deptName || undefined} onValueChange={(value) => setDeptName(value)}>
                 <SelectTrigger id="deptName">
                   <SelectValue placeholder="부서를 선택하세요" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">없음</SelectItem>
                   {departments.map((dept) => (
                     <SelectItem key={dept.deptName} value={dept.deptName}>
                       {dept.deptName}
