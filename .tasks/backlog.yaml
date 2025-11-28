@@ -3,7 +3,6 @@
 
 tasks:
   # Removed TASK-042 (completed in Session 37)
-  # Removed TASK-044 (moved to current.yaml)
 
   # Existing backlog items
   - task_id: TASK-024

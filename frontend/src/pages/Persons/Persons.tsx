@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-LLM-IMPORT
+// Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-045, TASK-LLM-IMPORT
 import { useState, useMemo } from 'react';
 import { Plus, FileText } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -27,21 +27,32 @@ export default function Persons() {
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const { data: persons = [], isLoading } = usePersons();
 
-  // Sort persons by department (ascending) then by name (ascending)
+  // Sort persons by dept → name → position → personId → phoneExt → createdAt (nulls last for optional fields)
   const sortedPersons = useMemo(() => {
+    const compareNullable = (a?: string | null, b?: string | null) => {
+      if (a && !b) return -1;
+      if (!a && b) return 1;
+      if (!a && !b) return 0;
+      return a.localeCompare(b, 'ko');
+    };
+
     return [...persons].sort((a, b) => {
-      // Handle null/undefined departments - put them at the end
-      if (a.currentDept && !b.currentDept) return -1;
-      if (!a.currentDept && b.currentDept) return 1;
+      const deptCompare = compareNullable(a.currentDept, b.currentDept);
+      if (deptCompare !== 0) return deptCompare;
 
-      // Compare departments first (both have departments or both don't)
-      if (a.currentDept && b.currentDept) {
-        const deptCompare = a.currentDept.localeCompare(b.currentDept, 'ko');
-        if (deptCompare !== 0) return deptCompare;
-      }
+      const nameCompare = a.name.localeCompare(b.name, 'ko');
+      if (nameCompare !== 0) return nameCompare;
 
-      // If same department, compare by name
-      return a.name.localeCompare(b.name, 'ko');
+      const positionCompare = compareNullable(a.currentPosition, b.currentPosition);
+      if (positionCompare !== 0) return positionCompare;
+
+      const personIdCompare = a.personId.localeCompare(b.personId, 'ko');
+      if (personIdCompare !== 0) return personIdCompare;
+
+      const phoneCompare = compareNullable(a.phoneExt, b.phoneExt);
+      if (phoneCompare !== 0) return phoneCompare;
+
+      return a.createdAt.localeCompare(b.createdAt);
     });
   }, [persons]);
 
@@ -86,11 +97,11 @@ export default function Persons() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>부서</TableHead>
+                  <TableHead>직책</TableHead>
                   <TableHead>이름</TableHead>
                   <TableHead>사번</TableHead>
                   <TableHead>연락처</TableHead>
-                  <TableHead>부서</TableHead>
-                  <TableHead>직책</TableHead>
                   <TableHead>생성일</TableHead>
                 </TableRow>
               </TableHeader>
@@ -101,17 +112,6 @@ export default function Persons() {
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleRowClick(person)}
                     >
-                      <TableCell className="font-medium">{person.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{person.personId}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {person.phoneExt ? (
-                          <span className="text-sm font-mono">{person.phoneExt}</span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
                       <TableCell>
                         {person.currentDept ? (
                           <Badge className={getDepartmentColor(person.currentDept)}>
@@ -121,9 +121,20 @@ export default function Persons() {
                           <span className="text-muted-foreground text-sm">-</span>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {person.currentPosition ? (
+                          <span className="text-sm">{person.currentPosition}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">{person.name}</TableCell>
                     <TableCell>
-                      {person.currentPosition ? (
-                        <span className="text-sm">{person.currentPosition}</span>
+                      <Badge variant="outline">{person.personId}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {person.phoneExt ? (
+                        <span className="text-sm font-mono">{person.phoneExt}</span>
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>
                       )}

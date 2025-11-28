@@ -2,6 +2,25 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-045
+    title: "Reorder person list display and sorting"
+    spec_id: SPEC-person-3
+    completed_at: "2025-11-28T09:38:30Z"
+    outcome: |
+      Updated person management UI and backend sorting to align with requested
+      order (부서 > 이름 > 직책 > 사번 > 연락처 > 생성일). PersonRepository now orders
+      results by dept → name → position → personId → phoneExt → createdAt (nulls
+      last where applicable). Person list table columns reordered accordingly and
+      frontend sort logic mirrors backend priority.
+      SPEC-person-3 updated to reflect the new ordering contract and tie-breakers.
+    test_results: |
+      ✓ npm test -- tests/unit/person-repository.test.ts
+    estimated_effort: 1h
+    actual_effort: 0.3h
+    notes: |
+      Hotfix executed while TASK-044 paused; resumed project test work after
+      completion.
+
   - task_id: TASK-042
     title: 'Implement file text extraction and embedding pipeline'
     spec_id: SPEC-project-1

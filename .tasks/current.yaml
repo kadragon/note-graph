@@ -9,7 +9,7 @@ current_task:
   started_at: "2025-11-26"
 
 notes: |
-  Session 38: Starting TASK-044 (Comprehensive tests for project management).
+  Resumed TASK-044 after completing TASK-045 (person list ordering hotfix).
 
   Project management feature implementation complete (TASK-035 through TASK-042).
   Now implementing comprehensive test suite covering:

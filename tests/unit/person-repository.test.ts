@@ -81,23 +81,44 @@ describe('PersonRepository', () => {
       await testEnv.DB.batch([
         testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
         testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('기획팀'),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').bind(
-          '123456',
-          '홍길동',
-          '기획팀',
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(
+          '100010',
+          '강나',
+          '개발팀',
+          '사원',
+          '2222',
           now,
           now
         ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').bind(
-          '234567',
-          '이순신',
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(
+          '100001',
+          '김가',
           '개발팀',
+          '과장',
+          '1234',
+          now,
+          now
+        ),
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(
+          '100002',
+          '김가',
+          '개발팀',
+          '부장',
+          '5678',
+          now,
+          now
+        ),
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, current_position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').bind(
+          '100003',
+          '박나',
+          '기획팀',
+          '대리',
           now,
           now
         ),
         testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
-          '345678',
-          '김유신',
+          '100004',
+          '최다',
           now,
           now
         ),
@@ -112,47 +133,45 @@ describe('PersonRepository', () => {
       expect(result.length).toBeGreaterThanOrEqual(3);
     });
 
-    it('should order results by department then name (nulls last)', async () => {
+    it('should order results by dept → name → position → personId → phoneExt → createdAt', async () => {
       // Act
       const result = await repository.findAll();
 
       // Assert
-      expect(result.length).toBeGreaterThanOrEqual(3);
-      // First should be 이순신 (개발팀)
-      expect(result[0].name).toBe('이순신');
-      expect(result[0].currentDept).toBe('개발팀');
-      // Second should be 홍길동 (기획팀)
-      expect(result[1].name).toBe('홍길동');
-      expect(result[1].currentDept).toBe('기획팀');
-      // Last should be 김유신 (no dept - null)
-      expect(result[2].name).toBe('김유신');
-      expect(result[2].currentDept).toBeNull();
+      expect(result.length).toBeGreaterThanOrEqual(5);
+
+      // 1) Dept asc, 2) Name asc, 3) Position asc, 4) personId asc
+      expect(result[0]).toMatchObject({ personId: '100010', name: '강나', currentDept: '개발팀', currentPosition: '사원' });
+      expect(result[1]).toMatchObject({ personId: '100001', name: '김가', currentDept: '개발팀', currentPosition: '과장' });
+      expect(result[2]).toMatchObject({ personId: '100002', name: '김가', currentDept: '개발팀', currentPosition: '부장' });
+      expect(result[3]).toMatchObject({ personId: '100003', name: '박나', currentDept: '기획팀' });
+      expect(result[4]).toMatchObject({ personId: '100004', name: '최다', currentDept: null });
     });
 
     it('should search by name', async () => {
       // Act
-      const result = await repository.findAll('홍길동');
+      const result = await repository.findAll('김가');
 
       // Assert
       expect(result.length).toBeGreaterThanOrEqual(1);
-      expect(result.some((p) => p.name.includes('홍길동'))).toBe(true);
+      expect(result.some((p) => p.name.includes('김가'))).toBe(true);
     });
 
     it('should search by person ID', async () => {
       // Act
-      const result = await repository.findAll('123456');
+      const result = await repository.findAll('100001');
 
       // Assert
       expect(result.length).toBeGreaterThanOrEqual(1);
-      expect(result.some((p) => p.personId.includes('123456'))).toBe(true);
+      expect(result.some((p) => p.personId.includes('100001'))).toBe(true);
     });
 
     it('should handle partial name search', async () => {
       // Act
-      const result = await repository.findAll('길동');
+      const result = await repository.findAll('가');
 
       // Assert
-      expect(result.some((p) => p.name.includes('길동'))).toBe(true);
+      expect(result.some((p) => p.name.includes('가'))).toBe(true);
     });
   });
 

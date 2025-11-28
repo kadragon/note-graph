@@ -663,3 +663,10 @@
 - Added integration test for project file routes using injected mock R2 bucket + mocked service methods; upload/list/download/delete and size-limit paths pass under miniflare constraints.
 - Project routes now allow test-only R2 injection via `globalThis.__TEST_R2_BUCKET` fallback (non-production impact).
 - Targeted tests passing: `npm test -- tests/unit/project-file-service.test.ts tests/unit/rag-service.project.test.ts tests/integration/project-files.test.ts`.
+
+### Session 39: Person List Ordering Hotfix (2025-11-28)
+- Implemented TASK-045 (SPEC-person-3): reordered person list columns to 부서 > 이름 > 직책 > 사번 > 연락처 > 생성일 and aligned default sort priority accordingly.
+- Backend: PersonRepository now orders by dept → name → position → personId → phoneExt → createdAt (nulls last for optional fields).
+- Frontend: Persons page mirrors the same sort logic and column order; trace updated with TASK-045.
+- Spec: Updated SPEC-person-3 acceptance criteria and sort dependency to reflect new ordering contract.
+- Tests: Updated person-repository unit test dataset to cover new multi-key sort; `npm test -- tests/unit/person-repository.test.ts` passing.
