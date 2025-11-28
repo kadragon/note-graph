@@ -81,7 +81,12 @@ export function TodoTabs() {
         </Select>
       </div>
 
-      <TodoList todos={todos} isLoading={isLoading} onTodoClick={handleTodoClick} />
+      <TodoList
+        todos={todos}
+        isLoading={isLoading}
+        onTodoClick={handleTodoClick}
+        groupByWorkNote={currentView === 'remaining'}
+      />
 
       <ViewWorkNoteDialog
         workNote={selectedWorkNote || null}

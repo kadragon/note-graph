@@ -693,3 +693,9 @@
   - Fixed `ReactMarkdown` props usage (removed `className` and wrapped in div).
   - Replaced `global` with `globalThis` in `api.test.ts`.
 - **Outcome**: `npm run lint` and `npm run typecheck` (including backend/app configs) pass cleanly. Codebase is now fully compliant with standards.
+
+### Session 42: Dashboard Remaining Todos Grouping & Wait Fix (2025-11-28)
+- **TASK-046 (SPEC-todo-1)** created and set current; TASK-044 paused back to backlog.
+- Frontend: Dashboard remaining tab now groups todos by work note with per-group counts (new helper `groupTodosByWorkNote`).
+- Backend: Remaining/week/month/backlog views now honor wait_until (future-dated items hidden) via TodoRepository filters.
+- Tests: Added unit tests for repository wait_until behavior across views and grouping helper (`tests/unit/todo-repository.test.ts`, `tests/unit/todo-grouping.test.ts`).

@@ -1,4 +1,4 @@
-// Trace: SPEC-todo-1, TASK-008, TASK-033
+// Trace: SPEC-todo-1, TASK-008, TASK-033, TASK-046
 /**
  * Todo repository for D1 database operations
  */
@@ -236,9 +236,10 @@ export class TodoRepository {
         conditions.push(
           `t.status != ?`,
           `t.due_date IS NOT NULL`,
-          `t.due_date < ?`
+          `t.due_date < ?`,
+          `(t.wait_until IS NULL OR t.wait_until <= ?)`
         );
-        params.push('완료', now);
+        params.push('완료', now, now);
         break;
       }
 
@@ -246,9 +247,10 @@ export class TodoRepository {
         // All incomplete todos in selected year
         conditions.push(
           `t.status != ?`,
-          `(t.due_date IS NULL OR (t.due_date >= ? AND t.due_date <= ?))`
+          `(t.due_date IS NULL OR (t.due_date >= ? AND t.due_date <= ?))`,
+          `(t.wait_until IS NULL OR t.wait_until <= ?)`
         );
-        params.push('완료', yearStart.toISOString(), yearEnd.toISOString());
+        params.push('완료', yearStart.toISOString(), yearEnd.toISOString(), now);
         break;
       }
 
