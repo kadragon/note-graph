@@ -98,8 +98,8 @@ export default function Persons() {
               <TableHeader>
                 <TableRow>
                   <TableHead>부서</TableHead>
-                  <TableHead>직책</TableHead>
                   <TableHead>이름</TableHead>
+                  <TableHead>직책</TableHead>
                   <TableHead>사번</TableHead>
                   <TableHead>연락처</TableHead>
                   <TableHead>생성일</TableHead>
@@ -121,6 +121,7 @@ export default function Persons() {
                           <span className="text-muted-foreground text-sm">-</span>
                         )}
                       </TableCell>
+                      <TableCell className="font-medium">{person.name}</TableCell>
                       <TableCell>
                         {person.currentPosition ? (
                           <span className="text-sm">{person.currentPosition}</span>
@@ -128,7 +129,6 @@ export default function Persons() {
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="font-medium">{person.name}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{person.personId}</Badge>
                     </TableCell>
