@@ -1,22 +1,4 @@
 tasks:
-  - task_id: TASK-044
-    spec_id: SPEC-project-1
-    title: "Write comprehensive tests for project management"
-    description: |
-      Implement comprehensive test suite covering:
-      - ProjectRepository unit tests
-      - ProjectFileService unit tests
-      - All 21 acceptance test scenarios from SPEC-project-1
-      - RAG PROJECT scope tests with multi-project data
-      - File upload/download tests with R2 mock
-      - Target: >80% coverage for project management modules
-    priority: 1
-    status: in_progress
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "All project management tests pass"
-      - "Coverage >80%"
-
   # Existing backlog items
   - task_id: TASK-024
     spec_id: SPEC-worknote-1

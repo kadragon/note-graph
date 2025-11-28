@@ -2,11 +2,28 @@
 # Only one task should be active at a time
 
 current_task:
-  task_id: TASK-CI-OPT
-  spec_id: SPEC-devx-2
-  title: "Optimize CI Workflow"
+  task_id: TASK-044
+  spec_id: SPEC-project-1
+  title: "Write comprehensive tests for project management"
   status: in_progress
-  started_at: "2025-11-28"
+  started_at: "2025-11-26"
 
 notes: |
-  Consolidating CI jobs into a single job for efficiency.
+  Resumed TASK-044 after completing TASK-CI-OPT.
+
+  Project management feature implementation complete (TASK-035 through TASK-042).
+  Now implementing comprehensive test suite covering:
+  - ProjectRepository unit tests (Done)
+  - ProjectFileService unit tests (Done)
+  - All 21 acceptance test scenarios from SPEC-project-1
+  - RAG PROJECT scope tests with multi-project data (Done)
+  - File upload/download tests with R2 mock (Done)
+  - Target: >80% coverage for project management modules
+
+  Progress:
+  - ProjectRepository tests: 32 tests passing
+  - ProjectFileService tests: Passing
+  - Integration tests: 23 project route tests, 8 work note association tests passing
+  
+  Next:
+  - Ensure all acceptance criteria in SPEC-project-1 are covered by E2E or integration tests.
