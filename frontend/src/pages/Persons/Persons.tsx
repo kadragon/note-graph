@@ -30,29 +30,21 @@ export default function Persons() {
   // Sort persons by dept → name → position → personId → phoneExt → createdAt (nulls last for optional fields)
   const sortedPersons = useMemo(() => {
     const compareNullable = (a?: string | null, b?: string | null) => {
-      if (a && !b) return -1;
-      if (!a && b) return 1;
-      if (!a && !b) return 0;
+      if (a == null && b == null) return 0;
+      if (a == null) return 1; // nulls last
+      if (b == null) return -1;
       return a.localeCompare(b, 'ko');
     };
 
     return [...persons].sort((a, b) => {
-      const deptCompare = compareNullable(a.currentDept, b.currentDept);
-      if (deptCompare !== 0) return deptCompare;
-
-      const nameCompare = a.name.localeCompare(b.name, 'ko');
-      if (nameCompare !== 0) return nameCompare;
-
-      const positionCompare = compareNullable(a.currentPosition, b.currentPosition);
-      if (positionCompare !== 0) return positionCompare;
-
-      const personIdCompare = a.personId.localeCompare(b.personId, 'ko');
-      if (personIdCompare !== 0) return personIdCompare;
-
-      const phoneCompare = compareNullable(a.phoneExt, b.phoneExt);
-      if (phoneCompare !== 0) return phoneCompare;
-
-      return a.createdAt.localeCompare(b.createdAt);
+      return (
+        compareNullable(a.currentDept, b.currentDept) ||
+        a.name.localeCompare(b.name, 'ko') ||
+        compareNullable(a.currentPosition, b.currentPosition) ||
+        a.personId.localeCompare(b.personId, 'ko') ||
+        compareNullable(a.phoneExt, b.phoneExt) ||
+        a.createdAt.localeCompare(b.createdAt)
+      );
     });
   }, [persons]);
 
