@@ -214,26 +214,6 @@ const manualSchemaStatements: string[] = [
      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
    )`,
 
-  `CREATE TABLE IF NOT EXISTS embedding_retry_queue (
-     id TEXT PRIMARY KEY,
-     work_id TEXT NOT NULL,
-     operation_type TEXT NOT NULL,
-     attempt_count INTEGER DEFAULT 0,
-     max_attempts INTEGER DEFAULT 3,
-     next_retry_at TEXT,
-     status TEXT DEFAULT 'pending',
-     error_message TEXT,
-     error_details TEXT,
-     created_at TEXT DEFAULT (datetime('now')),
-     updated_at TEXT DEFAULT (datetime('now')),
-     dead_letter_at TEXT,
-     FOREIGN KEY (work_id) REFERENCES work_notes(work_id) ON DELETE CASCADE
-   )`,
-  `CREATE INDEX IF NOT EXISTS idx_retry_queue_next_retry ON embedding_retry_queue(status, next_retry_at) WHERE status = 'pending'`,
-  `CREATE INDEX IF NOT EXISTS idx_retry_queue_status ON embedding_retry_queue(status)`,
-  `CREATE INDEX IF NOT EXISTS idx_retry_queue_work_id ON embedding_retry_queue(work_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_retry_queue_dead_letter ON embedding_retry_queue(dead_letter_at) WHERE status = 'dead_letter'`,
-
   `CREATE TABLE IF NOT EXISTS project_participants (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      project_id TEXT NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
@@ -283,6 +263,10 @@ const manualSchemaStatements: string[] = [
      category_id TEXT NOT NULL REFERENCES task_categories(category_id) ON DELETE CASCADE,
      UNIQUE(work_id, category_id)
    )`,
+
+  // Migration 0015: Add composite index for person list sorting
+  `CREATE INDEX IF NOT EXISTS idx_persons_sort
+   ON persons(current_dept, name, current_position, person_id, phone_ext, created_at)`,
 ];
 
 async function applyManualSchema(db: D1Database): Promise<void> {
@@ -292,6 +276,13 @@ async function applyManualSchema(db: D1Database): Promise<void> {
 async function applyMigrationsOrFallback(db: D1Database): Promise<void> {
   try {
     const stmts = loadMigrationStatements();
+
+    if (stmts.length === 0) {
+      console.warn('[Test Setup] No migration statements found via glob, falling back to manual DDL');
+      await applyManualSchema(db);
+      return;
+    }
+
     await db.batch(stmts.map((s) => db.prepare(s)));
   } catch (error) {
     console.warn('[Test Setup] Migration exec failed, falling back to manual DDL', error);

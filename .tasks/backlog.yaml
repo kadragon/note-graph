@@ -1,8 +1,21 @@
-# Task Backlog
-# Tasks ordered by priority (highest first)
-
 tasks:
-  # Removed TASK-042 (completed in Session 37)
+  - task_id: TASK-044
+    spec_id: SPEC-project-1
+    title: "Write comprehensive tests for project management"
+    description: |
+      Implement comprehensive test suite covering:
+      - ProjectRepository unit tests
+      - ProjectFileService unit tests
+      - All 21 acceptance test scenarios from SPEC-project-1
+      - RAG PROJECT scope tests with multi-project data
+      - File upload/download tests with R2 mock
+      - Target: >80% coverage for project management modules
+    priority: 1
+    status: in_progress
+    estimated_effort: 4h
+    acceptance_criteria:
+      - "All project management tests pass"
+      - "Coverage >80%"
 
   # Existing backlog items
   - task_id: TASK-024
@@ -105,9 +118,14 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 6
-  total_estimated_effort: 21 hours
+  total_tasks: 7
+  total_estimated_effort: 25 hours
   phases:
+    - name: "Current"
+      tasks: [TASK-044]
+      effort: 4h
+      priority: 1
+
     - name: "Entity Management"
       tasks: [TASK-024, TASK-025, TASK-020, TASK-021]
       effort: 11h
