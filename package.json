@@ -20,6 +20,7 @@
     "db:create-migration": "wrangler d1 migrations create worknote-db",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/ frontend/src/",
+    "lint:md": "markdownlint-cli2 **/*.md",
     "prepare": "husky"
   },
   "dependencies": {
@@ -71,6 +72,7 @@
     "globals": "^16.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.6",
+    "markdownlint-cli2": "^0.19.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "tailwindcss-animate": "^1.0.7",
