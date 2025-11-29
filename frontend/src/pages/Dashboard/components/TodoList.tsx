@@ -1,14 +1,17 @@
 import { CheckCircle2 } from 'lucide-react';
+// Trace: SPEC-todo-1, TASK-046
 import { TodoItem } from './TodoItem';
+import { groupTodosByWorkNote } from './groupTodosByWorkNote';
 import type { Todo } from '@/types/api';
 
 interface TodoListProps {
   todos: Todo[];
   isLoading: boolean;
   onTodoClick?: (todo: Todo) => void;
+  groupByWorkNote?: boolean;
 }
 
-export function TodoList({ todos, isLoading, onTodoClick }: TodoListProps) {
+export function TodoList({ todos, isLoading, onTodoClick, groupByWorkNote = false }: TodoListProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -26,10 +29,34 @@ export function TodoList({ todos, isLoading, onTodoClick }: TodoListProps) {
     );
   }
 
+  if (!groupByWorkNote) {
+    return (
+      <div className="divide-y">
+        {todos.map((todo) => (
+          <TodoItem key={todo.id} todo={todo} onTodoClick={onTodoClick} />
+        ))}
+      </div>
+    );
+  }
+
+  const groups = groupTodosByWorkNote(todos);
+
   return (
-    <div className="divide-y">
-      {todos.map((todo) => (
-        <TodoItem key={todo.id} todo={todo} onTodoClick={onTodoClick} />
+    <div className="space-y-6">
+      {groups.map((group) => (
+        <div key={group.workNoteId ?? 'no-work'} className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-foreground">
+              {group.workTitle}
+            </div>
+            <span className="text-xs text-muted-foreground">{group.todos.length}개</span>
+          </div>
+          <div className="divide-y rounded-md border bg-card">
+            {group.todos.map((todo) => (
+              <TodoItem key={todo.id} todo={todo} onTodoClick={onTodoClick} />
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );

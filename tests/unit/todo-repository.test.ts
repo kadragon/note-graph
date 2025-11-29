@@ -184,6 +184,10 @@ describe('TodoRepository', () => {
       yesterday.setDate(yesterday.getDate() - 1);
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const waitTomorrow = new Date(now);
+      waitTomorrow.setDate(waitTomorrow.getDate() + 2);
+      const overdueWaitTomorrow = new Date(now);
+      overdueWaitTomorrow.setDate(overdueWaitTomorrow.getDate() - 1);
       const nextWeek = new Date(now);
       nextWeek.setDate(nextWeek.getDate() + 7);
 
@@ -200,6 +204,14 @@ describe('TodoRepository', () => {
         testEnv.DB.prepare(
           'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
         ).bind('TODO-TOMORROW', testWorkId, 'Tomorrow', now.toISOString(), tomorrow.toISOString(), '진행중', 'NONE'),
+        // Wait-until in future (should be hidden from remaining view)
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        ).bind('TODO-WAIT-FUTURE', testWorkId, 'Waiting', now.toISOString(), waitTomorrow.toISOString(), waitTomorrow.toISOString(), '진행중', 'NONE'),
+        // Overdue but wait_until in future (should not appear in backlog)
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        ).bind('TODO-OVERDUE-WAIT', testWorkId, 'Overdue Wait', now.toISOString(), overdueWaitTomorrow.toISOString(), waitTomorrow.toISOString(), '진행중', 'NONE'),
         // Completed
         testEnv.DB.prepare(
           'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
@@ -282,6 +294,27 @@ describe('TodoRepository', () => {
         const currCreated = new Date(withoutDueDate[i].createdAt).getTime();
         expect(prevCreated).toBeGreaterThanOrEqual(currCreated);
       }
+    });
+
+    it('should exclude future wait_until todos from remaining view', async () => {
+      // Act
+      const result = await repository.findAll({ view: 'remaining' });
+
+      // Assert
+      expect(result.some((todo) => todo.todoId === 'TODO-WAIT-FUTURE')).toBe(false);
+      expect(result.some((todo) => todo.todoId === 'TODO-TOMORROW')).toBe(true);
+    });
+
+    it('should exclude future wait_until todos from week view', async () => {
+      const result = await repository.findAll({ view: 'week' });
+
+      expect(result.some((todo) => todo.todoId === 'TODO-WAIT-FUTURE')).toBe(false);
+    });
+
+    it('should exclude future wait_until overdue todos from backlog', async () => {
+      const result = await repository.findAll({ view: 'backlog' });
+
+      expect(result.some((todo) => todo.todoId === 'TODO-OVERDUE-WAIT')).toBe(false);
     });
   });
 
