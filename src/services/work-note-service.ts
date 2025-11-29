@@ -57,42 +57,46 @@ export class WorkNoteService {
 
   /**
    * Create work note with automatic chunking and embedding
-   * Failed embeddings remain with NULL embedded_at and can be retried via admin endpoint
+   * D1 write always succeeds; embedding failures are logged but don't fail the operation
    */
   async create(data: CreateWorkNoteInput): Promise<WorkNote> {
     // Create work note in D1
     const workNote = await this.repository.create(data);
 
-    // Chunk and embed for RAG (async, non-blocking)
-    this.chunkAndEmbedWorkNote(workNote, data).catch((error) => {
+    // Chunk and embed for RAG (best-effort, non-blocking on failure)
+    try {
+      await this.chunkAndEmbedWorkNote(workNote, data);
+    } catch (error) {
       console.error('[WorkNoteService] Failed to embed work note:', {
         workId: workNote.workId,
         title: workNote.title,
         error: error instanceof Error ? error.message : String(error),
       });
-      // Note: Failed embeddings will have NULL embedded_at and can be retried via /admin/embed-pending
-    });
+      // Note: embedded_at remains NULL and can be retried via /admin/embed-pending
+    }
 
     return workNote;
   }
 
   /**
    * Update work note with automatic chunking and embedding
-   * Failed embeddings remain with NULL embedded_at and can be retried via admin endpoint
+   * D1 write always succeeds; embedding failures are logged but don't fail the operation
    */
   async update(workId: string, data: UpdateWorkNoteInput): Promise<WorkNote> {
     // Update work note in D1
     const workNote = await this.repository.update(workId, data);
 
-    // Re-chunk and re-embed for RAG (async, non-blocking)
-    this.rechunkAndEmbedWorkNote(workNote, data).catch((error) => {
+    // Re-chunk and re-embed for RAG (best-effort, non-blocking on failure)
+    try {
+      await this.rechunkAndEmbedWorkNote(workNote, data);
+    } catch (error) {
       console.error('[WorkNoteService] Failed to re-embed work note:', {
         workId: workNote.workId,
         title: workNote.title,
         error: error instanceof Error ? error.message : String(error),
       });
-      // Note: Failed embeddings will have NULL embedded_at and can be retried via /admin/embed-pending
-    });
+      // Note: embedded_at remains NULL and can be retried via /admin/embed-pending
+    }
 
     return workNote;
   }

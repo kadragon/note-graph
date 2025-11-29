@@ -85,7 +85,7 @@ export function TodoTabs() {
         todos={todos}
         isLoading={isLoading}
         onTodoClick={handleTodoClick}
-        groupByWorkNote={currentView === 'remaining'}
+        groupByWorkNote={currentView !== 'completed'}
       />
 
       <ViewWorkNoteDialog
