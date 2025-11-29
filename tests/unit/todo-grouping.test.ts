@@ -82,4 +82,34 @@ describe('groupTodosByWorkNote', () => {
     expect(groups[0].workTitle).toBe('업무 노트 없음');
     expect(groups[0].todos[0].id).toBe('TODO-4');
   });
+
+  it('returns groups in order they first appear in the input', () => {
+    const todos: Todo[] = [
+      {
+        ...sampleTodos[0],
+        id: 'TODO-A',
+        workNoteId: 'WORK-2',
+        workTitle: '업무 B',
+      },
+      {
+        ...sampleTodos[0],
+        id: 'TODO-B',
+        workNoteId: 'WORK-1',
+        workTitle: '업무 A',
+      },
+      {
+        ...sampleTodos[0],
+        id: 'TODO-C',
+        workNoteId: 'WORK-2',
+        workTitle: '업무 B',
+      },
+    ];
+
+    const groups = groupTodosByWorkNote(todos);
+
+    // Groups should appear in the order of first occurrence
+    expect(groups.map((g) => g.workNoteId)).toEqual(['WORK-2', 'WORK-1']);
+    expect(groups[0].todos.map((t) => t.id)).toEqual(['TODO-A', 'TODO-C']);
+    expect(groups[1].todos.map((t) => t.id)).toEqual(['TODO-B']);
+  });
 });

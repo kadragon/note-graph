@@ -191,7 +191,7 @@ export class TodoRepository {
       }
 
       case 'week': {
-        // wait_until <= now (or null) + due_date from yearStart to this week Friday
+        // due_date from yearStart to this week Friday
         const today = new Date();
         const dayOfWeek = today.getDay();
         // Calculate days until Friday (5)
@@ -204,17 +204,16 @@ export class TodoRepository {
 
         conditions.push(
           `t.status != ?`,
-          `(t.wait_until IS NULL OR t.wait_until <= ?)`,
           `t.due_date IS NOT NULL`,
           `t.due_date >= ?`,
           `t.due_date <= ?`
         );
-        params.push('완료', now, yearStart.toISOString(), effectiveEnd.toISOString());
+        params.push('완료', yearStart.toISOString(), effectiveEnd.toISOString());
         break;
       }
 
       case 'month': {
-        // wait_until <= now (or null) + due_date from yearStart to end of this month
+        // due_date from yearStart to end of this month
         const today = new Date();
         const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
         // Use the earlier of monthEnd and yearEnd as the effective end date
@@ -222,12 +221,11 @@ export class TodoRepository {
 
         conditions.push(
           `t.status != ?`,
-          `(t.wait_until IS NULL OR t.wait_until <= ?)`,
           `t.due_date IS NOT NULL`,
           `t.due_date >= ?`,
           `t.due_date <= ?`
         );
-        params.push('완료', now, yearStart.toISOString(), effectiveEnd.toISOString());
+        params.push('완료', yearStart.toISOString(), effectiveEnd.toISOString());
         break;
       }
 
@@ -236,10 +234,9 @@ export class TodoRepository {
         conditions.push(
           `t.status != ?`,
           `t.due_date IS NOT NULL`,
-          `t.due_date < ?`,
-          `(t.wait_until IS NULL OR t.wait_until <= ?)`
+          `t.due_date < ?`
         );
-        params.push('완료', now, now);
+        params.push('완료', now);
         break;
       }
 
@@ -247,10 +244,9 @@ export class TodoRepository {
         // All incomplete todos in selected year
         conditions.push(
           `t.status != ?`,
-          `(t.due_date IS NULL OR (t.due_date >= ? AND t.due_date <= ?))`,
-          `(t.wait_until IS NULL OR t.wait_until <= ?)`
+          `(t.due_date IS NULL OR (t.due_date >= ? AND t.due_date <= ?))`
         );
-        params.push('완료', yearStart.toISOString(), yearEnd.toISOString(), now);
+        params.push('완료', yearStart.toISOString(), yearEnd.toISOString());
         break;
       }
 
@@ -267,6 +263,12 @@ export class TodoRepository {
       default:
         // No date filtering for unknown view
         break;
+    }
+
+    // For all non-completed views, hide future wait_until items
+    if (query.view && query.view !== 'completed') {
+      conditions.push(`(t.wait_until IS NULL OR t.wait_until <= ?)`);
+      params.push(now);
     }
 
     // Filter by status if provided (overrides view-based status filter)
