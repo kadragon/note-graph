@@ -1,7 +1,7 @@
 // Trace: SPEC-project-1, TASK-037
 // Integration tests for Project API routes
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 import { env, SELF } from 'cloudflare:test';
 import type { Env } from '../../src/types/env';
 import type { Project, ProjectDetail, ProjectStats } from '../../src/types/project';
@@ -38,6 +38,14 @@ class MockR2 implements R2Bucket {
 		return null;
 	}
 }
+
+// Initialize R2_BUCKET early if not set (required for service instantiation in routes)
+const defaultMockR2 = new MockR2();
+if (!testEnv.R2_BUCKET) {
+	(testEnv as any).R2_BUCKET = defaultMockR2 as unknown as R2Bucket;
+}
+// Also set globalThis fallback for when c.env.R2_BUCKET is not available during request processing
+(globalThis as any).__TEST_R2_BUCKET = defaultMockR2 as unknown as R2Bucket;
 
 // Helper to create authenticated fetch request
 const authFetch = (url: string, options?: RequestInit) => {
@@ -393,11 +401,13 @@ describe('Project API Routes', () => {
 		beforeEach(async () => {
 			const now = new Date().toISOString();
 			projectId = 'PROJECT-DEL-FILES';
-			r2 = new MockR2();
 
-			// Inject mocks
+			// Reuse or replace the existing R2_BUCKET with a fresh MockR2
+			r2 = new MockR2();
 			(testEnv as any).R2_BUCKET = r2 as unknown as R2Bucket;
 			(globalThis as any).__TEST_R2_BUCKET = r2 as unknown as R2Bucket;
+
+			// Inject VECTORIZE mock
 			(testEnv as any).VECTORIZE = {
 				query: vi.fn().mockResolvedValue({ matches: [] }),
 				deleteByIds: vi.fn().mockResolvedValue(undefined),
@@ -450,6 +460,69 @@ describe('Project API Routes', () => {
 			expect(r2.storage.has(`projects/${projectId}/files/FILE-DEL-2`)).toBe(false);
 			expect(r2.storage.has(`projects/${projectId}/archive/FILE-DEL-1`)).toBe(true);
 			expect(r2.storage.has(`projects/${projectId}/archive/FILE-DEL-2`)).toBe(true);
+		});
+
+		it('handles partial failures gracefully during archival', async () => {
+			// Create a mock R2 that fails on the second file
+			class FailingMockR2 extends MockR2 {
+				callCount = 0;
+
+				async get(key: string): Promise<R2ObjectBody | null> {
+					const result = await super.get(key);
+					return result;
+				}
+
+				async put(key: string, value: Blob, options?: R2PutOptions): Promise<R2Object | null> {
+					this.callCount++;
+					// Fail on second put (archive operation for FILE-DEL-2)
+					if (this.callCount === 2) {
+						throw new Error('Simulated R2 failure');
+					}
+					return super.put(key, value, options);
+				}
+			}
+
+			const failingR2 = new FailingMockR2();
+			(testEnv as any).R2_BUCKET = failingR2 as unknown as R2Bucket;
+			(globalThis as any).__TEST_R2_BUCKET = failingR2 as unknown as R2Bucket;
+
+			// Seed R2 objects
+			failingR2.storage.set(`projects/${projectId}/files/FILE-DEL-1`, { value: new Blob(['hello'], { type: 'text/plain' }) });
+			failingR2.storage.set(`projects/${projectId}/files/FILE-DEL-2`, { value: new Blob(['img'], { type: 'image/png' }) });
+
+			const response = await authFetch(`http://localhost/api/projects/${projectId}`, {
+				method: 'DELETE',
+			});
+
+			// Should still return 204 even with partial failures
+			expect(response.status).toBe(204);
+
+			// Project should still be soft deleted
+			const project = await testEnv.DB.prepare('SELECT deleted_at FROM projects WHERE project_id = ?')
+				.bind(projectId)
+				.first<{ deleted_at: string }>();
+			expect(project?.deleted_at).toBeDefined();
+
+			// First file should be archived successfully
+			expect(failingR2.storage.has(`projects/${projectId}/archive/FILE-DEL-1`)).toBe(true);
+			expect(failingR2.storage.has(`projects/${projectId}/files/FILE-DEL-1`)).toBe(false);
+		});
+
+		it('handles case where file exists in DB but not in R2', async () => {
+			// Don't seed R2 objects, only DB records exist
+			const response = await authFetch(`http://localhost/api/projects/${projectId}`, {
+				method: 'DELETE',
+			});
+
+			expect(response.status).toBe(204);
+
+			// Files should still be soft deleted in DB
+			const fileRows = await testEnv.DB.prepare('SELECT file_id, deleted_at FROM project_files WHERE project_id = ?')
+				.bind(projectId)
+				.all<{ file_id: string; deleted_at: string }>();
+			fileRows.results?.forEach((row) => {
+				expect(row.deleted_at).toBeDefined();
+			});
 		});
 	});
 
