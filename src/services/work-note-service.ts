@@ -57,42 +57,28 @@ export class WorkNoteService {
 
   /**
    * Create work note with automatic chunking and embedding
-   * Failed embeddings remain with NULL embedded_at and can be retried via admin endpoint
+   * Synchronously chunks and embeds to ensure vector storage completion
    */
   async create(data: CreateWorkNoteInput): Promise<WorkNote> {
     // Create work note in D1
     const workNote = await this.repository.create(data);
 
-    // Chunk and embed for RAG (async, non-blocking)
-    this.chunkAndEmbedWorkNote(workNote, data).catch((error) => {
-      console.error('[WorkNoteService] Failed to embed work note:', {
-        workId: workNote.workId,
-        title: workNote.title,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      // Note: Failed embeddings will have NULL embedded_at and can be retried via /admin/embed-pending
-    });
+    // Chunk and embed for RAG (synchronous)
+    await this.chunkAndEmbedWorkNote(workNote, data);
 
     return workNote;
   }
 
   /**
    * Update work note with automatic chunking and embedding
-   * Failed embeddings remain with NULL embedded_at and can be retried via admin endpoint
+   * Synchronously re-chunks and re-embeds to ensure vector storage completion
    */
   async update(workId: string, data: UpdateWorkNoteInput): Promise<WorkNote> {
     // Update work note in D1
     const workNote = await this.repository.update(workId, data);
 
-    // Re-chunk and re-embed for RAG (async, non-blocking)
-    this.rechunkAndEmbedWorkNote(workNote, data).catch((error) => {
-      console.error('[WorkNoteService] Failed to re-embed work note:', {
-        workId: workNote.workId,
-        title: workNote.title,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      // Note: Failed embeddings will have NULL embedded_at and can be retried via /admin/embed-pending
-    });
+    // Re-chunk and re-embed for RAG (synchronous)
+    await this.rechunkAndEmbedWorkNote(workNote, data);
 
     return workNote;
   }
