@@ -86,8 +86,11 @@ projects.put('/:projectId', async (c) => {
  */
 projects.delete('/:projectId', async (c) => {
 	const projectId = c.req.param('projectId');
+	const r2Bucket = c.env.R2_BUCKET || ((globalThis as unknown as { __TEST_R2_BUCKET: Env['R2_BUCKET'] }).__TEST_R2_BUCKET);
 	const repository = new ProjectRepository(c.env.DB);
+	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
+	await fileService.archiveProjectFiles(projectId);
 	await repository.delete(projectId);
 
 	return c.body(null, 204);

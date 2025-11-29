@@ -1,20 +1,4 @@
 tasks:
-  # Existing backlog items
-  - task_id: TASK-044
-    spec_id: SPEC-project-1
-    title: "Write comprehensive tests for project management"
-    description: |
-      Complete remaining acceptance and integration tests for project management features
-      (projects, files, project-work note association, PROJECT RAG scope). Raise coverage
-      for project modules to target thresholds.
-    priority: 2
-    status: paused
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "All SPEC-project-1 acceptance scenarios covered by automated tests"
-      - "Project routes/file routes tests stable in CI"
-      - ">=80% coverage for project management code paths"
-
   - task_id: TASK-024
     spec_id: SPEC-worknote-1
     title: "Add searchable assignee selector for work notes"
@@ -115,8 +99,8 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 8
-  total_estimated_effort: 29 hours
+  total_tasks: 6
+  total_estimated_effort: 21 hours
   phases:
     - name: "Current"
       tasks: []

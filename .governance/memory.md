@@ -699,3 +699,20 @@
 - Frontend: Dashboard remaining tab now groups todos by work note with per-group counts (new helper `groupTodosByWorkNote`).
 - Backend: Remaining/week/month/backlog views now honor wait_until (future-dated items hidden) via TodoRepository filters.
 - Tests: Added unit tests for repository wait_until behavior across views and grouping helper (`tests/unit/todo-repository.test.ts`, `tests/unit/todo-grouping.test.ts`).
+
+### Session 43: Dashboard Grouping Completion (2025-11-29)
+- **TASK-046 (SPEC-todo-1)** completed. Dashboard "남은 할 일" tab grouped by work note with counts; wait_until filtering consistently applied to remaining/week/month/backlog views.
+- Tests: `npm test -- tests/unit/todo-repository.test.ts tests/unit/todo-grouping.test.ts` passing.
+- Next: Resume **TASK-044 (SPEC-project-1)** to add comprehensive project management tests and raise coverage.
+
+### Session 44: Project Tests & File Archiving (2025-11-29)
+- **TASK-044 (SPEC-project-1)** progress: added integration coverage for project detail associations (work notes/files lengths), file metrics in stats, and deletion with file archival.
+- Implemented `archiveProjectFiles` in `ProjectFileService` and wired DELETE /projects/:projectId to archive R2 objects to `projects/{projectId}/archive/{fileId}` while soft-deleting DB rows and removing embeddings.
+- Tests run:
+  - `npm test -- tests/integration/project-routes.test.ts`
+  - `npm test -- tests/integration/project-files.test.ts tests/unit/project-file-service.test.ts`
+- Remaining: confirm overall coverage target (>=80%) for project modules and add any missing acceptance scenarios if gaps remain.
+
+### Session 45: Coverage Attempt (2025-11-29)
+- Tried `npm run test:coverage` (vitest --coverage) but Workers pool cannot import node:inspector, causing run failure (known @vitest/coverage-v8 issue in Cloudflare Workers). No coverage numbers gathered.
+- Need alternative: run Node environment subset for project unit/integration tests with coverage (may require env shims), or rely on CI that supports node:inspector. Current tests still passing without coverage.

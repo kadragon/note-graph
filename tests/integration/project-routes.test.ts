@@ -1,12 +1,43 @@
 // Trace: SPEC-project-1, TASK-037
 // Integration tests for Project API routes
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { env, SELF } from 'cloudflare:test';
 import type { Env } from '../../src/types/env';
 import type { Project, ProjectDetail, ProjectStats } from '../../src/types/project';
+import type { R2Bucket, R2HTTPMetadata, R2Object, R2ObjectBody, R2PutOptions } from '@cloudflare/workers-types';
 
 const testEnv = env as unknown as Env;
+
+class MockR2 implements R2Bucket {
+	storage = new Map<string, { value: Blob; httpMetadata?: R2HTTPMetadata; customMetadata?: Record<string, string> }>();
+
+	async put(key: string, value: Blob, options?: R2PutOptions): Promise<R2Object | null> {
+		this.storage.set(key, { value, httpMetadata: options?.httpMetadata, customMetadata: options?.customMetadata });
+		return null;
+	}
+
+	async get(key: string): Promise<R2ObjectBody | null> {
+		const entry = this.storage.get(key);
+		if (!entry) return null;
+		return {
+			body: entry.value.stream(),
+			size: entry.value.size,
+			httpMetadata: entry.httpMetadata ?? {},
+			customMetadata: entry.customMetadata ?? {},
+			httpEtag: '',
+			writeHttpMetadata: () => {},
+		} as unknown as R2ObjectBody;
+	}
+
+	async delete(key: string): Promise<void> {
+		this.storage.delete(key);
+	}
+
+	async head(): Promise<R2Object | null> {
+		return null;
+	}
+}
 
 // Helper to create authenticated fetch request
 const authFetch = (url: string, options?: RequestInit) => {
@@ -198,11 +229,48 @@ describe('Project API Routes', () => {
 		beforeEach(async () => {
 			const now = new Date().toISOString();
 			projectId = 'PROJECT-DETAIL-001';
-			await testEnv.DB.prepare(
-				`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-			)
-				.bind(projectId, '상세 프로젝트', '진행중', now, now)
-				.run();
+			await testEnv.DB.batch([
+				testEnv.DB.prepare(
+					`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				)
+					.bind(projectId, '상세 프로젝트', '진행중', now, now),
+				// Seed work notes and associations
+				testEnv.DB.prepare(
+					`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				)
+					.bind('WORK-001', '업무1', '내용1', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				)
+					.bind('WORK-002', '업무2', '내용2', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+				)
+					.bind('WORK-003', '업무3', '내용3', now, now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+				)
+					.bind(projectId, 'WORK-001', now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+				)
+					.bind(projectId, 'WORK-002', now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+				)
+					.bind(projectId, 'WORK-003', now),
+				// Seed project files (logical only; no R2 interaction needed for detail response)
+				testEnv.DB.prepare(
+					`INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+				)
+					.bind('FILE-001', projectId, 'projects/PROJECT-DETAIL-001/files/FILE-001', 'a.pdf', 'application/pdf', 1024, 'tester@example.com', now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+				)
+					.bind('FILE-002', projectId, 'projects/PROJECT-DETAIL-001/files/FILE-002', 'b.txt', 'text/plain', 2048, 'tester@example.com', now),
+			]);
 		});
 
 		it('should return project detail with associations', async () => {
@@ -216,7 +284,9 @@ describe('Project API Routes', () => {
 			expect(project.name).toBe('상세 프로젝트');
 			expect(project.participants).toBeDefined();
 			expect(project.workNotes).toBeDefined();
+			expect(project.workNotes).toHaveLength(3);
 			expect(project.files).toBeDefined();
+			expect(project.files).toHaveLength(2);
 			expect(project.stats).toBeDefined();
 		});
 
@@ -316,6 +386,73 @@ describe('Project API Routes', () => {
 		});
 	});
 
+	describe('DELETE /api/projects/:projectId with files', () => {
+		let projectId: string;
+		let r2: MockR2;
+
+		beforeEach(async () => {
+			const now = new Date().toISOString();
+			projectId = 'PROJECT-DEL-FILES';
+			r2 = new MockR2();
+
+			// Inject mocks
+			(testEnv as any).R2_BUCKET = r2 as unknown as R2Bucket;
+			(globalThis as any).__TEST_R2_BUCKET = r2 as unknown as R2Bucket;
+			(testEnv as any).VECTORIZE = {
+				query: vi.fn().mockResolvedValue({ matches: [] }),
+				deleteByIds: vi.fn().mockResolvedValue(undefined),
+				upsert: vi.fn().mockResolvedValue(undefined),
+			};
+
+			await testEnv.DB.batch([
+				// Project
+				testEnv.DB.prepare(
+					`INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, '진행중', ?, ?)`
+				).bind(projectId, '삭제 파일 프로젝트', now, now),
+				// File rows
+				testEnv.DB.prepare(
+					`INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+				).bind('FILE-DEL-1', projectId, `projects/${projectId}/files/FILE-DEL-1`, 'report.txt', 'text/plain', 10, 'tester@example.com', now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+				).bind('FILE-DEL-2', projectId, `projects/${projectId}/files/FILE-DEL-2`, 'diagram.png', 'image/png', 20, 'tester@example.com', now),
+			]);
+
+			// Seed R2 objects
+			r2.storage.set(`projects/${projectId}/files/FILE-DEL-1`, { value: new Blob(['hello'], { type: 'text/plain' }) });
+			r2.storage.set(`projects/${projectId}/files/FILE-DEL-2`, { value: new Blob(['img'], { type: 'image/png' }) });
+		});
+
+		it('archives project files and soft deletes project', async () => {
+			const response = await authFetch(`http://localhost/api/projects/${projectId}`, {
+				method: 'DELETE',
+			});
+
+			expect(response.status).toBe(204);
+
+			// Project soft deleted
+			const project = await testEnv.DB.prepare('SELECT deleted_at FROM projects WHERE project_id = ?')
+				.bind(projectId)
+				.first<{ deleted_at: string }>();
+			expect(project?.deleted_at).toBeDefined();
+
+			// Files soft deleted and archived
+			const fileRows = await testEnv.DB.prepare('SELECT file_id, deleted_at FROM project_files WHERE project_id = ?')
+				.bind(projectId)
+				.all<{ file_id: string; deleted_at: string }>();
+			fileRows.results?.forEach((row) => {
+				expect(row.deleted_at).toBeDefined();
+			});
+
+			expect(r2.storage.has(`projects/${projectId}/files/FILE-DEL-1`)).toBe(false);
+			expect(r2.storage.has(`projects/${projectId}/files/FILE-DEL-2`)).toBe(false);
+			expect(r2.storage.has(`projects/${projectId}/archive/FILE-DEL-1`)).toBe(true);
+			expect(r2.storage.has(`projects/${projectId}/archive/FILE-DEL-2`)).toBe(true);
+		});
+	});
+
 	describe('GET /api/projects/:projectId/stats', () => {
 		let projectId: string;
 
@@ -345,6 +482,15 @@ describe('Project API Routes', () => {
 				testEnv.DB.prepare(
 					`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
 				).bind('TODO-002', 'WORK-001', '할일2', '진행중', now, now),
+				// Files for metrics
+				testEnv.DB.prepare(
+					`INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+				).bind('FILE-001', projectId, 'projects/PROJECT-STATS-001/files/FILE-001', 'a.pdf', 'application/pdf', 10_000, 'tester@example.com', now),
+				testEnv.DB.prepare(
+					`INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+				).bind('FILE-002', projectId, 'projects/PROJECT-STATS-001/files/FILE-002', 'b.png', 'image/png', 15_000, 'tester@example.com', now),
 			]);
 		});
 
@@ -360,6 +506,8 @@ describe('Project API Routes', () => {
 			expect(stats.totalTodos).toBe(2);
 			expect(stats.completedTodos).toBe(1);
 			expect(stats.pendingTodos).toBe(1);
+			expect(stats.totalFiles).toBe(2);
+			expect(stats.totalFileSize).toBe(25000);
 		});
 
 		it('should return 404 for non-existent project', async () => {

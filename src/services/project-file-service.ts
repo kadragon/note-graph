@@ -329,6 +329,64 @@ export class ProjectFileService {
 	}
 
 	/**
+	 * Archive all active files for a project (used during project deletion)
+	 *
+	 * Moves objects to archive prefix, soft-deletes DB records, and removes embeddings.
+	 */
+	async archiveProjectFiles(projectId: string): Promise<void> {
+		const files = await this.db
+			.prepare(
+				`
+      SELECT * FROM project_files
+      WHERE project_id = ? AND deleted_at IS NULL
+    `
+			)
+			.bind(projectId)
+			.all<Record<string, unknown>>();
+
+		if (!files.results || files.results.length === 0) return;
+
+		const now = new Date().toISOString();
+
+		for (const row of files.results) {
+			const fileId = row.file_id as string;
+			const currentKey = row.r2_key as string;
+			const archiveKey = currentKey.replace('/files/', '/archive/');
+
+			// Move object to archive prefix if it exists
+			const object = await this.r2.get(currentKey);
+			if (object) {
+				await this.r2.put(archiveKey, object.body, {
+					httpMetadata: (object as any).httpMetadata,
+					customMetadata: (object as any).customMetadata,
+				});
+				await this.r2.delete(currentKey);
+			}
+
+			// Soft delete DB record and point to archive key for traceability
+			await this.db
+				.prepare(
+					`
+        UPDATE project_files
+        SET deleted_at = ?, r2_key = ?
+        WHERE file_id = ?
+      `
+				)
+				.bind(now, archiveKey, fileId)
+				.run();
+
+			// Clean up embeddings if present
+			if (row.embedded_at) {
+				try {
+					await this.vectorizeService.deleteFileChunks(fileId);
+				} catch (error) {
+					console.error(`Failed to delete embeddings for archived file ${fileId}:`, error);
+				}
+			}
+		}
+	}
+
+	/**
 	 * Map database row to ProjectFile type
 	 */
 	private mapDbToFile(row: Record<string, unknown>): ProjectFile {
