@@ -345,10 +345,11 @@ export class ProjectFileService {
 	 * @throws BadRequestError if file count exceeds batch limit
 	 */
 	async archiveProjectFiles(projectId: string): Promise<ArchiveResult> {
+		// Select only necessary columns for better performance
 		const files = await this.db
 			.prepare(
 				`
-      SELECT * FROM project_files
+      SELECT file_id, r2_key, embedded_at FROM project_files
       WHERE project_id = ? AND deleted_at IS NULL
     `
 			)
@@ -367,18 +368,15 @@ export class ProjectFileService {
 			);
 		}
 
-		const result: ArchiveResult = {
-			succeeded: [],
-			failed: [],
-		};
-
 		const now = new Date().toISOString();
 
-		// Process each file individually, collecting errors instead of failing fast
-		for (const row of files.results) {
+		// Process files in parallel using Promise.allSettled for better performance
+		// and to handle partial failures gracefully
+		const archivePromises = files.results.map(async (row) => {
 			const fileId = row.file_id as string;
 			const currentKey = row.r2_key as string;
-			const archiveKey = currentKey.replace('/files/', '/archive/');
+			// Construct archive key explicitly from components (more robust than string replace)
+			const archiveKey = `projects/${projectId}/archive/${fileId}`;
 
 			try {
 				// Move object to archive prefix if it exists
@@ -412,15 +410,40 @@ export class ProjectFileService {
 					}
 				}
 
-				result.succeeded.push(fileId);
+				return { fileId, success: true };
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
 				console.error(`Failed to archive file ${fileId}:`, error);
-				result.failed.push({ fileId, error: errorMessage });
+				return { fileId, success: false, error: errorMessage };
 			}
-		}
+		});
 
-		return result;
+		// Wait for all archival operations to complete
+		const results = await Promise.allSettled(archivePromises);
+
+		// Collect succeeded and failed file IDs
+		const archiveResult: ArchiveResult = {
+			succeeded: [],
+			failed: [],
+		};
+
+		results.forEach((result) => {
+			if (result.status === 'fulfilled') {
+				if (result.value.success) {
+					archiveResult.succeeded.push(result.value.fileId);
+				} else {
+					archiveResult.failed.push({
+						fileId: result.value.fileId,
+						error: result.value.error || 'Unknown error'
+					});
+				}
+			} else {
+				// Promise itself rejected (shouldn't happen with our try-catch, but handle defensively)
+				console.error('Unexpected promise rejection during archival:', result.reason);
+			}
+		});
+
+		return archiveResult;
 	}
 
 	/**
