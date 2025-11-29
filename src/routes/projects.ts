@@ -19,6 +19,11 @@ import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
 import { NotFoundError, ConflictError, BadRequestError } from '../types/errors';
 
+// Interface for test environment global fallback
+interface GlobalWithTestBucket {
+	__TEST_R2_BUCKET?: R2Bucket;
+}
+
 const projects = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
 // All project routes require authentication
@@ -89,7 +94,7 @@ projects.delete('/:projectId', async (c) => {
 	const repository = new ProjectRepository(c.env.DB);
 
 	// Get R2 bucket (in tests, env might not have R2_BUCKET at request time, so use test global fallback)
-	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
 	if (!r2Bucket) {
 		throw new Error('R2_BUCKET not configured');
 	}
@@ -286,7 +291,7 @@ projects.post('/:projectId/files', async (c) => {
 	const user = c.get('user');
 
 	// Get R2 bucket (in tests, env might not have R2_BUCKET at request time, so use test global fallback)
-	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
 	if (!r2Bucket) {
 		throw new Error('R2_BUCKET not configured');
 	}
@@ -310,7 +315,7 @@ projects.post('/:projectId/files', async (c) => {
 projects.get('/:projectId/files', async (c) => {
 	const projectId = c.req.param('projectId');
 
-	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
 	if (!r2Bucket) {
 		throw new Error('R2_BUCKET not configured');
 	}
@@ -329,7 +334,7 @@ projects.get('/:projectId/files', async (c) => {
 projects.get('/:projectId/files/:fileId', async (c) => {
 	const fileId = c.req.param('fileId');
 
-	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
 	if (!r2Bucket) {
 		throw new Error('R2_BUCKET not configured');
 	}
@@ -351,7 +356,7 @@ projects.get('/:projectId/files/:fileId', async (c) => {
 projects.get('/:projectId/files/:fileId/download', async (c) => {
 	const fileId = c.req.param('fileId');
 
-	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
 	if (!r2Bucket) {
 		throw new Error('R2_BUCKET not configured');
 	}
@@ -370,7 +375,7 @@ projects.get('/:projectId/files/:fileId/download', async (c) => {
 projects.delete('/:projectId/files/:fileId', async (c) => {
 	const fileId = c.req.param('fileId');
 
-	const r2Bucket = c.env.R2_BUCKET || (globalThis as any).__TEST_R2_BUCKET;
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
 	if (!r2Bucket) {
 		throw new Error('R2_BUCKET not configured');
 	}
