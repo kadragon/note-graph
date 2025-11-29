@@ -19,6 +19,11 @@ import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
 import { NotFoundError, ConflictError, BadRequestError } from '../types/errors';
 
+// Interface for test environment global fallback
+interface GlobalWithTestBucket {
+	__TEST_R2_BUCKET?: R2Bucket;
+}
+
 const projects = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
 // All project routes require authentication
@@ -87,6 +92,21 @@ projects.put('/:projectId', async (c) => {
 projects.delete('/:projectId', async (c) => {
 	const projectId = c.req.param('projectId');
 	const repository = new ProjectRepository(c.env.DB);
+
+	// Get R2 bucket (in tests, env might not have R2_BUCKET at request time, so use test global fallback)
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
+	if (!r2Bucket) {
+		throw new Error('R2_BUCKET not configured');
+	}
+
+	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
+
+	const archiveResult = await fileService.archiveProjectFiles(projectId);
+
+	// Log archival failures if any occurred
+	if (archiveResult.failed.length > 0) {
+		console.warn(`Failed to archive ${archiveResult.failed.length} files for project ${projectId}:`, archiveResult.failed);
+	}
 
 	await repository.delete(projectId);
 
@@ -270,8 +290,11 @@ projects.post('/:projectId/files', async (c) => {
 	// Get authenticated user email
 	const user = c.get('user');
 
-	// Allow test environment to inject mock R2 bucket
-	const r2Bucket = c.env.R2_BUCKET || ((globalThis as unknown as { __TEST_R2_BUCKET: Env['R2_BUCKET'] }).__TEST_R2_BUCKET);
+	// Get R2 bucket (in tests, env might not have R2_BUCKET at request time, so use test global fallback)
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
+	if (!r2Bucket) {
+		throw new Error('R2_BUCKET not configured');
+	}
 
 	// Upload file using service
 	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
@@ -291,7 +314,12 @@ projects.post('/:projectId/files', async (c) => {
  */
 projects.get('/:projectId/files', async (c) => {
 	const projectId = c.req.param('projectId');
-	const r2Bucket = c.env.R2_BUCKET || ((globalThis as unknown as { __TEST_R2_BUCKET: Env['R2_BUCKET'] }).__TEST_R2_BUCKET);
+
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
+	if (!r2Bucket) {
+		throw new Error('R2_BUCKET not configured');
+	}
+
 	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
 	const files = await fileService.listFiles(projectId);
@@ -305,7 +333,12 @@ projects.get('/:projectId/files', async (c) => {
  */
 projects.get('/:projectId/files/:fileId', async (c) => {
 	const fileId = c.req.param('fileId');
-	const r2Bucket = c.env.R2_BUCKET || ((globalThis as unknown as { __TEST_R2_BUCKET: Env['R2_BUCKET'] }).__TEST_R2_BUCKET);
+
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
+	if (!r2Bucket) {
+		throw new Error('R2_BUCKET not configured');
+	}
+
 	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
 	const file = await fileService.getFileById(fileId);
@@ -322,7 +355,12 @@ projects.get('/:projectId/files/:fileId', async (c) => {
  */
 projects.get('/:projectId/files/:fileId/download', async (c) => {
 	const fileId = c.req.param('fileId');
-	const r2Bucket = c.env.R2_BUCKET || ((globalThis as unknown as { __TEST_R2_BUCKET: Env['R2_BUCKET'] }).__TEST_R2_BUCKET);
+
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
+	if (!r2Bucket) {
+		throw new Error('R2_BUCKET not configured');
+	}
+
 	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
 	const { body, headers } = await fileService.streamFile(fileId);
@@ -336,7 +374,12 @@ projects.get('/:projectId/files/:fileId/download', async (c) => {
  */
 projects.delete('/:projectId/files/:fileId', async (c) => {
 	const fileId = c.req.param('fileId');
-	const r2Bucket = c.env.R2_BUCKET || ((globalThis as unknown as { __TEST_R2_BUCKET: Env['R2_BUCKET'] }).__TEST_R2_BUCKET);
+
+	const r2Bucket = c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
+	if (!r2Bucket) {
+		throw new Error('R2_BUCKET not configured');
+	}
+
 	const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
 	await fileService.deleteFile(fileId);

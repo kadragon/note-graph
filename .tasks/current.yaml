@@ -2,14 +2,19 @@
 # Only one task should be active at a time
 
 current_task:
-  task_id: TASK-046
-  spec_id: SPEC-todo-1
-  title: "Dashboard remaining todos grouped by work note & wait-until fix"
+  task_id: TASK-044
+  spec_id: SPEC-project-1
+  title: "Write comprehensive tests for project management"
   status: in_progress
-  started_at: "2025-11-28"
+  started_at: "2025-11-29"
 
 notes: |
-  User request: Dashboard "남은 할 일" view should be grouped by work note, and wait-until calculation seems wrong.
-  Actions: add grouping UI for remaining tab; audit wait_until filtering logic and fix inconsistency.
-  Scope ties to SPEC-todo-1 (dashboard views and wait logic).
-  Progress: Added grouping helper + UI wiring for remaining view; wait_until filtering now applied to remaining/week/month/backlog; new unit tests added.
+  Resuming paused test coverage task for SPEC-project-1. Added integration coverage for
+  project detail associations, file metrics in stats, and project deletion archiving files
+  to R2 archive prefix. Implemented archiveProjectFiles in ProjectFileService and wired
+  DELETE /projects/:id to use it. Relevant tests passing:
+  - npm test -- tests/integration/project-routes.test.ts
+  - npm test -- tests/integration/project-files.test.ts tests/unit/project-file-service.test.ts
+  Coverage run with `npm run test:coverage` failed due to Workers pool inability to load
+  node:inspector (known @vitest/coverage-v8 issue). Need alternative strategy (Node env
+  subset, nyc on unit tests, or CI-side bundling) to measure coverage.

@@ -4,7 +4,7 @@
  * Includes automatic text extraction and embedding for supported file types
  */
 
-import type { R2Bucket } from '@cloudflare/workers-types';
+import type { R2Bucket, R2Object, R2ObjectBody } from '@cloudflare/workers-types';
 import type { D1Database } from '@cloudflare/workers-types';
 import { nanoid } from 'nanoid';
 import type { Env } from '../types/env';
@@ -16,6 +16,7 @@ import { EmbeddingService, VectorizeService } from './embedding-service.js';
 
 // Configuration
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILES_PER_BATCH = 100; // Prevent timeout on large projects
 const ALLOWED_MIME_TYPES = [
 	// PDFs
 	'application/pdf',
@@ -42,6 +43,11 @@ interface UploadFileParams {
 	file: Blob;
 	originalName: string;
 	uploadedBy: string;
+}
+
+interface ArchiveResult {
+	succeeded: string[];
+	failed: Array<{ fileId: string; error: string }>;
 }
 
 export class ProjectFileService {
@@ -326,6 +332,142 @@ export class ProjectFileService {
 				// Non-fatal: log and continue
 			}
 		}
+	}
+
+	/**
+	 * Archive all active files for a project (used during project deletion)
+	 *
+	 * Moves objects to archive prefix, soft-deletes DB records, and removes embeddings.
+	 * Returns a summary of successful and failed archival operations.
+	 *
+	 * @param projectId - Project ID to archive files for
+	 * @returns ArchiveResult with lists of succeeded and failed file IDs
+	 * @throws BadRequestError if file count exceeds batch limit
+	 */
+	async archiveProjectFiles(projectId: string): Promise<ArchiveResult> {
+		// Select only necessary columns for better performance
+		const files = await this.db
+			.prepare(
+				`
+      SELECT file_id, r2_key, embedded_at FROM project_files
+      WHERE project_id = ? AND deleted_at IS NULL
+    `
+			)
+			.bind(projectId)
+			.all<Record<string, unknown>>();
+
+		if (!files.results || files.results.length === 0) {
+			return { succeeded: [], failed: [] };
+		}
+
+		// Performance safeguard: warn if file count is very large
+		if (files.results.length > MAX_FILES_PER_BATCH) {
+			console.warn(
+				`Project ${projectId} has ${files.results.length} files (max recommended: ${MAX_FILES_PER_BATCH}). ` +
+				`Archival may take longer than expected.`
+			);
+		}
+
+		const now = new Date().toISOString();
+
+		// Process files in parallel using Promise.allSettled for better performance
+		// and to handle partial failures gracefully
+		const archivePromises = files.results.map(async (row) => {
+			const fileId = row.file_id as string;
+			const currentKey = row.r2_key as string;
+			// Construct archive key explicitly from components (more robust than string replace)
+			const archiveKey = `projects/${projectId}/archive/${fileId}`;
+
+			try {
+				// Move object to archive prefix if it exists
+				const object = await this.r2.get(currentKey);
+				if (object) {
+					// Type-safe metadata extraction
+					const metadata = this.extractR2Metadata(object);
+					await this.r2.put(archiveKey, object.body, metadata);
+					await this.r2.delete(currentKey);
+				}
+
+				// Soft delete DB record and point to archive key for traceability
+				await this.db
+					.prepare(
+						`
+          UPDATE project_files
+          SET deleted_at = ?, r2_key = ?
+          WHERE file_id = ?
+        `
+					)
+					.bind(now, archiveKey, fileId)
+					.run();
+
+				// Clean up embeddings if present
+				if (row.embedded_at) {
+					try {
+						await this.vectorizeService.deleteFileChunks(fileId);
+					} catch (error) {
+						console.error(`Failed to delete embeddings for archived file ${fileId}:`, error);
+						// Non-fatal: continue with archival
+					}
+				}
+
+				return { fileId, success: true };
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				console.error(`Failed to archive file ${fileId}:`, error);
+				return { fileId, success: false, error: errorMessage };
+			}
+		});
+
+		// Wait for all archival operations to complete
+		const results = await Promise.allSettled(archivePromises);
+
+		// Collect succeeded and failed file IDs
+		const archiveResult: ArchiveResult = {
+			succeeded: [],
+			failed: [],
+		};
+
+		results.forEach((result) => {
+			if (result.status === 'fulfilled') {
+				if (result.value.success) {
+					archiveResult.succeeded.push(result.value.fileId);
+				} else {
+					archiveResult.failed.push({
+						fileId: result.value.fileId,
+						error: result.value.error || 'Unknown error'
+					});
+				}
+			} else {
+				// Promise itself rejected (shouldn't happen with our try-catch, but handle defensively)
+				console.error('Unexpected promise rejection during archival:', result.reason);
+			}
+		});
+
+		return archiveResult;
+	}
+
+	/**
+	 * Extract metadata from R2 object in a type-safe manner
+	 */
+	private extractR2Metadata(object: R2ObjectBody): {
+		httpMetadata?: R2Object['httpMetadata'];
+		customMetadata?: R2Object['customMetadata'];
+	} {
+		const metadata: {
+			httpMetadata?: R2Object['httpMetadata'];
+			customMetadata?: R2Object['customMetadata'];
+		} = {};
+
+		// R2ObjectBody should have these properties, but check defensively
+		if ('httpMetadata' in object && object.httpMetadata) {
+			metadata.httpMetadata = object.httpMetadata;
+		}
+
+		if ('customMetadata' in object && object.customMetadata) {
+			metadata.customMetadata = object.customMetadata;
+		}
+
+		return metadata;
 	}
 
 	/**

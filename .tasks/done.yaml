@@ -2,6 +2,21 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-046
+    title: "Dashboard remaining todos grouped by work note & wait-until fix"
+    spec_id: SPEC-todo-1
+    completed_at: "2025-11-29T20:46:30Z"
+    outcome: |
+      Grouped the dashboard "남은 할 일" tab by work note with per-work counts using a new
+      grouping helper, improving readability for long todo lists. Applied wait_until
+      filtering consistently to remaining/week/month/backlog views so future-dated todos
+      stay hidden until their wait date. Wiring updated in dashboard UI to render grouped
+      sections and respect the new filtering logic.
+    test_results: |
+      ✓ npm test -- tests/unit/todo-repository.test.ts tests/unit/todo-grouping.test.ts
+    estimated_effort: 2h
+    actual_effort: ~1h
+
   - task_id: TASK-CI-OPT
     title: "Optimize CI Workflow"
     spec_id: SPEC-devx-2
