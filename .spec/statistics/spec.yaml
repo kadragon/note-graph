@@ -100,8 +100,8 @@ data_model:
       calculation: "Jul 1 to Dec 31 of selected year"
 
     - name: "올해"
-      description: "Current year"
-      calculation: "Jan 1 to Dec 31 of current year"
+      description: "Selected or current year"
+      calculation: "Jan 1 to Dec 31 of the selected year (defaults to current year)"
 
     - name: "직전주"
       description: "Last complete week (Monday to Sunday)"

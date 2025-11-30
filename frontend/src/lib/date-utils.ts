@@ -83,9 +83,10 @@ export function getStatisticsPeriodRange(
     }
 
     case 'this-year': {
-      // Current year
-      const start = startOfYear(now);
-      const end = endOfYear(now);
+      // January 1 to December 31 of selected or current year
+      const dateForYear = new Date(targetYear, 0, 1);
+      const start = startOfYear(dateForYear);
+      const end = endOfYear(dateForYear);
       return {
         startDate: format(start, 'yyyy-MM-dd'),
         endDate: format(end, 'yyyy-MM-dd'),
@@ -104,7 +105,7 @@ export function getStatisticsPeriodRange(
     }
 
     default:
-      throw new Error(`Unknown period: ${period}`);
+      throw new Error(`Unknown period: ${period as any}`);
   }
 }
 

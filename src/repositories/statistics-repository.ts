@@ -100,23 +100,42 @@ export class StatisticsRepository {
 
     const workNotes = result.results || [];
 
-    // Fetch assigned persons for each work note
-    for (const workNote of workNotes) {
-      const personsResult = await this.db
-        .prepare(
-          `SELECT
-            wnp.person_id as personId,
-            p.name as personName,
-            p.current_dept as currentDept,
-            wnp.role
-           FROM work_note_person wnp
-           INNER JOIN persons p ON wnp.person_id = p.person_id
-           WHERE wnp.work_id = ?`
-        )
-        .bind(workNote.workId)
-        .all<{ personId: string; personName: string; currentDept: string | null; role: 'OWNER' | 'RELATED' }>();
+    // Batch fetch assigned persons for all work notes to avoid N+1 query problem
+    const workNoteIds = workNotes.map((wn) => wn.workId);
+    if (workNoteIds.length === 0) {
+      return workNotes;
+    }
 
-      workNote.assignedPersons = personsResult.results || [];
+    const personsResult = await this.db
+      .prepare(
+        `SELECT
+          wnp.work_id as workId,
+          wnp.person_id as personId,
+          p.name as personName,
+          p.current_dept as currentDept,
+          wnp.role
+         FROM work_note_person wnp
+         INNER JOIN persons p ON wnp.person_id = p.person_id
+         WHERE wnp.work_id IN (${workNoteIds.map(() => '?').join(',')})`
+      )
+      .bind(...workNoteIds)
+      .all<{ workId: string; personId: string; personName: string; currentDept: string | null; role: 'OWNER' | 'RELATED' }>();
+
+    // Map persons back to work notes
+    const personsByWorkId = new Map<string, any[]>();
+    for (const person of personsResult.results || []) {
+      const persons = personsByWorkId.get(person.workId) || [];
+      persons.push({
+        personId: person.personId,
+        personName: person.personName,
+        currentDept: person.currentDept,
+        role: person.role,
+      });
+      personsByWorkId.set(person.workId, persons);
+    }
+
+    for (const workNote of workNotes) {
+      workNote.assignedPersons = personsByWorkId.get(workNote.workId) || [];
     }
 
     return workNotes;
@@ -140,21 +159,36 @@ export class StatisticsRepository {
     const completionRate = totalTodos > 0 ? (totalCompletedTodos / totalTodos) * 100 : 0;
 
     // Calculate category distribution
+    // Batch fetch categories for all work notes to avoid N+1 query problem
     const categoryMap = new Map<string | null, number>();
-    for (const workNote of workNotes) {
-      const categoryResult = await this.db
+    const workNoteIds = workNotes.map((wn) => wn.workId);
+
+    if (workNoteIds.length > 0) {
+      const categoriesResult = await this.db
         .prepare(
-          `SELECT tc.category_id as categoryId
+          `SELECT
+            wntc.work_id as workId,
+            tc.category_id as categoryId
            FROM work_note_task_category wntc
            INNER JOIN task_categories tc ON wntc.category_id = tc.category_id
-           WHERE wntc.work_id = ?
-           LIMIT 1`
+           WHERE wntc.work_id IN (${workNoteIds.map(() => '?').join(',')})`
         )
-        .bind(workNote.workId)
-        .first<{ categoryId: string }>();
+        .bind(...workNoteIds)
+        .all<{ workId: string; categoryId: string }>();
 
-      const categoryId = categoryResult?.categoryId || null;
-      categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
+      // Build category map from work notes
+      const categoryByWorkId = new Map<string, string>();
+      for (const row of categoriesResult.results || []) {
+        if (!categoryByWorkId.has(row.workId)) {
+          categoryByWorkId.set(row.workId, row.categoryId);
+        }
+      }
+
+      // Count categories
+      for (const workNote of workNotes) {
+        const categoryId = categoryByWorkId.get(workNote.workId) || null;
+        categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
+      }
     }
 
     const byCategory: CategoryDistribution[] = Array.from(categoryMap.entries()).map(([category, count]) => ({
