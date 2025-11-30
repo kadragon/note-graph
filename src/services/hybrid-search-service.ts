@@ -1,10 +1,10 @@
 // Trace: SPEC-search-1, TASK-011
 import type { D1Database } from '@cloudflare/workers-types';
-import type { WorkNote } from '../types/work-note';
-import type { SearchFilters, SearchResultItem } from '../types/search';
 import type { Env } from '../types/env';
-import { FtsSearchService } from './fts-search-service';
+import type { SearchFilters, SearchResultItem } from '../types/search';
+import type { WorkNote } from '../types/work-note';
 import { EmbeddingService, VectorizeService } from './embedding-service';
+import { FtsSearchService } from './fts-search-service';
 
 /**
  * Hybrid search service combining FTS (lexical) and Vectorize (semantic)
@@ -31,7 +31,11 @@ export class HybridSearchService {
    * @param k - RRF parameter (default 60)
    * @returns Array of search results with hybrid scores and source attribution
    */
-  async search(query: string, filters?: SearchFilters, k: number = 60): Promise<SearchResultItem[]> {
+  async search(
+    query: string,
+    filters?: SearchFilters,
+    k: number = 60
+  ): Promise<SearchResultItem[]> {
     const limit = filters?.limit ?? 10;
 
     // Execute FTS and Vectorize searches in parallel
@@ -76,7 +80,11 @@ export class HybridSearchService {
       const vectorFilter = this.buildVectorizeFilter(filters);
 
       // Search Vectorize
-      const results = await this.vectorizeService.search(query, limit ? limit * 2 : 20, vectorFilter);
+      const results = await this.vectorizeService.search(
+        query,
+        limit ? limit * 2 : 20,
+        vectorFilter
+      );
 
       // Fetch work notes from D1 for matched IDs with person/dept filters applied
       const workNotes = await this.fetchWorkNotesByIds(
@@ -118,7 +126,10 @@ export class HybridSearchService {
     vectorResults: SearchResultItem[],
     k: number
   ): SearchResultItem[] {
-    const scoreMap = new Map<string, { score: number; item: SearchResultItem; sources: Set<string> }>();
+    const scoreMap = new Map<
+      string,
+      { score: number; item: SearchResultItem; sources: Set<string> }
+    >();
 
     // Add FTS scores
     ftsResults.forEach((item, index) => {
@@ -242,7 +253,10 @@ export class HybridSearchService {
 
     sql += ` WHERE ${conditions.join(' AND ')}`;
 
-    const result = await this.db.prepare(sql).bind(...params).all<WorkNote>();
+    const result = await this.db
+      .prepare(sql)
+      .bind(...params)
+      .all<WorkNote>();
 
     const workNotesMap = new Map<string, WorkNote>();
     for (const workNote of result.results || []) {

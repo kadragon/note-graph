@@ -1,22 +1,22 @@
-import { NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  LayoutDashboard,
-  FileText,
-  User,
-  Building2,
-  FolderKanban,
+  BarChart3,
   BriefcaseBusiness,
-  Search,
-  MessageSquare,
-  Notebook,
+  Building2,
   ChevronRight,
   Database,
-  BarChart3,
+  FileText,
+  FolderKanban,
+  LayoutDashboard,
+  MessageSquare,
+  Notebook,
+  Search,
+  User,
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { API } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface NavItem {
   path: string;
@@ -147,10 +147,12 @@ export default function Sidebar() {
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       <span className="truncate">{item.label}</span>
-                      <ChevronRight className={cn(
-                        'ml-auto h-4 w-4 shrink-0 opacity-0 transition-all',
-                        'group-hover:opacity-100'
-                      )} />
+                      <ChevronRight
+                        className={cn(
+                          'ml-auto h-4 w-4 shrink-0 opacity-0 transition-all',
+                          'group-hover:opacity-100'
+                        )}
+                      />
                     </NavLink>
                   );
                 })}
@@ -170,11 +172,7 @@ export default function Sidebar() {
             <p className="truncate text-sm font-medium">
               {user?.email ? user.email.split('@')[0] : '사용자'}
             </p>
-            {user?.email && (
-              <p className="truncate text-xs text-muted-foreground">
-                {user.email}
-              </p>
-            )}
+            {user?.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
           </div>
         </div>
       </div>

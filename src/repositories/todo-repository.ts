@@ -5,9 +5,15 @@
 
 import type { D1Database } from '@cloudflare/workers-types';
 import { nanoid } from 'nanoid';
-import type { Todo, TodoWithWorkNote, RepeatRule, RecurrenceType, CustomIntervalUnit } from '../types/todo';
-import type { CreateTodoInput, UpdateTodoInput, ListTodosQuery } from '../schemas/todo';
+import type { CreateTodoInput, ListTodosQuery, UpdateTodoInput } from '../schemas/todo';
 import { NotFoundError } from '../types/errors';
+import type {
+  CustomIntervalUnit,
+  RecurrenceType,
+  RepeatRule,
+  Todo,
+  TodoWithWorkNote,
+} from '../types/todo';
 
 export class TodoRepository {
   constructor(private db: D1Database) {}
@@ -82,7 +88,7 @@ export class TodoRepository {
               baseDate.setDate(baseDate.getDate() + customInterval);
               break;
             case 'WEEK':
-              baseDate.setDate(baseDate.getDate() + (customInterval * 7));
+              baseDate.setDate(baseDate.getDate() + customInterval * 7);
               break;
             case 'MONTH':
               baseDate.setMonth(baseDate.getMonth() + customInterval);
@@ -142,7 +148,7 @@ export class TodoRepository {
       .bind(workId)
       .all<Todo>();
 
-    return (result.results || []).map(todo => this.convertTodoFromDb(todo));
+    return (result.results || []).map((todo) => this.convertTodoFromDb(todo));
   }
 
   /**
@@ -231,11 +237,7 @@ export class TodoRepository {
 
       case 'backlog': {
         // Overdue todos (due_date < now and not completed)
-        conditions.push(
-          `t.status != ?`,
-          `t.due_date IS NOT NULL`,
-          `t.due_date < ?`
-        );
+        conditions.push(`t.status != ?`, `t.due_date IS NOT NULL`, `t.due_date < ?`);
         params.push('완료', now);
         break;
       }
@@ -286,7 +288,7 @@ export class TodoRepository {
     const stmt = this.db.prepare(sql);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<TodoWithWorkNote>();
 
-    return (result.results || []).map(todo => this.convertTodoFromDb(todo));
+    return (result.results || []).map((todo) => this.convertTodoFromDb(todo));
   }
 
   /**
@@ -351,10 +353,7 @@ export class TodoRepository {
       throw new NotFoundError('Todo', todoId);
     }
 
-    await this.db
-      .prepare(`DELETE FROM todos WHERE todo_id = ?`)
-      .bind(todoId)
-      .run();
+    await this.db.prepare(`DELETE FROM todos WHERE todo_id = ?`).bind(todoId).run();
 
     return existing.workId;
   }
@@ -391,7 +390,8 @@ export class TodoRepository {
       updateFields.push('status = ?');
       updateParams.push(data.status);
     }
-    const nextWaitUntil = data.waitUntil !== undefined ? (data.waitUntil || null) : existing.waitUntil;
+    const nextWaitUntil =
+      data.waitUntil !== undefined ? data.waitUntil || null : existing.waitUntil;
     // Auto-fill due_date from wait_until when:
     // 1. User is setting wait_until in this update
     // 2. User didn't provide due_date in this update
@@ -496,11 +496,12 @@ export class TodoRepository {
       await this.db.batch(statements);
     }
 
-    const resultingDueDate = data.dueDate !== undefined
-      ? (data.dueDate || null)
-      : shouldAutoFillDueDate
-        ? nextWaitUntil
-        : existing.dueDate;
+    const resultingDueDate =
+      data.dueDate !== undefined
+        ? data.dueDate || null
+        : shouldAutoFillDueDate
+          ? nextWaitUntil
+          : existing.dueDate;
 
     const resultingWaitUntil = nextWaitUntil;
 
@@ -508,14 +509,16 @@ export class TodoRepository {
     return {
       ...existing,
       title: data.title !== undefined ? data.title : existing.title,
-      description: data.description !== undefined ? (data.description || null) : existing.description,
+      description: data.description !== undefined ? data.description || null : existing.description,
       status: data.status !== undefined ? data.status : existing.status,
       dueDate: resultingDueDate,
       waitUntil: resultingWaitUntil,
       repeatRule: data.repeatRule !== undefined ? data.repeatRule : existing.repeatRule,
-      recurrenceType: data.recurrenceType !== undefined ? (data.recurrenceType || null) : existing.recurrenceType,
-      customInterval: data.customInterval !== undefined ? (data.customInterval || null) : existing.customInterval,
-      customUnit: data.customUnit !== undefined ? (data.customUnit || null) : existing.customUnit,
+      recurrenceType:
+        data.recurrenceType !== undefined ? data.recurrenceType || null : existing.recurrenceType,
+      customInterval:
+        data.customInterval !== undefined ? data.customInterval || null : existing.customInterval,
+      customUnit: data.customUnit !== undefined ? data.customUnit || null : existing.customUnit,
       skipWeekends: data.skipWeekends !== undefined ? data.skipWeekends : existing.skipWeekends,
       updatedAt: updateFields.length > 0 ? nowISO : existing.updatedAt,
     };

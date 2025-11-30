@@ -1,7 +1,7 @@
 // Trace: SPEC-rag-1, TASK-016
 // Unit tests for ChunkingService
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ChunkingService } from '../../src/services/chunking-service';
 
 describe('ChunkingService', () => {
@@ -10,16 +10,11 @@ describe('ChunkingService', () => {
   describe('chunkWorkNote()', () => {
     it('should split long text into chunks with overlap', () => {
       const longText = 'word '.repeat(600); // ~600 words
-      const chunks = chunkingService.chunkWorkNote(
-        'WORK-001',
-        'Long Document',
-        longText,
-        {
-          person_ids: ['P-001'],
-          dept_name: 'Engineering',
-          category: 'Report',
-        }
-      );
+      const chunks = chunkingService.chunkWorkNote('WORK-001', 'Long Document', longText, {
+        person_ids: ['P-001'],
+        dept_name: 'Engineering',
+        category: 'Report',
+      });
 
       expect(chunks.length).toBeGreaterThan(1);
       expect(chunks[0].text.length).toBeGreaterThan(0);
@@ -30,16 +25,11 @@ describe('ChunkingService', () => {
 
     it('should handle short text without chunking', () => {
       const shortText = 'This is a short text.';
-      const chunks = chunkingService.chunkWorkNote(
-        'WORK-002',
-        'Short Note',
-        shortText,
-        {
-          person_ids: ['P-002'],
-          dept_name: 'HR',
-          category: 'Note',
-        }
-      );
+      const chunks = chunkingService.chunkWorkNote('WORK-002', 'Short Note', shortText, {
+        person_ids: ['P-002'],
+        dept_name: 'HR',
+        category: 'Note',
+      });
 
       expect(chunks.length).toBe(1);
       expect(chunks[0].text).toContain(shortText);
@@ -51,16 +41,11 @@ describe('ChunkingService', () => {
       // Chunk size: 512 tokens * 4 chars/token = 2048 chars
       // Need > 2048 chars for multiple chunks
       const text = 'word '.repeat(600); // ~3000 chars
-      const chunks = chunkingService.chunkWorkNote(
-        'WORK-003',
-        'Medium Document',
-        text,
-        {
-          person_ids: ['P-003'],
-          dept_name: 'Sales',
-          category: 'Report',
-        }
-      );
+      const chunks = chunkingService.chunkWorkNote('WORK-003', 'Medium Document', text, {
+        person_ids: ['P-003'],
+        dept_name: 'Sales',
+        category: 'Report',
+      });
 
       // Verify multiple chunks were created
       expect(chunks.length).toBeGreaterThan(1);
@@ -88,16 +73,11 @@ describe('ChunkingService', () => {
 
     it('should handle Korean text', () => {
       const koreanText = '안녕하세요. '.repeat(200);
-      const chunks = chunkingService.chunkWorkNote(
-        'WORK-004',
-        '한글 문서',
-        koreanText,
-        {
-          person_ids: ['P-004'],
-          dept_name: '개발팀',
-          category: '회의',
-        }
-      );
+      const chunks = chunkingService.chunkWorkNote('WORK-004', '한글 문서', koreanText, {
+        person_ids: ['P-004'],
+        dept_name: '개발팀',
+        category: '회의',
+      });
 
       expect(chunks.length).toBeGreaterThan(0);
       expect(chunks.every((chunk) => chunk.text.length > 0)).toBe(true);
@@ -118,16 +98,11 @@ describe('ChunkingService', () => {
     });
 
     it('should include title in chunk text', () => {
-      const chunks = chunkingService.chunkWorkNote(
-        'WORK-006',
-        'Important Title',
-        'Content here',
-        {
-          person_ids: ['P-006'],
-          dept_name: 'Marketing',
-          category: 'Memo',
-        }
-      );
+      const chunks = chunkingService.chunkWorkNote('WORK-006', 'Important Title', 'Content here', {
+        person_ids: ['P-006'],
+        dept_name: 'Marketing',
+        category: 'Memo',
+      });
 
       expect(chunks[0].text).toContain('Important Title');
       expect(chunks[0].text).toContain('Content here');

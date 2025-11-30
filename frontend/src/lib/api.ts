@@ -1,51 +1,51 @@
 import type {
-  User,
-  WorkNote,
-  CreateWorkNoteRequest,
-  UpdateWorkNoteRequest,
-  Person,
-  PersonDeptHistory,
-  CreatePersonRequest,
-  UpdatePersonRequest,
-  ImportPersonFromTextRequest,
-  ParsedPersonData,
-  ImportPersonResponse,
-  Department,
-  CreateDepartmentRequest,
-  UpdateDepartmentRequest,
-  TaskCategory,
-  CreateTaskCategoryRequest,
-  UpdateTaskCategoryRequest,
-  Todo,
-  TodoView,
-  TodoStatus,
-  RepeatRule,
-  RecurrenceType,
-  CustomIntervalUnit,
-  CreateTodoRequest,
-  UpdateTodoRequest,
-  SearchRequest,
-  SearchResult,
-  UnifiedSearchResult,
-  PersonSearchResult,
-  DepartmentSearchResult,
-  RAGQueryRequest,
-  RAGResponse,
   AIGenerateDraftRequest,
   AIGenerateDraftResponse,
-  PDFJob,
-  EmbeddingStats,
+  AssignWorkNoteRequest,
   BatchProcessResult,
+  CreateDepartmentRequest,
+  CreatePersonRequest,
+  CreateProjectRequest,
+  CreateTaskCategoryRequest,
+  CreateTodoRequest,
+  CreateWorkNoteRequest,
+  CustomIntervalUnit,
+  Department,
+  DepartmentSearchResult,
+  EmbeddingStats,
+  ImportPersonFromTextRequest,
+  ImportPersonResponse,
+  ParsedPersonData,
+  PDFJob,
+  Person,
+  PersonDeptHistory,
+  PersonSearchResult,
   Project,
   ProjectDetail,
-  CreateProjectRequest,
-  UpdateProjectRequest,
   ProjectFile,
-  ProjectStats,
-  AssignWorkNoteRequest,
   ProjectFilters,
-  WorkNoteStatistics,
+  ProjectStats,
+  RAGQueryRequest,
+  RAGResponse,
+  RecurrenceType,
+  RepeatRule,
+  SearchRequest,
+  SearchResult,
   StatisticsQueryParams,
+  TaskCategory,
+  Todo,
+  TodoStatus,
+  TodoView,
+  UnifiedSearchResult,
+  UpdateDepartmentRequest,
+  UpdatePersonRequest,
+  UpdateProjectRequest,
+  UpdateTaskCategoryRequest,
+  UpdateTodoRequest,
+  UpdateWorkNoteRequest,
+  User,
+  WorkNote,
+  WorkNoteStatistics,
 } from '@/types/api';
 
 /**
@@ -98,10 +98,7 @@ interface BackendTodo {
 class APIClient {
   private baseURL = '/api';
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -109,8 +106,7 @@ class APIClient {
 
     // In development, use test auth header
     if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
-      (headers as Record<string, string>)['X-Test-User-Email'] =
-        'test@example.com';
+      (headers as Record<string, string>)['X-Test-User-Email'] = 'test@example.com';
     }
 
     const response = await fetch(`${this.baseURL}${endpoint}`, {
@@ -503,23 +499,17 @@ class APIClient {
 
   // AI Draft
   generateDraft(data: AIGenerateDraftRequest) {
-    return this.request<AIGenerateDraftResponse>(
-      '/ai/work-notes/draft-from-text',
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
+    return this.request<AIGenerateDraftResponse>('/ai/work-notes/draft-from-text', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   generateDraftWithSimilar(data: AIGenerateDraftRequest) {
-    return this.request<AIGenerateDraftResponse>(
-      '/ai/work-notes/draft-from-text-with-similar',
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
+    return this.request<AIGenerateDraftResponse>('/ai/work-notes/draft-from-text-with-similar', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // PDF Jobs
@@ -585,18 +575,19 @@ class APIClient {
 
   // Project Work Notes
   getProjectWorkNotes(projectId: string) {
-    return this.request<Array<BackendWorkNote & Partial<WorkNote>>>(`/projects/${projectId}/work-notes`).then(
-      (items) =>
-        items.map((wn) => {
-          if ((wn as unknown as WorkNote).content && (wn as unknown as WorkNote).id) {
-            return wn as unknown as WorkNote;
-          }
-          return this.transformWorkNoteFromBackend({
-            ...wn,
-            workId: wn.workId ?? wn.id,
-            contentRaw: wn.contentRaw ?? wn.content ?? '',
-          } as BackendWorkNote);
-        })
+    return this.request<Array<BackendWorkNote & Partial<WorkNote>>>(
+      `/projects/${projectId}/work-notes`
+    ).then((items) =>
+      items.map((wn) => {
+        if ((wn as unknown as WorkNote).content && (wn as unknown as WorkNote).id) {
+          return wn as unknown as WorkNote;
+        }
+        return this.transformWorkNoteFromBackend({
+          ...wn,
+          workId: wn.workId ?? wn.id,
+          contentRaw: wn.contentRaw ?? wn.content ?? '',
+        } as BackendWorkNote);
+      })
     );
   }
 
@@ -667,10 +658,9 @@ class APIClient {
   }
 
   reindexOne(workId: string) {
-    return this.request<{ success: boolean; message: string }>(
-      `/admin/reindex/${workId}`,
-      { method: 'POST' }
-    );
+    return this.request<{ success: boolean; message: string }>(`/admin/reindex/${workId}`, {
+      method: 'POST',
+    });
   }
 
   embedPending(batchSize?: number) {

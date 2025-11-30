@@ -1,5 +1,8 @@
 // Trace: TASK-024, SPEC-worknote-1
 import { useState } from 'react';
+import { AssigneeSelector } from '@/components/AssigneeSelector';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -8,25 +11,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { AssigneeSelector } from '@/components/AssigneeSelector';
-import { useCreateWorkNote } from '@/hooks/useWorkNotes';
-import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { usePersons } from '@/hooks/usePersons';
+import { useTaskCategories } from '@/hooks/useTaskCategories';
+import { useCreateWorkNote } from '@/hooks/useWorkNotes';
 
 interface CreateWorkNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateWorkNoteDialog({
-  open,
-  onOpenChange,
-}: CreateWorkNoteDialogProps) {
+export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialogProps) {
   const [title, setTitle] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
@@ -38,12 +35,9 @@ export function CreateWorkNoteDialog({
 
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategoryIds((prev) =>
-      prev.includes(categoryId)
-        ? prev.filter((id) => id !== categoryId)
-        : [...prev, categoryId]
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     );
   };
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

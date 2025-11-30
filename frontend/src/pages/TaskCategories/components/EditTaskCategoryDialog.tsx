@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUpdateTaskCategory } from '@/hooks/useTaskCategories';
@@ -58,9 +58,7 @@ export function EditTaskCategoryDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>업무 구분 수정</DialogTitle>
-            <DialogDescription>
-              업무 구분을 수정합니다.
-            </DialogDescription>
+            <DialogDescription>업무 구분을 수정합니다.</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">

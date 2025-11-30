@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -10,13 +10,9 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import type { Person, Department, WorkNote } from '@/types/api';
+import type { Department, Person, WorkNote } from '@/types/api';
 
 // 제네릭 필터 선택 컴포넌트
 interface FilterSelectorProps<T> {
@@ -97,11 +93,7 @@ function FilterSelector<T>({
             disabled={disabled || isLoading}
             type="button"
           >
-            {isLoading
-              ? '로딩 중...'
-              : selectedItem
-                ? selectedLabel
-                : placeholder}
+            {isLoading ? '로딩 중...' : selectedItem ? selectedLabel : placeholder}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -205,10 +197,7 @@ export function DepartmentFilterSelector({
   isLoading = false,
   disabled = false,
 }: DepartmentFilterSelectorProps) {
-  const activeDepartments = useMemo(
-    () => departments.filter((d) => d.isActive),
-    [departments]
-  );
+  const activeDepartments = useMemo(() => departments.filter((d) => d.isActive), [departments]);
 
   return (
     <FilterSelector

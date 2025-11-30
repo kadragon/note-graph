@@ -2,8 +2,8 @@
 // Basic API integration tests
 // Demonstrates testing infrastructure for Cloudflare Workers
 
-import { describe, it, expect, beforeAll } from 'vitest';
 import { env, SELF } from 'cloudflare:test';
+import { beforeAll, describe, expect, it } from 'vitest';
 import type { Env } from '../src/types/env';
 
 describe('API Integration Tests', () => {

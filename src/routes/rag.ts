@@ -1,11 +1,11 @@
 // Trace: SPEC-rag-1, TASK-012, TASK-041
 import { Hono } from 'hono';
-import type { Env } from '../types/env';
-import type { AuthUser } from '../types/auth';
-import { RagService } from '../services/rag-service';
 import { RagQueryRequestSchema } from '../schemas/rag';
-import { validateBody } from '../utils/validation';
+import { RagService } from '../services/rag-service';
+import type { AuthUser } from '../types/auth';
+import type { Env } from '../types/env';
 import { BadRequestError, RateLimitError } from '../types/errors';
+import { validateBody } from '../utils/validation';
 
 type Variables = {
   user: AuthUser;

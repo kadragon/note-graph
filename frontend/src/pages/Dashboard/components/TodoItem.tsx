@@ -1,10 +1,10 @@
-import { CalendarDays, RefreshCw, FileText, Clock } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { CalendarDays, Clock, FileText, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useToggleTodo } from '@/hooks/useTodos';
-import type { Todo, RepeatRule } from '@/types/api';
-import { cn, formatDateWithYear } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 import { TODO_STATUS } from '@/constants/todoStatus';
+import { useToggleTodo } from '@/hooks/useTodos';
+import { cn, formatDateWithYear } from '@/lib/utils';
+import type { RepeatRule, Todo } from '@/types/api';
 
 // Repeat rule to Korean label mapping
 const REPEAT_RULE_LABELS: Partial<Record<RepeatRule, string>> = {
@@ -38,18 +38,24 @@ export function TodoItem({ todo, onTodoClick }: TodoItemProps) {
   };
 
   return (
-    <div className={cn(
-      'flex items-start gap-3 py-3 px-4 rounded-md transition-colors',
-      'hover:bg-muted/50',
-      isCompleted && 'opacity-60'
-    )}>
+    <div
+      className={cn(
+        'flex items-start gap-3 py-3 px-4 rounded-md transition-colors',
+        'hover:bg-muted/50',
+        isCompleted && 'opacity-60'
+      )}
+    >
       <Checkbox
         checked={isCompleted}
         onCheckedChange={handleToggle}
         disabled={toggleTodo.isPending}
         className="mt-0.5"
       />
-      <div className="flex-1 min-w-0 cursor-pointer" onClick={handleClick}>
+      <button
+        type="button"
+        className="flex-1 min-w-0 cursor-pointer text-left"
+        onClick={handleClick}
+      >
         <p
           className={cn(
             'text-sm font-medium leading-tight',
@@ -84,7 +90,7 @@ export function TodoItem({ todo, onTodoClick }: TodoItemProps) {
             </Badge>
           )}
         </div>
-      </div>
+      </button>
     </div>
   );
 }

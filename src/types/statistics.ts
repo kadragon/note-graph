@@ -8,7 +8,14 @@ import type { WorkNote } from './work-note';
 /**
  * Period type for statistics filtering
  */
-export type StatisticsPeriod = 'this-week' | 'this-month' | 'first-half' | 'second-half' | 'this-year' | 'last-week' | 'custom';
+export type StatisticsPeriod =
+  | 'this-week'
+  | 'this-month'
+  | 'first-half'
+  | 'second-half'
+  | 'this-year'
+  | 'last-week'
+  | 'custom';
 
 /**
  * Work note with completion statistics
@@ -73,5 +80,5 @@ export interface WorkNoteStatistics {
  */
 export interface StatisticsDateRange {
   startDate: string; // ISO 8601 date string
-  endDate: string;   // ISO 8601 date string
+  endDate: string; // ISO 8601 date string
 }

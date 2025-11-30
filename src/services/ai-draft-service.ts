@@ -4,9 +4,9 @@
  */
 
 import type { Env } from '../types/env';
-import type { WorkNoteDraft, AIDraftTodo, ReferenceTodo } from '../types/search';
-import type { WorkNote } from '../types/work-note';
 import { RateLimitError } from '../types/errors';
+import type { AIDraftTodo, ReferenceTodo, WorkNoteDraft } from '../types/search';
+import type { WorkNote } from '../types/work-note';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { getTodayDateUTC } from '../utils/date';
 
@@ -118,7 +118,13 @@ export class AIDraftService {
    */
   async generateDraftFromTextWithContext(
     inputText: string,
-    similarNotes: Array<{ workId: string; title: string; content: string; category?: string; similarityScore?: number }>,
+    similarNotes: Array<{
+      workId: string;
+      title: string;
+      content: string;
+      category?: string;
+      similarityScore?: number;
+    }>,
     options?: {
       category?: string;
       personIds?: string[];
@@ -184,7 +190,9 @@ export class AIDraftService {
       const categoryList = activeCategories.join(', ');
       return `3. 제안 카테고리 (다음 중에서 가장 적합한 1개를 선택: ${categoryList})`;
     }
-    return fallback || '3. 제안 카테고리 (수업성적, KORUS, 기획, 행정 중 하나 또는 새로운 카테고리 추론)';
+    return (
+      fallback || '3. 제안 카테고리 (수업성적, KORUS, 기획, 행정 중 하나 또는 새로운 카테고리 추론)'
+    );
   }
 
   /**
@@ -239,7 +247,12 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
    */
   private constructDraftPromptWithContext(
     inputText: string,
-    similarNotes: Array<{ title: string; content: string; category?: string; todos?: ReferenceTodo[] }>,
+    similarNotes: Array<{
+      title: string;
+      content: string;
+      category?: string;
+      todos?: ReferenceTodo[];
+    }>,
     options?: {
       category?: string;
       personIds?: string[];
@@ -251,28 +264,28 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
     const deptHint = options?.deptName ? `\n\n부서 컨텍스트: ${options.deptName}` : '';
 
     // Build context from similar notes
-    const contextText = similarNotes.length > 0
-      ? `\n\n[이전 업무노트 - 참고용]
+    const contextText =
+      similarNotes.length > 0
+        ? `\n\n[이전 업무노트 - 참고용]
 아래는 유사한 이전 업무노트들입니다. 형식, 스타일, 할 일 패턴을 참고하고, 내용은 새로운 업무에 맞게 작성하세요:
 ${similarNotes
-          .map(
-            (note, idx) => {
-              // Build todos section if available
-              const todosSection = note.todos && note.todos.length > 0
-                ? `\n할 일 목록:
+  .map((note, idx) => {
+    // Build todos section if available
+    const todosSection =
+      note.todos && note.todos.length > 0
+        ? `\n할 일 목록:
 ${note.todos.map((todo) => `  - ${todo.title}${todo.dueDate ? ` (기한: ${todo.dueDate})` : ''}${todo.status !== '진행중' ? ` [${todo.status}]` : ''}`).join('\n')}`
-                : '';
+        : '';
 
-              return `
+    return `
 [참고 노트 ${idx + 1}]
 제목: ${note.title}
 카테고리: ${note.category || '없음'}
 내용 요약: ${note.content.slice(0, 300)}...${todosSection}
 `;
-            }
-          )
-          .join('\n')}`
-      : '';
+  })
+  .join('\n')}`
+        : '';
 
     const categoryInstruction = this.buildCategoryInstruction(
       options?.activeCategories,

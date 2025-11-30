@@ -1,8 +1,8 @@
-import { CheckCircle2, Clock, AlertCircle, ListTodo } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, ListTodo } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TodoTabs } from './components/TodoTabs';
-import { useTodos } from '@/hooks/useTodos';
 import { TODO_STATUS } from '@/constants/todoStatus';
+import { useTodos } from '@/hooks/useTodos';
+import { TodoTabs } from './components/TodoTabs';
 
 export default function Dashboard() {
   const currentYear = new Date().getFullYear();
@@ -12,7 +12,7 @@ export default function Dashboard() {
 
   // Calculate statistics
   const todayCount = todayTodos.length;
-  const completedTodayCount = todayTodos.filter(t => t.status === TODO_STATUS.COMPLETED).length;
+  const completedTodayCount = todayTodos.filter((t) => t.status === TODO_STATUS.COMPLETED).length;
   const remainingCount = remainingTodos.length;
   const totalCompletedCount = completedTodos.length;
 
@@ -65,9 +65,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stat.description}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
               </CardContent>
             </Card>
           );

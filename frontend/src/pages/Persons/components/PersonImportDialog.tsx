@@ -1,6 +1,9 @@
 // Trace: TASK-LLM-IMPORT
-import { useState } from 'react';
+
 import { FileText, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -9,11 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { useParsePersonFromText, useImportPerson } from '@/hooks/usePersons';
+import { useImportPerson, useParsePersonFromText } from '@/hooks/usePersons';
 import type { ParsedPersonData } from '@/types/api';
 
 interface PersonImportDialogProps {
@@ -21,10 +22,7 @@ interface PersonImportDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function PersonImportDialog({
-  open,
-  onOpenChange,
-}: PersonImportDialogProps) {
+export function PersonImportDialog({ open, onOpenChange }: PersonImportDialogProps) {
   const [inputText, setInputText] = useState('');
   const [parsedData, setParsedData] = useState<ParsedPersonData | null>(null);
 

@@ -3,16 +3,10 @@
  * Hook for managing statistics data and filters
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { API } from '@/lib/api';
-import type {
-  WorkNoteStatistics,
-  StatisticsPeriod,
-} from '@/types/api';
-import {
-  getStatisticsPeriodRange,
-  type DateRange,
-} from '@/lib/date-utils';
+import { type DateRange, getStatisticsPeriodRange } from '@/lib/date-utils';
+import type { StatisticsPeriod, WorkNoteStatistics } from '@/types/api';
 
 interface UseStatisticsOptions {
   initialPeriod?: StatisticsPeriod;
@@ -20,12 +14,8 @@ interface UseStatisticsOptions {
 }
 
 export function useStatistics(options: UseStatisticsOptions = {}) {
-  const [period, setPeriod] = useState<StatisticsPeriod>(
-    options.initialPeriod || 'this-week'
-  );
-  const [year, setYear] = useState<number>(
-    options.initialYear || new Date().getFullYear()
-  );
+  const [period, setPeriod] = useState<StatisticsPeriod>(options.initialPeriod || 'this-week');
+  const [year, setYear] = useState<number>(options.initialYear || new Date().getFullYear());
   const [dateRange, setDateRange] = useState<DateRange>(() =>
     getStatisticsPeriodRange(period, year)
   );

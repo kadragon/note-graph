@@ -5,8 +5,8 @@
 
 import type { Context } from 'hono';
 import type { Env } from '../index';
-import type { AuthUser } from '../types/auth';
 import { getAuthUser } from '../middleware/auth';
+import type { AuthUser } from '../types/auth';
 
 /**
  * GET /me - Get current authenticated user information

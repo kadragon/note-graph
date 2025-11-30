@@ -1,6 +1,9 @@
 // Trace: SPEC-project-1, TASK-043
-import { useState, useCallback } from 'react';
-import { Upload, Download, Trash2, File } from 'lucide-react';
+
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Download, File, Trash2, Upload } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -11,10 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useProjectFiles, useUploadProjectFile, useDeleteProjectFile } from '@/hooks/useProjects';
+import { useDeleteProjectFile, useProjectFiles, useUploadProjectFile } from '@/hooks/useProjects';
 import { API } from '@/lib/api';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
 
 interface ProjectFilesProps {
   projectId: string;
@@ -27,13 +28,16 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
   const uploadMutation = useUploadProjectFile();
   const deleteMutation = useDeleteProjectFile();
 
-  const handleFileUpload = async (file: File) => {
-    try {
-      await uploadMutation.mutateAsync({ projectId, file });
-    } catch {
-      // Error is handled by the mutation hook
-    }
-  };
+  const handleFileUpload = useCallback(
+    async (file: File) => {
+      try {
+        await uploadMutation.mutateAsync({ projectId, file });
+      } catch {
+        // Error is handled by the mutation hook
+      }
+    },
+    [projectId, uploadMutation.mutateAsync]
+  );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,15 +57,18 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
 
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      void handleFileUpload(file);
-    }
-  }, [projectId]);
+      const file = e.dataTransfer.files?.[0];
+      if (file) {
+        void handleFileUpload(file);
+      }
+    },
+    [handleFileUpload]
+  );
 
   const handleDownload = async (fileId: string, fileName: string) => {
     try {
@@ -102,7 +109,12 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Upload Zone */}
-        <div
+        <fieldset
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              document.getElementById('file-upload')?.click();
+            }
+          }}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -112,12 +124,8 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
           `}
         >
           <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground mb-2">
-            파일을 드래그하거나 클릭하여 업로드하세요
-          </p>
-          <p className="text-xs text-muted-foreground mb-4">
-            최대 50MB (PDF, 이미지, Office 문서)
-          </p>
+          <legend className="sr-only">파일을 드래그하거나 클릭하여 업로드하세요</legend>
+          <p className="text-xs text-muted-foreground mb-4">최대 50MB (PDF, 이미지, Office 문서)</p>
           <input
             type="file"
             id="file-upload"
@@ -130,13 +138,11 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
               파일 선택
             </label>
           </Button>
-        </div>
+        </fieldset>
 
         {/* Files List */}
         {files.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            업로드된 파일이 없습니다.
-          </div>
+          <div className="text-center py-8 text-muted-foreground">업로드된 파일이 없습니다.</div>
         ) : (
           <Table>
             <TableHeader>

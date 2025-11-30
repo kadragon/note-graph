@@ -1,15 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Database,
-  RefreshCw,
-  Play,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, CheckCircle2, Clock, Database, Loader2, Play, RefreshCw } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +11,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { API } from '@/lib/api';
 import type { BatchProcessResult } from '@/types/api';
@@ -122,9 +114,7 @@ export default function VectorStore() {
             ) : (
               <>
                 <div className="text-2xl font-bold text-green-600">{stats?.embedded ?? 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  {embeddingPercentage}% 완료
-                </p>
+                <p className="text-xs text-muted-foreground">{embeddingPercentage}% 완료</p>
               </>
             )}
           </CardContent>
@@ -142,9 +132,7 @@ export default function VectorStore() {
               <>
                 <div className="text-2xl font-bold text-yellow-600">{stats?.pending ?? 0}</div>
                 {(stats?.pending ?? 0) > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    처리 필요
-                  </p>
+                  <p className="text-xs text-muted-foreground">처리 필요</p>
                 )}
               </>
             )}
@@ -176,9 +164,7 @@ export default function VectorStore() {
       <Card>
         <CardHeader>
           <CardTitle>작업</CardTitle>
-          <CardDescription>
-            벡터 스토어 임베딩 작업을 실행합니다
-          </CardDescription>
+          <CardDescription>벡터 스토어 임베딩 작업을 실행합니다</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row">
@@ -197,11 +183,7 @@ export default function VectorStore() {
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  disabled={isProcessing}
-                  variant="outline"
-                  className="flex-1"
-                >
+                <Button disabled={isProcessing} variant="outline" className="flex-1">
                   {reindexAllMutation.isPending ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (

@@ -1,23 +1,25 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
 import { Send } from 'lucide-react';
+import { nanoid } from 'nanoid';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useRAGQuery } from '@/hooks/useRAG';
-import { usePersons } from '@/hooks/usePersons';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDepartments } from '@/hooks/useDepartments';
+import { usePersons } from '@/hooks/usePersons';
+import { useRAGQuery } from '@/hooks/useRAG';
 import { useWorkNotes } from '@/hooks/useWorkNotes';
+import type { RAGResponse, RAGScope } from '@/types/api';
 import { ChatMessage } from './components/ChatMessage';
 import {
-  PersonFilterSelector,
   DepartmentFilterSelector,
+  PersonFilterSelector,
   WorkNoteFilterSelector,
 } from './components/FilterSelectors';
-import type { RAGScope, RAGResponse } from '@/types/api';
 
 interface Message {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
   contexts?: RAGResponse['contexts'];
@@ -68,7 +70,7 @@ export default function RAG() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +80,7 @@ export default function RAG() {
     setInput('');
 
     // Add user message
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+    setMessages((prev) => [...prev, { id: nanoid(), role: 'user', content: userMessage }]);
 
     try {
       const response = await ragMutation.mutateAsync({
@@ -93,6 +95,7 @@ export default function RAG() {
       setMessages((prev) => [
         ...prev,
         {
+          id: nanoid(),
           role: 'assistant',
           content: response.answer,
           contexts: response.contexts,
@@ -122,9 +125,7 @@ export default function RAG() {
           {/* 필터 선택 UI */}
           {scope !== 'global' && (
             <div className="mb-4 p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground mb-2">
-                {SCOPE_DESCRIPTIONS[scope]}
-              </p>
+              <p className="text-sm text-muted-foreground mb-2">{SCOPE_DESCRIPTIONS[scope]}</p>
 
               {scope === 'person' && (
                 <PersonFilterSelector
@@ -168,9 +169,9 @@ export default function RAG() {
                     </div>
                   ) : (
                     <div>
-                      {messages.map((message, idx) => (
+                      {messages.map((message, _idx) => (
                         <ChatMessage
-                          key={idx}
+                          key={message.id}
                           role={message.role}
                           content={message.content}
                           contexts={message.contexts}
@@ -197,20 +198,14 @@ export default function RAG() {
                   )}
                 </ScrollArea>
 
-                <form
-                  onSubmit={(e) => void handleSubmit(e)}
-                  className="border-t p-4 flex gap-2"
-                >
+                <form onSubmit={(e) => void handleSubmit(e)} className="border-t p-4 flex gap-2">
                   <Input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="메시지를 입력하세요..."
                     disabled={ragMutation.isPending}
                   />
-                  <Button
-                    type="submit"
-                    disabled={!canSubmit}
-                  >
+                  <Button type="submit" disabled={!canSubmit}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </form>

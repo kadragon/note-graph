@@ -3,11 +3,11 @@
  * Person import service for parsing unstructured person data using LLM
  */
 
+import { ZodError } from 'zod';
+import { type ParsedPersonData, parsedPersonDataSchema } from '../schemas/person';
 import type { Env } from '../types/env';
-import { parsedPersonDataSchema, type ParsedPersonData } from '../schemas/person';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
-import { ZodError } from 'zod';
 
 /**
  * Person Import Service

@@ -1,14 +1,14 @@
 // Trace: TASK-016
 // Unit tests for domain error classes
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
+  BadRequestError,
+  ConflictError,
   DomainError,
   NotFoundError,
-  ValidationError,
-  ConflictError,
-  BadRequestError,
   RateLimitError,
+  ValidationError,
 } from '../../src/types/errors';
 
 describe('Domain Errors', () => {
@@ -41,7 +41,9 @@ describe('Domain Errors', () => {
 
   describe('ValidationError', () => {
     it('should create 400 error for validation failures', () => {
-      const error = new ValidationError('Invalid input', [{ field: 'email', message: 'Invalid email' }]);
+      const error = new ValidationError('Invalid input', [
+        { field: 'email', message: 'Invalid email' },
+      ]);
 
       expect(error.message).toBe('Invalid input');
       expect(error.code).toBe('VALIDATION_ERROR');

@@ -1,21 +1,17 @@
 // Trace: SPEC-project-1, TASK-043
-import { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useProject, useProjectStats } from '@/hooks/useProjects';
-import { ProjectWorkNotes } from './ProjectWorkNotes';
-import { ProjectFiles } from './ProjectFiles';
-import { ProjectTodos } from './ProjectTodos';
+
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useProject, useProjectStats } from '@/hooks/useProjects';
 import type { ProjectStatus } from '@/types/api';
+import { ProjectFiles } from './ProjectFiles';
+import { ProjectTodos } from './ProjectTodos';
+import { ProjectWorkNotes } from './ProjectWorkNotes';
 
 interface ProjectDetailDialogProps {
   open: boolean;
@@ -24,17 +20,13 @@ interface ProjectDetailDialogProps {
 }
 
 const STATUS_COLORS: Record<ProjectStatus, string> = {
-  '진행중': 'bg-blue-500',
-  '완료': 'bg-green-500',
-  '보류': 'bg-yellow-500',
-  '중단': 'bg-red-500',
+  진행중: 'bg-blue-500',
+  완료: 'bg-green-500',
+  보류: 'bg-yellow-500',
+  중단: 'bg-red-500',
 };
 
-export function ProjectDetailDialog({
-  open,
-  onOpenChange,
-  projectId,
-}: ProjectDetailDialogProps) {
+export function ProjectDetailDialog({ open, onOpenChange, projectId }: ProjectDetailDialogProps) {
   const [activeTab, setActiveTab] = useState('info');
   const { data: project, isLoading } = useProject(projectId);
   const { data: stats } = useProjectStats(projectId);
@@ -57,9 +49,7 @@ export function ProjectDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {project.name}
-            <Badge className={STATUS_COLORS[project.status]}>
-              {project.status}
-            </Badge>
+            <Badge className={STATUS_COLORS[project.status]}>{project.status}</Badge>
           </DialogTitle>
         </DialogHeader>
 
@@ -84,9 +74,7 @@ export function ProjectDetailDialog({
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">상태</p>
-                    <Badge className={STATUS_COLORS[project.status]}>
-                      {project.status}
-                    </Badge>
+                    <Badge className={STATUS_COLORS[project.status]}>{project.status}</Badge>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">우선순위</p>
@@ -138,8 +126,8 @@ export function ProjectDetailDialog({
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-2">태그</p>
                     <div className="flex flex-wrap gap-2">
-                      {project.tags.split(',').map((tag, index) => (
-                        <Badge key={index} variant="outline">
+                      {project.tags.split(',').map((tag, _index) => (
+                        <Badge key={tag.trim()} variant="outline">
                           {tag.trim()}
                         </Badge>
                       ))}

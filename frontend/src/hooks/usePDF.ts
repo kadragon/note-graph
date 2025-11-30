@@ -27,7 +27,7 @@ export function useUploadPDF() {
 export function usePDFJob(jobId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['pdf-job', jobId],
-    queryFn: () => API.getPDFJob(jobId!),
+    queryFn: () => API.getPDFJob(jobId as string),
     enabled: enabled && !!jobId,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
@@ -42,11 +42,7 @@ export function useSavePDFDraft() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (draft: {
-      title: string;
-      category: string;
-      content: string;
-    }) => {
+    mutationFn: async (draft: { title: string; category: string; content: string }) => {
       return createWorkNote.mutateAsync(draft);
     },
     onSuccess: () => {

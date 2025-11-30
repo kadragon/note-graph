@@ -1,11 +1,12 @@
 // Trace: SPEC-dept-1, TASK-022
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
+
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -37,8 +38,7 @@ export default function Departments() {
           <p className="page-description">부서를 관리하세요</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          새 부서
+          <Plus className="h-4 w-4 mr-2" />새 부서
         </Button>
       </div>
 
@@ -97,10 +97,7 @@ export default function Departments() {
         </CardContent>
       </Card>
 
-      <CreateDepartmentDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-      />
+      <CreateDepartmentDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
     </div>
   );
 }

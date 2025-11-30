@@ -1,12 +1,12 @@
 // Trace: SPEC-rag-1, TASK-012, TASK-041
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Env } from '../types/env';
-import type { RagQueryFilters, RagQueryResponse, RagContextSnippet } from '../types/search';
-import type { WorkNote } from '../types/work-note';
-import { EmbeddingService, VectorizeService } from './embedding-service';
-import { ChunkingService } from './chunking-service';
 import { RateLimitError } from '../types/errors';
+import type { RagContextSnippet, RagQueryFilters, RagQueryResponse } from '../types/search';
+import type { WorkNote } from '../types/work-note';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
+import { ChunkingService } from './chunking-service';
+import { EmbeddingService, VectorizeService } from './embedding-service';
 
 /**
  * RAG (Retrieval-Augmented Generation) service
@@ -96,12 +96,12 @@ export class RagService {
     switch (filters.scope) {
       case 'work':
         // workId is guaranteed to exist due to route-level validation
-        vectorFilter.work_id = filters.workId!;
+        vectorFilter.work_id = filters.workId as string;
         break;
 
       case 'project':
         // projectId is guaranteed to exist due to route-level validation
-        vectorFilter.project_id = filters.projectId!;
+        vectorFilter.project_id = filters.projectId as string;
         break;
 
       case 'person':
@@ -113,10 +113,8 @@ export class RagService {
 
       case 'department':
         // deptName is guaranteed to exist due to route-level validation
-        vectorFilter.dept_name = filters.deptName!;
+        vectorFilter.dept_name = filters.deptName as string;
         break;
-
-      case 'global':
       default:
         // No scope filter - search across all work notes
         break;

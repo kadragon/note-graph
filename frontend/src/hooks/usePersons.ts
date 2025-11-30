@@ -1,8 +1,12 @@
 // Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-LLM-IMPORT
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
+import type {
+  CreatePersonRequest,
+  ImportPersonFromTextRequest,
+  UpdatePersonRequest,
+} from '@/types/api';
 import { useToast } from './use-toast';
-import type { CreatePersonRequest, UpdatePersonRequest, ImportPersonFromTextRequest } from '@/types/api';
 
 export function usePersons() {
   return useQuery({
@@ -61,7 +65,7 @@ export function useUpdatePerson() {
 export function usePersonHistory(personId: string | null) {
   return useQuery({
     queryKey: ['person-history', personId],
-    queryFn: () => API.getPersonHistory(personId!),
+    queryFn: () => API.getPersonHistory(personId as string),
     enabled: !!personId,
   });
 }

@@ -1,8 +1,8 @@
 // Trace: SPEC-worknote-2, TASK-025, SPEC-ui-1, TASK-034
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import { format, parseISO, getYear } from 'date-fns';
+import { type ClassValue, clsx } from 'clsx';
+import { format, getYear, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -107,7 +107,7 @@ export function getDepartmentColor(deptName: string): string {
   let hash = 0;
   for (let i = 0; i < deptName.length; i++) {
     const char = deptName.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
 

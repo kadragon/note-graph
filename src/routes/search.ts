@@ -1,15 +1,20 @@
 // Trace: SPEC-search-1, TASK-009, TASK-011
-import { Hono } from 'hono';
+
 import type { Context } from 'hono';
-import { HybridSearchService } from '../services/hybrid-search-service';
-import { searchWorkNotesSchema } from '../schemas/search';
-import { validateBody } from '../utils/validation';
+import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
-import type { Env } from '../types/env';
-import type { AuthUser } from '../types/auth';
-import { PersonRepository } from '../repositories/person-repository';
 import { DepartmentRepository } from '../repositories/department-repository';
-import type { UnifiedSearchResponse, PersonSearchItem, DepartmentSearchItem } from '../types/search';
+import { PersonRepository } from '../repositories/person-repository';
+import { searchWorkNotesSchema } from '../schemas/search';
+import { HybridSearchService } from '../services/hybrid-search-service';
+import type { AuthUser } from '../types/auth';
+import type { Env } from '../types/env';
+import type {
+  DepartmentSearchItem,
+  PersonSearchItem,
+  UnifiedSearchResponse,
+} from '../types/search';
+import { validateBody } from '../utils/validation';
 
 const search = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 

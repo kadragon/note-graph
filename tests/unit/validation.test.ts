@@ -1,11 +1,11 @@
 // Trace: TASK-016
 // Unit tests for validation utilities
 
-import { describe, it, expect, vi } from 'vitest';
-import { z } from 'zod';
-import { validateBody, validateQuery, validateParams } from '../../src/utils/validation';
-import { ValidationError } from '../../src/types/errors';
 import type { Context } from 'hono';
+import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
+import { ValidationError } from '../../src/types/errors';
+import { validateBody, validateParams, validateQuery } from '../../src/utils/validation';
 
 describe('Validation Utilities', () => {
   describe('validateBody()', () => {
@@ -40,9 +40,7 @@ describe('Validation Utilities', () => {
       } as unknown as Context;
 
       await expect(validateBody(mockContext, schema)).rejects.toThrow(ValidationError);
-      await expect(validateBody(mockContext, schema)).rejects.toThrow(
-        'Request validation failed'
-      );
+      await expect(validateBody(mockContext, schema)).rejects.toThrow('Request validation failed');
     });
 
     it('should throw ValidationError for missing required fields', async () => {

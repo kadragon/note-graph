@@ -1,12 +1,7 @@
 // Trace: SPEC-project-1, TASK-043
-import { useState } from 'react';
+
 import { Filter, Plus, RotateCcw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useProjects, useDeleteProject } from '@/hooks/useProjects';
-import { ProjectsTable } from './components/ProjectsTable';
-import { CreateProjectDialog } from './components/CreateProjectDialog';
-import { ProjectDetailDialog } from './components/ProjectDetailDialog';
+import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,8 +12,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Project, ProjectStatus } from '@/types/api';
-import { usePersons } from '@/hooks/usePersons';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -26,7 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { usePersons } from '@/hooks/usePersons';
+import { useDeleteProject, useProjects } from '@/hooks/useProjects';
+import type { Project, ProjectStatus } from '@/types/api';
+import { CreateProjectDialog } from './components/CreateProjectDialog';
+import { ProjectDetailDialog } from './components/ProjectDetailDialog';
+import { ProjectsTable } from './components/ProjectsTable';
 
 export default function Projects() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -81,8 +82,7 @@ export default function Projects() {
           <p className="page-description">프로젝트를 관리하세요</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          새 프로젝트
+          <Plus className="h-4 w-4 mr-2" />새 프로젝트
         </Button>
       </div>
 
@@ -98,7 +98,10 @@ export default function Projects() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">상태</p>
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ProjectStatus | 'all')}>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as ProjectStatus | 'all')}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="전체" />
                 </SelectTrigger>
@@ -129,12 +132,20 @@ export default function Projects() {
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">시작일 이후</p>
-              <Input type="date" value={startDateFilter} onChange={(e) => setStartDateFilter(e.target.value)} />
+              <Input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">시작일 이전</p>
               <div className="flex gap-2">
-                <Input type="date" value={endDateFilter} onChange={(e) => setEndDateFilter(e.target.value)} />
+                <Input
+                  type="date"
+                  value={endDateFilter}
+                  onChange={(e) => setEndDateFilter(e.target.value)}
+                />
                 <Button type="button" variant="ghost" size="icon" onClick={resetFilters}>
                   <RotateCcw className="h-4 w-4" />
                 </Button>
@@ -144,27 +155,18 @@ export default function Projects() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              로딩 중...
-            </div>
+            <div className="text-center py-8 text-muted-foreground">로딩 중...</div>
           ) : projects.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               프로젝트가 없습니다. 새 프로젝트를 만들어보세요.
             </div>
           ) : (
-            <ProjectsTable
-              projects={projects}
-              onView={handleView}
-              onDelete={handleDeleteClick}
-            />
+            <ProjectsTable projects={projects} onView={handleView} onDelete={handleDeleteClick} />
           )}
         </CardContent>
       </Card>
 
-      <CreateProjectDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-      />
+      <CreateProjectDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
       {selectedProject && (
         <ProjectDetailDialog
@@ -184,9 +186,7 @@ export default function Projects() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleDeleteConfirm()}>
-              삭제
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => void handleDeleteConfirm()}>삭제</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

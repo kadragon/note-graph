@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { API } from '@/lib/api';
-import { useToast } from './use-toast';
 import type { SearchRequest, UnifiedSearchResult } from '@/types/api';
+import { useToast } from './use-toast';
 
 export function useSearch() {
   const { toast } = useToast();

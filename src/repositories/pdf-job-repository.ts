@@ -20,11 +20,7 @@ export class PdfJobRepository {
   /**
    * Create a new PDF job
    */
-  async create(
-    jobId: string,
-    r2Key: string,
-    metadata: PdfUploadMetadata
-  ): Promise<PdfJob> {
+  async create(jobId: string, r2Key: string, metadata: PdfUploadMetadata): Promise<PdfJob> {
     const now = new Date().toISOString();
     const metadataJson = JSON.stringify(metadata);
 
@@ -97,7 +93,10 @@ export class PdfJobRepository {
   /**
    * Update job status to READY with draft
    */
-  async updateStatusToReady(jobId: string, draft: WorkNoteDraft | WorkNoteDraftWithReferences): Promise<void> {
+  async updateStatusToReady(
+    jobId: string,
+    draft: WorkNoteDraft | WorkNoteDraftWithReferences
+  ): Promise<void> {
     const now = new Date().toISOString();
     const draftJson = JSON.stringify(draft);
 
@@ -139,10 +138,7 @@ export class PdfJobRepository {
    * Delete PDF job
    */
   async delete(jobId: string): Promise<void> {
-    const result = await this.db
-      .prepare('DELETE FROM pdf_jobs WHERE job_id = ?')
-      .bind(jobId)
-      .run();
+    const result = await this.db.prepare('DELETE FROM pdf_jobs WHERE job_id = ?').bind(jobId).run();
 
     if (result.meta.changes === 0) {
       throw new NotFoundError('PDF job', jobId);

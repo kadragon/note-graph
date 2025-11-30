@@ -7,15 +7,23 @@
  * because vi.setSystemTime doesn't work in Cloudflare Workers test environment
  */
 
-import { describe, it, expect } from 'vitest';
 import {
-  getStatisticsPeriodRange,
-  getStatisticsPeriodLabel,
+  endOfMonth,
+  endOfWeek,
+  endOfYear,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+  subWeeks,
+} from 'date-fns';
+import { describe, expect, it } from 'vitest';
+import {
   formatDateRange,
   getAvailableYears,
+  getStatisticsPeriodLabel,
+  getStatisticsPeriodRange,
   type StatisticsPeriod,
 } from '../../frontend/src/lib/date-utils';
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subWeeks } from 'date-fns';
 
 describe('Date Utils - getStatisticsPeriodRange', () => {
   describe('this-week period', () => {

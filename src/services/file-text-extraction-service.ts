@@ -63,10 +63,7 @@ export class FileTextExtractionService {
    * @param mimeType - MIME type of the file
    * @returns Extraction result with text or failure reason
    */
-  async extractText(
-    file: Blob,
-    mimeType: string
-  ): Promise<TextExtractionResult> {
+  async extractText(file: Blob, mimeType: string): Promise<TextExtractionResult> {
     // Check if file type supports extraction
     if (!FileTextExtractionService.isTextExtractable(mimeType)) {
       return {

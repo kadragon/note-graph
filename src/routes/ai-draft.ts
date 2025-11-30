@@ -3,17 +3,17 @@
  * AI-powered work note draft generation routes
  */
 
-import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
-import type { Env } from '../types/env';
-import type { AuthUser } from '../types/auth';
+import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
-import { validateBody } from '../utils/validation';
+import { TaskCategoryRepository } from '../repositories/task-category-repository';
 import { DraftFromTextRequestSchema, TodoSuggestionsRequestSchema } from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
 import { WorkNoteService } from '../services/work-note-service';
-import { TaskCategoryRepository } from '../repositories/task-category-repository';
-import { RateLimitError, NotFoundError } from '../types/errors';
+import type { AuthUser } from '../types/auth';
+import type { Env } from '../types/env';
+import { NotFoundError, RateLimitError } from '../types/errors';
+import { validateBody } from '../utils/validation';
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
@@ -39,7 +39,10 @@ const activeCategoriesMiddleware = async (
 ) => {
   const categoryRepo = new TaskCategoryRepository(c.env.DB);
   const activeCategories = await categoryRepo.findAll(undefined, 100, true);
-  c.set('activeCategoryNames', activeCategories.map(cat => cat.name));
+  c.set(
+    'activeCategoryNames',
+    activeCategories.map((cat) => cat.name)
+  );
   await next();
 };
 
@@ -92,28 +95,22 @@ app.post('/work-notes/draft-from-text-with-similar', activeCategoriesMiddleware,
       SIMILARITY_SCORE_THRESHOLD
     );
 
-    // eslint-disable-next-line no-console
-    console.log(`[AI Draft] Found ${similarNotes.length} similar work notes for text input`);
-
     // Generate AI draft with similar notes as context
     const aiDraftService = new AIDraftService(c.env);
-    const draft = similarNotes.length > 0
-      ? await aiDraftService.generateDraftFromTextWithContext(
-          body.inputText,
-          similarNotes,
-          {
+    const draft =
+      similarNotes.length > 0
+        ? await aiDraftService.generateDraftFromTextWithContext(body.inputText, similarNotes, {
             category: body.category,
             personIds: body.personIds,
             deptName: body.deptName,
             activeCategories: activeCategoryNames,
-          }
-        )
-      : await aiDraftService.generateDraftFromText(body.inputText, {
-          category: body.category,
-          personIds: body.personIds,
-          deptName: body.deptName,
-          activeCategories: activeCategoryNames,
-        });
+          })
+        : await aiDraftService.generateDraftFromText(body.inputText, {
+            category: body.category,
+            personIds: body.personIds,
+            deptName: body.deptName,
+            activeCategories: activeCategoryNames,
+          });
 
     const references = similarNotes.map((note) => ({
       workId: note.workId,

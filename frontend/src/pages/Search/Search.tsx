@@ -1,8 +1,9 @@
-import { useState, useEffect, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Search as SearchIcon, User, Building2, FileText, type LucideIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { Building2, FileText, type LucideIcon, Search as SearchIcon, User } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,13 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { useSearch } from '@/hooks/useSearch';
-import type {
-  SearchResult,
-  PersonSearchResult,
-  DepartmentSearchResult,
-} from '@/types/api';
+import type { DepartmentSearchResult, PersonSearchResult, SearchResult } from '@/types/api';
 
 interface SearchResultsSectionProps {
   icon: LucideIcon;
@@ -46,7 +42,8 @@ function SearchResultsSection({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Icon className="h-5 w-5" />
-          {title} ({count}{unit})
+          {title} ({count}
+          {unit})
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -91,14 +88,14 @@ function WorkNotesTable({ workNotes }: WorkNotesTableProps) {
               </Badge>
             </TableCell>
             <TableCell>
-              <Badge
-                variant={result.source === 'lexical' ? 'outline' : 'default'}
-              >
-                {{
-                  semantic: '의미',
-                  hybrid: '하이브리드',
-                  lexical: '키워드',
-                }[result.source]}
+              <Badge variant={result.source === 'lexical' ? 'outline' : 'default'}>
+                {
+                  {
+                    semantic: '의미',
+                    hybrid: '하이브리드',
+                    lexical: '키워드',
+                  }[result.source]
+                }
               </Badge>
             </TableCell>
             <TableCell className="text-muted-foreground text-xs">
@@ -134,26 +131,16 @@ function PersonsTable({ persons }: PersonsTableProps) {
           <TableRow key={person.personId}>
             <TableCell className="font-medium">{person.name}</TableCell>
             <TableCell>
-              {person.currentDept || (
-                <span className="text-muted-foreground">-</span>
-              )}
+              {person.currentDept || <span className="text-muted-foreground">-</span>}
             </TableCell>
             <TableCell>
-              {person.currentPosition || (
-                <span className="text-muted-foreground">-</span>
-              )}
+              {person.currentPosition || <span className="text-muted-foreground">-</span>}
             </TableCell>
             <TableCell>
-              {person.phoneExt || (
-                <span className="text-muted-foreground">-</span>
-              )}
+              {person.phoneExt || <span className="text-muted-foreground">-</span>}
             </TableCell>
             <TableCell>
-              <Badge
-                variant={
-                  person.employmentStatus === '재직' ? 'default' : 'secondary'
-                }
-              >
+              <Badge variant={person.employmentStatus === '재직' ? 'default' : 'secondary'}>
                 {person.employmentStatus}
               </Badge>
             </TableCell>
@@ -183,9 +170,7 @@ function DepartmentsTable({ departments }: DepartmentsTableProps) {
           <TableRow key={dept.deptName}>
             <TableCell className="font-medium">{dept.deptName}</TableCell>
             <TableCell>
-              {dept.description || (
-                <span className="text-muted-foreground">-</span>
-              )}
+              {dept.description || <span className="text-muted-foreground">-</span>}
             </TableCell>
             <TableCell>
               <Badge variant={dept.isActive ? 'default' : 'secondary'}>

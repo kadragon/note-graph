@@ -5,17 +5,25 @@
 
 import type { D1Database } from '@cloudflare/workers-types';
 import type {
-  WorkNoteWithStats,
-  WorkNoteStatistics,
   CategoryDistribution,
-  PersonDistribution,
   DepartmentDistribution,
+  PersonDistribution,
+  WorkNoteStatistics,
+  WorkNoteWithStats,
 } from '../types/statistics';
 
 interface FindCompletedWorkNotesOptions {
   personId?: string;
   deptName?: string;
   categoryId?: string;
+}
+
+interface AssignedPersonDetail {
+  workId: string;
+  personId: string;
+  personName: string;
+  currentDept: string | null;
+  role: 'OWNER' | 'RELATED';
 }
 
 export class StatisticsRepository {
@@ -90,13 +98,16 @@ export class StatisticsRepository {
 
     // Add WHERE clause
     if (conditions.length > 0) {
-      query += ` WHERE ` + conditions.join(' AND ');
+      query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
     // Order by completion timestamp descending
     query += ` ORDER BY td.updated_at DESC`;
 
-    const result = await this.db.prepare(query).bind(...bindings).all<WorkNoteWithStats>();
+    const result = await this.db
+      .prepare(query)
+      .bind(...bindings)
+      .all<WorkNoteWithStats>();
 
     const workNotes = result.results || [];
 
@@ -119,13 +130,14 @@ export class StatisticsRepository {
          WHERE wnp.work_id IN (${workNoteIds.map(() => '?').join(',')})`
       )
       .bind(...workNoteIds)
-      .all<{ workId: string; personId: string; personName: string; currentDept: string | null; role: 'OWNER' | 'RELATED' }>();
+      .all<AssignedPersonDetail>();
 
     // Map persons back to work notes
-    const personsByWorkId = new Map<string, any[]>();
+    const personsByWorkId = new Map<string, AssignedPersonDetail[]>();
     for (const person of personsResult.results || []) {
       const persons = personsByWorkId.get(person.workId) || [];
       persons.push({
+        workId: person.workId,
         personId: person.personId,
         personName: person.personName,
         currentDept: person.currentDept,
@@ -191,13 +203,18 @@ export class StatisticsRepository {
       }
     }
 
-    const byCategory: CategoryDistribution[] = Array.from(categoryMap.entries()).map(([category, count]) => ({
-      category,
-      count,
-    }));
+    const byCategory: CategoryDistribution[] = Array.from(categoryMap.entries()).map(
+      ([category, count]) => ({
+        category,
+        count,
+      })
+    );
 
     // Calculate person distribution
-    const personMap = new Map<string, { personName: string; currentDept: string | null; count: number }>();
+    const personMap = new Map<
+      string,
+      { personName: string; currentDept: string | null; count: number }
+    >();
     for (const workNote of workNotes) {
       for (const person of workNote.assignedPersons) {
         if (person.role === 'OWNER') {
@@ -215,12 +232,14 @@ export class StatisticsRepository {
       }
     }
 
-    const byPerson: PersonDistribution[] = Array.from(personMap.entries()).map(([personId, data]) => ({
-      personId,
-      personName: data.personName,
-      currentDept: data.currentDept,
-      count: data.count,
-    }));
+    const byPerson: PersonDistribution[] = Array.from(personMap.entries()).map(
+      ([personId, data]) => ({
+        personId,
+        personName: data.personName,
+        currentDept: data.currentDept,
+        count: data.count,
+      })
+    );
 
     // Calculate department distribution
     const deptMap = new Map<string | null, number>();
@@ -233,10 +252,12 @@ export class StatisticsRepository {
       }
     }
 
-    const byDepartment: DepartmentDistribution[] = Array.from(deptMap.entries()).map(([deptName, count]) => ({
-      deptName,
-      count,
-    }));
+    const byDepartment: DepartmentDistribution[] = Array.from(deptMap.entries()).map(
+      ([deptName, count]) => ({
+        deptName,
+        count,
+      })
+    );
 
     return {
       summary: {

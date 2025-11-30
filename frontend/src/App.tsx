@@ -1,8 +1,8 @@
-import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { Toaster } from '@/components/ui/toaster';
+import { lazy, Suspense } from 'react';
+import { Route, Routes } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import { Toaster } from '@/components/ui/toaster';
 
 // Lazy load page components
 const Dashboard = lazy(() => import('@/pages/Dashboard'));

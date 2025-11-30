@@ -1,8 +1,9 @@
 // Unit tests for EmbeddingService and VectorizeService
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import { env } from 'cloudflare:test';
-import type { Env } from '../../src/types/env';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EmbeddingService, VectorizeService } from '../../src/services/embedding-service';
+import type { Env } from '../../src/types/env';
 import type { ChunkMetadata } from '../../src/types/search';
 
 const testEnv = env as unknown as Env;
@@ -134,10 +135,10 @@ describe('EmbeddingService', () => {
 
     it('should batch process large number of texts', async () => {
       // Arrange
-      const texts = Array(50).fill('').map((_, i) => `Text ${i}`);
-      const mockEmbeddings = texts.map(() =>
-        new Array(1536).fill(0).map((_, i) => i / 1536)
-      );
+      const texts = Array(50)
+        .fill('')
+        .map((_, i) => `Text ${i}`);
+      const mockEmbeddings = texts.map(() => new Array(1536).fill(0).map((_, i) => i / 1536));
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -155,10 +156,16 @@ describe('EmbeddingService', () => {
   });
 });
 
+interface MockVectorizeIndex {
+  upsert: ReturnType<typeof vi.fn>;
+  deleteByIds: ReturnType<typeof vi.fn>;
+  query: ReturnType<typeof vi.fn>;
+}
+
 describe('VectorizeService', () => {
   let service: VectorizeService;
   let embeddingService: EmbeddingService;
-  let mockVectorize: any;
+  let mockVectorize: MockVectorizeIndex;
   let mockFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -363,9 +370,7 @@ describe('VectorizeService', () => {
       });
 
       // Act & Assert
-      await expect(service.upsertChunks(chunks)).rejects.toThrow(
-        'Missing embedding for chunk'
-      );
+      await expect(service.upsertChunks(chunks)).rejects.toThrow('Missing embedding for chunk');
     });
   });
 

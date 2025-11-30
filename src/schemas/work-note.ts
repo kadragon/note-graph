@@ -47,7 +47,10 @@ export const listWorkNotesQuerySchema = z.object({
   category: z.string().optional(),
   personId: z.string().optional(),
   deptName: z.string().optional(),
-  from: z.string().datetime({ message: 'from must be a valid ISO 8601 date-time string' }).optional(),
+  from: z
+    .string()
+    .datetime({ message: 'from must be a valid ISO 8601 date-time string' })
+    .optional(),
   to: z.string().datetime({ message: 'to must be a valid ISO 8601 date-time string' }).optional(),
 });
 

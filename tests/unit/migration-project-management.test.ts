@@ -1,23 +1,57 @@
 // Trace: SPEC-project-1, TASK-035
-import { describe, expect, it } from 'vitest';
+
 import { env } from 'cloudflare:test';
 import type { D1Database } from '@cloudflare/workers-types';
+import { describe, expect, it } from 'vitest';
 
 const db = env.DB as D1Database;
 
+interface TableInfoRow {
+  cid: number;
+  name: string;
+  type: string;
+  notnull: 0 | 1;
+  dflt_value: string | null;
+  pk: 0 | 1;
+}
+
+interface IndexInfoRow {
+  seq: number;
+  name: string;
+  unique: 0 | 1;
+  origin: string;
+  partial: 0 | 1;
+}
+
+interface ForeignKeyInfoRow {
+  id: number;
+  seq: number;
+  table: string;
+  from: string;
+  to: string;
+  on_update: string;
+  on_delete: string;
+  match: string;
+}
+
 async function getTableColumns(table: string): Promise<string[]> {
-  const { results } = await db.prepare(`PRAGMA table_info(${table});`).all();
-  return (results ?? []).map((row: any) => row.name as string);
+  const { results } = await db.prepare(`PRAGMA table_info(${table});`).all<TableInfoRow>();
+  return (results ?? []).map((row) => row.name);
 }
 
 async function getIndexNames(table: string): Promise<string[]> {
-  const { results } = await db.prepare(`PRAGMA index_list(${table});`).all();
-  return (results ?? []).map((row: any) => row.name as string);
+  const { results } = await db.prepare(`PRAGMA index_list(${table});`).all<IndexInfoRow>();
+  return (results ?? []).map((row) => row.name);
 }
 
 async function getForeignKeys(table: string): Promise<Array<{ from: string; table: string }>> {
-  const { results } = await db.prepare(`PRAGMA foreign_key_list(${table});`).all();
-  return (results ?? []).map((row: any) => ({ from: row.from as string, table: row.table as string }));
+  const { results } = await db
+    .prepare(`PRAGMA foreign_key_list(${table});`)
+    .all<ForeignKeyInfoRow>();
+  return (results ?? []).map((row) => ({
+    from: row.from,
+    table: row.table,
+  }));
 }
 
 describe('Migration 0014 - Project management schema', () => {
@@ -63,7 +97,9 @@ describe('Migration 0014 - Project management schema', () => {
     expect(workNoteIndexes).toContain('idx_work_notes_project_id');
 
     const workNoteFks = await getForeignKeys('work_notes');
-    expect(workNoteFks).toEqual(expect.arrayContaining([{ from: 'project_id', table: 'projects' }]));
+    expect(workNoteFks).toEqual(
+      expect.arrayContaining([{ from: 'project_id', table: 'projects' }])
+    );
   });
 
   it('creates required indexes for project queries', async () => {
@@ -79,7 +115,10 @@ describe('Migration 0014 - Project management schema', () => {
 
     const participantIndexes = await getIndexNames('project_participants');
     expect(participantIndexes).toEqual(
-      expect.arrayContaining(['idx_project_participants_project', 'idx_project_participants_person'])
+      expect.arrayContaining([
+        'idx_project_participants_project',
+        'idx_project_participants_person',
+      ])
     );
 
     const workNoteIndexes = await getIndexNames('project_work_notes');
@@ -103,7 +142,9 @@ describe('Migration 0014 - Project management schema', () => {
     );
 
     const projectFileFks = await getForeignKeys('project_files');
-    expect(projectFileFks).toEqual(expect.arrayContaining([{ from: 'project_id', table: 'projects' }]));
+    expect(projectFileFks).toEqual(
+      expect.arrayContaining([{ from: 'project_id', table: 'projects' }])
+    );
 
     const projectWorkNoteFks = await getForeignKeys('project_work_notes');
     expect(projectWorkNoteFks).toEqual(

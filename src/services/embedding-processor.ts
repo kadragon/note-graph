@@ -2,12 +2,12 @@
 // Embedding processor for bulk reindexing operations
 
 import type { D1Result } from '@cloudflare/workers-types';
+import { format } from 'date-fns';
+import { WorkNoteRepository } from '../repositories/work-note-repository';
 import type { Env } from '../types/env';
 import type { WorkNote } from '../types/work-note';
-import { WorkNoteRepository } from '../repositories/work-note-repository';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingService, VectorizeService } from './embedding-service';
-import { format } from 'date-fns';
 
 export interface ReindexResult {
   total: number;
@@ -69,9 +69,9 @@ export class EmbeddingProcessor {
     };
 
     // Get total count
-    const countResult = await this.env.DB
-      .prepare('SELECT COUNT(*) as count FROM work_notes')
-      .first<{ count: number }>();
+    const countResult = await this.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM work_notes'
+    ).first<{ count: number }>();
 
     result.total = countResult?.count || 0;
 
@@ -141,7 +141,9 @@ export class EmbeddingProcessor {
       }
     }
 
-    console.warn(`[EmbeddingProcessor] Reindex complete: ${result.succeeded}/${result.total} succeeded, ${result.failed} failed`);
+    console.warn(
+      `[EmbeddingProcessor] Reindex complete: ${result.succeeded}/${result.total} succeeded, ${result.failed} failed`
+    );
 
     return result;
   }
@@ -229,7 +231,9 @@ export class EmbeddingProcessor {
       return result;
     }
 
-    console.warn(`[EmbeddingProcessor] Starting batch embedding of ${result.total} pending work notes`);
+    console.warn(
+      `[EmbeddingProcessor] Starting batch embedding of ${result.total} pending work notes`
+    );
 
     // Track failed IDs to prevent retry loops within this execution
     const failedIds = new Set<string>();
@@ -248,7 +252,7 @@ export class EmbeddingProcessor {
       }
 
       // Filter out failed IDs to prevent retry loops
-      const validWorkNotes = workNotes.filter(wn => !failedIds.has(wn.workId));
+      const validWorkNotes = workNotes.filter((wn) => !failedIds.has(wn.workId));
 
       if (validWorkNotes.length === 0) {
         // All fetched notes have already failed, stop to prevent infinite loop
@@ -257,7 +261,7 @@ export class EmbeddingProcessor {
       }
 
       // Batch fetch all details upfront to avoid N+1 queries
-      const workIds = validWorkNotes.map(wn => wn.workId);
+      const workIds = validWorkNotes.map((wn) => wn.workId);
       const detailsMap = await this.repository.findByIdsWithDetails(workIds);
 
       for (const workNote of validWorkNotes) {
@@ -269,7 +273,7 @@ export class EmbeddingProcessor {
           const chunks = this.prepareWorkNoteChunksWithDetails(workNote, details);
 
           // Track chunk IDs for this work note
-          const chunkIds = chunks.map(c => c.id);
+          const chunkIds = chunks.map((c) => c.id);
           workNoteChunkMap.set(workNote.workId, chunkIds);
 
           // Add to batch
@@ -303,7 +307,9 @@ export class EmbeddingProcessor {
             error: errorMessage,
           });
           failedIds.add(workNote.workId);
-          console.error(`[EmbeddingProcessor] Failed to prepare ${workNote.workId}: ${errorMessage}`);
+          console.error(
+            `[EmbeddingProcessor] Failed to prepare ${workNote.workId}: ${errorMessage}`
+          );
         }
       }
     }
@@ -317,7 +323,9 @@ export class EmbeddingProcessor {
       result.processed += batchResult.processed;
     }
 
-    console.warn(`[EmbeddingProcessor] Batch embedding complete: ${result.succeeded}/${result.total} succeeded, ${result.failed} failed`);
+    console.warn(
+      `[EmbeddingProcessor] Batch embedding complete: ${result.succeeded}/${result.total} succeeded, ${result.failed} failed`
+    );
 
     return result;
   }
@@ -365,7 +373,12 @@ export class EmbeddingProcessor {
   private async processBatch(
     chunks: ChunkToEmbed[],
     workNoteChunkMap: Map<string, string[]>
-  ): Promise<{ processed: number; succeeded: number; failed: number; errors: Array<{ workId: string; error: string }> }> {
+  ): Promise<{
+    processed: number;
+    succeeded: number;
+    failed: number;
+    errors: Array<{ workId: string; error: string }>;
+  }> {
     const batchResult = {
       processed: 0,
       succeeded: 0,
@@ -377,7 +390,7 @@ export class EmbeddingProcessor {
 
     try {
       // Batch embed all chunks at once
-      const chunksForVectorize = chunks.map(c => ({
+      const chunksForVectorize = chunks.map((c) => ({
         id: c.id,
         text: c.text,
         metadata: c.metadata as import('../types/search').ChunkMetadata,

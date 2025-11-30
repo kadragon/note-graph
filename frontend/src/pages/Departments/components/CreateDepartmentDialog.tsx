@@ -1,5 +1,6 @@
 // Trace: SPEC-dept-1, TASK-022
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateDepartment } from '@/hooks/useDepartments';
@@ -19,10 +19,7 @@ interface CreateDepartmentDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateDepartmentDialog({
-  open,
-  onOpenChange,
-}: CreateDepartmentDialogProps) {
+export function CreateDepartmentDialog({ open, onOpenChange }: CreateDepartmentDialogProps) {
   const [name, setName] = useState('');
   const createMutation = useCreateDepartment();
 
@@ -48,9 +45,7 @@ export function CreateDepartmentDialog({
         <form onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>새 부서 추가</DialogTitle>
-            <DialogDescription>
-              새로운 부서를 추가합니다.
-            </DialogDescription>
+            <DialogDescription>새로운 부서를 추가합니다.</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">

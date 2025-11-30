@@ -1,6 +1,10 @@
 // Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-030, TASK-032
-import { useState, useEffect } from 'react';
+
 import { FileText, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { DraftEditorForm } from '@/components/DraftEditorForm';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -8,32 +12,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { DraftEditorForm } from '@/components/DraftEditorForm';
-import { FileDropzone } from '@/pages/PDFUpload/components/FileDropzone';
-import { useUploadPDF, usePDFJob } from '@/hooks/usePDF';
-import { useAIDraftForm } from '@/hooks/useAIDraftForm';
 import { useToast } from '@/hooks/use-toast';
+import { useAIDraftForm } from '@/hooks/useAIDraftForm';
+import { usePDFJob, useUploadPDF } from '@/hooks/usePDF';
+import { FileDropzone } from '@/pages/PDFUpload/components/FileDropzone';
 
 interface CreateFromPDFDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateFromPDFDialog({
-  open,
-  onOpenChange,
-}: CreateFromPDFDialogProps) {
+export function CreateFromPDFDialog({ open, onOpenChange }: CreateFromPDFDialogProps) {
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [draftPopulated, setDraftPopulated] = useState(false);
 
   const uploadMutation = useUploadPDF();
-  const { data: job } = usePDFJob(
-    currentJobId,
-    !!currentJobId && uploadMutation.isSuccess
-  );
+  const { data: job } = usePDFJob(currentJobId, !!currentJobId && uploadMutation.isSuccess);
   const { toast } = useToast();
 
   const { state, actions, data } = useAIDraftForm(() => {
@@ -67,12 +62,12 @@ export function CreateFromPDFDialog({
     }
   };
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setCurrentJobId(null);
     setUploadedFile(null);
     setDraftPopulated(false);
     actions.resetForm();
-  };
+  }, [actions]);
 
   const handleClose = () => {
     resetForm();
@@ -87,7 +82,7 @@ export function CreateFromPDFDialog({
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [open]);
+  }, [open, resetForm]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,12 +134,7 @@ export function CreateFromPDFDialog({
 
           {/* Step 2: Edit Draft */}
           {job?.status === 'READY' && job.draft && (
-            <DraftEditorForm
-              state={state}
-              actions={actions}
-              data={data}
-              onCancel={handleClose}
-            />
+            <DraftEditorForm state={state} actions={actions} data={data} onCancel={handleClose} />
           )}
         </div>
       </DialogContent>

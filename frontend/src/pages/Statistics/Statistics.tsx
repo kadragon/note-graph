@@ -4,7 +4,6 @@
  */
 
 import { Loader2 } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -12,16 +11,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useStatistics } from './hooks/useStatistics';
-import { SummaryCards } from './components/SummaryCards';
-import { DistributionCharts } from './components/DistributionCharts';
-import { WorkNotesTable } from './components/WorkNotesTable';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  getStatisticsPeriodLabel,
   formatDateRange,
   getAvailableYears,
+  getStatisticsPeriodLabel,
   type StatisticsPeriod,
 } from '@/lib/date-utils';
+import { DistributionCharts } from './components/DistributionCharts';
+import { SummaryCards } from './components/SummaryCards';
+import { WorkNotesTable } from './components/WorkNotesTable';
+import { useStatistics } from './hooks/useStatistics';
 
 const PERIOD_TABS: { value: StatisticsPeriod; label: string }[] = [
   { value: 'this-week', label: '이번주' },
@@ -33,16 +33,8 @@ const PERIOD_TABS: { value: StatisticsPeriod; label: string }[] = [
 ];
 
 export default function Statistics() {
-  const {
-    period,
-    setPeriod,
-    year,
-    setYear,
-    dateRange,
-    statistics,
-    isLoading,
-    error,
-  } = useStatistics();
+  const { period, setPeriod, year, setYear, dateRange, statistics, isLoading, error } =
+    useStatistics();
 
   const availableYears = getAvailableYears();
   const needsYearSelector = period === 'first-half' || period === 'second-half';
@@ -52,9 +44,7 @@ export default function Statistics() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">통계 대시보드</h1>
-        <p className="text-muted-foreground mt-2">
-          완료된 할일을 포함한 업무노트 통계
-        </p>
+        <p className="text-muted-foreground mt-2">완료된 할일을 포함한 업무노트 통계</p>
       </div>
 
       {/* Filters */}
@@ -74,7 +64,7 @@ export default function Statistics() {
         {needsYearSelector && (
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">연도:</span>
-            <Select value={year.toString()} onValueChange={(value) => setYear(parseInt(value))}>
+            <Select value={year.toString()} onValueChange={(value) => setYear(parseInt(value, 10))}>
               <SelectTrigger className="w-[120px]">
                 <SelectValue />
               </SelectTrigger>

@@ -1,12 +1,12 @@
 /// <reference types="cloudflare/test" />
 
-// Trace: SPEC-devx-1, TASK-028
-import { beforeAll } from 'vitest';
 import { env } from 'cloudflare:test';
-import type { D1Database } from '@cloudflare/workers-types';
-import type { Env } from '../src/types/env';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import type { D1Database } from '@cloudflare/workers-types';
+// Trace: SPEC-devx-1, TASK-028
+import { beforeAll } from 'vitest';
+import type { Env } from '../src/types/env';
 
 const migrationModules = import.meta.glob('../migrations/*.sql', {
   eager: true,
@@ -24,7 +24,6 @@ function clearPersistedD1State(): void {
   const d1Dir = join(process.cwd(), '.wrangler', 'state', 'v3', 'd1', 'miniflare-D1DatabaseObject');
   if (existsSync(d1Dir)) {
     rmSync(d1Dir, { recursive: true, force: true });
-    console.log('[Test Setup] Cleared persisted D1 state for clean run');
   }
   d1StateCleared = true;
 }
@@ -47,7 +46,7 @@ function loadMigrationStatements(): string[] {
       if (!trimmed) continue;
 
       if (currentStatement) {
-        currentStatement += ';' + raw;
+        currentStatement += `;${raw}`;
       } else {
         currentStatement = raw;
       }
@@ -64,7 +63,7 @@ function loadMigrationStatements(): string[] {
         }
       }
 
-      statements.push(currentStatement.trim() + ';');
+      statements.push(`${currentStatement.trim()};`);
       currentStatement = '';
     }
   }
@@ -315,7 +314,9 @@ async function applyMigrationsOrFallback(db: D1Database): Promise<void> {
     const stmts = loadMigrationStatements();
 
     if (stmts.length === 0) {
-      console.warn('[Test Setup] No migration statements found via glob, falling back to manual DDL');
+      console.warn(
+        '[Test Setup] No migration statements found via glob, falling back to manual DDL'
+      );
       await applyManualSchema(db);
       return;
     }
@@ -337,6 +338,4 @@ beforeAll(async () => {
   }
 
   await applyMigrationsOrFallback(db);
-
-  console.log('[Test Setup] Cloudflare Workers test environment initialized (migrations or fallback applied)');
 });

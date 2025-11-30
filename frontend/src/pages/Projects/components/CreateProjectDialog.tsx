@@ -1,5 +1,7 @@
 // Trace: SPEC-project-1, TASK-043
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -8,10 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -19,21 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCreateProject } from '@/hooks/useProjects';
-import { usePersons } from '@/hooks/usePersons';
+import { Textarea } from '@/components/ui/textarea';
 import { useDepartments } from '@/hooks/useDepartments';
-import type { ProjectStatus, ProjectPriority } from '@/types/api';
-import { Checkbox } from '@/components/ui/checkbox';
+import { usePersons } from '@/hooks/usePersons';
+import { useCreateProject } from '@/hooks/useProjects';
+import type { ProjectPriority, ProjectStatus } from '@/types/api';
 
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateProjectDialog({
-  open,
-  onOpenChange,
-}: CreateProjectDialogProps) {
+export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<ProjectStatus>('진행중');
@@ -141,7 +138,10 @@ export function CreateProjectDialog({
 
               <div className="grid gap-2">
                 <Label htmlFor="priority">우선순위</Label>
-                <Select value={priority} onValueChange={(value) => setPriority(value as ProjectPriority)}>
+                <Select
+                  value={priority}
+                  onValueChange={(value) => setPriority(value as ProjectPriority)}
+                >
                   <SelectTrigger id="priority">
                     <SelectValue />
                   </SelectTrigger>
@@ -241,19 +241,25 @@ export function CreateProjectDialog({
                     return (
                       <label
                         key={person.personId}
+                        htmlFor={`person-${person.personId}`}
                         className="flex items-center gap-2 text-sm cursor-pointer"
                       >
                         <Checkbox
+                          id={`person-${person.personId}`}
                           checked={checked}
                           onCheckedChange={(value) => {
                             if (value) {
                               setParticipantIds((prev) => [...prev, person.personId]);
                             } else {
-                              setParticipantIds((prev) => prev.filter((id) => id !== person.personId));
+                              setParticipantIds((prev) =>
+                                prev.filter((id) => id !== person.personId)
+                              );
                             }
                           }}
                         />
-                        <span>{person.name} ({person.personId})</span>
+                        <span>
+                          {person.name} ({person.personId})
+                        </span>
                       </label>
                     );
                   })}

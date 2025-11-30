@@ -1,4 +1,8 @@
 // Trace: SPEC-project-1, TASK-043
+
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -8,11 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { useProjectTodos } from '@/hooks/useProjects';
 import type { ProjectStats, TodoStatus } from '@/types/api';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
 
 interface ProjectTodosProps {
   projectId: string;
@@ -20,10 +21,10 @@ interface ProjectTodosProps {
 }
 
 const STATUS_COLOR: Record<TodoStatus, string> = {
-  '진행중': 'bg-blue-500',
-  '완료': 'bg-green-500',
-  '보류': 'bg-amber-500',
-  '중단': 'bg-red-500',
+  진행중: 'bg-blue-500',
+  완료: 'bg-green-500',
+  보류: 'bg-amber-500',
+  중단: 'bg-red-500',
 };
 
 export function ProjectTodos({ projectId, stats }: ProjectTodosProps) {
@@ -98,9 +99,7 @@ export function ProjectTodos({ projectId, stats }: ProjectTodosProps) {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
-                        {todo.dueDate
-                          ? new Date(todo.dueDate).toLocaleDateString('ko-KR')
-                          : '-'}
+                        {todo.dueDate ? new Date(todo.dueDate).toLocaleDateString('ko-KR') : '-'}
                       </span>
                     </TableCell>
                     <TableCell>

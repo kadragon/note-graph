@@ -1,8 +1,26 @@
 // Trace: SPEC-project-1, TASK-043
-import { useState } from 'react';
+
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -12,24 +30,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { useProject, useAssignWorkNoteToProject, useRemoveWorkNoteFromProject } from '@/hooks/useProjects';
+  useAssignWorkNoteToProject,
+  useProject,
+  useRemoveWorkNoteFromProject,
+} from '@/hooks/useProjects';
 import { useWorkNotes } from '@/hooks/useWorkNotes';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
 
 interface ProjectWorkNotesProps {
   projectId: string;
@@ -82,9 +87,7 @@ export function ProjectWorkNotes({ projectId }: ProjectWorkNotesProps) {
       </CardHeader>
       <CardContent>
         {projectWorkNotes.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            연결된 업무노트가 없습니다.
-          </div>
+          <div className="text-center py-8 text-muted-foreground">연결된 업무노트가 없습니다.</div>
         ) : (
           <Table>
             <TableHeader>
@@ -128,9 +131,7 @@ export function ProjectWorkNotes({ projectId }: ProjectWorkNotesProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>업무노트 연결</DialogTitle>
-            <DialogDescription>
-              프로젝트에 연결할 업무노트를 선택하세요.
-            </DialogDescription>
+            <DialogDescription>프로젝트에 연결할 업무노트를 선택하세요.</DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
@@ -155,11 +156,7 @@ export function ProjectWorkNotes({ projectId }: ProjectWorkNotesProps) {
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setAssignDialogOpen(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setAssignDialogOpen(false)}>
               취소
             </Button>
             <Button

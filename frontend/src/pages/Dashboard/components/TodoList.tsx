@@ -1,8 +1,8 @@
 import { CheckCircle2 } from 'lucide-react';
+import type { Todo } from '@/types/api';
+import { groupTodosByWorkNote } from './groupTodosByWorkNote';
 // Trace: SPEC-todo-1, TASK-046
 import { TodoItem } from './TodoItem';
-import { groupTodosByWorkNote } from './groupTodosByWorkNote';
-import type { Todo } from '@/types/api';
 
 interface TodoListProps {
   todos: Todo[];
@@ -11,7 +11,12 @@ interface TodoListProps {
   groupByWorkNote?: boolean;
 }
 
-export function TodoList({ todos, isLoading, onTodoClick, groupByWorkNote = false }: TodoListProps) {
+export function TodoList({
+  todos,
+  isLoading,
+  onTodoClick,
+  groupByWorkNote = false,
+}: TodoListProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -46,9 +51,7 @@ export function TodoList({ todos, isLoading, onTodoClick, groupByWorkNote = fals
       {groups.map((group) => (
         <div key={group.workNoteId ?? 'no-work'} className="space-y-2">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-foreground">
-              {group.workTitle}
-            </div>
+            <div className="text-sm font-semibold text-foreground">{group.workTitle}</div>
             <span className="text-xs text-muted-foreground">{group.todos.length}개</span>
           </div>
           <div className="divide-y rounded-md border bg-card">

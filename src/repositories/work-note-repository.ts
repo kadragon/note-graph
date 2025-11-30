@@ -5,11 +5,21 @@
 
 import type { D1Database } from '@cloudflare/workers-types';
 import { nanoid } from 'nanoid';
-import type { WorkNote, WorkNoteDetail, WorkNoteVersion, WorkNotePersonAssociation, WorkNoteRelation } from '../types/work-note';
-import type { CreateWorkNoteInput, UpdateWorkNoteInput, ListWorkNotesQuery } from '../schemas/work-note';
-import type { TaskCategory } from '../types/task-category';
-import type { ReferenceTodo } from '../types/search';
+import type {
+  CreateWorkNoteInput,
+  ListWorkNotesQuery,
+  UpdateWorkNoteInput,
+} from '../schemas/work-note';
 import { NotFoundError } from '../types/errors';
+import type { ReferenceTodo } from '../types/search';
+import type { TaskCategory } from '../types/task-category';
+import type {
+  WorkNote,
+  WorkNoteDetail,
+  WorkNotePersonAssociation,
+  WorkNoteRelation,
+  WorkNoteVersion,
+} from '../types/work-note';
 
 const MAX_VERSIONS = 5;
 
@@ -133,7 +143,13 @@ export class WorkNoteRepository {
          ORDER BY due_date ASC NULLS LAST, created_at ASC`
       )
       .bind(...workIds)
-      .all<{ workId: string; title: string; description: string | null; status: string; dueDate: string | null }>();
+      .all<{
+        workId: string;
+        title: string;
+        description: string | null;
+        status: string;
+        dueDate: string | null;
+      }>();
 
     // Group todos by workId
     const todosByWorkId = new Map<string, ReferenceTodo[]>();
@@ -141,7 +157,7 @@ export class WorkNoteRepository {
       if (!todosByWorkId.has(todo.workId)) {
         todosByWorkId.set(todo.workId, []);
       }
-      todosByWorkId.get(todo.workId)!.push({
+      todosByWorkId.get(todo.workId)?.push({
         title: todo.title,
         description: todo.description,
         status: todo.status,
@@ -200,7 +216,7 @@ export class WorkNoteRepository {
       if (!personsByWorkId.has(person.workId)) {
         personsByWorkId.set(person.workId, []);
       }
-      personsByWorkId.get(person.workId)!.push({
+      personsByWorkId.get(person.workId)?.push({
         id: person.id,
         workId: person.workId,
         personId: person.personId,
@@ -307,7 +323,13 @@ export class WorkNoteRepository {
          WHERE wntc.work_id IN (${placeholders})`
       )
       .bind(...workIds)
-      .all<{ workId: string; categoryId: string; name: string; isActive: number; createdAt: string }>();
+      .all<{
+        workId: string;
+        categoryId: string;
+        name: string;
+        isActive: number;
+        createdAt: string;
+      }>();
 
     // Fetch all persons in a single query
     const personsResult = await this.db
@@ -330,7 +352,7 @@ export class WorkNoteRepository {
       if (!categoriesByWorkId.has(cat.workId)) {
         categoriesByWorkId.set(cat.workId, []);
       }
-      categoriesByWorkId.get(cat.workId)!.push({
+      categoriesByWorkId.get(cat.workId)?.push({
         categoryId: cat.categoryId,
         name: cat.name,
         isActive: cat.isActive === 1,
@@ -342,7 +364,7 @@ export class WorkNoteRepository {
       if (!personsByWorkId.has(person.workId)) {
         personsByWorkId.set(person.workId, []);
       }
-      personsByWorkId.get(person.workId)!.push({
+      personsByWorkId.get(person.workId)?.push({
         id: person.id,
         workId: person.workId,
         personId: person.personId,
@@ -376,7 +398,15 @@ export class WorkNoteRepository {
           `INSERT INTO work_notes (work_id, title, content_raw, category, project_id, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)`
         )
-        .bind(workId, data.title, data.contentRaw, data.category || null, data.projectId || null, now, now),
+        .bind(
+          workId,
+          data.title,
+          data.contentRaw,
+          data.category || null,
+          data.projectId || null,
+          now,
+          now
+        ),
 
       // Insert first version
       this.db
@@ -399,7 +429,10 @@ export class WorkNoteRepository {
         .bind(...personIds)
         .all<{ person_id: string; current_dept: string | null; current_position: string | null }>();
 
-      const personInfoMap = new Map<string, { currentDept: string | null; currentPosition: string | null }>();
+      const personInfoMap = new Map<
+        string,
+        { currentDept: string | null; currentPosition: string | null }
+      >();
       for (const info of personsInfo.results || []) {
         personInfoMap.set(info.person_id, {
           currentDept: info.current_dept,
@@ -528,7 +561,9 @@ export class WorkNoteRepository {
 
       // Get next version number
       const versionCountResult = await this.db
-        .prepare(`SELECT COALESCE(MAX(version_no), 0) + 1 as nextVersion FROM work_note_versions WHERE work_id = ?`)
+        .prepare(
+          `SELECT COALESCE(MAX(version_no), 0) + 1 as nextVersion FROM work_note_versions WHERE work_id = ?`
+        )
         .bind(workId)
         .first<{ nextVersion: number }>();
 
@@ -546,7 +581,7 @@ export class WorkNoteRepository {
             nextVersionNo,
             data.title || existing.title,
             data.contentRaw || existing.contentRaw,
-            data.category !== undefined ? (data.category || null) : existing.category,
+            data.category !== undefined ? data.category || null : existing.category,
             now
           )
       );
@@ -585,9 +620,16 @@ export class WorkNoteRepository {
             `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
           )
           .bind(...personIds)
-          .all<{ person_id: string; current_dept: string | null; current_position: string | null }>();
+          .all<{
+            person_id: string;
+            current_dept: string | null;
+            current_position: string | null;
+          }>();
 
-        const personInfoMap = new Map<string, { currentDept: string | null; currentPosition: string | null }>();
+        const personInfoMap = new Map<
+          string,
+          { currentDept: string | null; currentPosition: string | null }
+        >();
         for (const info of personsInfo.results || []) {
           personInfoMap.set(info.person_id, {
             currentDept: info.current_dept,
@@ -688,8 +730,8 @@ export class WorkNoteRepository {
       ...existing,
       title: data.title !== undefined ? data.title : existing.title,
       contentRaw: data.contentRaw !== undefined ? data.contentRaw : existing.contentRaw,
-      category: data.category !== undefined ? (data.category || null) : existing.category,
-      projectId: data.projectId !== undefined ? (data.projectId || null) : existing.projectId,
+      category: data.category !== undefined ? data.category || null : existing.category,
+      projectId: data.projectId !== undefined ? data.projectId || null : existing.projectId,
       updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
       embeddedAt: updateFields.length > 0 ? null : existing.embeddedAt,
     };

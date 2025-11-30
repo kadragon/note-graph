@@ -77,7 +77,9 @@ export class PdfProcessingError extends DomainError {
  */
 export class EncryptedPdfError extends DomainError {
   constructor() {
-    super('지원하지 않는 PDF 형식입니다 (암호화된 PDF)', 'PDF_ENCRYPTED', 400, { type: 'encrypted' });
+    super('지원하지 않는 PDF 형식입니다 (암호화된 PDF)', 'PDF_ENCRYPTED', 400, {
+      type: 'encrypted',
+    });
   }
 }
 
@@ -95,6 +97,8 @@ export class CorruptPdfError extends DomainError {
  */
 export class EmptyPdfError extends DomainError {
   constructor() {
-    super('PDF에서 텍스트를 추출할 수 없습니다 (이미지 PDF일 수 있음)', 'PDF_EMPTY', 400, { type: 'empty' });
+    super('PDF에서 텍스트를 추출할 수 없습니다 (이미지 PDF일 수 있음)', 'PDF_EMPTY', 400, {
+      type: 'empty',
+    });
   }
 }

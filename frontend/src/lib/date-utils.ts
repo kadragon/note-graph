@@ -4,14 +4,14 @@
  */
 
 import {
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
   endOfMonth,
-  startOfYear,
+  endOfWeek,
   endOfYear,
-  subWeeks,
   format,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+  subWeeks,
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -34,10 +34,7 @@ export interface DateRange {
  * @param year - Optional year for first-half/second-half periods (defaults to current year)
  * @returns Object with startDate and endDate in YYYY-MM-DD format
  */
-export function getStatisticsPeriodRange(
-  period: StatisticsPeriod,
-  year?: number
-): DateRange {
+export function getStatisticsPeriodRange(period: StatisticsPeriod, year?: number): DateRange {
   const now = new Date();
   const targetYear = year ?? now.getFullYear();
 
@@ -105,17 +102,14 @@ export function getStatisticsPeriodRange(
     }
 
     default:
-      throw new Error(`Unknown period: ${period as any}`);
+      throw new Error(`Unknown period: ${period as never}`);
   }
 }
 
 /**
  * Get human-readable label for a statistics period
  */
-export function getStatisticsPeriodLabel(
-  period: StatisticsPeriod,
-  year?: number
-): string {
+export function getStatisticsPeriodLabel(period: StatisticsPeriod, year?: number): string {
   const targetYear = year ?? new Date().getFullYear();
 
   const labels: Record<StatisticsPeriod, string> = {

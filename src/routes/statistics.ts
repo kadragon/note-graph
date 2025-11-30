@@ -5,13 +5,13 @@
 
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { Env } from '../types/env';
-import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
-import { validateQuery } from '../utils/validation';
 import { statisticsQuerySchema } from '../schemas/statistics';
 import { StatisticsService } from '../services/statistics-service';
+import type { AuthUser } from '../types/auth';
+import type { Env } from '../types/env';
 import { DomainError } from '../types/errors';
+import { validateQuery } from '../utils/validation';
 
 const statistics = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 

@@ -3,8 +3,8 @@
  * Integration tests for statistics API routes
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
 import { env, SELF } from 'cloudflare:test';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { Env } from '../../src/types/env';
 
 const testEnv = env as unknown as Env;
@@ -43,11 +43,35 @@ describe('Statistics API Routes', () => {
 
       await testEnv.DB.batch([
         testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-001', 'P001', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-001', 'WORK-001', 'Task 1', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-002', 'WORK-001', 'Task 2', '진행중', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
+        testEnv.DB.prepare(
+          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
+        ).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-001', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-001',
+          'WORK-001',
+          'Task 1',
+          '완료',
+          `${today}T10:00:00Z`,
+          `${today}T10:00:00Z`
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-002',
+          'WORK-001',
+          'Task 2',
+          '진행중',
+          `${today}T10:00:00Z`,
+          `${today}T10:00:00Z`
+        ),
       ]);
 
       // Act
@@ -71,10 +95,25 @@ describe('Statistics API Routes', () => {
 
       await testEnv.DB.batch([
         testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-001', 'P001', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-001', 'WORK-001', 'Task 1', '진행중', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
+        testEnv.DB.prepare(
+          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
+        ).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-001', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-001',
+          'WORK-001',
+          'Task 1',
+          '진행중',
+          `${today}T10:00:00Z`,
+          `${today}T10:00:00Z`
+        ),
       ]);
 
       // Act
@@ -94,14 +133,30 @@ describe('Statistics API Routes', () => {
 
       await testEnv.DB.batch([
         testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P002', '김철수', '개발팀'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-002', 'Work 2', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-001', 'P001', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-002', 'P002', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-001', 'WORK-001', 'Task', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-002', 'WORK-002', 'Task', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
+        testEnv.DB.prepare(
+          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
+        ).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(
+          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
+        ).bind('P002', '김철수', '개발팀'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('WORK-002', 'Work 2', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-001', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-002', 'P002', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind('TODO-001', 'WORK-001', 'Task', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind('TODO-002', 'WORK-002', 'Task', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
       ]);
 
       // Act: Filter by P001
@@ -118,13 +173,47 @@ describe('Statistics API Routes', () => {
       // Arrange: Create work notes in different periods
       await testEnv.DB.batch([
         testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-JAN', 'January Work', 'Content', '2025-01-15T10:00:00Z', '2025-01-15T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-JUL', 'July Work', 'Content', '2025-07-15T10:00:00Z', '2025-07-15T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-JAN', 'P001', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-JUL', 'P001', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-JAN', 'WORK-JAN', 'Task', '완료', '2025-01-20T10:00:00Z', '2025-01-20T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-JUL', 'WORK-JUL', 'Task', '완료', '2025-07-20T10:00:00Z', '2025-07-20T10:00:00Z'),
+        testEnv.DB.prepare(
+          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
+        ).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind(
+          'WORK-JAN',
+          'January Work',
+          'Content',
+          '2025-01-15T10:00:00Z',
+          '2025-01-15T10:00:00Z'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('WORK-JUL', 'July Work', 'Content', '2025-07-15T10:00:00Z', '2025-07-15T10:00:00Z'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-JAN', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-JUL', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-JAN',
+          'WORK-JAN',
+          'Task',
+          '완료',
+          '2025-01-20T10:00:00Z',
+          '2025-01-20T10:00:00Z'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-JUL',
+          'WORK-JUL',
+          'Task',
+          '완료',
+          '2025-07-20T10:00:00Z',
+          '2025-07-20T10:00:00Z'
+        ),
       ]);
 
       // Act: Query first half of 2025
@@ -141,13 +230,47 @@ describe('Statistics API Routes', () => {
       // Arrange: Create work notes in different periods
       await testEnv.DB.batch([
         testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-JAN', 'January Work', 'Content', '2025-01-15T10:00:00Z', '2025-01-15T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-JUL', 'July Work', 'Content', '2025-07-15T10:00:00Z', '2025-07-15T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-JAN', 'P001', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-JUL', 'P001', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-JAN', 'WORK-JAN', 'Task', '완료', '2025-01-20T10:00:00Z', '2025-01-20T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-JUL', 'WORK-JUL', 'Task', '완료', '2025-07-20T10:00:00Z', '2025-07-20T10:00:00Z'),
+        testEnv.DB.prepare(
+          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
+        ).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind(
+          'WORK-JAN',
+          'January Work',
+          'Content',
+          '2025-01-15T10:00:00Z',
+          '2025-01-15T10:00:00Z'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('WORK-JUL', 'July Work', 'Content', '2025-07-15T10:00:00Z', '2025-07-15T10:00:00Z'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-JAN', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-JUL', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-JAN',
+          'WORK-JAN',
+          'Task',
+          '완료',
+          '2025-01-20T10:00:00Z',
+          '2025-01-20T10:00:00Z'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-JUL',
+          'WORK-JUL',
+          'Task',
+          '완료',
+          '2025-07-20T10:00:00Z',
+          '2025-07-20T10:00:00Z'
+        ),
       ]);
 
       // Act: Query second half of 2025
@@ -164,14 +287,42 @@ describe('Statistics API Routes', () => {
       // Arrange: One work note completed in 2024 and one in 2025
       await testEnv.DB.batch([
         testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-2024', 'Work 2024', 'Content', '2024-05-10T10:00:00Z', '2024-05-10T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-2025', 'Work 2025', 'Content', '2025-05-10T10:00:00Z', '2025-05-10T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-2024', 'P001', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-2025', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
+        ).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('WORK-2024', 'Work 2024', 'Content', '2024-05-10T10:00:00Z', '2024-05-10T10:00:00Z'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('WORK-2025', 'Work 2025', 'Content', '2025-05-10T10:00:00Z', '2025-05-10T10:00:00Z'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-2024', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-2025', 'P001', 'OWNER'),
         // Completed todos in respective years
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-2024', 'WORK-2024', 'Task', '완료', '2024-05-11T10:00:00Z', '2024-06-01T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-2025', 'WORK-2025', 'Task', '완료', '2025-05-11T10:00:00Z', '2025-06-01T10:00:00Z'),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-2024',
+          'WORK-2024',
+          'Task',
+          '완료',
+          '2024-05-11T10:00:00Z',
+          '2024-06-01T10:00:00Z'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-2025',
+          'WORK-2025',
+          'Task',
+          '완료',
+          '2025-05-11T10:00:00Z',
+          '2025-06-01T10:00:00Z'
+        ),
       ]);
 
       // Act: Request statistics for 2024 using this-year period
@@ -188,14 +339,31 @@ describe('Statistics API Routes', () => {
       // Arrange: Create work notes
       await testEnv.DB.batch([
         testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-MAR', 'March Work', 'Content', '2025-03-15T10:00:00Z', '2025-03-15T10:00:00Z'),
-        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-MAR', 'P001', 'OWNER'),
-        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-MAR', 'WORK-MAR', 'Task', '완료', '2025-03-20T10:00:00Z', '2025-03-20T10:00:00Z'),
+        testEnv.DB.prepare(
+          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
+        ).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('WORK-MAR', 'March Work', 'Content', '2025-03-15T10:00:00Z', '2025-03-15T10:00:00Z'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-MAR', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-MAR',
+          'WORK-MAR',
+          'Task',
+          '완료',
+          '2025-03-20T10:00:00Z',
+          '2025-03-20T10:00:00Z'
+        ),
       ]);
 
       // Act: Query custom range (March 2025)
-      const response = await authFetch('/api/statistics?period=custom&startDate=2025-03-01&endDate=2025-03-31');
+      const response = await authFetch(
+        '/api/statistics?period=custom&startDate=2025-03-01&endDate=2025-03-31'
+      );
 
       // Assert
       expect(response.status).toBe(200);

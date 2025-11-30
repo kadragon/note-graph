@@ -1,19 +1,12 @@
 // Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027
-import { useState, useEffect } from 'react';
-import { Check, ChevronsUpDown, Plus, History } from 'lucide-react';
+
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Check, ChevronsUpDown, History, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Command,
   CommandEmpty,
@@ -23,20 +16,20 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { cn } from '@/lib/utils';
-import { useCreatePerson, useUpdatePerson, usePersonHistory } from '@/hooks/usePersons';
-import { useDepartments, useCreateDepartment } from '@/hooks/useDepartments';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useCreateDepartment, useDepartments } from '@/hooks/useDepartments';
+import { useCreatePerson, usePersonHistory, useUpdatePerson } from '@/hooks/usePersons';
 import { toCreateDepartmentRequest } from '@/lib/mappers/department';
+import { cn } from '@/lib/utils';
 import type { Person } from '@/types/api';
 
 interface PersonDialogProps {
@@ -54,12 +47,7 @@ interface ValidationErrors {
   currentPosition?: string;
 }
 
-export function PersonDialog({
-  open,
-  onOpenChange,
-  mode,
-  initialData,
-}: PersonDialogProps) {
+export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDialogProps) {
   const [name, setName] = useState('');
   const [personId, setPersonId] = useState('');
   const [phoneExt, setPhoneExt] = useState('');
@@ -199,9 +187,7 @@ export function PersonDialog({
     if (!newDeptName.trim()) return;
 
     try {
-      const dept = await createDeptMutation.mutateAsync(
-        toCreateDepartmentRequest(newDeptName)
-      );
+      const dept = await createDeptMutation.mutateAsync(toCreateDepartmentRequest(newDeptName));
       setCurrentDept(dept.deptName);
       setNewDeptName('');
       setDeptOpen(false);
@@ -215,13 +201,9 @@ export function PersonDialog({
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
-            <DialogTitle>
-              {isEditMode ? '사람 정보 수정' : '새 사람 추가'}
-            </DialogTitle>
+            <DialogTitle>{isEditMode ? '사람 정보 수정' : '새 사람 추가'}</DialogTitle>
             <DialogDescription>
-              {isEditMode
-                ? '사람 정보를 수정합니다.'
-                : '새로운 사람을 추가합니다.'}
+              {isEditMode ? '사람 정보를 수정합니다.' : '새로운 사람을 추가합니다.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -241,9 +223,7 @@ export function PersonDialog({
                 placeholder="이름을 입력하세요"
                 className={cn(errors.name && 'border-destructive')}
               />
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name}</p>
-              )}
+              {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -266,9 +246,7 @@ export function PersonDialog({
                   errors.personId && 'border-destructive'
                 )}
               />
-              {errors.personId && (
-                <p className="text-sm text-destructive">{errors.personId}</p>
-              )}
+              {errors.personId && <p className="text-sm text-destructive">{errors.personId}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -286,9 +264,7 @@ export function PersonDialog({
                 maxLength={4}
                 className={cn(errors.phoneExt && 'border-destructive')}
               />
-              {errors.phoneExt && (
-                <p className="text-sm text-destructive">{errors.phoneExt}</p>
-              )}
+              {errors.phoneExt && <p className="text-sm text-destructive">{errors.phoneExt}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -299,10 +275,7 @@ export function PersonDialog({
                     variant="outline"
                     role="combobox"
                     aria-expanded={deptOpen}
-                    className={cn(
-                      'justify-between',
-                      errors.currentDept && 'border-destructive'
-                    )}
+                    className={cn('justify-between', errors.currentDept && 'border-destructive')}
                     type="button"
                   >
                     {selectedDept ? selectedDept.deptName : '부서를 선택하세요'}
@@ -315,9 +288,7 @@ export function PersonDialog({
                     <CommandList>
                       <CommandEmpty>
                         <div className="p-2">
-                          <p className="text-sm text-muted-foreground mb-2">
-                            부서가 없습니다.
-                          </p>
+                          <p className="text-sm text-muted-foreground mb-2">부서가 없습니다.</p>
                           <div className="flex gap-2">
                             <Input
                               placeholder="새 부서명"
@@ -361,9 +332,7 @@ export function PersonDialog({
                             <Check
                               className={cn(
                                 'mr-2 h-4 w-4',
-                                currentDept === dept.deptName
-                                  ? 'opacity-100'
-                                  : 'opacity-0'
+                                currentDept === dept.deptName ? 'opacity-100' : 'opacity-0'
                               )}
                             />
                             {dept.deptName}
@@ -398,9 +367,7 @@ export function PersonDialog({
                 className={cn(errors.currentPosition && 'border-destructive')}
               />
               {errors.currentPosition && (
-                <p className="text-sm text-destructive">
-                  {errors.currentPosition}
-                </p>
+                <p className="text-sm text-destructive">{errors.currentPosition}</p>
               )}
             </div>
 
@@ -436,9 +403,7 @@ export function PersonDialog({
                           key={entry.id}
                           className={cn(
                             'p-3 rounded-lg border text-sm',
-                            entry.isActive
-                              ? 'bg-primary/5 border-primary/20'
-                              : 'bg-muted/50'
+                            entry.isActive ? 'bg-primary/5 border-primary/20' : 'bg-muted/50'
                           )}
                         >
                           <div className="flex items-center justify-between mb-1">
@@ -450,9 +415,7 @@ export function PersonDialog({
                             )}
                           </div>
                           {entry.position && (
-                            <p className="text-muted-foreground">
-                              직책: {entry.position}
-                            </p>
+                            <p className="text-muted-foreground">직책: {entry.position}</p>
                           )}
                           <p className="text-xs text-muted-foreground mt-1">
                             {format(parseISO(entry.startDate), 'yyyy-MM-dd', {

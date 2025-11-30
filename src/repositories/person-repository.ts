@@ -4,9 +4,9 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Person, PersonDeptHistory, PersonWorkNote } from '../types/person';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/person';
-import { NotFoundError, ConflictError, ValidationError } from '../types/errors';
+import { ConflictError, NotFoundError, ValidationError } from '../types/errors';
+import type { Person, PersonDeptHistory, PersonWorkNote } from '../types/person';
 
 export class PersonRepository {
   constructor(private db: D1Database) {}
@@ -21,7 +21,9 @@ export class PersonRepository {
       .first<{ present: number }>();
 
     if (!exists) {
-      throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', { deptName });
+      throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
+        deptName,
+      });
     }
   }
 
@@ -156,7 +158,8 @@ export class PersonRepository {
     const statements = [];
 
     // Check if department is being changed
-    const isDeptChanging = data.currentDept !== undefined && data.currentDept !== existing.currentDept;
+    const isDeptChanging =
+      data.currentDept !== undefined && data.currentDept !== existing.currentDept;
 
     if (isDeptChanging) {
       if (data.currentDept) {
@@ -242,11 +245,18 @@ export class PersonRepository {
     return {
       ...existing,
       name: data.name !== undefined ? data.name : existing.name,
-      phoneExt: data.phoneExt !== undefined ? (data.phoneExt || null) : existing.phoneExt,
-      currentDept: data.currentDept !== undefined ? (data.currentDept || null) : existing.currentDept,
-      currentPosition: data.currentPosition !== undefined ? (data.currentPosition || null) : existing.currentPosition,
-      currentRoleDesc: data.currentRoleDesc !== undefined ? (data.currentRoleDesc || null) : existing.currentRoleDesc,
-      employmentStatus: data.employmentStatus !== undefined ? data.employmentStatus : existing.employmentStatus,
+      phoneExt: data.phoneExt !== undefined ? data.phoneExt || null : existing.phoneExt,
+      currentDept: data.currentDept !== undefined ? data.currentDept || null : existing.currentDept,
+      currentPosition:
+        data.currentPosition !== undefined
+          ? data.currentPosition || null
+          : existing.currentPosition,
+      currentRoleDesc:
+        data.currentRoleDesc !== undefined
+          ? data.currentRoleDesc || null
+          : existing.currentRoleDesc,
+      employmentStatus:
+        data.employmentStatus !== undefined ? data.employmentStatus : existing.employmentStatus,
       updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
     };
   }

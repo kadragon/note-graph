@@ -34,10 +34,11 @@ const DATETIME_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}
  * Date or datetime schema
  * Accepts both ISO 8601 date (YYYY-MM-DD) and datetime (YYYY-MM-DDTHH:mm:ssZ) formats
  */
-const dateOrDatetimeSchema = z.string().refine(
-  (val) => DATE_REGEX.test(val) || DATETIME_REGEX.test(val),
-  { message: 'Must be a valid ISO 8601 date (YYYY-MM-DD) or datetime string' }
-);
+const dateOrDatetimeSchema = z
+  .string()
+  .refine((val) => DATE_REGEX.test(val) || DATETIME_REGEX.test(val), {
+    message: 'Must be a valid ISO 8601 date (YYYY-MM-DD) or datetime string',
+  });
 
 /**
  * Create todo request schema
@@ -46,7 +47,10 @@ export const createTodoSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(1000).optional(),
   dueDate: dateOrDatetimeSchema.optional(),
-  waitUntil: z.string().datetime({ message: 'waitUntil must be a valid ISO 8601 date-time string' }).optional(),
+  waitUntil: z
+    .string()
+    .datetime({ message: 'waitUntil must be a valid ISO 8601 date-time string' })
+    .optional(),
   repeatRule: repeatRuleSchema.default('NONE'),
   recurrenceType: recurrenceTypeSchema.optional(),
   customInterval: z.number().int().min(1).max(365).optional(),
@@ -62,7 +66,10 @@ export const updateTodoSchema = z.object({
   description: z.string().max(1000).optional(),
   status: todoStatusSchema.optional(),
   dueDate: dateOrDatetimeSchema.optional(),
-  waitUntil: z.string().datetime({ message: 'waitUntil must be a valid ISO 8601 date-time string' }).optional(),
+  waitUntil: z
+    .string()
+    .datetime({ message: 'waitUntil must be a valid ISO 8601 date-time string' })
+    .optional(),
   repeatRule: repeatRuleSchema.optional(),
   recurrenceType: recurrenceTypeSchema.optional(),
   customInterval: z.number().int().min(1).max(365).optional().nullable(),

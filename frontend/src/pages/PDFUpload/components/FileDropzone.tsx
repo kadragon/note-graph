@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
 import { Upload } from 'lucide-react';
+import { useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 
 interface FileDropzoneProps {

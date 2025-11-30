@@ -15,32 +15,40 @@ export const statisticsPeriodSchema = z.enum([
   'second-half',
   'this-year',
   'last-week',
-  'custom'
+  'custom',
 ]);
 
 /**
  * Query parameters for statistics endpoint
  */
-export const statisticsQuerySchema = z.object({
-  period: statisticsPeriodSchema.default('this-week'),
-  year: z.coerce.number().int().min(2000).max(2100).optional(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  personId: z.string().optional(),
-  deptName: z.string().optional(),
-  category: z.string().optional(),
-}).refine(
-  (data) => {
-    // If period is 'custom', both startDate and endDate must be provided
-    if (data.period === 'custom') {
-      return data.startDate && data.endDate;
+export const statisticsQuerySchema = z
+  .object({
+    period: statisticsPeriodSchema.default('this-week'),
+    year: z.coerce.number().int().min(2000).max(2100).optional(),
+    startDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    personId: z.string().optional(),
+    deptName: z.string().optional(),
+    category: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // If period is 'custom', both startDate and endDate must be provided
+      if (data.period === 'custom') {
+        return data.startDate && data.endDate;
+      }
+      return true;
+    },
+    {
+      message: 'startDate and endDate are required when period is "custom"',
     }
-    return true;
-  },
-  {
-    message: 'startDate and endDate are required when period is "custom"',
-  }
-);
+  );
 
 export type StatisticsQuery = z.infer<typeof statisticsQuerySchema>;
 export type StatisticsPeriod = z.infer<typeof statisticsPeriodSchema>;

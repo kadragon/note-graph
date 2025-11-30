@@ -3,6 +3,8 @@
  * Table showing work notes with completion statistics
  */
 
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -12,8 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import type { WorkNoteStatisticsItem } from '@/types/api';
 
 interface WorkNotesTableProps {
@@ -74,7 +74,8 @@ export function WorkNotesTable({ workNotes }: WorkNotesTableProps) {
                               {person.personName}
                               {person.currentDept && (
                                 <span className="text-muted-foreground">
-                                  {' '}({person.currentDept})
+                                  {' '}
+                                  ({person.currentDept})
                                 </span>
                               )}
                             </span>

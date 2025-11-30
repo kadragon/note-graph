@@ -3,8 +3,8 @@
  * Summary statistics cards displaying key metrics
  */
 
+import { CheckCircle2, FileText, Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, CheckCircle2, Target } from 'lucide-react';
 
 interface SummaryCardsProps {
   totalWorkNotes: number;
@@ -26,9 +26,7 @@ export function SummaryCards({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{totalWorkNotes.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            완료된 할일이 있는 업무노트
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">완료된 할일이 있는 업무노트</p>
         </CardContent>
       </Card>
 
@@ -39,9 +37,7 @@ export function SummaryCards({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{totalCompletedTodos.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            완료 상태의 할일
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">완료 상태의 할일</p>
         </CardContent>
       </Card>
 
@@ -52,9 +48,7 @@ export function SummaryCards({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{completionRate.toFixed(1)}%</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            전체 할일 대비 완료율
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">전체 할일 대비 완료율</p>
         </CardContent>
       </Card>
     </div>

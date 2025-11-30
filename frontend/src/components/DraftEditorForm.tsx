@@ -1,15 +1,15 @@
 // Trace: SPEC-worknote-1, TASK-032
 import { Trash2 } from 'lucide-react';
+import { AIReferenceList } from '@/components/AIReferenceList';
+import { AssigneeSelector } from '@/components/AssigneeSelector';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card } from '@/components/ui/card';
-import { AssigneeSelector } from '@/components/AssigneeSelector';
-import { AIReferenceList } from '@/components/AIReferenceList';
-import { DialogFooter } from '@/components/ui/dialog';
-import type { AIDraftFormState, AIDraftFormActions, AIDraftFormData } from '@/hooks/useAIDraftForm';
+import type { AIDraftFormActions, AIDraftFormData, AIDraftFormState } from '@/hooks/useAIDraftForm';
 
 interface DraftEditorFormProps {
   state: AIDraftFormState;
@@ -49,12 +49,7 @@ export function DraftEditorForm({
     handleSubmit,
   } = actions;
 
-  const {
-    taskCategories,
-    persons,
-    categoriesLoading,
-    personsLoading,
-  } = data;
+  const { taskCategories, persons, categoriesLoading, personsLoading } = data;
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -146,7 +141,9 @@ export function DraftEditorForm({
                       <div className="text-muted-foreground text-xs mt-0.5">{todo.description}</div>
                     )}
                     {todo.dueDate && (
-                      <div className="text-muted-foreground text-xs mt-0.5">마감: {todo.dueDate}</div>
+                      <div className="text-muted-foreground text-xs mt-0.5">
+                        마감: {todo.dueDate}
+                      </div>
                     )}
                   </div>
                   <Button
@@ -167,21 +164,11 @@ export function DraftEditorForm({
 
       <DialogFooter className="gap-2">
         {onReset && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onReset}
-            disabled={isSubmitting}
-          >
+          <Button type="button" variant="outline" onClick={onReset} disabled={isSubmitting}>
             {resetLabel}
           </Button>
         )}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isSubmitting}
-        >
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           취소
         </Button>
         <Button type="submit" disabled={isSubmitting}>

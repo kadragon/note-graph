@@ -3,25 +3,21 @@
  * Distribution charts for category, person, and department statistics
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  BarChart,
   Bar,
-  PieChart,
-  Pie,
+  BarChart,
+  CartesianGrid,
   Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from 'recharts';
-import type {
-  CategoryDistribution,
-  PersonDistribution,
-  DepartmentDistribution,
-} from '@/types/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { CategoryDistribution, DepartmentDistribution, PersonDistribution } from '@/types/api';
 
 interface DistributionChartsProps {
   byCategory: CategoryDistribution[];
@@ -70,13 +66,7 @@ export function DistributionCharts({
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={categoryData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  interval={0}
-                />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} />
                 <YAxis />
                 <Tooltip />
                 <Legend />
@@ -101,13 +91,7 @@ export function DistributionCharts({
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={personData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  interval={0}
-                />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} />
                 <YAxis />
                 <Tooltip />
                 <Legend />
@@ -141,8 +125,8 @@ export function DistributionCharts({
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {departmentData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {departmentData.map((item, index) => (
+                    <Cell key={`cell-${item.name}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />

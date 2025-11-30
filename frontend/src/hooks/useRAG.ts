@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { API } from '@/lib/api';
-import { useToast } from './use-toast';
 import type { RAGQueryRequest } from '@/types/api';
+import { useToast } from './use-toast';
 
 export function useRAGQuery() {
   const { toast } = useToast();

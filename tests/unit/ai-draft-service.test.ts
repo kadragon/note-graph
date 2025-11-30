@@ -1,11 +1,11 @@
 // Unit tests for AIDraftService
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+
 import { env } from 'cloudflare:test';
-import type { Env } from '../../src/types/env';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AIDraftService } from '../../src/services/ai-draft-service';
+import type { Env } from '../../src/types/env';
 import { RateLimitError } from '../../src/types/errors';
 import type { WorkNote } from '../../src/types/work-note';
-import { getTodayDateUTC } from '../../src/utils/date';
 
 const testEnv = env as unknown as Env;
 
@@ -34,10 +34,12 @@ describe('AIDraftService', () => {
   describe('generateDraftFromText()', () => {
     it('should generate work note draft from unstructured text', async () => {
       // Arrange
-      const inputText = '오늘 회의에서 새 프로젝트 기획안을 논의했습니다. 다음 주까지 초안 작성이 필요합니다.';
+      const inputText =
+        '오늘 회의에서 새 프로젝트 기획안을 논의했습니다. 다음 주까지 초안 작성이 필요합니다.';
       const mockLLMResponse = {
         title: '새 프로젝트 기획안 논의',
-        content: '오늘 회의에서 새 프로젝트 기획안을 논의했습니다.\n\n다음 주까지 초안 작성이 필요합니다.',
+        content:
+          '오늘 회의에서 새 프로젝트 기획안을 논의했습니다.\n\n다음 주까지 초안 작성이 필요합니다.',
         category: '기획',
         todos: [
           {
@@ -623,7 +625,9 @@ describe('AIDraftService', () => {
       });
 
       // Act & Assert
-      await expect(service.generateDraftFromText(inputText)).rejects.toThrow('No response from GPT');
+      await expect(service.generateDraftFromText(inputText)).rejects.toThrow(
+        'No response from GPT'
+      );
     });
 
     it('should handle malformed GPT response', async () => {
@@ -638,7 +642,9 @@ describe('AIDraftService', () => {
       });
 
       // Act & Assert
-      await expect(service.generateDraftFromText(inputText)).rejects.toThrow('No response from GPT');
+      await expect(service.generateDraftFromText(inputText)).rejects.toThrow(
+        'No response from GPT'
+      );
     });
 
     it('should use AI Gateway URL', async () => {

@@ -3,10 +3,10 @@
  * Statistics service for work note metrics with period calculations
  */
 
-import type { Env } from '../types/env';
 import { StatisticsRepository } from '../repositories/statistics-repository';
-import type { WorkNoteStatistics, StatisticsDateRange } from '../types/statistics';
 import type { StatisticsPeriod } from '../schemas/statistics';
+import type { Env } from '../types/env';
+import type { StatisticsDateRange, WorkNoteStatistics } from '../types/statistics';
 
 export class StatisticsService {
   private repository: StatisticsRepository;
@@ -147,10 +147,10 @@ export class StatisticsService {
     }
 
     // Get statistics from repository
-    return await this.repository.calculateStatistics(
-      dateRange.startDate,
-      dateRange.endDate,
-      { personId, deptName, categoryId }
-    );
+    return await this.repository.calculateStatistics(dateRange.startDate, dateRange.endDate, {
+      personId,
+      deptName,
+      categoryId,
+    });
   }
 }
