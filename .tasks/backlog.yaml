@@ -99,14 +99,9 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 6
-  total_estimated_effort: 21 hours
+  total_tasks: 9
+  total_estimated_effort: 36 hours
   phases:
-    - name: "Current"
-      tasks: []
-      effort: 0h
-      priority: 1
-
     - name: "Entity Management"
       tasks: [TASK-024, TASK-025, TASK-020, TASK-021]
       effort: 11h
@@ -116,3 +111,9 @@ metadata:
       tasks: [TASK-018, TASK-019]
       effort: 10h
       priority: 6
+
+  completed_phases:
+    - name: "Statistics Feature"
+      tasks: [TASK-047, TASK-048, TASK-049]
+      status: "✅ COMPLETE"
+      note: "All 3 tasks completed - backend, frontend, and comprehensive tests"

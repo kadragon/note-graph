@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -8,11 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TodoList } from './TodoList';
-import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTodos } from '@/hooks/useTodos';
 import { API } from '@/lib/api';
-import type { TodoView, Todo } from '@/types/api';
+import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDialog';
+import type { Todo, TodoView } from '@/types/api';
+import { TodoList } from './TodoList';
 
 const TODO_VIEWS: { value: TodoView; label: string }[] = [
   { value: 'today', label: '오늘' },
@@ -24,10 +24,7 @@ const TODO_VIEWS: { value: TodoView; label: string }[] = [
 
 // Generate year options from 2020 to current year + 1
 const currentYear = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from(
-  { length: currentYear - 2020 + 2 },
-  (_, i) => 2020 + i
-).reverse();
+const YEAR_OPTIONS = Array.from({ length: currentYear - 2020 + 2 }, (_, i) => 2020 + i).reverse();
 
 export function TodoTabs() {
   const [currentView, setCurrentView] = useState<TodoView>('today');
@@ -40,7 +37,8 @@ export function TodoTabs() {
   // Fetch work note when a todo is clicked
   const { data: selectedWorkNote } = useQuery({
     queryKey: ['work-note', selectedWorkNoteId],
-    queryFn: () => (selectedWorkNoteId ? API.getWorkNote(selectedWorkNoteId) : Promise.resolve(null)),
+    queryFn: () =>
+      selectedWorkNoteId ? API.getWorkNote(selectedWorkNoteId) : Promise.resolve(null),
     enabled: !!selectedWorkNoteId,
   });
 
@@ -54,7 +52,11 @@ export function TodoTabs() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as TodoView)} className="flex-1">
+        <Tabs
+          value={currentView}
+          onValueChange={(v) => setCurrentView(v as TodoView)}
+          className="flex-1"
+        >
           <TabsList className="w-full justify-start">
             {TODO_VIEWS.map((view) => (
               <TabsTrigger key={view.value} value={view.value}>

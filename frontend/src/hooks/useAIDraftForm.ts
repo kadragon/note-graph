@@ -1,11 +1,12 @@
 // Trace: SPEC-worknote-1, TASK-032
-import { useState, useCallback, useEffect } from 'react';
+
 import { useQueryClient } from '@tanstack/react-query';
-import { useTaskCategories } from '@/hooks/useTaskCategories';
-import { usePersons } from '@/hooks/usePersons';
+import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { usePersons } from '@/hooks/usePersons';
+import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { API } from '@/lib/api';
-import type { AIDraftTodo, AIDraftReference, AIDraftPayload, Person } from '@/types/api';
+import type { AIDraftPayload, AIDraftReference, AIDraftTodo, Person } from '@/types/api';
 
 // Extended todo type with stable UI identifier
 export interface SuggestedTodo extends AIDraftTodo {
@@ -63,9 +64,7 @@ export function useAIDraftForm(onSuccess?: () => void) {
   // Sync category ID when categories load or draft category name changes
   useEffect(() => {
     if (draftCategoryName && taskCategories.length > 0) {
-      const matchingCategory = taskCategories.find(
-        (cat) => cat.name === draftCategoryName
-      );
+      const matchingCategory = taskCategories.find((cat) => cat.name === draftCategoryName);
       if (matchingCategory) {
         setSelectedCategoryIds([matchingCategory.categoryId]);
       } else {
@@ -76,9 +75,7 @@ export function useAIDraftForm(onSuccess?: () => void) {
 
   const handleCategoryToggle = useCallback((categoryId: string) => {
     setSelectedCategoryIds((prev) =>
-      prev.includes(categoryId)
-        ? prev.filter((id) => id !== categoryId)
-        : [...prev, categoryId]
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     );
   }, []);
 
@@ -101,10 +98,12 @@ export function useAIDraftForm(onSuccess?: () => void) {
     setTitle(draft.title);
     setContent(draft.content);
     // Add unique IDs to todos for stable React keys
-    setSuggestedTodos((draft.todos || []).map((todo) => ({
-      ...todo,
-      uiId: crypto.randomUUID(),
-    })));
+    setSuggestedTodos(
+      (draft.todos || []).map((todo) => ({
+        ...todo,
+        uiId: crypto.randomUUID(),
+      }))
+    );
     // Store category name for async resolution
     setDraftCategoryName(draft.category || null);
 
@@ -114,103 +113,108 @@ export function useAIDraftForm(onSuccess?: () => void) {
     }
   }, []);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
 
-    if (!title.trim() || !content.trim()) {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: '제목과 내용을 입력해주세요.',
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Create work note first
-      const workNote = await API.createWorkNote({
-        title: title.trim(),
-        content: content.trim(),
-        categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
-        relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
-        relatedWorkIds: selectedReferenceIds.length > 0 ? selectedReferenceIds : undefined,
-      });
-
-      // Validate that work note was created with an ID
-      if (!workNote?.id) {
-        throw new Error('업무노트 생성에 실패했거나, 서버에서 잘못된 데이터를 반환했습니다.');
+      if (!title.trim() || !content.trim()) {
+        toast({
+          variant: 'destructive',
+          title: '오류',
+          description: '제목과 내용을 입력해주세요.',
+        });
+        return;
       }
 
-      // Create todos if any suggested todos exist
-      if (suggestedTodos.length > 0) {
-        // Use Promise.allSettled for resilience to partial failures
-        const todoCreationResults = await Promise.allSettled(
-          suggestedTodos.map((todo) =>
-            API.createWorkNoteTodo(workNote.id, {
-              title: todo.title,
-              description: todo.description,
-              dueDate: todo.dueDate,
-              repeatRule: 'NONE',
-            })
-          )
-        );
+      setIsSubmitting(true);
 
-        const successfulCount = todoCreationResults.filter((r) => r.status === 'fulfilled').length;
-        const failedCount = suggestedTodos.length - successfulCount;
+      try {
+        // Create work note first
+        const workNote = await API.createWorkNote({
+          title: title.trim(),
+          content: content.trim(),
+          categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+          relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+          relatedWorkIds: selectedReferenceIds.length > 0 ? selectedReferenceIds : undefined,
+        });
 
-        if (successfulCount > 0) {
-          void queryClient.invalidateQueries({ queryKey: ['todos'] });
+        // Validate that work note was created with an ID
+        if (!workNote?.id) {
+          throw new Error('업무노트 생성에 실패했거나, 서버에서 잘못된 데이터를 반환했습니다.');
         }
 
-        if (failedCount > 0) {
-          toast({
-            variant: 'destructive',
-            title: '일부 할일 생성 실패',
-            description: `업무노트는 저장되었지만, ${failedCount}개의 할일 생성에 실패했습니다.${successfulCount > 0 ? ` ${successfulCount}개는 성공했습니다.` : ''}`,
-          });
+        // Create todos if any suggested todos exist
+        if (suggestedTodos.length > 0) {
+          // Use Promise.allSettled for resilience to partial failures
+          const todoCreationResults = await Promise.allSettled(
+            suggestedTodos.map((todo) =>
+              API.createWorkNoteTodo(workNote.id, {
+                title: todo.title,
+                description: todo.description,
+                dueDate: todo.dueDate,
+                repeatRule: 'NONE',
+              })
+            )
+          );
+
+          const successfulCount = todoCreationResults.filter(
+            (r) => r.status === 'fulfilled'
+          ).length;
+          const failedCount = suggestedTodos.length - successfulCount;
+
+          if (successfulCount > 0) {
+            void queryClient.invalidateQueries({ queryKey: ['todos'] });
+          }
+
+          if (failedCount > 0) {
+            toast({
+              variant: 'destructive',
+              title: '일부 할일 생성 실패',
+              description: `업무노트는 저장되었지만, ${failedCount}개의 할일 생성에 실패했습니다.${successfulCount > 0 ? ` ${successfulCount}개는 성공했습니다.` : ''}`,
+            });
+          } else {
+            toast({
+              title: '성공',
+              description: `업무노트와 ${suggestedTodos.length}개의 할일이 저장되었습니다.`,
+            });
+          }
         } else {
           toast({
             title: '성공',
-            description: `업무노트와 ${suggestedTodos.length}개의 할일이 저장되었습니다.`,
+            description: '업무노트가 생성되었습니다.',
           });
         }
-      } else {
+
+        // Always invalidate work-notes queries
+        void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+        void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+
+        // Reset form and call success callback
+        resetForm();
+        onSuccess?.();
+      } catch (error) {
         toast({
-          title: '성공',
-          description: '업무노트가 생성되었습니다.',
+          variant: 'destructive',
+          title: '오류',
+          description: error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.',
         });
+      } finally {
+        setIsSubmitting(false);
       }
-
-      // Always invalidate work-notes queries
-      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-
-      // Reset form and call success callback
-      resetForm();
-      onSuccess?.();
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [
-    title,
-    content,
-    selectedCategoryIds,
-    selectedPersonIds,
-    selectedReferenceIds,
-    suggestedTodos,
-    queryClient,
-    toast,
-    resetForm,
-    onSuccess,
-  ]);
+    },
+    [
+      title,
+      content,
+      selectedCategoryIds,
+      selectedPersonIds,
+      selectedReferenceIds,
+      suggestedTodos,
+      queryClient,
+      toast,
+      resetForm,
+      onSuccess,
+    ]
+  );
 
   const state: AIDraftFormState = {
     title,

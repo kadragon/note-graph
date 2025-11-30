@@ -44,23 +44,13 @@
     },
 
     // Cloudflare Workers Types
-    "types": [
-      "@cloudflare/workers-types"
-    ],
+    "types": ["@cloudflare/workers-types"],
 
     // Skip lib check for faster compilation
     "skipLibCheck": true
   },
 
-  "include": [
-    "src/**/*"
-  ],
+  "include": ["src/**/*"],
 
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "frontend"
-  ]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "frontend"]
 }

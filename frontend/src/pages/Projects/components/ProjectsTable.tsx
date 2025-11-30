@@ -1,5 +1,9 @@
 // Trace: SPEC-project-1, TASK-043
+
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { Eye, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -9,10 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import type { Project, ProjectStatus } from '@/types/api';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
 
 interface ProjectsTableProps {
   projects: Project[];
@@ -21,10 +22,10 @@ interface ProjectsTableProps {
 }
 
 const STATUS_COLORS: Record<ProjectStatus, string> = {
-  '진행중': 'bg-blue-500',
-  '완료': 'bg-green-500',
-  '보류': 'bg-yellow-500',
-  '중단': 'bg-red-500',
+  진행중: 'bg-blue-500',
+  완료: 'bg-green-500',
+  보류: 'bg-yellow-500',
+  중단: 'bg-red-500',
 };
 
 export function ProjectsTable({ projects, onView, onDelete }: ProjectsTableProps) {
@@ -43,12 +44,14 @@ export function ProjectsTable({ projects, onView, onDelete }: ProjectsTableProps
       </TableHeader>
       <TableBody>
         {projects.map((project) => (
-          <TableRow key={project.projectId} className="cursor-pointer" onClick={() => onView(project)}>
+          <TableRow
+            key={project.projectId}
+            className="cursor-pointer"
+            onClick={() => onView(project)}
+          >
             <TableCell className="font-medium">{project.name}</TableCell>
             <TableCell>
-              <Badge className={STATUS_COLORS[project.status]}>
-                {project.status}
-              </Badge>
+              <Badge className={STATUS_COLORS[project.status]}>{project.status}</Badge>
             </TableCell>
             <TableCell>
               {project.priority ? (
@@ -82,18 +85,24 @@ export function ProjectsTable({ projects, onView, onDelete }: ProjectsTableProps
               </span>
             </TableCell>
             <TableCell className="text-right">
-              <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-end gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onView(project)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView(project);
+                  }}
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onDelete(project.projectId)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(project.projectId);
+                  }}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

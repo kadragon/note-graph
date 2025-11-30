@@ -4,9 +4,9 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Department, DepartmentMember, DepartmentWorkNote } from '../types/department';
 import type { CreateDepartmentInput, UpdateDepartmentInput } from '../schemas/department';
-import { NotFoundError, ConflictError } from '../types/errors';
+import type { Department, DepartmentMember, DepartmentWorkNote } from '../types/department';
+import { ConflictError, NotFoundError } from '../types/errors';
 
 export class DepartmentRepository {
   constructor(private db: D1Database) {}

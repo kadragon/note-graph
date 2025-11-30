@@ -1,12 +1,12 @@
 // Trace: Test coverage improvement
 // Unit tests for TodoRepository
 
-import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { TodoRepository } from '../../src/repositories/todo-repository';
-import { NotFoundError } from '../../src/types/errors';
-import type { Env } from '../../src/types/env';
 import type { CreateTodoInput, UpdateTodoInput } from '../../src/schemas/todo';
+import type { Env } from '../../src/types/env';
+import { NotFoundError } from '../../src/types/errors';
 
 const testEnv = env as unknown as Env;
 
@@ -195,23 +195,65 @@ describe('TodoRepository', () => {
         // Overdue todo
         testEnv.DB.prepare(
           'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-OVERDUE', testWorkId, 'Overdue', now.toISOString(), yesterday.toISOString(), '진행중', 'NONE'),
+        ).bind(
+          'TODO-OVERDUE',
+          testWorkId,
+          'Overdue',
+          now.toISOString(),
+          yesterday.toISOString(),
+          '진행중',
+          'NONE'
+        ),
         // Due today
         testEnv.DB.prepare(
           'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-TODAY', testWorkId, 'Today', now.toISOString(), now.toISOString(), '진행중', 'NONE'),
+        ).bind(
+          'TODO-TODAY',
+          testWorkId,
+          'Today',
+          now.toISOString(),
+          now.toISOString(),
+          '진행중',
+          'NONE'
+        ),
         // Due tomorrow
         testEnv.DB.prepare(
           'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-TOMORROW', testWorkId, 'Tomorrow', now.toISOString(), tomorrow.toISOString(), '진행중', 'NONE'),
+        ).bind(
+          'TODO-TOMORROW',
+          testWorkId,
+          'Tomorrow',
+          now.toISOString(),
+          tomorrow.toISOString(),
+          '진행중',
+          'NONE'
+        ),
         // Wait-until in future (should be hidden from remaining view)
         testEnv.DB.prepare(
           'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-WAIT-FUTURE', testWorkId, 'Waiting', now.toISOString(), waitTomorrow.toISOString(), waitTomorrow.toISOString(), '진행중', 'NONE'),
+        ).bind(
+          'TODO-WAIT-FUTURE',
+          testWorkId,
+          'Waiting',
+          now.toISOString(),
+          waitTomorrow.toISOString(),
+          waitTomorrow.toISOString(),
+          '진행중',
+          'NONE'
+        ),
         // Overdue but wait_until in future (should not appear in backlog)
         testEnv.DB.prepare(
           'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-OVERDUE-WAIT', testWorkId, 'Overdue Wait', now.toISOString(), overdueWaitTomorrow.toISOString(), waitTomorrow.toISOString(), '진행중', 'NONE'),
+        ).bind(
+          'TODO-OVERDUE-WAIT',
+          testWorkId,
+          'Overdue Wait',
+          now.toISOString(),
+          overdueWaitTomorrow.toISOString(),
+          waitTomorrow.toISOString(),
+          '진행중',
+          'NONE'
+        ),
         // Completed
         testEnv.DB.prepare(
           'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
@@ -283,8 +325,8 @@ describe('TodoRepository', () => {
 
       // Verify due dates are sorted in ascending order
       for (let i = 1; i < withDueDate.length; i++) {
-        const prevDate = new Date(withDueDate[i - 1].dueDate!).getTime();
-        const currDate = new Date(withDueDate[i].dueDate!).getTime();
+        const prevDate = new Date(withDueDate[i - 1].dueDate as string).getTime();
+        const currDate = new Date(withDueDate[i].dueDate as string).getTime();
         expect(prevDate).toBeLessThanOrEqual(currDate);
       }
 
@@ -452,7 +494,9 @@ describe('TodoRepository', () => {
 
     it('should throw NotFoundError for non-existent todo', async () => {
       // Act & Assert
-      await expect(repository.update('TODO-NONEXISTENT', { title: 'New' })).rejects.toThrow(NotFoundError);
+      await expect(repository.update('TODO-NONEXISTENT', { title: 'New' })).rejects.toThrow(
+        NotFoundError
+      );
     });
 
     it('should update title', async () => {
@@ -627,7 +671,7 @@ describe('TodoRepository', () => {
       expect(incompleteTodos[0].todoId).not.toBe(created.todoId);
 
       // New todo's due date should be 1 day after original due date
-      const newDueDate = new Date(incompleteTodos[0].dueDate!);
+      const newDueDate = new Date(incompleteTodos[0].dueDate as string);
       const expectedDueDate = new Date(dueDate);
       expectedDueDate.setDate(expectedDueDate.getDate() + 1);
 
@@ -658,8 +702,7 @@ describe('TodoRepository', () => {
       expect(incompleteTodos.length).toBe(1);
       expect(incompleteTodos[0].title).toBe('Weekly Task');
 
-      // New todo's due date should be 7 days after original
-      const newDueDate = new Date(incompleteTodos[0].dueDate!);
+      const newDueDate = new Date(incompleteTodos[0].dueDate as string);
       const expectedDueDate = new Date(dueDate);
       expectedDueDate.setDate(expectedDueDate.getDate() + 7);
 
@@ -716,7 +759,7 @@ describe('TodoRepository', () => {
       expect(incompleteTodos.length).toBe(1);
 
       // New due date should be based on completion date, not original due date
-      const newDueDate = new Date(incompleteTodos[0].dueDate!);
+      const newDueDate = new Date(incompleteTodos[0].dueDate as string);
       const expectedDueDate = new Date(completionDate);
       expectedDueDate.setDate(expectedDueDate.getDate() + 1);
 

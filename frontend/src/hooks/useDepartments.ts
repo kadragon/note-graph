@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
-import { useToast } from './use-toast';
 import type { CreateDepartmentRequest, UpdateDepartmentRequest } from '@/types/api';
+import { useToast } from './use-toast';
 
 export function useDepartments() {
   return useQuery({

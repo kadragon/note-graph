@@ -5,15 +5,19 @@
 
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { Env } from '../types/env';
-import type { AuthUser } from '../types/auth';
 import { authMiddleware } from '../middleware/auth';
-import { validateBody, validateQuery } from '../utils/validation';
-import { createWorkNoteSchema, updateWorkNoteSchema, listWorkNotesQuerySchema } from '../schemas/work-note';
-import { createTodoSchema } from '../schemas/todo';
-import { WorkNoteService } from '../services/work-note-service';
 import { TodoRepository } from '../repositories/todo-repository';
+import { createTodoSchema } from '../schemas/todo';
+import {
+  createWorkNoteSchema,
+  listWorkNotesQuerySchema,
+  updateWorkNoteSchema,
+} from '../schemas/work-note';
+import { WorkNoteService } from '../services/work-note-service';
+import type { AuthUser } from '../types/auth';
+import type { Env } from '../types/env';
 import { DomainError } from '../types/errors';
+import { validateBody, validateQuery } from '../utils/validation';
 
 const workNotes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -47,7 +51,10 @@ workNotes.get('/', async (c) => {
     return c.json(results);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
     }
     console.error('Error listing work notes:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -67,7 +74,10 @@ workNotes.post('/', async (c) => {
     return c.json(workNote, 201);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
     }
     console.error('Error creating work note:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -90,7 +100,10 @@ workNotes.get('/:workId', async (c) => {
     return c.json(workNote);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
     }
     console.error('Error getting work note:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -111,7 +124,10 @@ workNotes.put('/:workId', async (c) => {
     return c.json(workNote);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
     }
     console.error('Error updating work note:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -131,7 +147,10 @@ workNotes.delete('/:workId', async (c) => {
     return c.body(null, 204);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
     }
     console.error('Error deleting work note:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -150,7 +169,10 @@ workNotes.get('/:workId/todos', async (c) => {
     return c.json(todos);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
     }
     console.error('Error getting work note todos:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
@@ -174,7 +196,10 @@ workNotes.post('/:workId/todos', async (c) => {
     return c.json(todo, 201);
   } catch (error) {
     if (error instanceof DomainError) {
-      return c.json({ code: error.code, message: error.message, details: error.details }, error.statusCode as ContentfulStatusCode);
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
     }
     console.error('Error creating todo:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);

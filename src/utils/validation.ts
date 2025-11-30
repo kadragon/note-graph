@@ -38,10 +38,7 @@ export async function validateBody<T extends z.ZodType>(
  * @returns Validated and typed query parameters
  * @throws ValidationError if validation fails
  */
-export function validateQuery<T extends z.ZodType>(
-  c: Context,
-  schema: T
-): z.infer<T> {
+export function validateQuery<T extends z.ZodType>(c: Context, schema: T): z.infer<T> {
   try {
     const query = c.req.query();
     return schema.parse(query);
@@ -61,10 +58,7 @@ export function validateQuery<T extends z.ZodType>(
  * @returns Validated and typed parameters
  * @throws ValidationError if validation fails
  */
-export function validateParams<T extends z.ZodType>(
-  c: Context,
-  schema: T
-): z.infer<T> {
+export function validateParams<T extends z.ZodType>(c: Context, schema: T): z.infer<T> {
   try {
     const params = c.req.param();
     return schema.parse(params);

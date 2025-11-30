@@ -1,12 +1,12 @@
 // Trace: Test coverage improvement
 // Unit tests for WorkNoteRepository
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { env } from 'cloudflare:test';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { WorkNoteRepository } from '../../src/repositories/work-note-repository';
-import { NotFoundError } from '../../src/types/errors';
-import type { Env } from '../../src/types/env';
 import type { CreateWorkNoteInput, UpdateWorkNoteInput } from '../../src/schemas/work-note';
+import type { Env } from '../../src/types/env';
+import { NotFoundError } from '../../src/types/errors';
 
 const testEnv = env as unknown as Env;
 
@@ -93,15 +93,16 @@ describe('WorkNoteRepository', () => {
       const now = new Date().toISOString();
 
       await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(personId, '홍길동'),
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
+          personId,
+          '홍길동'
+        ),
         testEnv.DB.prepare(
           'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
         ).bind(workId, 'Test', 'Content', '업무', now, now),
-        testEnv.DB.prepare('INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)').bind(
-          workId,
-          personId,
-          'OWNER'
-        ),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
+        ).bind(workId, personId, 'OWNER'),
       ]);
 
       // Act
@@ -129,10 +130,9 @@ describe('WorkNoteRepository', () => {
         testEnv.DB.prepare(
           'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
         ).bind(relatedWorkId, 'Related Work', 'Related Content', '회의', now, now),
-        testEnv.DB.prepare('INSERT INTO work_note_relation (work_id, related_work_id) VALUES (?, ?)').bind(
-          workId,
-          relatedWorkId
-        ),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_relation (work_id, related_work_id) VALUES (?, ?)'
+        ).bind(workId, relatedWorkId),
       ]);
 
       // Act
@@ -221,12 +221,13 @@ describe('WorkNoteRepository', () => {
       // Arrange
       const personId = '123456';
       await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(personId, '홍길동'),
-        testEnv.DB.prepare('INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)').bind(
-          'WORK-001',
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
           personId,
-          'OWNER'
+          '홍길동'
         ),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
+        ).bind('WORK-001', personId, 'OWNER'),
       ]);
 
       // Act
@@ -243,22 +244,15 @@ describe('WorkNoteRepository', () => {
       const deptName = '개발팀';
       await testEnv.DB.batch([
         testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind(deptName),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)').bind(
-          personId,
-          '홍길동',
-          deptName
-        ),
-        testEnv.DB.prepare('INSERT INTO person_dept_history (person_id, dept_name, start_date, is_active) VALUES (?, ?, ?, ?)').bind(
-          personId,
-          deptName,
-          new Date().toISOString(),
-          1
-        ),
-        testEnv.DB.prepare('INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)').bind(
-          'WORK-001',
-          personId,
-          'OWNER'
-        ),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)'
+        ).bind(personId, '홍길동', deptName),
+        testEnv.DB.prepare(
+          'INSERT INTO person_dept_history (person_id, dept_name, start_date, is_active) VALUES (?, ?, ?, ?)'
+        ).bind(personId, deptName, new Date().toISOString(), 1),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
+        ).bind('WORK-001', personId, 'OWNER'),
       ]);
 
       // Act
@@ -347,7 +341,9 @@ describe('WorkNoteRepository', () => {
     it('should create work note with person associations', async () => {
       // Arrange
       const personId = '123456';
-      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(personId, '홍길동').run();
+      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)')
+        .bind(personId, '홍길동')
+        .run();
 
       const input: CreateWorkNoteInput = {
         title: 'New Note',
@@ -368,8 +364,14 @@ describe('WorkNoteRepository', () => {
     it('should create work note with multiple person associations', async () => {
       // Arrange
       await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind('P-001', 'Person 1'),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind('P-002', 'Person 2'),
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
+          'P-001',
+          'Person 1'
+        ),
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
+          'P-002',
+          'Person 2'
+        ),
       ]);
 
       const input: CreateWorkNoteInput = {
@@ -465,7 +467,9 @@ describe('WorkNoteRepository', () => {
 
     it('should throw NotFoundError for non-existent work note', async () => {
       // Act & Assert
-      await expect(repository.update('WORK-NONEXISTENT', { title: 'New Title' })).rejects.toThrow(NotFoundError);
+      await expect(repository.update('WORK-NONEXISTENT', { title: 'New Title' })).rejects.toThrow(
+        NotFoundError
+      );
     });
 
     it('should update title only', async () => {
@@ -541,7 +545,9 @@ describe('WorkNoteRepository', () => {
     it('should update person associations', async () => {
       // Arrange
       const personId = '123456';
-      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(personId, '홍길동').run();
+      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)')
+        .bind(personId, '홍길동')
+        .run();
 
       const update: UpdateWorkNoteInput = {
         persons: [{ personId, role: 'OWNER' }],
@@ -559,13 +565,17 @@ describe('WorkNoteRepository', () => {
     it('should replace existing person associations', async () => {
       // Arrange
       await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind('P-001', 'Person 1'),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind('P-002', 'Person 2'),
-        testEnv.DB.prepare('INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)').bind(
-          existingWorkId,
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
           'P-001',
-          'OWNER'
+          'Person 1'
         ),
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
+          'P-002',
+          'Person 2'
+        ),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
+        ).bind(existingWorkId, 'P-001', 'OWNER'),
       ]);
 
       const update: UpdateWorkNoteInput = {
@@ -634,12 +644,13 @@ describe('WorkNoteRepository', () => {
     it('should handle empty persons array', async () => {
       // Arrange
       await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind('P-001', 'Person 1'),
-        testEnv.DB.prepare('INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)').bind(
-          existingWorkId,
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
           'P-001',
-          'OWNER'
+          'Person 1'
         ),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
+        ).bind(existingWorkId, 'P-001', 'OWNER'),
       ]);
 
       const update: UpdateWorkNoteInput = {
@@ -680,7 +691,9 @@ describe('WorkNoteRepository', () => {
     it('should cascade delete person associations', async () => {
       // Arrange
       const personId = '123456';
-      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(personId, '홍길동').run();
+      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)')
+        .bind(personId, '홍길동')
+        .run();
 
       const input: CreateWorkNoteInput = {
         title: 'To Delete',
@@ -758,11 +771,9 @@ describe('WorkNoteRepository', () => {
       const deptName = '개발팀';
       await testEnv.DB.batch([
         testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind(deptName),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)').bind(
-          personId,
-          '홍길동',
-          deptName
-        ),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)'
+        ).bind(personId, '홍길동', deptName),
       ]);
 
       // Act
@@ -775,7 +786,9 @@ describe('WorkNoteRepository', () => {
     it('should return null for person without department', async () => {
       // Arrange
       const personId = '123456';
-      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(personId, '홍길동').run();
+      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)')
+        .bind(personId, '홍길동')
+        .run();
 
       // Act
       const result = await repository.getDeptNameForPerson(personId);
@@ -852,7 +865,9 @@ describe('WorkNoteRepository', () => {
       const now = new Date().toISOString();
       await testEnv.DB.prepare(
         'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      ).bind('WORK-001', 'Note 1', 'Content 1', now, now).run();
+      )
+        .bind('WORK-001', 'Note 1', 'Content 1', now, now)
+        .run();
 
       // Act
       const result = await repository.findTodosByWorkIds(['WORK-001']);

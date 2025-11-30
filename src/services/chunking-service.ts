@@ -1,5 +1,5 @@
 // Trace: SPEC-rag-1, TASK-012
-import type { TextChunk, ChunkMetadata } from '../types/search';
+import type { ChunkMetadata, TextChunk } from '../types/search';
 
 /**
  * Configuration for text chunking
@@ -196,7 +196,7 @@ export class ChunkingService {
     const chunkText = fullText.slice(startPos, startPos + chunkSizeChars);
 
     // Truncate to reasonable display length if needed
-    return chunkText.length > 500 ? chunkText.slice(0, 497) + '...' : chunkText;
+    return chunkText.length > 500 ? `${chunkText.slice(0, 497)}...` : chunkText;
   }
 
   /**

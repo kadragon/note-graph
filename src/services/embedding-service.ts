@@ -74,9 +74,9 @@ export class EmbeddingService {
   }
 }
 
+import type { TextChunk } from '../types/search';
 // Import for chunk ID generation
 import { ChunkingService } from './chunking-service.js';
-import type { TextChunk } from '../types/search';
 
 /**
  * Vectorize service for managing vector embeddings
@@ -131,7 +131,9 @@ export class VectorizeService {
    *
    * @param chunks - Array of text chunks with metadata
    */
-  async upsertChunks(chunks: Array<{ id: string; text: string; metadata: ChunkMetadata }>): Promise<void> {
+  async upsertChunks(
+    chunks: Array<{ id: string; text: string; metadata: ChunkMetadata }>
+  ): Promise<void> {
     if (chunks.length === 0) {
       return;
     }
@@ -274,9 +276,7 @@ export class VectorizeService {
       });
 
       // Find stale chunks (chunks not in the new set)
-      const staleChunkIds = results.matches
-        .map((m) => m.id)
-        .filter((id) => !newChunkIds.has(id));
+      const staleChunkIds = results.matches.map((m) => m.id).filter((id) => !newChunkIds.has(id));
 
       if (staleChunkIds.length > 0) {
         await this.vectorize.deleteByIds(staleChunkIds);
@@ -337,7 +337,7 @@ export class VectorizeService {
     // Check if we're in the middle of a UTF-8 multi-byte sequence (0x80-0xBF)
     while (cutIndex > 0) {
       const byte = encoded[cutIndex];
-      if (byte !== undefined && (byte & 0xC0) === 0x80) {
+      if (byte !== undefined && (byte & 0xc0) === 0x80) {
         cutIndex--;
       } else {
         break;

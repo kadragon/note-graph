@@ -19,16 +19,16 @@ export const projectPrioritySchema = z.enum(['높음', '중간', '낮음']);
  * Create project request body
  */
 export const createProjectSchema = z.object({
-	name: z.string().min(1, 'Project name is required').max(200, 'Project name too long'),
-	description: z.string().max(2000, 'Description too long').optional(),
-	status: projectStatusSchema.optional(),
-	tags: z.string().max(500, 'Tags too long').optional(),
-	priority: projectPrioritySchema.optional(),
-	startDate: z.string().datetime().optional(),
-	targetEndDate: z.string().datetime().optional(),
-	leaderPersonId: z.string().optional(),
-	deptName: z.string().optional(),
-	participantPersonIds: z.array(z.string()).optional(),
+  name: z.string().min(1, 'Project name is required').max(200, 'Project name too long'),
+  description: z.string().max(2000, 'Description too long').optional(),
+  status: projectStatusSchema.optional(),
+  tags: z.string().max(500, 'Tags too long').optional(),
+  priority: projectPrioritySchema.optional(),
+  startDate: z.string().datetime().optional(),
+  targetEndDate: z.string().datetime().optional(),
+  leaderPersonId: z.string().optional(),
+  deptName: z.string().optional(),
+  participantPersonIds: z.array(z.string()).optional(),
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
@@ -37,16 +37,16 @@ export type CreateProjectInput = z.infer<typeof createProjectSchema>;
  * Update project request body
  */
 export const updateProjectSchema = z.object({
-	name: z.string().min(1).max(200).optional(),
-	description: z.string().max(2000).optional(),
-	status: projectStatusSchema.optional(),
-	tags: z.string().max(500).optional(),
-	priority: projectPrioritySchema.optional(),
-	startDate: z.string().datetime().optional(),
-	targetEndDate: z.string().datetime().optional(),
-	actualEndDate: z.string().datetime().optional(),
-	leaderPersonId: z.string().optional(),
-	deptName: z.string().optional(),
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
+  status: projectStatusSchema.optional(),
+  tags: z.string().max(500).optional(),
+  priority: projectPrioritySchema.optional(),
+  startDate: z.string().datetime().optional(),
+  targetEndDate: z.string().datetime().optional(),
+  actualEndDate: z.string().datetime().optional(),
+  leaderPersonId: z.string().optional(),
+  deptName: z.string().optional(),
 });
 
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
@@ -55,15 +55,18 @@ export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
  * List projects query parameters
  */
 export const listProjectsQuerySchema = z.object({
-	status: projectStatusSchema.optional(),
-	leaderPersonId: z.string().optional(),
-	deptName: z.string().optional(),
-	participantPersonId: z.string().optional(),
-	startDateFrom: z.string().datetime().optional(),
-	startDateTo: z.string().datetime().optional(),
-	targetEndDateFrom: z.string().datetime().optional(),
-	targetEndDateTo: z.string().datetime().optional(),
-	includeDeleted: z.string().transform((val) => val === 'true').optional(),
+  status: projectStatusSchema.optional(),
+  leaderPersonId: z.string().optional(),
+  deptName: z.string().optional(),
+  participantPersonId: z.string().optional(),
+  startDateFrom: z.string().datetime().optional(),
+  startDateTo: z.string().datetime().optional(),
+  targetEndDateFrom: z.string().datetime().optional(),
+  targetEndDateTo: z.string().datetime().optional(),
+  includeDeleted: z
+    .string()
+    .transform((val) => val === 'true')
+    .optional(),
 });
 
 export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;
@@ -72,8 +75,8 @@ export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;
  * Add participant request body
  */
 export const addParticipantSchema = z.object({
-	personId: z.string().min(1, 'Person ID is required'),
-	role: z.string().min(1).max(50).optional(),
+  personId: z.string().min(1, 'Person ID is required'),
+  role: z.string().min(1).max(50).optional(),
 });
 
 export type AddParticipantInput = z.infer<typeof addParticipantSchema>;
@@ -82,7 +85,7 @@ export type AddParticipantInput = z.infer<typeof addParticipantSchema>;
  * Assign work note request body
  */
 export const assignWorkNoteSchema = z.object({
-	workId: z.string().min(1, 'Work note ID is required'),
+  workId: z.string().min(1, 'Work note ID is required'),
 });
 
 export type AssignWorkNoteInput = z.infer<typeof assignWorkNoteSchema>;

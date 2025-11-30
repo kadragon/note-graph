@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,13 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useUpdateTodo } from '@/hooks/useTodos';
 import { TODO_STATUS } from '@/constants/todoStatus';
-import type { Todo, TodoStatus, RepeatRule, RecurrenceType, CustomIntervalUnit } from '@/types/api';
+import { useUpdateTodo } from '@/hooks/useTodos';
+import type { CustomIntervalUnit, RecurrenceType, RepeatRule, Todo, TodoStatus } from '@/types/api';
 
 interface EditTodoDialogProps {
   todo: Todo | null;
@@ -60,12 +60,7 @@ const toUTCISOString = (dateString: string): string => {
   return new Date(`${dateString}T00:00:00.000Z`).toISOString();
 };
 
-export function EditTodoDialog({
-  todo,
-  open,
-  onOpenChange,
-  workNoteId,
-}: EditTodoDialogProps) {
+export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTodoDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -151,9 +146,7 @@ export function EditTodoDialog({
         <form onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>할일 수정</DialogTitle>
-            <DialogDescription>
-              할일의 내용을 수정합니다.
-            </DialogDescription>
+            <DialogDescription>할일의 내용을 수정합니다.</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -203,9 +196,7 @@ export function EditTodoDialog({
                 value={waitUntil}
                 onChange={(e) => handleWaitUntilChange(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                이 날짜까지 대시보드에서 숨겨집니다.
-              </p>
+              <p className="text-xs text-muted-foreground">이 날짜까지 대시보드에서 숨겨집니다.</p>
             </div>
 
             <div className="grid gap-2">
@@ -243,7 +234,7 @@ export function EditTodoDialog({
                     min={1}
                     max={365}
                     value={customInterval}
-                    onChange={(e) => setCustomInterval(parseInt(e.target.value) || 1)}
+                    onChange={(e) => setCustomInterval(parseInt(e.target.value, 10) || 1)}
                     className="w-20"
                   />
                   <select

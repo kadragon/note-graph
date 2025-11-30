@@ -1,7 +1,7 @@
 // Trace: TASK-027, SPEC-worknote-1
 import { useMutation } from '@tanstack/react-query';
-import { API } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { API } from '@/lib/api';
 import type { AIGenerateDraftRequest } from '@/types/api';
 
 export function useGenerateDraftWithSimilar() {

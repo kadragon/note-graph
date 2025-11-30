@@ -1,9 +1,9 @@
 // Trace: SPEC-ai-draft-refs-1, TASK-029, TASK-031
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { WorkNoteService } from '../../src/services/work-note-service';
 import type { Env } from '../../src/types/env';
-import type { WorkNote } from '../../src/types/work-note';
 import type { ReferenceTodo } from '../../src/types/search';
+import type { WorkNote } from '../../src/types/work-note';
 
 // Minimal env stub to satisfy constructor; services are mocked per test
 const dummyEnv = {
@@ -78,9 +78,9 @@ describe('WorkNoteService.findSimilarNotes', () => {
   it('includes todos in similar notes results', async () => {
     const service = new WorkNoteService(dummyEnv);
 
-    const mockSearch = vi.fn().mockResolvedValue([
-      { id: 'WORK-1#chunk0', score: 0.85, metadata: {} },
-    ]);
+    const mockSearch = vi
+      .fn()
+      .mockResolvedValue([{ id: 'WORK-1#chunk0', score: 0.85, metadata: {} }]);
 
     const mockFindByIds = vi.fn().mockResolvedValue([
       {
@@ -143,9 +143,9 @@ describe('WorkNoteService.findSimilarNotes', () => {
   it('returns empty todos array when work note has no todos', async () => {
     const service = new WorkNoteService(dummyEnv);
 
-    const mockSearch = vi.fn().mockResolvedValue([
-      { id: 'WORK-1#chunk0', score: 0.8, metadata: {} },
-    ]);
+    const mockSearch = vi
+      .fn()
+      .mockResolvedValue([{ id: 'WORK-1#chunk0', score: 0.8, metadata: {} }]);
 
     const mockFindByIds = vi.fn().mockResolvedValue([
       {

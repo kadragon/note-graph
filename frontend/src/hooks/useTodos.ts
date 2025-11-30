@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
+import type { Todo, TodoStatus, TodoView, UpdateTodoRequest } from '@/types/api';
 import { useToast } from './use-toast';
-import type { Todo, TodoView, TodoStatus, UpdateTodoRequest } from '@/types/api';
 
 export function useTodos(view: TodoView = 'today', year?: number) {
   return useQuery({
@@ -44,16 +44,15 @@ export function useToggleTodo(workNoteId?: string) {
         .forEach((query) => {
           queryClient.setQueryData<Todo[]>(query.queryKey, (old) => {
             if (!old) return old;
-            return old.map((todo) =>
-              todo.id === id ? { ...todo, status } : todo
-            );
+            return old.map((todo) => (todo.id === id ? { ...todo, status } : todo));
           });
         });
 
       // Optimistically update work-note-todos query if workNoteId is provided
       if (workNoteId) {
-        queryClient.setQueryData<Todo[]>(['work-note-todos', workNoteId], (old) =>
-          old?.map((todo) => (todo.id === id ? { ...todo, status } : todo)) ?? []
+        queryClient.setQueryData<Todo[]>(
+          ['work-note-todos', workNoteId],
+          (old) => old?.map((todo) => (todo.id === id ? { ...todo, status } : todo)) ?? []
         );
       }
 
@@ -103,8 +102,7 @@ export function useUpdateTodo(workNoteId?: string) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateTodoRequest }) =>
-      API.updateTodo(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateTodoRequest }) => API.updateTodo(id, data),
     onSuccess: () => {
       // Invalidate to ensure we have the latest data
       void queryClient.invalidateQueries({ queryKey: ['todos'] });
@@ -166,8 +164,9 @@ export function useDeleteTodo(workNoteId?: string) {
 
       // Optimistically remove todo from work-note-todos query if workNoteId is provided
       if (workNoteId) {
-        queryClient.setQueryData<Todo[]>(['work-note-todos', workNoteId], (old) =>
-          old?.filter((todo) => todo.id !== todoId) ?? []
+        queryClient.setQueryData<Todo[]>(
+          ['work-note-todos', workNoteId],
+          (old) => old?.filter((todo) => todo.id !== todoId) ?? []
         );
       }
 

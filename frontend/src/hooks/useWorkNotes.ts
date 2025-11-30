@@ -1,9 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { startOfDay, isAfter } from 'date-fns';
-import { API } from '@/lib/api';
-import { useToast } from './use-toast';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isAfter, startOfDay } from 'date-fns';
 import { TODO_STATUS } from '@/constants/todoStatus';
+import { API } from '@/lib/api';
 import type { CreateWorkNoteRequest, UpdateWorkNoteRequest, WorkNoteWithStats } from '@/types/api';
+import { useToast } from './use-toast';
 
 export function useWorkNotes() {
   return useQuery({
@@ -33,7 +33,8 @@ export function useWorkNotesWithStats() {
                 } else {
                   // 미완료 상태: waitUntil이 오늘 이후(미래)면 pending, 아니면 remaining
                   // 날짜 단위 비교를 위해 startOfDay로 정규화
-                  const hasFutureWaitUntil = todo.waitUntil &&
+                  const hasFutureWaitUntil =
+                    todo.waitUntil &&
                     isAfter(startOfDay(new Date(todo.waitUntil)), startOfDay(now));
                   if (hasFutureWaitUntil) {
                     acc.pending++;
@@ -48,7 +49,7 @@ export function useWorkNotesWithStats() {
 
             return {
               ...workNote,
-              todoStats: { total, completed, remaining, pending }
+              todoStats: { total, completed, remaining, pending },
             } as WorkNoteWithStats;
           } catch (error) {
             // Log error for debugging
@@ -57,7 +58,7 @@ export function useWorkNotesWithStats() {
             // If there's an error fetching todos, return with zero stats
             return {
               ...workNote,
-              todoStats: { total: 0, completed: 0, remaining: 0, pending: 0 }
+              todoStats: { total: 0, completed: 0, remaining: 0, pending: 0 },
             } as WorkNoteWithStats;
           }
         })

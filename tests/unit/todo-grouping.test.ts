@@ -1,5 +1,5 @@
 // Trace: SPEC-todo-1, TASK-046
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { groupTodosByWorkNote } from '../../frontend/src/pages/Dashboard/components/groupTodosByWorkNote';
 import type { Todo } from '../../frontend/src/types/api';
 

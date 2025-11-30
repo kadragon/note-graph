@@ -1,8 +1,10 @@
 // Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-045, TASK-LLM-IMPORT
-import { useState, useMemo } from 'react';
-import { Plus, FileText } from 'lucide-react';
+
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { FileText, Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -13,12 +15,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { usePersons } from '@/hooks/usePersons';
-import { PersonDialog } from './components/PersonDialog';
-import { PersonImportDialog } from './components/PersonImportDialog';
 import { getDepartmentColor } from '@/lib/utils';
 import type { Person } from '@/types/api';
+import { PersonDialog } from './components/PersonDialog';
+import { PersonImportDialog } from './components/PersonImportDialog';
 
 export default function Persons() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -66,8 +67,7 @@ export default function Persons() {
             가져오기
           </Button>
           <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            새 사람
+            <Plus className="h-4 w-4 mr-2" />새 사람
           </Button>
         </div>
       </div>
@@ -97,26 +97,26 @@ export default function Persons() {
                   <TableHead>생성일</TableHead>
                 </TableRow>
               </TableHeader>
-                <TableBody>
-                  {sortedPersons.map((person) => (
-                    <TableRow
-                      key={person.personId}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleRowClick(person)}
-                    >
-                      <TableCell>
-                        {person.currentDept ? (
-                          <Badge className={getDepartmentColor(person.currentDept)}>
-                            {person.currentDept}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">{person.name}</TableCell>
-                      <TableCell>
-                        {person.currentPosition ? (
-                          <span className="text-sm">{person.currentPosition}</span>
+              <TableBody>
+                {sortedPersons.map((person) => (
+                  <TableRow
+                    key={person.personId}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleRowClick(person)}
+                  >
+                    <TableCell>
+                      {person.currentDept ? (
+                        <Badge className={getDepartmentColor(person.currentDept)}>
+                          {person.currentDept}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">{person.name}</TableCell>
+                    <TableCell>
+                      {person.currentPosition ? (
+                        <span className="text-sm">{person.currentPosition}</span>
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
@@ -144,11 +144,7 @@ export default function Persons() {
         </CardContent>
       </Card>
 
-      <PersonDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        mode="create"
-      />
+      <PersonDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} mode="create" />
 
       <PersonDialog
         open={editDialogOpen}
@@ -157,10 +153,7 @@ export default function Persons() {
         initialData={selectedPerson}
       />
 
-      <PersonImportDialog
-        open={importDialogOpen}
-        onOpenChange={setImportDialogOpen}
-      />
+      <PersonImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
     </div>
   );
 }

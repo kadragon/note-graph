@@ -1,8 +1,8 @@
 // Trace: SPEC-person-1, TASK-018
 // Person creation validation and department existence checks
 
-import { beforeEach, describe, expect, it } from 'vitest';
 import { env, SELF } from 'cloudflare:test';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { Env } from '../src/types/env';
 
 const testEnv = env as unknown as Env;
@@ -58,7 +58,11 @@ describe('Person creation validation', () => {
 
     expect(response.status).toBe(201);
 
-    const data = await response.json<{ personId: string; name: string; currentDept: string | null }>();
+    const data = await response.json<{
+      personId: string;
+      name: string;
+      currentDept: string | null;
+    }>();
     expect(data.personId).toBe('123457');
     expect(data.name).toBe('이순신');
     expect(data.currentDept).toBe('교무기획부');

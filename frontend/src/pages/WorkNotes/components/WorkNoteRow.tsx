@@ -1,9 +1,9 @@
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Trash2, CheckCircle2, Circle } from 'lucide-react';
-import { TableRow, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
+import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { TableCell, TableRow } from '@/components/ui/table';
 import type { WorkNoteWithStats } from '@/types/api';
 
 interface WorkNoteRowProps {
@@ -19,6 +19,7 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
     <TableRow>
       <TableCell className="font-medium">
         <button
+          type="button"
           onClick={() => onView(workNote)}
           className="text-left hover:text-blue-600 hover:underline w-full cursor-pointer"
         >
@@ -45,9 +46,7 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
               <div key={person.personId} className="text-sm">
                 <span className="font-medium">{person.personName}</span>
                 {person.currentDept && (
-                  <span className="text-muted-foreground ml-1">
-                    ({person.currentDept})
-                  </span>
+                  <span className="text-muted-foreground ml-1">({person.currentDept})</span>
                 )}
               </div>
             ))}

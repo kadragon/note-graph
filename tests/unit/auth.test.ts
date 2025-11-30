@@ -1,12 +1,13 @@
 // Unit tests for authentication middleware and handlers
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Hono } from 'hono';
+
 import { env } from 'cloudflare:test';
-import type { Env } from '../../src/types/env';
-import { authMiddleware, getAuthUser } from '../../src/middleware/auth';
+import { Hono } from 'hono';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { getMeHandler } from '../../src/handlers/auth';
+import { authMiddleware, getAuthUser } from '../../src/middleware/auth';
 import type { AuthUser } from '../../src/types/auth';
 import { AuthenticationError } from '../../src/types/auth';
+import type { Env } from '../../src/types/env';
 
 const testEnv = env as unknown as Env;
 
@@ -37,11 +38,15 @@ describe('Authentication Middleware', () => {
       const email = 'test@example.com';
 
       // Act
-      const response = await app.request('/test', {
-        headers: {
-          'cf-access-authenticated-user-email': email,
+      const response = await app.request(
+        '/test',
+        {
+          headers: {
+            'cf-access-authenticated-user-email': email,
+          },
         },
-      }, testEnv);
+        testEnv
+      );
 
       // Assert
       expect(response.status).toBe(200);
@@ -54,11 +59,15 @@ describe('Authentication Middleware', () => {
       const email = '  TEST@EXAMPLE.COM  ';
 
       // Act
-      const response = await app.request('/test', {
-        headers: {
-          'cf-access-authenticated-user-email': email,
+      const response = await app.request(
+        '/test',
+        {
+          headers: {
+            'cf-access-authenticated-user-email': email,
+          },
         },
-      }, testEnv);
+        testEnv
+      );
 
       // Assert
       expect(response.status).toBe(200);
@@ -72,11 +81,15 @@ describe('Authentication Middleware', () => {
       const devEnv = { ...testEnv, ENVIRONMENT: 'development' };
 
       // Act
-      const response = await app.request('/test', {
-        headers: {
-          'x-test-user-email': email,
+      const response = await app.request(
+        '/test',
+        {
+          headers: {
+            'x-test-user-email': email,
+          },
         },
-      }, devEnv);
+        devEnv
+      );
 
       // Assert
       expect(response.status).toBe(200);
@@ -111,11 +124,15 @@ describe('Authentication Middleware', () => {
       const prodEnv = { ...testEnv, ENVIRONMENT: 'production' };
 
       // Act
-      const response = await app.request('/test', {
-        headers: {
-          'x-test-user-email': 'test@example.com',
+      const response = await app.request(
+        '/test',
+        {
+          headers: {
+            'x-test-user-email': 'test@example.com',
+          },
         },
-      }, prodEnv);
+        prodEnv
+      );
 
       // Assert
       expect(response.status).toBe(401);
@@ -128,12 +145,16 @@ describe('Authentication Middleware', () => {
       const devEnv = { ...testEnv, ENVIRONMENT: 'development' };
 
       // Act
-      const response = await app.request('/test', {
-        headers: {
-          'cf-access-authenticated-user-email': cfEmail,
-          'x-test-user-email': testEmail,
+      const response = await app.request(
+        '/test',
+        {
+          headers: {
+            'cf-access-authenticated-user-email': cfEmail,
+            'x-test-user-email': testEmail,
+          },
         },
-      }, devEnv);
+        devEnv
+      );
 
       // Assert
       expect(response.status).toBe(200);
@@ -201,11 +222,15 @@ describe('Authentication Handlers', () => {
       const email = 'test@example.com';
 
       // Act
-      const response = await app.request('/me', {
-        headers: {
-          'cf-access-authenticated-user-email': email,
+      const response = await app.request(
+        '/me',
+        {
+          headers: {
+            'cf-access-authenticated-user-email': email,
+          },
         },
-      }, testEnv);
+        testEnv
+      );
 
       // Assert
       expect(response.status).toBe(200);

@@ -1,17 +1,7 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,13 +12,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  useTaskCategories,
-  useDeleteTaskCategory,
-} from '@/hooks/useTaskCategories';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { useDeleteTaskCategory, useTaskCategories } from '@/hooks/useTaskCategories';
+import type { TaskCategory } from '@/types/api';
 import { CreateTaskCategoryDialog } from './components/CreateTaskCategoryDialog';
 import { EditTaskCategoryDialog } from './components/EditTaskCategoryDialog';
-import type { TaskCategory } from '@/types/api';
 
 export default function TaskCategories() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -68,8 +65,7 @@ export default function TaskCategories() {
           <p className="page-description">업무 구분을 관리하세요</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          새 업무 구분
+          <Plus className="h-4 w-4 mr-2" />새 업무 구분
         </Button>
       </div>
 
@@ -105,18 +101,10 @@ export default function TaskCategories() {
                       })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(category)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(category)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(category)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(category)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
@@ -128,10 +116,7 @@ export default function TaskCategories() {
         </CardContent>
       </Card>
 
-      <CreateTaskCategoryDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-      />
+      <CreateTaskCategoryDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
       <EditTaskCategoryDialog
         open={editDialogOpen}

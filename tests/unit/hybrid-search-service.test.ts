@@ -1,11 +1,18 @@
 // Trace: SPEC-search-1, TASK-011, TASK-016
 // Unit tests for Hybrid Search Service - Public API Testing
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { D1Database, D1PreparedStatement, D1Result } from '@cloudflare/workers-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HybridSearchService } from '../../src/services/hybrid-search-service';
-import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import type { Env } from '../../src/types/env';
-import type { SearchResultItem } from '../../src/types/search';
+
+interface MockVectorizeIndex {
+  query: ReturnType<typeof vi.fn>;
+}
+
+interface MockD1Database extends D1Database {
+  prepare: ReturnType<typeof vi.fn<[string], D1PreparedStatement>>;
+}
 
 /**
  * These tests focus on the public API of HybridSearchService.
@@ -13,7 +20,7 @@ import type { SearchResultItem } from '../../src/types/search';
  * treating the service as a black box and verifying outputs and side effects.
  */
 describe('HybridSearchService - Public API', () => {
-  let mockDb: D1Database;
+  let mockDb: MockD1Database;
   let mockEnv: Env;
   let mockStmt: D1PreparedStatement;
 
@@ -24,13 +31,13 @@ describe('HybridSearchService - Public API', () => {
       all: vi.fn().mockResolvedValue({
         success: true,
         results: [],
-      }),
+      } as D1Result),
       first: vi.fn().mockResolvedValue(null),
     } as unknown as D1PreparedStatement;
 
     mockDb = {
       prepare: vi.fn().mockReturnValue(mockStmt),
-    } as unknown as D1Database;
+    } as unknown as MockD1Database;
 
     // Setup mock environment
     mockEnv = {
@@ -42,7 +49,7 @@ describe('HybridSearchService - Public API', () => {
           matches: [],
           count: 0,
         }),
-      } as any,
+      } as unknown as MockVectorizeIndex, // Cast to our mock interface
     } as Env;
 
     // Mock global fetch for OpenAI embedding calls
@@ -70,11 +77,11 @@ describe('HybridSearchService - Public API', () => {
     it('should handle empty query results gracefully', async () => {
       // Arrange
       const service = new HybridSearchService(mockDb, mockEnv);
-      (mockStmt.all as any).mockResolvedValue({
+      mockStmt.all.mockResolvedValue({
         success: true,
         results: [],
       });
-      (mockEnv.VECTORIZE.query as any).mockResolvedValue({
+      mockEnv.VECTORIZE.query.mockResolvedValue({
         matches: [],
         count: 0,
       });
@@ -101,7 +108,7 @@ describe('HybridSearchService - Public API', () => {
       // Assert - verify DB was called (FTS search happens)
       expect(mockDb.prepare).toHaveBeenCalled();
       // Verify filters were used in SQL query
-      const sqlCalls = (mockDb.prepare as any).mock.calls;
+      const sqlCalls = mockDb.prepare.mock.calls;
       const sqlQuery = sqlCalls[0][0];
       expect(sqlQuery).toContain('WHERE');
     });
@@ -121,7 +128,7 @@ describe('HybridSearchService - Public API', () => {
         fts_rank: -1,
       }));
 
-      (mockStmt.all as any).mockResolvedValue({
+      mockStmt.all.mockResolvedValue({
         success: true,
         results: manyResults,
       });
@@ -150,7 +157,7 @@ describe('HybridSearchService - Public API', () => {
       const service = new HybridSearchService(mockDb, mockEnv);
 
       // Mock at least one result from FTS
-      (mockStmt.all as any).mockResolvedValue({
+      mockStmt.all.mockResolvedValue({
         success: true,
         results: [
           {
@@ -185,7 +192,7 @@ describe('HybridSearchService - Public API', () => {
     it('should handle database errors without crashing', async () => {
       // Arrange
       const service = new HybridSearchService(mockDb, mockEnv);
-      (mockStmt.all as any).mockRejectedValue(new Error('Database connection failed'));
+      mockStmt.all.mockRejectedValue(new Error('Database connection failed'));
 
       // Act & Assert - should not throw, should return empty or handle gracefully
       await expect(service.search('test')).resolves.toBeDefined();
@@ -194,10 +201,10 @@ describe('HybridSearchService - Public API', () => {
     it('should handle Vectorize errors without crashing', async () => {
       // Arrange
       const service = new HybridSearchService(mockDb, mockEnv);
-      (mockEnv.VECTORIZE.query as any).mockRejectedValue(new Error('Vectorize service down'));
+      mockEnv.VECTORIZE.query.mockRejectedValue(new Error('Vectorize service down'));
 
       // Mock FTS to return results
-      (mockStmt.all as any).mockResolvedValue({
+      mockStmt.all.mockResolvedValue({
         success: true,
         results: [
           {
@@ -239,7 +246,7 @@ describe('HybridSearchService - Public API', () => {
       const service = new HybridSearchService(mockDb, mockEnv);
 
       // Mock multiple FTS results with different ranks
-      (mockStmt.all as any).mockResolvedValue({
+      mockStmt.all.mockResolvedValue({
         success: true,
         results: [
           {
@@ -287,7 +294,7 @@ describe('HybridSearchService - Public API', () => {
       // Arrange
       const service = new HybridSearchService(mockDb, mockEnv);
 
-      (mockStmt.all as any).mockResolvedValue({
+      mockStmt.all.mockResolvedValue({
         success: true,
         results: [
           {
@@ -323,7 +330,7 @@ describe('HybridSearchService - Public API', () => {
 
       // Assert
       expect(mockDb.prepare).toHaveBeenCalled();
-      const sqlCalls = (mockDb.prepare as any).mock.calls;
+      const sqlCalls = mockDb.prepare.mock.calls;
       const sqlQuery = sqlCalls[0][0];
       expect(sqlQuery).toContain('category');
     });
@@ -337,7 +344,7 @@ describe('HybridSearchService - Public API', () => {
 
       // Assert
       expect(mockDb.prepare).toHaveBeenCalled();
-      const sqlCalls = (mockDb.prepare as any).mock.calls;
+      const sqlCalls = mockDb.prepare.mock.calls;
       const sqlQuery = sqlCalls[0][0];
       expect(sqlQuery).toContain('person');
     });
@@ -351,7 +358,7 @@ describe('HybridSearchService - Public API', () => {
 
       // Assert
       expect(mockDb.prepare).toHaveBeenCalled();
-      const sqlCalls = (mockDb.prepare as any).mock.calls;
+      const sqlCalls = mockDb.prepare.mock.calls;
       const sqlQuery = sqlCalls[0][0];
       expect(sqlQuery).toContain('dept');
     });

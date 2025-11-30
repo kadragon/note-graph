@@ -3,9 +3,9 @@
 
 import { extractText } from 'unpdf';
 import {
-  EncryptedPdfError,
   CorruptPdfError,
   EmptyPdfError,
+  EncryptedPdfError,
   PdfProcessingError,
 } from '../types/errors.js';
 
@@ -27,8 +27,7 @@ export class PdfExtractionService {
    * @throws CorruptPdfError if no PDF signature found
    */
   private normalizePdfBuffer(buffer: ArrayBuffer | Uint8Array): Uint8Array {
-    const uint8Array =
-      buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
+    const uint8Array = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
 
     const pdfOffset = this.findPdfSignatureOffset(uint8Array);
 
@@ -93,10 +92,7 @@ export class PdfExtractionService {
       // Handle unpdf library errors
       if (error instanceof Error) {
         // Check for encryption/password errors
-        if (
-          error.message.includes('encrypted') ||
-          error.message.includes('password')
-        ) {
+        if (error.message.includes('encrypted') || error.message.includes('password')) {
           throw new EncryptedPdfError();
         }
         // Check for corruption errors
@@ -121,8 +117,7 @@ export class PdfExtractionService {
    * @returns true if valid, throws error if invalid
    */
   validatePdfBuffer(buffer: ArrayBuffer | Uint8Array): boolean {
-    const uint8Array =
-      buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
+    const uint8Array = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
 
     // Check minimum size (a valid PDF must be at least a few bytes)
     if (uint8Array.length < 100) {

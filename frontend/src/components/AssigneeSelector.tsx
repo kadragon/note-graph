@@ -1,8 +1,9 @@
 // Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2
-import { useState, useMemo, useCallback } from 'react';
+
 import { Check, ChevronsUpDown, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useCallback, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -11,11 +12,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn, formatPersonBadge } from '@/lib/utils';
 import type { Person } from '@/types/api';
 
@@ -66,11 +63,7 @@ export function AssigneeSelector({
       {selectedPersons.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {selectedPersons.map((person) => (
-            <Badge
-              key={person.personId}
-              variant="secondary"
-              className="gap-1 pr-1"
-            >
+            <Badge key={person.personId} variant="secondary" className="gap-1 pr-1">
               <span>{formatPersonBadge(person)}</span>
               <button
                 type="button"

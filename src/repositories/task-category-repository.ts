@@ -4,10 +4,10 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
-import type { TaskCategory, TaskCategoryWorkNote } from '../types/task-category';
-import type { CreateTaskCategoryInput, UpdateTaskCategoryInput } from '../schemas/task-category';
-import { NotFoundError, ConflictError } from '../types/errors';
 import { nanoid } from 'nanoid';
+import type { CreateTaskCategoryInput, UpdateTaskCategoryInput } from '../schemas/task-category';
+import { ConflictError, NotFoundError } from '../types/errors';
+import type { TaskCategory, TaskCategoryWorkNote } from '../types/task-category';
 
 /**
  * Database row type for task category
@@ -69,7 +69,11 @@ export class TaskCategoryRepository {
   /**
    * Find all task categories
    */
-  async findAll(searchQuery?: string, limit: number = 100, activeOnly?: boolean): Promise<TaskCategory[]> {
+  async findAll(
+    searchQuery?: string,
+    limit: number = 100,
+    activeOnly?: boolean
+  ): Promise<TaskCategory[]> {
     let sql = `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
                FROM task_categories`;
     const params: (string | number)[] = [];
@@ -94,7 +98,7 @@ export class TaskCategoryRepository {
     const stmt = this.db.prepare(sql);
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<TaskCategoryRow>();
 
-    return (result.results || []).map(row => this.toTaskCategory(row));
+    return (result.results || []).map((row) => this.toTaskCategory(row));
   }
 
   /**
@@ -273,6 +277,6 @@ export class TaskCategoryRepository {
       .bind(workId)
       .all<TaskCategoryRow>();
 
-    return (result.results || []).map(row => this.toTaskCategory(row));
+    return (result.results || []).map((row) => this.toTaskCategory(row));
   }
 }

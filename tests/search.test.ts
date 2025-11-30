@@ -1,10 +1,8 @@
 // Trace: SPEC-search-1, TASK-009, TASK-010, TASK-011
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { FtsSearchService } from '../src/services/fts-search-service';
-import { EmbeddingService, VectorizeService } from '../src/services/embedding-service';
-import { HybridSearchService } from '../src/services/hybrid-search-service';
-import type { SearchResultItem } from '../src/types/search';
+import { describe, expect, it, vi } from 'vitest';
+import { EmbeddingService } from '../src/services/embedding-service';
 import type { Env } from '../src/types/env';
+import type { SearchResultItem } from '../src/types/search';
 
 describe('Search Functionality', () => {
   describe('TASK-010: Embedding Service (OpenAI Integration)', () => {
@@ -153,8 +151,13 @@ describe('Search Functionality', () => {
 
         const embeddingService = new EmbeddingService(mockEnv);
 
-        let requestBody: any;
-        global.fetch = vi.fn().mockImplementation(async (url, options) => {
+        interface EmbeddingRequestBody {
+          model: string;
+          input: string[];
+          encoding_format: string;
+        }
+        let requestBody: EmbeddingRequestBody;
+        global.fetch = vi.fn().mockImplementation(async (_url, options) => {
           requestBody = JSON.parse(options?.body as string);
           return {
             ok: true,
@@ -250,7 +253,7 @@ describe('Search Functionality', () => {
           }
         });
 
-        const result = scoreMap.get('WORK-1')!;
+        const result = scoreMap.get('WORK-1') as { score: number; sources: Set<string> };
         expect(result.sources.has('LEXICAL')).toBe(true);
         expect(result.sources.has('SEMANTIC')).toBe(true);
         expect(result.sources.size).toBe(2);
@@ -323,7 +326,7 @@ describe('Search Functionality', () => {
     describe('Search Result Merging', () => {
       it('should combine scores for duplicate work notes', () => {
         const k = 60;
-        const workId = 'WORK-123';
+        const _workId = 'WORK-123';
 
         // Found at rank 2 in FTS
         const ftsRank = 2;
@@ -335,7 +338,7 @@ describe('Search Functionality', () => {
 
         const combinedScore = ftsScore + vectorScore;
 
-        expect(combinedScore).toBeCloseTo(0.03200, 5);
+        expect(combinedScore).toBeCloseTo(0.032, 5);
         expect(combinedScore).toBeGreaterThan(ftsScore);
         expect(combinedScore).toBeGreaterThan(vectorScore);
       });
@@ -532,14 +535,7 @@ describe('Search Functionality', () => {
 
   describe('Korean Text Handling', () => {
     it('should handle Korean characters in search queries', () => {
-      const koreanTexts = [
-        '업무',
-        '성적',
-        '회의록',
-        '보고서',
-        '2024년 업무',
-        '학생 성적 관리',
-      ];
+      const koreanTexts = ['업무', '성적', '회의록', '보고서', '2024년 업무', '학생 성적 관리'];
 
       koreanTexts.forEach((text) => {
         const cleaned = text.trim();

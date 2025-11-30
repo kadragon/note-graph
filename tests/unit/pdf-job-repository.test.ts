@@ -1,10 +1,15 @@
 // Unit tests for PdfJobRepository
-import { describe, it, expect, beforeEach } from 'vitest';
+
 import { env } from 'cloudflare:test';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { PdfJobRepository } from '../../src/repositories/pdf-job-repository';
-import { NotFoundError } from '../../src/types/errors';
 import type { Env } from '../../src/types/env';
-import type { PdfUploadMetadata, WorkNoteDraft, WorkNoteDraftWithReferences } from '../../src/types/pdf';
+import { NotFoundError } from '../../src/types/errors';
+import type {
+  PdfUploadMetadata,
+  WorkNoteDraft,
+  WorkNoteDraftWithReferences,
+} from '../../src/types/pdf';
 
 const testEnv = env as unknown as Env;
 
@@ -158,7 +163,9 @@ describe('PdfJobRepository', () => {
 
     it('should throw NotFoundError for non-existent job', async () => {
       // Act & Assert
-      await expect(repository.updateStatusToProcessing('non-existent')).rejects.toThrow(NotFoundError);
+      await expect(repository.updateStatusToProcessing('non-existent')).rejects.toThrow(
+        NotFoundError
+      );
     });
 
     it('should update the updatedAt timestamp', async () => {
@@ -262,7 +269,9 @@ describe('PdfJobRepository', () => {
       };
 
       // Act & Assert
-      await expect(repository.updateStatusToReady('non-existent', draft)).rejects.toThrow(NotFoundError);
+      await expect(repository.updateStatusToReady('non-existent', draft)).rejects.toThrow(
+        NotFoundError
+      );
     });
 
     it('should persist references when provided', async () => {
@@ -315,7 +324,9 @@ describe('PdfJobRepository', () => {
 
     it('should throw NotFoundError for non-existent job', async () => {
       // Act & Assert
-      await expect(repository.updateStatusToError('non-existent', 'error')).rejects.toThrow(NotFoundError);
+      await expect(repository.updateStatusToError('non-existent', 'error')).rejects.toThrow(
+        NotFoundError
+      );
     });
   });
 

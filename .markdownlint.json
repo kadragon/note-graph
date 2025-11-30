@@ -1,7 +1,3 @@
 {
-  "ignore": [
-    ".governance/**",
-    ".spec/**",
-    ".tasks/**"
-  ]
+  "ignore": [".governance/**", ".spec/**", ".tasks/**"]
 }

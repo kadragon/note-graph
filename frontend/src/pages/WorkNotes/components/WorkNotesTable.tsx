@@ -1,12 +1,6 @@
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { WorkNoteRow } from './WorkNoteRow';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { WorkNoteWithStats } from '@/types/api';
+import { WorkNoteRow } from './WorkNoteRow';
 
 interface WorkNotesTableProps {
   workNotes: WorkNoteWithStats[];
@@ -14,11 +8,7 @@ interface WorkNotesTableProps {
   onDelete: (workNoteId: string) => void;
 }
 
-export function WorkNotesTable({
-  workNotes,
-  onView,
-  onDelete,
-}: WorkNotesTableProps) {
+export function WorkNotesTable({ workNotes, onView, onDelete }: WorkNotesTableProps) {
   if (workNotes.length === 0) {
     return (
       <div className="text-center py-12">
@@ -41,12 +31,7 @@ export function WorkNotesTable({
       </TableHeader>
       <TableBody>
         {workNotes.map((workNote) => (
-          <WorkNoteRow
-            key={workNote.id}
-            workNote={workNote}
-            onView={onView}
-            onDelete={onDelete}
-          />
+          <WorkNoteRow key={workNote.id} workNote={workNote} onView={onView} onDelete={onDelete} />
         ))}
       </TableBody>
     </Table>

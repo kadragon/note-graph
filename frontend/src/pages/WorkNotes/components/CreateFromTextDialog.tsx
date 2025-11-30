@@ -1,6 +1,9 @@
 // Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-029, TASK-032
-import { useState, useEffect } from 'react';
+
 import { FileEdit, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { DraftEditorForm } from '@/components/DraftEditorForm';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,23 +11,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { DraftEditorForm } from '@/components/DraftEditorForm';
+import { useToast } from '@/hooks/use-toast';
 import { useGenerateDraftWithSimilar } from '@/hooks/useAIDraft';
 import { useAIDraftForm } from '@/hooks/useAIDraftForm';
-import { useToast } from '@/hooks/use-toast';
 
 interface CreateFromTextDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateFromTextDialog({
-  open,
-  onOpenChange,
-}: CreateFromTextDialogProps) {
+export function CreateFromTextDialog({ open, onOpenChange }: CreateFromTextDialogProps) {
   const [inputText, setInputText] = useState('');
   const [draftGenerated, setDraftGenerated] = useState(false);
 
@@ -57,11 +55,11 @@ export function CreateFromTextDialog({
     }
   };
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setInputText('');
     setDraftGenerated(false);
     actions.resetForm();
-  };
+  }, [actions]);
 
   const handleClose = () => {
     resetForm();
@@ -76,7 +74,7 @@ export function CreateFromTextDialog({
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [open]);
+  }, [open, resetForm]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

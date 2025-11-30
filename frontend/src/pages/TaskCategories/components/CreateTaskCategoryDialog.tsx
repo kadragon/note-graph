@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateTaskCategory } from '@/hooks/useTaskCategories';
@@ -17,10 +17,7 @@ interface CreateTaskCategoryDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateTaskCategoryDialog({
-  open,
-  onOpenChange,
-}: CreateTaskCategoryDialogProps) {
+export function CreateTaskCategoryDialog({ open, onOpenChange }: CreateTaskCategoryDialogProps) {
   const [name, setName] = useState('');
   const createMutation = useCreateTaskCategory();
 
@@ -46,9 +43,7 @@ export function CreateTaskCategoryDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>새 업무 구분 추가</DialogTitle>
-            <DialogDescription>
-              새로운 업무 구분을 추가합니다.
-            </DialogDescription>
+            <DialogDescription>새로운 업무 구분을 추가합니다.</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">

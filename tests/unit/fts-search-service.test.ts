@@ -1,10 +1,9 @@
 // Trace: SPEC-search-1, TASK-009, TASK-016
 // Unit tests for FTS Search Service
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FtsSearchService } from '../../src/services/fts-search-service';
-import type { D1Database, D1PreparedStatement, D1Result } from '@cloudflare/workers-types';
-import type { WorkNote } from '../../src/types/work-note';
 
 describe('FtsSearchService', () => {
   let mockDb: D1Database;

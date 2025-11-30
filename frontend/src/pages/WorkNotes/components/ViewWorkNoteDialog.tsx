@@ -1,20 +1,15 @@
 // Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2, SPEC-ui-1, TASK-034
-import { useState, useEffect, useCallback, useRef } from 'react';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Edit2, Save, X, Pencil, Trash2 } from 'lucide-react';
+import { Edit2, Pencil, Save, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
+import { AssigneeSelector } from '@/components/AssigneeSelector';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,21 +22,27 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { AssigneeSelector } from '@/components/AssigneeSelector';
-import { API } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
-import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
-import { useToggleTodo, useDeleteTodo } from '@/hooks/useTodos';
-import { useTaskCategories } from '@/hooks/useTaskCategories';
-import { usePersons } from '@/hooks/usePersons';
-import { formatPersonBadge, formatDateWithYear, preserveLineBreaksForMarkdown } from '@/lib/utils';
-import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
 import { TODO_STATUS } from '@/constants/todoStatus';
-import type { WorkNote, CreateTodoRequest, TodoStatus, Todo } from '@/types/api';
+import { useToast } from '@/hooks/use-toast';
+import { usePersons } from '@/hooks/usePersons';
+import { useTaskCategories } from '@/hooks/useTaskCategories';
+import { useDeleteTodo, useToggleTodo } from '@/hooks/useTodos';
+import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
+import { API } from '@/lib/api';
+import { formatDateWithYear, formatPersonBadge, preserveLineBreaksForMarkdown } from '@/lib/utils';
+import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
+import type { CreateTodoRequest, Todo, TodoStatus, WorkNote } from '@/types/api';
 
 // Markdown plugin configurations
 const remarkPlugins = [remarkGfm];
@@ -56,11 +57,7 @@ interface ViewWorkNoteDialogProps {
 // Helper function to get today's date in YYYY-MM-DD format
 const getTodayString = (): string => new Date().toISOString().split('T')[0];
 
-export function ViewWorkNoteDialog({
-  workNote,
-  open,
-  onOpenChange,
-}: ViewWorkNoteDialogProps) {
+export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNoteDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
@@ -183,7 +180,6 @@ export function ViewWorkNoteDialog({
     },
   });
 
-
   const handleAddTodo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!todoTitle.trim()) return;
@@ -204,19 +200,18 @@ export function ViewWorkNoteDialog({
     if (currentStatus === TODO_STATUS.ON_HOLD || currentStatus === TODO_STATUS.STOPPED) {
       return;
     }
-    const newStatus: TodoStatus = currentStatus === TODO_STATUS.COMPLETED ? TODO_STATUS.IN_PROGRESS : TODO_STATUS.COMPLETED;
+    const newStatus: TodoStatus =
+      currentStatus === TODO_STATUS.COMPLETED ? TODO_STATUS.IN_PROGRESS : TODO_STATUS.COMPLETED;
     toggleTodoMutation.mutate({ id: todoId, status: newStatus });
   };
 
   const handleCategoryToggle = (categoryId: string) => {
     setEditCategoryIds((prev) =>
-      prev.includes(categoryId)
-        ? prev.filter((id) => id !== categoryId)
-        : [...prev, categoryId]
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     );
   };
 
-  const focusFirstInteractiveElement = (container: HTMLElement | null): boolean => {
+  const focusFirstInteractiveElement = useCallback((container: HTMLElement | null): boolean => {
     if (!container) return false;
     const focusable = container.querySelector<HTMLElement>(
       'input, button, textarea, select, [tabindex]:not([tabindex="-1"])'
@@ -226,7 +221,7 @@ export function ViewWorkNoteDialog({
       return true;
     }
     return false;
-  };
+  }, []);
 
   const enterEditMode = useCallback(
     (focusTarget?: 'category' | 'assignee') => {
@@ -251,9 +246,8 @@ export function ViewWorkNoteDialog({
         }
       });
     },
-    [resetForm, toast]
+    [resetForm, toast, focusFirstInteractiveElement]
   );
-
 
   const handleSaveEdit = async () => {
     if (!currentWorkNote || !editTitle.trim() || !editContent.trim()) {
@@ -291,421 +285,422 @@ export function ViewWorkNoteDialog({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right">
-        <DialogHeader>
-          <div className="flex items-start justify-between gap-4">
-            {isEditing ? (
-              <div className="flex-1">
-                <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder="제목"
-                  className="text-xl font-semibold"
-                />
-              </div>
-            ) : (
-              <DialogTitle className="text-xl">{currentWorkNote.title}</DialogTitle>
-            )}
-            <div className="flex items-center gap-2">
-              {!isEditing && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => enterEditMode()}
-                  className="h-8 w-8 p-0"
-                >
-                  <Edit2 className="h-4 w-4" />
-                  <span className="sr-only">수정</span>
-                </Button>
-              )}
-            </div>
-          </div>
-          <DialogDescription className="sr-only">
-            업무 노트 상세 보기 및 편집
-          </DialogDescription>
-        </DialogHeader>
-
-        {isEditing && (
-          <div className="sticky top-0 z-10 mb-4 flex justify-end gap-2 border-b bg-background pb-3">
-            <Button
-              variant="outline"
-              onClick={handleCancelEdit}
-              disabled={updateMutation.isPending}
-              size="sm"
-            >
-              <X className="h-4 w-4 mr-2" />
-              취소
-            </Button>
-            <Button
-              onClick={() => void handleSaveEdit()}
-              disabled={updateMutation.isPending}
-              size="sm"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {updateMutation.isPending ? '저장 중...' : '저장'}
-            </Button>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {/* Categories Section */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">업무 구분</Label>
-            {isEditing ? (
-              categoriesLoading ? (
-                <p className="text-sm text-muted-foreground">로딩 중...</p>
-              ) : taskCategories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  등록된 업무 구분이 없습니다.
-                </p>
-              ) : (
-                <div
-                  ref={categorySectionRef}
-                  className="grid grid-cols-2 gap-3 max-h-[150px] overflow-y-auto border rounded-md p-3"
-                >
-                  {taskCategories.map((category) => (
-                    <div key={category.categoryId} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`edit-category-${category.categoryId}`}
-                        checked={editCategoryIds.includes(category.categoryId)}
-                        onCheckedChange={() => handleCategoryToggle(category.categoryId)}
-                      />
-                      <label
-                        htmlFor={`edit-category-${category.categoryId}`}
-                        className="text-sm font-medium leading-none cursor-pointer"
-                      >
-                        {category.name}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              )
-            ) : (
-              <div className="flex flex-wrap gap-1">
-                {currentWorkNote.categories && currentWorkNote.categories.length > 0 ? (
-                  currentWorkNote.categories.map((category) => (
-                    <Badge key={category.categoryId} variant="secondary">
-                      {category.name}
-                    </Badge>
-                  ))
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => enterEditMode('category')}
-                    className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label="업무 구분 추가하기"
-                  >
-                    <Badge variant="outline">업무 구분 없음</Badge>
-                    <span className="text-xs">클릭하여 추가</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Assignees Section */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">담당자</Label>
-            {isEditing ? (
-              persons.length === 0 && !personsLoading ? (
-                <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
-              ) : (
-                <div ref={assigneeSectionRef}>
-                  <AssigneeSelector
-                    persons={persons}
-                    selectedPersonIds={editPersonIds}
-                    onSelectionChange={setEditPersonIds}
-                    isLoading={personsLoading}
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right">
+          <DialogHeader>
+            <div className="flex items-start justify-between gap-4">
+              {isEditing ? (
+                <div className="flex-1">
+                  <Input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="제목"
+                    className="text-xl font-semibold"
                   />
                 </div>
-              )
-            ) : (
-              <div className="flex flex-wrap gap-1">
-                {currentWorkNote.persons && currentWorkNote.persons.length > 0 ? (
-                  currentWorkNote.persons.map((person) => (
-                    <Badge key={person.personId} variant="outline">
-                      {formatPersonBadge({
-                        name: person.personName,
-                        currentDept: person.currentDept,
-                        currentPosition: person.currentPosition,
-                      })}
-                      {person.role === 'OWNER' && (
-                        <span className="ml-1 text-xs">(담당)</span>
-                      )}
-                    </Badge>
-                  ))
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => enterEditMode('assignee')}
-                    className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label="담당자 지정하기"
+              ) : (
+                <DialogTitle className="text-xl">{currentWorkNote.title}</DialogTitle>
+              )}
+              <div className="flex items-center gap-2">
+                {!isEditing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => enterEditMode()}
+                    className="h-8 w-8 p-0"
                   >
-                    <Badge variant="outline">담당자 없음</Badge>
-                    <span className="text-xs">클릭하여 지정</span>
-                  </button>
+                    <Edit2 className="h-4 w-4" />
+                    <span className="sr-only">수정</span>
+                  </Button>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+            <DialogDescription className="sr-only">업무 노트 상세 보기 및 편집</DialogDescription>
+          </DialogHeader>
 
-          {/* Dates */}
-          <div className="text-sm text-muted-foreground space-y-1">
-            <p>
-              생성일:{' '}
-              {format(parseISO(currentWorkNote.createdAt), 'yyyy년 M월 d일 HH:mm', {
-                locale: ko,
-              })}
-            </p>
-            <p>
-              수정일:{' '}
-              {format(parseISO(currentWorkNote.updatedAt), 'yyyy년 M월 d일 HH:mm', {
-                locale: ko,
-              })}
-            </p>
-          </div>
-
-          {/* Content */}
-          <div className="border-t pt-4">
-            <h3 className="font-semibold mb-2">내용</h3>
-            {isEditing ? (
-              <div className="space-y-2">
-                <Textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  placeholder="마크다운 형식으로 작성하세요"
-                  className="min-h-[400px] font-mono text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  마크다운 형식 지원: **굵게**, *기울임*, # 제목, - 목록 등
-                </p>
-              </div>
-            ) : (
-              <div
-                className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800"
-                data-color-mode={colorMode}
-              >
-                <ReactMarkdown
-                  remarkPlugins={remarkPlugins}
-                  rehypePlugins={rehypePlugins}
-                >
-                  {currentWorkNote.content}
-                </ReactMarkdown>
-              </div>
-            )}
-          </div>
-
-          {/* References */}
-          <div className="border-t pt-4">
-            <h3 className="font-semibold mb-2">참고한 업무노트</h3>
-            {currentWorkNote.relatedWorkNotes && currentWorkNote.relatedWorkNotes.length > 0 ? (
-              <div className="space-y-2">
-                {currentWorkNote.relatedWorkNotes.map((ref) => (
-                  <div
-                    key={ref.relatedWorkId}
-                    className="flex items-center justify-between border rounded-md p-3"
-                  >
-                    <div>
-                      <p className="font-medium">{ref.relatedWorkTitle || ref.relatedWorkId}</p>
-                      <p className="text-xs text-muted-foreground">ID: {ref.relatedWorkId}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">저장된 참고 업무노트가 없습니다.</p>
-            )}
-          </div>
-
-          {/* Edit Actions */}
           {isEditing && (
-            <div className="flex justify-end gap-2 border-t pt-4">
+            <div className="sticky top-0 z-10 mb-4 flex justify-end gap-2 border-b bg-background pb-3">
               <Button
                 variant="outline"
                 onClick={handleCancelEdit}
                 disabled={updateMutation.isPending}
+                size="sm"
               >
                 <X className="h-4 w-4 mr-2" />
                 취소
               </Button>
-              <Button onClick={() => void handleSaveEdit()} disabled={updateMutation.isPending}>
+              <Button
+                onClick={() => void handleSaveEdit()}
+                disabled={updateMutation.isPending}
+                size="sm"
+              >
                 <Save className="h-4 w-4 mr-2" />
                 {updateMutation.isPending ? '저장 중...' : '저장'}
               </Button>
             </div>
           )}
 
-          {/* Todos Section */}
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">할일 목록</h3>
-              <Button
-                size="sm"
-                onClick={() => setShowAddTodo(!showAddTodo)}
-                variant={showAddTodo ? 'outline' : 'default'}
-              >
-                {showAddTodo ? '취소' : '할일 추가'}
-              </Button>
+          <div className="space-y-4">
+            {/* Categories Section */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">업무 구분</Label>
+              {isEditing ? (
+                categoriesLoading ? (
+                  <p className="text-sm text-muted-foreground">로딩 중...</p>
+                ) : taskCategories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">등록된 업무 구분이 없습니다.</p>
+                ) : (
+                  <div
+                    ref={categorySectionRef}
+                    className="grid grid-cols-2 gap-3 max-h-[150px] overflow-y-auto border rounded-md p-3"
+                  >
+                    {taskCategories.map((category) => (
+                      <div key={category.categoryId} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-category-${category.categoryId}`}
+                          checked={editCategoryIds.includes(category.categoryId)}
+                          onCheckedChange={() => handleCategoryToggle(category.categoryId)}
+                        />
+                        <label
+                          htmlFor={`edit-category-${category.categoryId}`}
+                          className="text-sm font-medium leading-none cursor-pointer"
+                        >
+                          {category.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {currentWorkNote.categories && currentWorkNote.categories.length > 0 ? (
+                    currentWorkNote.categories.map((category) => (
+                      <Badge key={category.categoryId} variant="secondary">
+                        {category.name}
+                      </Badge>
+                    ))
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => enterEditMode('category')}
+                      className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      aria-label="업무 구분 추가하기"
+                    >
+                      <Badge variant="outline">업무 구분 없음</Badge>
+                      <span className="text-xs">클릭하여 추가</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
-            {showAddTodo && (
-              <form onSubmit={handleAddTodo} className="mb-4 p-3 border rounded-md space-y-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="todo-title">할일 제목</Label>
-                  <Input
-                    id="todo-title"
-                    value={todoTitle}
-                    onChange={(e) => setTodoTitle(e.target.value)}
-                    placeholder="할일을 입력하세요"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="todo-description">설명 (선택사항)</Label>
-                  <Textarea
-                    id="todo-description"
-                    value={todoDescription}
-                    onChange={(e) => setTodoDescription(e.target.value)}
-                    placeholder="상세 설명"
-                    className="min-h-[80px]"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="todo-due-date">마감일 (선택사항)</Label>
-                  <Input
-                    id="todo-due-date"
-                    type="date"
-                    value={todoDueDate}
-                    onChange={(e) => setTodoDueDate(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" disabled={createTodoMutation.isPending} className="w-full">
-                  {createTodoMutation.isPending ? '추가 중...' : '추가'}
-                </Button>
-              </form>
-            )}
-
-            {todosLoading ? (
-              <p className="text-sm text-muted-foreground">로딩 중...</p>
-            ) : todos.length === 0 ? (
-              <p className="text-sm text-muted-foreground">등록된 할일이 없습니다.</p>
-            ) : (
-              <div className="space-y-2">
-                {todos.map((todo) => {
-                  const isNonToggleableStatus = todo.status === TODO_STATUS.ON_HOLD || todo.status === TODO_STATUS.STOPPED;
-                  const descriptionWithBreaks = todo.description
-                    ? preserveLineBreaksForMarkdown(todo.description)
-                    : '';
-                  return (
-                    <div
-                      key={todo.id}
-                      className="flex items-start gap-3 p-3 border rounded-md hover:bg-accent/50 transition-colors"
-                    >
-                      <Checkbox
-                        checked={todo.status === TODO_STATUS.COMPLETED}
-                        onCheckedChange={() => handleToggleTodoStatus(todo.id, todo.status)}
-                        disabled={toggleTodoMutation.isPending || isNonToggleableStatus}
-                        title={isNonToggleableStatus ? '보류/중단 상태는 체크박스로 변경할 수 없습니다' : undefined}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`text-base font-semibold leading-snug ${todo.status === TODO_STATUS.COMPLETED ? 'line-through text-muted-foreground' : ''}`}
-                        >
-                          {todo.title}
-                        </p>
-                        {todo.description && (
-                          <div className="mt-1 text-xs text-muted-foreground leading-snug break-words">
-                            <div className="[&>*]:m-0 [&>p]:mb-1">
-                              <ReactMarkdown
-                                remarkPlugins={remarkPlugins}
-                                rehypePlugins={rehypePlugins}
-                              >
-                                {descriptionWithBreaks}
-                              </ReactMarkdown>
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          <Badge variant={todo.status === TODO_STATUS.COMPLETED ? 'secondary' : 'default'} className="text-xs">
-                            {todo.status}
-                          </Badge>
-                          {todo.waitUntil && (
-                            <Badge variant="outline" className="text-xs">
-                              대기: {formatDateWithYear(todo.waitUntil)}
-                            </Badge>
-                          )}
-                          {todo.dueDate && (
-                            <Badge variant="outline" className="text-xs">
-                              마감: {formatDateWithYear(todo.dueDate)}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditTodo(todo);
-                        setEditTodoDialogOpen(true);
-                      }}
-                      className="h-8 w-8 p-0 shrink-0"
-                    >
-                      <Pencil className="h-3 w-3" />
-                      <span className="sr-only">수정</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeleteTodoId(todo.id)}
-                      disabled={deleteTodoMutation.isPending}
-                      className="h-8 w-8 p-0 shrink-0 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      <span className="sr-only">삭제</span>
-                    </Button>
+            {/* Assignees Section */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">담당자</Label>
+              {isEditing ? (
+                persons.length === 0 && !personsLoading ? (
+                  <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
+                ) : (
+                  <div ref={assigneeSectionRef}>
+                    <AssigneeSelector
+                      persons={persons}
+                      selectedPersonIds={editPersonIds}
+                      onSelectionChange={setEditPersonIds}
+                      isLoading={personsLoading}
+                    />
                   </div>
-                  );
+                )
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {currentWorkNote.persons && currentWorkNote.persons.length > 0 ? (
+                    currentWorkNote.persons.map((person) => (
+                      <Badge key={person.personId} variant="outline">
+                        {formatPersonBadge({
+                          name: person.personName,
+                          currentDept: person.currentDept,
+                          currentPosition: person.currentPosition,
+                        })}
+                        {person.role === 'OWNER' && <span className="ml-1 text-xs">(담당)</span>}
+                      </Badge>
+                    ))
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => enterEditMode('assignee')}
+                      className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      aria-label="담당자 지정하기"
+                    >
+                      <Badge variant="outline">담당자 없음</Badge>
+                      <span className="text-xs">클릭하여 지정</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Dates */}
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>
+                생성일:{' '}
+                {format(parseISO(currentWorkNote.createdAt), 'yyyy년 M월 d일 HH:mm', {
+                  locale: ko,
                 })}
+              </p>
+              <p>
+                수정일:{' '}
+                {format(parseISO(currentWorkNote.updatedAt), 'yyyy년 M월 d일 HH:mm', {
+                  locale: ko,
+                })}
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-2">내용</h3>
+              {isEditing ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    placeholder="마크다운 형식으로 작성하세요"
+                    className="min-h-[400px] font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    마크다운 형식 지원: **굵게**, *기울임*, # 제목, - 목록 등
+                  </p>
+                </div>
+              ) : (
+                <div
+                  className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800"
+                  data-color-mode={colorMode}
+                >
+                  <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
+                    {currentWorkNote.content}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </div>
+
+            {/* References */}
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-2">참고한 업무노트</h3>
+              {currentWorkNote.relatedWorkNotes && currentWorkNote.relatedWorkNotes.length > 0 ? (
+                <div className="space-y-2">
+                  {currentWorkNote.relatedWorkNotes.map((ref) => (
+                    <div
+                      key={ref.relatedWorkId}
+                      className="flex items-center justify-between border rounded-md p-3"
+                    >
+                      <div>
+                        <p className="font-medium">{ref.relatedWorkTitle || ref.relatedWorkId}</p>
+                        <p className="text-xs text-muted-foreground">ID: {ref.relatedWorkId}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">저장된 참고 업무노트가 없습니다.</p>
+              )}
+            </div>
+
+            {/* Edit Actions */}
+            {isEditing && (
+              <div className="flex justify-end gap-2 border-t pt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                  disabled={updateMutation.isPending}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  취소
+                </Button>
+                <Button onClick={() => void handleSaveEdit()} disabled={updateMutation.isPending}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {updateMutation.isPending ? '저장 중...' : '저장'}
+                </Button>
               </div>
             )}
+
+            {/* Todos Section */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold">할일 목록</h3>
+                <Button
+                  size="sm"
+                  onClick={() => setShowAddTodo(!showAddTodo)}
+                  variant={showAddTodo ? 'outline' : 'default'}
+                >
+                  {showAddTodo ? '취소' : '할일 추가'}
+                </Button>
+              </div>
+
+              {showAddTodo && (
+                <form onSubmit={handleAddTodo} className="mb-4 p-3 border rounded-md space-y-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="todo-title">할일 제목</Label>
+                    <Input
+                      id="todo-title"
+                      value={todoTitle}
+                      onChange={(e) => setTodoTitle(e.target.value)}
+                      placeholder="할일을 입력하세요"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="todo-description">설명 (선택사항)</Label>
+                    <Textarea
+                      id="todo-description"
+                      value={todoDescription}
+                      onChange={(e) => setTodoDescription(e.target.value)}
+                      placeholder="상세 설명"
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="todo-due-date">마감일 (선택사항)</Label>
+                    <Input
+                      id="todo-due-date"
+                      type="date"
+                      value={todoDueDate}
+                      onChange={(e) => setTodoDueDate(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" disabled={createTodoMutation.isPending} className="w-full">
+                    {createTodoMutation.isPending ? '추가 중...' : '추가'}
+                  </Button>
+                </form>
+              )}
+
+              {todosLoading ? (
+                <p className="text-sm text-muted-foreground">로딩 중...</p>
+              ) : todos.length === 0 ? (
+                <p className="text-sm text-muted-foreground">등록된 할일이 없습니다.</p>
+              ) : (
+                <div className="space-y-2">
+                  {todos.map((todo) => {
+                    const isNonToggleableStatus =
+                      todo.status === TODO_STATUS.ON_HOLD || todo.status === TODO_STATUS.STOPPED;
+                    const descriptionWithBreaks = todo.description
+                      ? preserveLineBreaksForMarkdown(todo.description)
+                      : '';
+                    return (
+                      <div
+                        key={todo.id}
+                        className="flex items-start gap-3 p-3 border rounded-md hover:bg-accent/50 transition-colors"
+                      >
+                        <Checkbox
+                          checked={todo.status === TODO_STATUS.COMPLETED}
+                          onCheckedChange={() => handleToggleTodoStatus(todo.id, todo.status)}
+                          disabled={toggleTodoMutation.isPending || isNonToggleableStatus}
+                          title={
+                            isNonToggleableStatus
+                              ? '보류/중단 상태는 체크박스로 변경할 수 없습니다'
+                              : undefined
+                          }
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`text-base font-semibold leading-snug ${todo.status === TODO_STATUS.COMPLETED ? 'line-through text-muted-foreground' : ''}`}
+                          >
+                            {todo.title}
+                          </p>
+                          {todo.description && (
+                            <div className="mt-1 text-xs text-muted-foreground leading-snug break-words">
+                              <div className="[&>*]:m-0 [&>p]:mb-1">
+                                <ReactMarkdown
+                                  remarkPlugins={remarkPlugins}
+                                  rehypePlugins={rehypePlugins}
+                                >
+                                  {descriptionWithBreaks}
+                                </ReactMarkdown>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            <Badge
+                              variant={
+                                todo.status === TODO_STATUS.COMPLETED ? 'secondary' : 'default'
+                              }
+                              className="text-xs"
+                            >
+                              {todo.status}
+                            </Badge>
+                            {todo.waitUntil && (
+                              <Badge variant="outline" className="text-xs">
+                                대기: {formatDateWithYear(todo.waitUntil)}
+                              </Badge>
+                            )}
+                            {todo.dueDate && (
+                              <Badge variant="outline" className="text-xs">
+                                마감: {formatDateWithYear(todo.dueDate)}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditTodo(todo);
+                            setEditTodoDialogOpen(true);
+                          }}
+                          className="h-8 w-8 p-0 shrink-0"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          <span className="sr-only">수정</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteTodoId(todo.id)}
+                          disabled={deleteTodoMutation.isPending}
+                          className="h-8 w-8 p-0 shrink-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span className="sr-only">삭제</span>
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
 
-    <EditTodoDialog
-      todo={editTodo}
-      open={editTodoDialogOpen}
-      onOpenChange={setEditTodoDialogOpen}
-      workNoteId={currentWorkNote?.id}
-    />
+      <EditTodoDialog
+        todo={editTodo}
+        open={editTodoDialogOpen}
+        onOpenChange={setEditTodoDialogOpen}
+        workNoteId={currentWorkNote?.id}
+      />
 
-    <AlertDialog open={!!deleteTodoId} onOpenChange={(open) => !open && setDeleteTodoId(null)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>할일 삭제</AlertDialogTitle>
-          <AlertDialogDescription>
-            정말 이 할일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>취소</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              if (deleteTodoId) {
-                deleteTodoMutation.mutate(deleteTodoId);
-                setDeleteTodoId(null);
-              }
-            }}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            삭제
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </>
+      <AlertDialog open={!!deleteTodoId} onOpenChange={(open) => !open && setDeleteTodoId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>할일 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말 이 할일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTodoId) {
+                  deleteTodoMutation.mutate(deleteTodoId);
+                  setDeleteTodoId(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

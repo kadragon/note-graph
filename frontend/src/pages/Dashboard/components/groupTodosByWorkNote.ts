@@ -28,7 +28,7 @@ export function groupTodosByWorkNote(todos: Todo[]): WorkNoteTodoGroup[] {
       });
     }
 
-    groups.get(key)!.todos.push(todo);
+    groups.get(key)?.todos.push(todo);
   });
 
   return Array.from(groups.values());

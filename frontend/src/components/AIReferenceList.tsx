@@ -1,8 +1,8 @@
 // Trace: SPEC-ai-draft-refs-1, TASK-029, TASK-030
 // Shared component for displaying AI-suggested work note references
 import { useState } from 'react';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import type { AIDraftReference } from '@/types/api';
 
@@ -34,9 +34,7 @@ export function AIReferenceList({
     );
   };
 
-  const displayedReferences = showAll
-    ? references
-    : references.slice(0, initialDisplayCount);
+  const displayedReferences = showAll ? references : references.slice(0, initialDisplayCount);
 
   return (
     <div className="grid gap-2">
@@ -45,9 +43,7 @@ export function AIReferenceList({
         {displayedReferences.map((ref) => {
           const isSelected = selectedIds.includes(ref.workId);
           const scoreLabel =
-            ref.similarityScore !== undefined
-              ? `${Math.round(ref.similarityScore * 100)}%`
-              : 'N/A';
+            ref.similarityScore !== undefined ? `${Math.round(ref.similarityScore * 100)}%` : 'N/A';
 
           return (
             <div key={ref.workId} className="flex items-start gap-3">
@@ -61,9 +57,7 @@ export function AIReferenceList({
                 <div className="text-xs text-muted-foreground flex gap-2">
                   <span>연관도 {scoreLabel}</span>
                   {ref.category && (
-                    <span className="text-muted-foreground">
-                      카테고리: {ref.category}
-                    </span>
+                    <span className="text-muted-foreground">카테고리: {ref.category}</span>
                   )}
                 </div>
               </div>
@@ -72,9 +66,7 @@ export function AIReferenceList({
         })}
       </Card>
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <p>
-          필요 없는 참고 자료는 선택 해제하세요. 해제된 항목은 저장되지 않습니다.
-        </p>
+        <p>필요 없는 참고 자료는 선택 해제하세요. 해제된 항목은 저장되지 않습니다.</p>
         {references.length > initialDisplayCount && (
           <button
             type="button"

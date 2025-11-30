@@ -5,25 +5,26 @@
  */
 
 import { Hono } from 'hono';
-import type { AuthUser } from './types/auth';
-import { AuthenticationError } from './types/auth';
-import { DomainError } from './types/errors';
-import type { Env } from './types/env';
-import { authMiddleware } from './middleware/auth';
 import { getMeHandler } from './handlers/auth';
+import { authMiddleware } from './middleware/auth';
+import admin from './routes/admin';
+import aiDraft from './routes/ai-draft';
+import departments from './routes/departments';
+import pdf from './routes/pdf';
 
 // Route imports
 import persons from './routes/persons';
-import departments from './routes/departments';
-import taskCategories from './routes/task-categories';
-import workNotes from './routes/work-notes';
-import todos from './routes/todos';
-import search from './routes/search';
-import rag from './routes/rag';
-import aiDraft from './routes/ai-draft';
-import pdf from './routes/pdf';
-import admin from './routes/admin';
 import { projects } from './routes/projects';
+import rag from './routes/rag';
+import search from './routes/search';
+import statistics from './routes/statistics';
+import taskCategories from './routes/task-categories';
+import todos from './routes/todos';
+import workNotes from './routes/work-notes';
+import type { AuthUser } from './types/auth';
+import { AuthenticationError } from './types/auth';
+import type { Env } from './types/env';
+import { DomainError } from './types/errors';
 
 // Re-export Env type for compatibility
 export type { Env };
@@ -69,6 +70,7 @@ api.get('/', (c) => {
       ai: '/api/ai',
       pdfJobs: '/api/pdf-jobs',
       admin: '/api/admin',
+      statistics: '/api/statistics',
     },
   });
 });
@@ -88,6 +90,7 @@ api.route('/rag', rag);
 api.route('/ai', aiDraft);
 api.route('/pdf-jobs', pdf);
 api.route('/admin', admin);
+api.route('/statistics', statistics);
 
 // Mount API router to main app
 app.route('/', api);
@@ -140,7 +143,9 @@ app.notFound(async (c) => {
 
 // Error handler
 app.onError((err, c) => {
-  console.error(`Application error: ${err instanceof Error ? err.stack || err.message : JSON.stringify(err)}`);
+  console.error(
+    `Application error: ${err instanceof Error ? err.stack || err.message : JSON.stringify(err)}`
+  );
 
   // Handle authentication errors
   if (err instanceof AuthenticationError) {
@@ -167,7 +172,8 @@ app.onError((err, c) => {
 
   // Avoid leaking internal error details to the client in non-dev environments.
   const isDevelopment = c.env.ENVIRONMENT === 'development';
-  const message = isDevelopment && err instanceof Error ? err.message : 'An internal server error occurred.';
+  const message =
+    isDevelopment && err instanceof Error ? err.message : 'An internal server error occurred.';
   return c.json(
     {
       code: 'INTERNAL_ERROR',

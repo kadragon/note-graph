@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 
 // Map paths to breadcrumb titles

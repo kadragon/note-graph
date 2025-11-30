@@ -8,12 +8,19 @@ import { z } from 'zod';
 /**
  * Person ID schema (6-digit string)
  */
-export const personIdSchema = z.string().length(6).regex(/^\d{6}$/, 'Person ID must be 6 digits');
+export const personIdSchema = z
+  .string()
+  .length(6)
+  .regex(/^\d{6}$/, 'Person ID must be 6 digits');
 
 /**
  * Phone extension schema (up to 15 characters, digits and hyphens allowed)
  */
-export const phoneExtSchema = z.string().max(15).regex(/^[\d-]+$/, 'Phone must contain only digits and hyphens').optional();
+export const phoneExtSchema = z
+  .string()
+  .max(15)
+  .regex(/^[\d-]+$/, 'Phone must contain only digits and hyphens')
+  .optional();
 
 /**
  * Employment status schema

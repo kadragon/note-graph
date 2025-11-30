@@ -1,12 +1,12 @@
 // Trace: SPEC-person-1, SPEC-person-3, TASK-027
 // Unit tests for PersonRepository
 
-import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { PersonRepository } from '../../src/repositories/person-repository';
-import { NotFoundError, ConflictError, ValidationError } from '../../src/types/errors';
-import type { Env } from '../../src/types/env';
 import type { CreatePersonInput, UpdatePersonInput } from '../../src/schemas/person';
+import type { Env } from '../../src/types/env';
+import { ConflictError, NotFoundError, ValidationError } from '../../src/types/errors';
 
 const testEnv = env as unknown as Env;
 
@@ -31,7 +31,9 @@ describe('PersonRepository', () => {
       // Arrange
       const personId = '123456';
       const now = new Date().toISOString();
-      await testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)')
+      await testEnv.DB.prepare(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+      )
         .bind(personId, '홍길동', now, now)
         .run();
 
@@ -81,47 +83,21 @@ describe('PersonRepository', () => {
       await testEnv.DB.batch([
         testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
         testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('기획팀'),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(
-          '100010',
-          '강나',
-          '개발팀',
-          '사원',
-          '2222',
-          now,
-          now
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(
-          '100001',
-          '김가',
-          '개발팀',
-          '과장',
-          '1234',
-          now,
-          now
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(
-          '100002',
-          '김가',
-          '개발팀',
-          '부장',
-          '5678',
-          now,
-          now
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, current_dept, current_position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').bind(
-          '100003',
-          '박나',
-          '기획팀',
-          '대리',
-          now,
-          now
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
-          '100004',
-          '최다',
-          now,
-          now
-        ),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind('100010', '강나', '개발팀', '사원', '2222', now, now),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind('100001', '김가', '개발팀', '과장', '1234', now, now),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind('100002', '김가', '개발팀', '부장', '5678', now, now),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, current_dept, current_position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind('100003', '박나', '기획팀', '대리', now, now),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind('100004', '최다', now, now),
       ]);
     });
 
@@ -141,9 +117,24 @@ describe('PersonRepository', () => {
       expect(result.length).toBeGreaterThanOrEqual(5);
 
       // 1) Dept asc, 2) Name asc, 3) Position asc, 4) personId asc
-      expect(result[0]).toMatchObject({ personId: '100010', name: '강나', currentDept: '개발팀', currentPosition: '사원' });
-      expect(result[1]).toMatchObject({ personId: '100001', name: '김가', currentDept: '개발팀', currentPosition: '과장' });
-      expect(result[2]).toMatchObject({ personId: '100002', name: '김가', currentDept: '개발팀', currentPosition: '부장' });
+      expect(result[0]).toMatchObject({
+        personId: '100010',
+        name: '강나',
+        currentDept: '개발팀',
+        currentPosition: '사원',
+      });
+      expect(result[1]).toMatchObject({
+        personId: '100001',
+        name: '김가',
+        currentDept: '개발팀',
+        currentPosition: '과장',
+      });
+      expect(result[2]).toMatchObject({
+        personId: '100002',
+        name: '김가',
+        currentDept: '개발팀',
+        currentPosition: '부장',
+      });
       expect(result[3]).toMatchObject({ personId: '100003', name: '박나', currentDept: '기획팀' });
       expect(result[4]).toMatchObject({ personId: '100004', name: '최다', currentDept: null });
     });
@@ -215,7 +206,9 @@ describe('PersonRepository', () => {
 
     it('should create person with department', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀').run();
+      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
+        .bind('개발팀')
+        .run();
 
       const input: CreatePersonInput = {
         personId: '123456',
@@ -245,7 +238,9 @@ describe('PersonRepository', () => {
 
     it('should create person with full details', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀').run();
+      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
+        .bind('개발팀')
+        .run();
 
       const input: CreatePersonInput = {
         personId: '123456',
@@ -285,7 +280,9 @@ describe('PersonRepository', () => {
 
     it('should create department history entry when department is provided', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀').run();
+      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
+        .bind('개발팀')
+        .run();
 
       const input: CreatePersonInput = {
         personId: '123456',
@@ -335,7 +332,9 @@ describe('PersonRepository', () => {
 
     it('should throw NotFoundError for non-existent person', async () => {
       // Act & Assert
-      await expect(repository.update('NONEXISTENT', { name: 'New Name' })).rejects.toThrow(NotFoundError);
+      await expect(repository.update('NONEXISTENT', { name: 'New Name' })).rejects.toThrow(
+        NotFoundError
+      );
     });
 
     it('should update name', async () => {
@@ -353,7 +352,9 @@ describe('PersonRepository', () => {
 
     it('should update department', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀').run();
+      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
+        .bind('개발팀')
+        .run();
 
       const update: UpdatePersonInput = {
         currentDept: '개발팀',
@@ -442,14 +443,16 @@ describe('PersonRepository', () => {
 
     it('should throw ValidationError when changing to non-existent department', async () => {
       // Act & Assert
-      await expect(repository.update(existingPersonId, { currentDept: '비존재부서' })).rejects.toThrow(
-        ValidationError
-      );
+      await expect(
+        repository.update(existingPersonId, { currentDept: '비존재부서' })
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should not create history entry when department is not changing', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀').run();
+      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
+        .bind('개발팀')
+        .run();
       await repository.update(existingPersonId, { currentDept: '개발팀' });
 
       // Act - Update name but not department
@@ -526,7 +529,9 @@ describe('PersonRepository', () => {
 
     it('should include all history fields', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀').run();
+      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
+        .bind('개발팀')
+        .run();
 
       const input: CreatePersonInput = {
         personId: '123456',
@@ -579,20 +584,15 @@ describe('PersonRepository', () => {
       const now = new Date().toISOString();
 
       await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
-          personId,
-          '홍길동',
-          now,
-          now
-        ),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind(personId, '홍길동', now, now),
         testEnv.DB.prepare(
           'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
         ).bind(workId, 'Test Work', 'Content', '업무', now, now),
-        testEnv.DB.prepare('INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)').bind(
-          workId,
-          personId,
-          'OWNER'
-        ),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
+        ).bind(workId, personId, 'OWNER'),
       ]);
 
       // Act
@@ -613,28 +613,21 @@ describe('PersonRepository', () => {
       const earlier = new Date(now.getTime() - 3600000);
 
       await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').bind(
-          personId,
-          '홍길동',
-          now.toISOString(),
-          now.toISOString()
-        ),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind(personId, '홍길동', now.toISOString(), now.toISOString()),
         testEnv.DB.prepare(
           'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
         ).bind('WORK-001', 'Earlier Work', 'Content', earlier.toISOString(), earlier.toISOString()),
         testEnv.DB.prepare(
           'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
         ).bind('WORK-002', 'Later Work', 'Content', now.toISOString(), now.toISOString()),
-        testEnv.DB.prepare('INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)').bind(
-          'WORK-001',
-          personId,
-          'OWNER'
-        ),
-        testEnv.DB.prepare('INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)').bind(
-          'WORK-002',
-          personId,
-          'PARTICIPANT'
-        ),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
+        ).bind('WORK-001', personId, 'OWNER'),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
+        ).bind('WORK-002', personId, 'PARTICIPANT'),
       ]);
 
       // Act

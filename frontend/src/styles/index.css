@@ -8,7 +8,8 @@
   --spacing-sidebar: 16rem;
 
   /* Custom font family */
-  --font-family-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+  --font-family-sans:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 
   /* Custom border radius */
   --radius-lg: var(--radius);
@@ -128,11 +129,15 @@
 /* Card shadow improvements */
 @layer components {
   .card-shadow {
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    box-shadow:
+      0 1px 3px 0 rgb(0 0 0 / 0.1),
+      0 1px 2px -1px rgb(0 0 0 / 0.1);
   }
 
   .card-shadow-md {
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    box-shadow:
+      0 4px 6px -1px rgb(0 0 0 / 0.1),
+      0 2px 4px -2px rgb(0 0 0 / 0.1);
   }
 }
 
@@ -166,7 +171,8 @@
 :is(.prose, .prose-xs, .prose-sm) code {
   @apply rounded px-1 py-0.5 text-sm;
   background-color: var(--code-inline-bg);
-  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 :is(.prose, .prose-xs, .prose-sm) pre code {

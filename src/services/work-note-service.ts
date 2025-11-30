@@ -4,14 +4,18 @@
  * Uses embedded_at tracking for embedding state management
  */
 
-import type { Env } from '../types/env';
-import type { WorkNote, WorkNoteDetail } from '../types/work-note';
-import type { CreateWorkNoteInput, UpdateWorkNoteInput, ListWorkNotesQuery } from '../schemas/work-note';
-import type { SimilarWorkNoteReference } from '../types/search';
+import { format } from 'date-fns';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
+import type {
+  CreateWorkNoteInput,
+  ListWorkNotesQuery,
+  UpdateWorkNoteInput,
+} from '../schemas/work-note';
+import type { Env } from '../types/env';
+import type { SimilarWorkNoteReference } from '../types/search';
+import type { WorkNote, WorkNoteDetail } from '../types/work-note';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingService, VectorizeService } from './embedding-service';
-import { format } from 'date-fns';
 
 /**
  * Work note service with integrated RAG support
@@ -130,7 +134,10 @@ export class WorkNoteService {
   /**
    * Chunk and embed work note for RAG
    */
-  private async chunkAndEmbedWorkNote(workNote: WorkNote, data: CreateWorkNoteInput): Promise<void> {
+  private async chunkAndEmbedWorkNote(
+    workNote: WorkNote,
+    data: CreateWorkNoteInput
+  ): Promise<void> {
     const personIds = data.persons?.map((p) => p.personId) || [];
     await this.performChunkingAndEmbedding(workNote, personIds, false);
   }
@@ -142,7 +149,10 @@ export class WorkNoteService {
    * 1. Upsert new chunks (preserves old chunks if this fails)
    * 2. Delete stale chunks only after successful upsert
    */
-  private async rechunkAndEmbedWorkNote(workNote: WorkNote, data: UpdateWorkNoteInput): Promise<void> {
+  private async rechunkAndEmbedWorkNote(
+    workNote: WorkNote,
+    data: UpdateWorkNoteInput
+  ): Promise<void> {
     // Get person IDs (use updated data if provided, otherwise fetch from DB)
     let personIds: string[] = [];
     if (data.persons !== undefined) {
@@ -269,18 +279,20 @@ export class WorkNoteService {
       // Filter by similarity threshold and extract work IDs
       const relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);
       const workIdScores = new Map<string, number>();
-      const workIds = [...new Set(
-        relevantResults
-          .map((r) => {
-            const workId = r.id?.split('#')[0];
-            if (workId) {
-              const currentScore = workIdScores.get(workId) || 0;
-              workIdScores.set(workId, Math.max(currentScore, r.score));
-            }
-            return workId;
-          })
-          .filter((id): id is string => id !== undefined)
-      )]; // Handle chunk IDs, deduplicate
+      const workIds = [
+        ...new Set(
+          relevantResults
+            .map((r) => {
+              const workId = r.id?.split('#')[0];
+              if (workId) {
+                const currentScore = workIdScores.get(workId) || 0;
+                workIdScores.set(workId, Math.max(currentScore, r.score));
+              }
+              return workId;
+            })
+            .filter((id): id is string => id !== undefined)
+        ),
+      ]; // Handle chunk IDs, deduplicate
 
       if (workIds.length === 0) {
         return [];
@@ -293,9 +305,7 @@ export class WorkNoteService {
       ]);
 
       // Map results maintaining similarity order
-      const workNoteMap = new Map(
-        workNotes.map((note) => [note.workId, note])
-      );
+      const workNoteMap = new Map(workNotes.map((note) => [note.workId, note]));
 
       return workIds
         .map((id) => workNoteMap.get(id))

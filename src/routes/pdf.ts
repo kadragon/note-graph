@@ -3,11 +3,11 @@
 
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
-import type { Env } from '../types/env.js';
 import { PdfJobRepository } from '../repositories/pdf-job-repository.js';
-import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { AIDraftService } from '../services/ai-draft-service.js';
+import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { WorkNoteService } from '../services/work-note-service.js';
+import type { Env } from '../types/env.js';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
 import type {
   PdfJobResponse,
@@ -147,39 +147,25 @@ pdf.post('/', async (c) => {
   try {
     // Validate PDF
     extractionService.validatePdfBuffer(pdfBuffer);
-
-    // Extract text
-    // eslint-disable-next-line no-console
-    console.log(`[PDF Processing] Extracting text from PDF: ${fileName}`);
     const extractedText = await extractionService.extractText(pdfBuffer);
-
-    // Search for similar work notes using shared service
-    // eslint-disable-next-line no-console
-    console.log(`[PDF Processing] Searching for similar work notes for job ${jobId}`);
     const workNoteService = new WorkNoteService(c.env);
     const similarNotes = await workNoteService.findSimilarNotes(
       extractedText,
       SIMILAR_NOTES_TOP_K,
       SIMILARITY_SCORE_THRESHOLD
     );
-
-    // eslint-disable-next-line no-console
-    console.log(`[PDF Processing] Found ${similarNotes.length} similar work notes`);
-
-    // Generate AI draft with similar notes as context
-    // eslint-disable-next-line no-console
-    console.log(`[PDF Processing] Generating AI draft for job ${jobId}`);
-    const draft = similarNotes.length > 0
-      ? await aiDraftService.generateDraftFromTextWithContext(extractedText, similarNotes, {
-          category: metadata.category,
-          personIds: metadata.personIds,
-          deptName: metadata.deptName,
-        })
-      : await aiDraftService.generateDraftFromText(extractedText, {
-          category: metadata.category,
-          personIds: metadata.personIds,
-          deptName: metadata.deptName,
-        });
+    const draft =
+      similarNotes.length > 0
+        ? await aiDraftService.generateDraftFromTextWithContext(extractedText, similarNotes, {
+            category: metadata.category,
+            personIds: metadata.personIds,
+            deptName: metadata.deptName,
+          })
+        : await aiDraftService.generateDraftFromText(extractedText, {
+            category: metadata.category,
+            personIds: metadata.personIds,
+            deptName: metadata.deptName,
+          });
 
     const references: SimilarWorkNoteReference[] = similarNotes.map((note) => ({
       workId: note.workId,
@@ -193,9 +179,6 @@ pdf.post('/', async (c) => {
     const draftPayload: WorkNoteDraftWithReferences = { draft, references };
     await repository.updateStatusToReady(jobId, draftPayload);
 
-    // eslint-disable-next-line no-console
-    console.log(`[PDF Processing] Job ${jobId} completed successfully`);
-
     // Fetch actual job record with accurate timestamps
     const job = await repository.getById(jobId);
     if (!job) {
@@ -203,7 +186,10 @@ pdf.post('/', async (c) => {
     }
 
     // Return successful response with draft from DB
-    const { draft: responseDraft, references: responseReferences } = parseDraftJson(job.draftJson, jobId);
+    const { draft: responseDraft, references: responseReferences } = parseDraftJson(
+      job.draftJson,
+      jobId
+    );
 
     const response: PdfJobResponse = {
       jobId: job.jobId,
@@ -219,9 +205,7 @@ pdf.post('/', async (c) => {
     console.error(`[PDF Processing] Error processing job ${jobId}:`, error);
 
     const errorMessage =
-      error instanceof Error
-        ? error.message
-        : 'PDF 처리 중 알 수 없는 오류가 발생했습니다';
+      error instanceof Error ? error.message : 'PDF 처리 중 알 수 없는 오류가 발생했습니다';
 
     // Update job status to ERROR
     try {

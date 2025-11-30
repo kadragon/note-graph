@@ -1,8 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Plus, FileText, FileEdit } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { FileEdit, FileText, Plus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,13 +10,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useWorkNotesWithStats, useDeleteWorkNote } from '@/hooks/useWorkNotes';
-import { WorkNotesTable } from './components/WorkNotesTable';
-import { CreateWorkNoteDialog } from './components/CreateWorkNoteDialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useDeleteWorkNote, useWorkNotesWithStats } from '@/hooks/useWorkNotes';
+import type { WorkNote } from '@/types/api';
 import { CreateFromPDFDialog } from './components/CreateFromPDFDialog';
 import { CreateFromTextDialog } from './components/CreateFromTextDialog';
+import { CreateWorkNoteDialog } from './components/CreateWorkNoteDialog';
 import { ViewWorkNoteDialog } from './components/ViewWorkNoteDialog';
-import type { WorkNote } from '@/types/api';
+import { WorkNotesTable } from './components/WorkNotesTable';
 
 export default function WorkNotes() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -27,9 +27,7 @@ export default function WorkNotes() {
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedWorkNote, setSelectedWorkNote] = useState<WorkNote | null>(
-    null
-  );
+  const [selectedWorkNote, setSelectedWorkNote] = useState<WorkNote | null>(null);
   const [workNoteToDelete, setWorkNoteToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'completed'>('active');
 
@@ -42,16 +40,18 @@ export default function WorkNotes() {
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 
     // 진행 중: 할일이 없거나 현재 활성화된 할일이 있는 업무노트
-    const active = workNotes.filter(
-      wn => wn.todoStats.total === 0 || wn.todoStats.remaining > 0
-    ).sort(sortByCreatedAtDesc);
+    const active = workNotes
+      .filter((wn) => wn.todoStats.total === 0 || wn.todoStats.remaining > 0)
+      .sort(sortByCreatedAtDesc);
     // 대기중: 남은 할일이 없고 대기 중인 할일만 있는 업무노트
-    const pending = workNotes.filter(
-      wn => wn.todoStats.remaining === 0 && wn.todoStats.pending > 0
-    ).sort(sortByCreatedAtDesc);
-    const completed = workNotes.filter(
-      wn => wn.todoStats.total > 0 && wn.todoStats.remaining === 0 && wn.todoStats.pending === 0
-    ).sort(sortByCreatedAtDesc);
+    const pending = workNotes
+      .filter((wn) => wn.todoStats.remaining === 0 && wn.todoStats.pending > 0)
+      .sort(sortByCreatedAtDesc);
+    const completed = workNotes
+      .filter(
+        (wn) => wn.todoStats.total > 0 && wn.todoStats.remaining === 0 && wn.todoStats.pending === 0
+      )
+      .sort(sortByCreatedAtDesc);
 
     return { activeWorkNotes: active, pendingWorkNotes: pending, completedWorkNotes: completed };
   }, [workNotes]);
@@ -59,9 +59,7 @@ export default function WorkNotes() {
   // Update selectedWorkNote when workNotes data changes (after edit/update)
   useEffect(() => {
     if (selectedWorkNote && workNotes.length > 0) {
-      const updatedWorkNote = workNotes.find(
-        (wn) => wn.id === selectedWorkNote.id
-      );
+      const updatedWorkNote = workNotes.find((wn) => wn.id === selectedWorkNote.id);
       if (updatedWorkNote) {
         setSelectedWorkNote(updatedWorkNote);
       } else {
@@ -70,7 +68,7 @@ export default function WorkNotes() {
         setViewDialogOpen(false);
       }
     }
-  }, [workNotes, selectedWorkNote?.id]);
+  }, [workNotes, selectedWorkNote?.id, selectedWorkNote]);
 
   const handleView = (workNote: WorkNote) => {
     setSelectedWorkNote(workNote);
@@ -107,8 +105,7 @@ export default function WorkNotes() {
             PDF로 만들기
           </Button>
           <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            새 업무노트
+            <Plus className="h-4 w-4 mr-2" />새 업무노트
           </Button>
         </div>
       </div>
@@ -123,17 +120,14 @@ export default function WorkNotes() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'pending' | 'completed')}>
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as 'active' | 'pending' | 'completed')}
+            >
               <TabsList className="mb-4">
-                <TabsTrigger value="active">
-                  진행 중 ({activeWorkNotes.length})
-                </TabsTrigger>
-                <TabsTrigger value="pending">
-                  대기중 ({pendingWorkNotes.length})
-                </TabsTrigger>
-                <TabsTrigger value="completed">
-                  완료됨 ({completedWorkNotes.length})
-                </TabsTrigger>
+                <TabsTrigger value="active">진행 중 ({activeWorkNotes.length})</TabsTrigger>
+                <TabsTrigger value="pending">대기중 ({pendingWorkNotes.length})</TabsTrigger>
+                <TabsTrigger value="completed">완료됨 ({completedWorkNotes.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="active">
@@ -164,20 +158,11 @@ export default function WorkNotes() {
         </CardContent>
       </Card>
 
-      <CreateWorkNoteDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-      />
+      <CreateWorkNoteDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
-      <CreateFromTextDialog
-        open={textDialogOpen}
-        onOpenChange={setTextDialogOpen}
-      />
+      <CreateFromTextDialog open={textDialogOpen} onOpenChange={setTextDialogOpen} />
 
-      <CreateFromPDFDialog
-        open={pdfDialogOpen}
-        onOpenChange={setPdfDialogOpen}
-      />
+      <CreateFromPDFDialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen} />
 
       <ViewWorkNoteDialog
         workNote={selectedWorkNote}

@@ -1,17 +1,8 @@
 // Trace: SPEC-person-1, TASK-022
-import { useState } from 'react';
+
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Command,
   CommandEmpty,
@@ -21,24 +12,27 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useCreateDepartment, useDepartments } from '@/hooks/useDepartments';
 import { useCreatePerson } from '@/hooks/usePersons';
-import { useDepartments, useCreateDepartment } from '@/hooks/useDepartments';
 import { toCreateDepartmentRequest } from '@/lib/mappers/department';
+import { cn } from '@/lib/utils';
 
 interface CreatePersonDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreatePersonDialog({
-  open,
-  onOpenChange,
-}: CreatePersonDialogProps) {
+export function CreatePersonDialog({ open, onOpenChange }: CreatePersonDialogProps) {
   const [name, setName] = useState('');
   const [personId, setPersonId] = useState('');
   const [currentDept, setCurrentDept] = useState('');
@@ -78,9 +72,7 @@ export function CreatePersonDialog({
     if (!newDeptName.trim()) return;
 
     try {
-      const dept = await createDeptMutation.mutateAsync(
-        toCreateDepartmentRequest(newDeptName)
-      );
+      const dept = await createDeptMutation.mutateAsync(toCreateDepartmentRequest(newDeptName));
       setCurrentDept(dept.deptName);
       setNewDeptName('');
       setDeptOpen(false);
@@ -95,9 +87,7 @@ export function CreatePersonDialog({
         <form onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>새 사람 추가</DialogTitle>
-            <DialogDescription>
-              새로운 사람을 추가합니다.
-            </DialogDescription>
+            <DialogDescription>새로운 사람을 추가합니다.</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -144,9 +134,7 @@ export function CreatePersonDialog({
                     <CommandList>
                       <CommandEmpty>
                         <div className="p-2">
-                          <p className="text-sm text-muted-foreground mb-2">
-                            부서가 없습니다.
-                          </p>
+                          <p className="text-sm text-muted-foreground mb-2">부서가 없습니다.</p>
                           <div className="flex gap-2">
                             <Input
                               placeholder="새 부서명"
@@ -183,9 +171,7 @@ export function CreatePersonDialog({
                             <Check
                               className={cn(
                                 'mr-2 h-4 w-4',
-                                currentDept === dept.deptName
-                                  ? 'opacity-100'
-                                  : 'opacity-0'
+                                currentDept === dept.deptName ? 'opacity-100' : 'opacity-0'
                               )}
                             />
                             {dept.deptName}

@@ -2,9 +2,9 @@
 // Admin routes for embedding management
 
 import { Hono } from 'hono';
-import type { Env } from '../types/env';
-import { EmbeddingProcessor } from '../services/embedding-processor';
 import { authMiddleware } from '../middleware/auth';
+import { EmbeddingProcessor } from '../services/embedding-processor';
+import type { Env } from '../types/env';
 
 const admin = new Hono<{ Bindings: Env }>();
 
@@ -17,7 +17,7 @@ admin.use('*', authMiddleware);
  * Used for initial setup or recovery
  */
 admin.post('/reindex-all', async (c) => {
-  const batchSize = parseInt(c.req.query('batchSize') || '10');
+  const batchSize = parseInt(c.req.query('batchSize') || '10', 10);
 
   const processor = new EmbeddingProcessor(c.env);
   const result = await processor.reindexAll(batchSize);
@@ -79,7 +79,7 @@ admin.get('/embedding-stats', async (c) => {
  * More efficient than reindex-all
  */
 admin.post('/embed-pending', async (c) => {
-  const batchSize = parseInt(c.req.query('batchSize') || '10');
+  const batchSize = parseInt(c.req.query('batchSize') || '10', 10);
 
   const processor = new EmbeddingProcessor(c.env);
   const result = await processor.embedPending(batchSize);

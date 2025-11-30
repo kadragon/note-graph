@@ -1,9 +1,9 @@
-import { useState } from 'react';
 import { Save } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useUploadPDF, usePDFJob, useSavePDFDraft } from '@/hooks/usePDF';
+import { usePDFJob, useSavePDFDraft, useUploadPDF } from '@/hooks/usePDF';
 import type { PDFJobStatus } from '@/types/api';
 import { FileDropzone } from './components/FileDropzone';
 
@@ -12,10 +12,7 @@ export default function PDFUpload() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const uploadMutation = useUploadPDF();
-  const { data: job } = usePDFJob(
-    currentJobId,
-    !!currentJobId && uploadMutation.isSuccess
-  );
+  const { data: job } = usePDFJob(currentJobId, !!currentJobId && uploadMutation.isSuccess);
   const saveDraftMutation = useSavePDFDraft();
 
   const handleFileSelect = async (file: File) => {
@@ -67,9 +64,7 @@ export default function PDFUpload() {
       ERROR: '실패',
     };
 
-    return (
-      <Badge variant={variants[job.status]}>{labels[job.status]}</Badge>
-    );
+    return <Badge variant={variants[job.status]}>{labels[job.status]}</Badge>;
   };
 
   return (
@@ -96,12 +91,11 @@ export default function PDFUpload() {
             <CardContent>
               <div className="space-y-2">
                 <p className="text-sm">
-                  <span className="font-medium">파일명:</span>{' '}
-                  {uploadedFile.name}
+                  <span className="font-medium">파일명:</span> {uploadedFile.name}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">크기:</span>{' '}
-                  {(uploadedFile.size / 1024).toFixed(2)} KB
+                  <span className="font-medium">크기:</span> {(uploadedFile.size / 1024).toFixed(2)}{' '}
+                  KB
                 </p>
                 {job?.errorMessage && (
                   <p className="text-sm text-destructive">
@@ -147,7 +141,7 @@ export default function PDFUpload() {
                   <p className="text-sm font-medium mb-2">제안된 할 일</p>
                   <ul className="space-y-1">
                     {job.draft.todos.map((todo, idx) => (
-                      <li key={idx} className="text-sm flex items-start">
+                      <li key={`${todo.title}-${idx}`} className="text-sm flex items-start">
                         <span className="mr-2">•</span>
                         <span>{todo.title}</span>
                       </li>

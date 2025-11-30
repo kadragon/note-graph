@@ -1,9 +1,7 @@
 // Unit tests for PdfExtractionService
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { PdfExtractionService } from '../../src/services/pdf-extraction-service';
-import {
-  CorruptPdfError,
-} from '../../src/types/errors';
+import { CorruptPdfError } from '../../src/types/errors';
 
 describe('PdfExtractionService', () => {
   let service: PdfExtractionService;
@@ -43,7 +41,7 @@ describe('PdfExtractionService', () => {
 
     it('should reject buffer without PDF header', () => {
       // Arrange - No PDF header
-      const invalidBuffer = new TextEncoder().encode('not a pdf file' + 'x'.repeat(100));
+      const invalidBuffer = new TextEncoder().encode(`not a pdf file${'x'.repeat(100)}`);
 
       // Act & Assert
       expect(() => service.validatePdfBuffer(invalidBuffer)).toThrow(CorruptPdfError);
@@ -51,7 +49,7 @@ describe('PdfExtractionService', () => {
 
     it('should reject buffer with incorrect header', () => {
       // Arrange - Wrong header
-      const invalidBuffer = new TextEncoder().encode('%DOC-1.0\n' + 'x'.repeat(100));
+      const invalidBuffer = new TextEncoder().encode(`%DOC-1.0\n${'x'.repeat(100)}`);
 
       // Act & Assert
       expect(() => service.validatePdfBuffer(invalidBuffer)).toThrow(CorruptPdfError);
@@ -63,7 +61,7 @@ describe('PdfExtractionService', () => {
 
       // Act & Assert
       versions.forEach((header) => {
-        const buffer = new TextEncoder().encode(header + '\n' + 'x'.repeat(100));
+        const buffer = new TextEncoder().encode(`${header}\n${'x'.repeat(100)}`);
         expect(() => service.validatePdfBuffer(buffer)).not.toThrow();
       });
     });
@@ -101,7 +99,9 @@ describe('PdfExtractionService', () => {
 
     it('should validate wrapped PDF formats (e.g., Handysoft)', () => {
       // Arrange - PDF with wrapper header (like Handysoft Approval Document)
-      const buffer = new TextEncoder().encode('Handysoft Approval Document File' + '\x00'.repeat(100) + '%PDF-1.4\n' + 'x'.repeat(100));
+      const buffer = new TextEncoder().encode(
+        `Handysoft Approval Document File${'\x00'.repeat(100)}%PDF-1.4\n${'x'.repeat(100)}`
+      );
 
       // Act & Assert - should not throw because PDF signature exists in wrapper
       expect(() => service.validatePdfBuffer(buffer)).not.toThrow();
@@ -109,7 +109,9 @@ describe('PdfExtractionService', () => {
 
     it('should reject buffer with no PDF signature anywhere', () => {
       // Arrange - No PDF signature at all
-      const buffer = new TextEncoder().encode('Not a PDF file at all, just random text content here'.repeat(10));
+      const buffer = new TextEncoder().encode(
+        'Not a PDF file at all, just random text content here'.repeat(10)
+      );
 
       // Act & Assert
       expect(() => service.validatePdfBuffer(buffer)).toThrow(CorruptPdfError);
