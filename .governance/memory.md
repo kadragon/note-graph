@@ -775,3 +775,9 @@
   - Use date-fns to calculate expected values from actual current date
   - Verify day-of-week, date ranges, and relative positions instead of absolute dates
   - More resilient to timezone issues and test environment limitations
+
+### Session 48: Statistics Period & Year Fix (2025-11-30)
+- **TASK-050 Completed** (SPEC-stats-1): Fixed statistics filtering to use todo completion timestamps (todos.updated_at) so work notes created earlier but completed within the range are included; respected selected year for 'this-year' period.
+- Added regression tests: unit test for cross-year completion inclusion; integration test ensuring /api/statistics?period=this-year honors year parameter (TEST-stats-6).
+- Tests run: `npm test -- tests/unit/statistics-repository.test.ts tests/integration/statistics-routes.test.ts` (pass).
+- Next: Resume TASK-044 (SPEC-project-1) or pick next backlog item.

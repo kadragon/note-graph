@@ -1,4 +1,4 @@
-// Trace: SPEC-stats-1, TASK-047, TEST-stats-1, TEST-stats-2, TEST-stats-3
+// Trace: SPEC-stats-1, TASK-047, TASK-050, TEST-stats-1, TEST-stats-2, TEST-stats-3
 /**
  * Unit tests for StatisticsRepository
  */
@@ -91,6 +91,25 @@ describe('StatisticsRepository', () => {
       // Assert
       expect(results).toHaveLength(1);
       expect(results[0].workId).toBe('WORK-JAN');
+    });
+
+    it('should include work notes completed within range even if created earlier', async () => {
+      // Arrange: Work note created last year but completed this year
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(`INSERT INTO departments (dept_name, description) VALUES (?, ?)`).bind('개발팀', 'Development'),
+        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-OLD', 'Old Work', 'Content', '2024-12-15T10:00:00Z', '2024-12-15T10:00:00Z'),
+        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-OLD', 'P001', 'OWNER'),
+        // Completed in January 2025
+        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-OLD', 'WORK-OLD', 'Task', '완료', '2024-12-20T10:00:00Z', '2025-01-05T09:00:00Z'),
+      ]);
+
+      // Act: Query January 2025
+      const results = await repo.findCompletedWorkNotes('2025-01-01', '2025-01-31');
+
+      // Assert
+      expect(results).toHaveLength(1);
+      expect(results[0].workId).toBe('WORK-OLD');
     });
 
     it('should support filtering by person', async () => {

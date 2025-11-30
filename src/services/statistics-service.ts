@@ -1,4 +1,4 @@
-// Trace: SPEC-stats-1, TASK-047
+// Trace: SPEC-stats-1, TASK-047, TASK-050
 /**
  * Statistics service for work note metrics with period calculations
  */
@@ -69,8 +69,8 @@ export class StatisticsService {
       }
 
       case 'this-year': {
-        // January 1 to December 31 of current year (ignores year parameter)
-        const actualYear = now.getFullYear();
+        // January 1 to December 31 of selected or current year
+        const actualYear = currentYear;
         return {
           startDate: `${actualYear}-01-01`,
           endDate: `${actualYear}-12-31`,

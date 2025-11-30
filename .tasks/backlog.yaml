@@ -99,8 +99,8 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 8
-  total_estimated_effort: 34 hours
+  total_tasks: 9
+  total_estimated_effort: 36 hours
   phases:
     - name: "Entity Management"
       tasks: [TASK-024, TASK-025, TASK-020, TASK-021]

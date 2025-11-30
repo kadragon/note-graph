@@ -1247,3 +1247,18 @@ completed_tasks:
     - Statistics metrics: totals, completion rates, distributions
   commits:
     - f7e4d60
+
+- task_id: TASK-050
+  spec_id: SPEC-stats-1
+  title: Fix statistics period filtering and year selector
+  completed_at: 2025-11-30T20:47:30Z
+  outcome: |
+    Aligned statistics with SPEC-stats-1 by filtering on todo completion timestamps and honoring the selected year for the 'this-year' period. Added regression tests for cross-year completion dates and year selector behavior.
+  test_results: |
+    ✓ npm test -- tests/unit/statistics-repository.test.ts tests/integration/statistics-routes.test.ts
+  estimated_effort: 2h
+  actual_effort: ~0.5h
+  implementation_details: |
+    - Updated StatisticsRepository to filter completed work notes by todo updated_at within the requested date range and order by completion time.
+    - Updated StatisticsService date range calculation to respect provided year for 'this-year'.
+    - Added unit and integration tests covering cross-year completions and year selector regression.

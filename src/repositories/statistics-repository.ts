@@ -1,4 +1,4 @@
-// Trace: SPEC-stats-1, TASK-047
+// Trace: SPEC-stats-1, TASK-047, TASK-050
 /**
  * Statistics repository for work note completion metrics
  */
@@ -32,6 +32,9 @@ export class StatisticsRepository {
   ): Promise<WorkNoteWithStats[]> {
     const { personId, deptName, categoryId } = options;
 
+    const startDateTime = `${startDate}T00:00:00.000Z`;
+    const endDateTime = `${endDate}T23:59:59.999Z`;
+
     // Build base query to find work notes with completed todos
     let query = `
       SELECT DISTINCT
@@ -55,11 +58,11 @@ export class StatisticsRepository {
     // Must have at least one completed todo
     conditions.push(`td.status = '완료'`);
 
-    // Date range filter on work note creation date
-    conditions.push(`wn.created_at >= ?`);
-    bindings.push(startDate);
-    conditions.push(`wn.created_at <= ?`);
-    bindings.push(endDate + 'T23:59:59.999Z'); // End of day
+    // Date range filter on todo completion timestamp (updated_at)
+    conditions.push(`td.updated_at >= ?`);
+    bindings.push(startDateTime);
+    conditions.push(`td.updated_at <= ?`);
+    bindings.push(endDateTime);
 
     // Person filter
     if (personId) {
@@ -90,8 +93,8 @@ export class StatisticsRepository {
       query += ` WHERE ` + conditions.join(' AND ');
     }
 
-    // Order by creation date descending
-    query += ` ORDER BY wn.created_at DESC`;
+    // Order by completion timestamp descending
+    query += ` ORDER BY td.updated_at DESC`;
 
     const result = await this.db.prepare(query).bind(...bindings).all<WorkNoteWithStats>();
 

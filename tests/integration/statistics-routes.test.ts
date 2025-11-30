@@ -1,4 +1,4 @@
-// Trace: SPEC-stats-1, TASK-047, TEST-stats-3, TEST-stats-4
+// Trace: SPEC-stats-1, TASK-047, TASK-050, TEST-stats-3, TEST-stats-4, TEST-stats-6
 /**
  * Integration tests for statistics API routes
  */
@@ -158,6 +158,30 @@ describe('Statistics API Routes', () => {
       const data = await response.json();
       expect(data.summary.totalWorkNotes).toBe(1);
       expect(data.workNotes[0].workId).toBe('WORK-JUL');
+    });
+
+    it('should respect year parameter for this-year period', async () => {
+      // Arrange: One work note completed in 2024 and one in 2025
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
+        testEnv.DB.prepare(`INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-2024', 'Work 2024', 'Content', '2024-05-10T10:00:00Z', '2024-05-10T10:00:00Z'),
+        testEnv.DB.prepare(`INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('WORK-2025', 'Work 2025', 'Content', '2025-05-10T10:00:00Z', '2025-05-10T10:00:00Z'),
+        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-2024', 'P001', 'OWNER'),
+        testEnv.DB.prepare(`INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`).bind('WORK-2025', 'P001', 'OWNER'),
+        // Completed todos in respective years
+        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-2024', 'WORK-2024', 'Task', '완료', '2024-05-11T10:00:00Z', '2024-06-01T10:00:00Z'),
+        testEnv.DB.prepare(`INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('TODO-2025', 'WORK-2025', 'Task', '완료', '2025-05-11T10:00:00Z', '2025-06-01T10:00:00Z'),
+      ]);
+
+      // Act: Request statistics for 2024 using this-year period
+      const response = await authFetch('/api/statistics?period=this-year&year=2024');
+
+      // Assert
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.summary.totalWorkNotes).toBe(1);
+      expect(data.workNotes[0].workId).toBe('WORK-2024');
     });
 
     it('should support custom period with startDate and endDate', async () => {
