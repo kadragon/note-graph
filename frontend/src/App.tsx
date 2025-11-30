@@ -15,6 +15,7 @@ const RAG = lazy(() => import('@/pages/RAG'));
 const PDFUpload = lazy(() => import('@/pages/PDFUpload'));
 const VectorStore = lazy(() => import('@/pages/VectorStore'));
 const Projects = lazy(() => import('@/pages/Projects'));
+const Statistics = lazy(() => import('@/pages/Statistics'));
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
             <Route path="/departments" element={<Departments />} />
             <Route path="/task-categories" element={<TaskCategories />} />
             <Route path="/projects" element={<Projects />} />
+            <Route path="/statistics" element={<Statistics />} />
             <Route path="/search" element={<Search />} />
             <Route path="/rag" element={<RAG />} />
             <Route path="/pdf" element={<PDFUpload />} />

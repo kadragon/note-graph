@@ -2,6 +2,31 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-048
+    title: "Statistics frontend - UI and visualization"
+    spec_id: SPEC-stats-1
+    completed_at: "2025-11-30T00:00:00Z"
+    outcome: |
+      Implemented complete statistics dashboard frontend with comprehensive UI and data visualization:
+      - Created /statistics route with lazy loading
+      - Implemented period filter tabs (이번주, 이번달, 1~6월, 7~12월, 올해, 직전주)
+      - Added year selector dropdown for first-half/second-half periods
+      - Built summary cards component displaying 3 key metrics (total work notes, completed todos, completion rate)
+      - Implemented distribution charts using Recharts (bar charts for category/person, pie chart for departments)
+      - Created work notes table showing completed todo counts with person assignments
+      - Added date calculation utilities in date-utils.ts (period range calculation, date formatting, available years)
+      - Extended API client with getStatistics method and query parameters
+      - Created useStatistics hook for state management with automatic refetching
+      - Added Statistics navigation link to sidebar under "홈" section
+      - Installed recharts package for data visualization
+      - All TypeScript types properly defined in api.ts
+      - Frontend build successful without errors
+    test_results: |
+      ✓ npm run typecheck (passed)
+      ✓ npm run build:frontend (passed in 3.12s)
+    estimated_effort: 6h
+    actual_effort: ~4h
+
   - task_id: TASK-046
     title: "Dashboard remaining todos grouped by work note & wait-until fix"
     spec_id: SPEC-todo-1
@@ -1176,3 +1201,19 @@ completed_tasks:
 #     Successfully set up Wrangler project with TypeScript.
 #     All dependencies installed, dev server runs.
 #   test_results: "All acceptance tests passed"
+---
+- task_id: TASK-047
+  spec_id: SPEC-stats-1
+  title: Statistics backend - repository and API
+  completed_at: 2025-11-30T20:15:00Z
+  outcome: |
+    Successfully implemented backend infrastructure for work note statistics.
+    - StatisticsRepository with comprehensive querying and aggregation
+    - StatisticsService with period date range calculations
+    - API endpoint GET /api/statistics with multiple filter options
+    - 10 unit tests + 8 integration tests (all passing)
+    - Supports 7 period types
+    - Filter options: personId, deptName, categoryId
+    - Statistics metrics: totals, completion rates, distributions
+  commits:
+    - f7e4d60

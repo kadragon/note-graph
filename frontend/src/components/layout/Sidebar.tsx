@@ -12,6 +12,7 @@ import {
   Notebook,
   ChevronRight,
   Database,
+  BarChart3,
 } from 'lucide-react';
 import { API } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,11 @@ const navSections: NavSection[] = [
         path: '/',
         label: '대시보드',
         icon: LayoutDashboard,
+      },
+      {
+        path: '/statistics',
+        label: '통계',
+        icon: BarChart3,
       },
     ],
   },

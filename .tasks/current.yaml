@@ -1,22 +1,2 @@
-# Trace: SPEC-stats-1, TASK-047
-task_id: TASK-047
-spec_id: SPEC-stats-1
-title: "Statistics backend - repository and API"
-status: in_progress
-started_at: "2025-11-30T00:00:00Z"
-
-description: |
-  Implement backend infrastructure for work note statistics:
-  - WorkNoteRepository methods for querying completed work notes by date range
-  - Statistics calculation methods (totals, completion rates, distributions)
-  - StatisticsRepository for aggregation queries
-  - API endpoints: GET /api/statistics?period=...&year=...
-  - Support filtering by person, department, category
-
-notes: |
-  Following SDD × TDD approach:
-  1. Write repository tests for completed work note queries
-  2. Implement repository methods (RED → GREEN → REFACTOR)
-  3. Write API integration tests
-  4. Implement API endpoints
-  5. Test all period filters and aggregations
+# No active task
+# Use next task command to start working on pending tasks

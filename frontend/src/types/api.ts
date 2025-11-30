@@ -420,3 +420,73 @@ export interface UpdateProjectRequest {
 export interface AssignWorkNoteRequest {
   workId: string;
 }
+
+// Statistics types
+export type StatisticsPeriod =
+  | 'this-week'
+  | 'this-month'
+  | 'first-half'
+  | 'second-half'
+  | 'this-year'
+  | 'last-week';
+
+export interface WorkNoteStatisticsItem {
+  workId: string;
+  title: string;
+  contentRaw: string;
+  category: string | null;
+  projectId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  embeddedAt: string | null;
+  completedTodoCount: number;
+  totalTodoCount: number;
+  assignedPersons: Array<{
+    personId: string;
+    personName: string;
+    currentDept: string | null;
+    role: 'OWNER' | 'RELATED';
+  }>;
+}
+
+export interface CategoryDistribution {
+  category: string | null;
+  count: number;
+}
+
+export interface PersonDistribution {
+  personId: string;
+  personName: string;
+  currentDept: string | null;
+  count: number;
+}
+
+export interface DepartmentDistribution {
+  deptName: string | null;
+  count: number;
+}
+
+export interface WorkNoteStatistics {
+  summary: {
+    totalWorkNotes: number;
+    totalCompletedTodos: number;
+    totalTodos: number;
+    completionRate: number; // Percentage (0-100)
+  };
+  distributions: {
+    byCategory: CategoryDistribution[];
+    byPerson: PersonDistribution[];
+    byDepartment: DepartmentDistribution[];
+  };
+  workNotes: WorkNoteStatisticsItem[];
+}
+
+export interface StatisticsQueryParams {
+  period: StatisticsPeriod;
+  year?: number;
+  startDate?: string;
+  endDate?: string;
+  personId?: string;
+  deptName?: string;
+  category?: string;
+}
