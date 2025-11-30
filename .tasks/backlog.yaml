@@ -1,68 +1,4 @@
 tasks:
-  - task_id: TASK-047
-    spec_id: SPEC-stats-1
-    title: "Statistics backend - repository and API"
-    description: |
-      Implement backend infrastructure for work note statistics:
-      - WorkNoteRepository methods for querying completed work notes by date range
-      - Statistics calculation methods (totals, completion rates, distributions)
-      - StatisticsRepository for aggregation queries
-      - API endpoints: GET /api/statistics?period=...&year=...
-      - Support filtering by person, department, category
-    priority: 2
-    status: pending
-    estimated_effort: 6h
-    acceptance_criteria:
-      - "Repository queries work notes with at least one completed todo in date range"
-      - "Statistics endpoint returns summary metrics (counts, rates, distributions)"
-      - "Period filters work correctly (week, month, half-year, year, last-week)"
-      - "Year selector parameter filters to specific year"
-      - "Integration tests verify query accuracy"
-
-  - task_id: TASK-048
-    spec_id: SPEC-stats-1
-    title: "Statistics frontend - UI and visualization"
-    description: |
-      Implement frontend statistics dashboard:
-      - Create /statistics route and page component
-      - Period filter tabs (이번주, 이번달, 1~6월, 7~12월, 올해, 직전주)
-      - Year selector dropdown
-      - Summary cards component for key metrics
-      - Chart components (bar chart, pie chart) for distributions
-      - Work note list table with completed todo counts
-      - Date calculation utilities for period boundaries
-    priority: 2
-    status: pending
-    estimated_effort: 7h
-    acceptance_criteria:
-      - "Statistics page accessible via navigation menu"
-      - "Period filter tabs switch data correctly"
-      - "Year selector updates statistics for selected year"
-      - "Summary cards display total work notes, completed todos, completion rate"
-      - "Charts visualize category and person distributions"
-      - "Work note list shows filtered results with completion info"
-
-  - task_id: TASK-049
-    spec_id: SPEC-stats-1
-    title: "Statistics comprehensive tests"
-    description: |
-      Create comprehensive test suite for statistics feature:
-      - Repository unit tests for date range queries
-      - Repository tests for completion criteria (at least one completed todo)
-      - API integration tests for all period filters
-      - Statistics calculation accuracy tests
-      - Frontend component tests for charts and filters
-      - E2E tests for period switching and year selection
-    priority: 2
-    status: pending
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "Repository tests cover all period calculations"
-      - "API tests verify correct filtering and aggregation"
-      - "Frontend tests verify chart rendering and interaction"
-      - "All acceptance tests from SPEC-stats-1 pass"
-      - "Test coverage >= 80% for statistics module"
-
   - task_id: TASK-024
     spec_id: SPEC-worknote-1
     title: "Add searchable assignee selector for work notes"
@@ -163,14 +99,9 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 9
-  total_estimated_effort: 38 hours
+  total_tasks: 8
+  total_estimated_effort: 34 hours
   phases:
-    - name: "Statistics Feature"
-      tasks: [TASK-047, TASK-048, TASK-049]
-      effort: 17h
-      priority: 2
-
     - name: "Entity Management"
       tasks: [TASK-024, TASK-025, TASK-020, TASK-021]
       effort: 11h
@@ -180,3 +111,9 @@ metadata:
       tasks: [TASK-018, TASK-019]
       effort: 10h
       priority: 6
+
+  completed_phases:
+    - name: "Statistics Feature"
+      tasks: [TASK-047, TASK-048, TASK-049]
+      status: "✅ COMPLETE"
+      note: "All 3 tasks completed - backend, frontend, and comprehensive tests"

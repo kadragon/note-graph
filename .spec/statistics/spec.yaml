@@ -198,7 +198,10 @@ dependencies:
     - SPEC-todo-1: "Todo status and completion tracking"
     - SPEC-person-1: "Person entity and assignment"
 
-linked_tasks: []
+linked_tasks:
+  - TASK-047  # Statistics backend repository and API
+  - TASK-048  # Statistics frontend UI and visualization
+  - TASK-049  # Statistics comprehensive tests
 
 notes: |
   Implementation should follow SDD × TDD approach:
