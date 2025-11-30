@@ -1,0 +1,219 @@
+# Trace: SPEC-stats-1
+spec_id: SPEC-stats-1
+title: "Work Note Statistics Dashboard"
+description: |
+  Statistical analysis and reporting dashboard for work note completion metrics.
+  Provides various time period filters and visualization of work note processing patterns.
+
+version: "1.0"
+created_at: "2025-11-30"
+
+given_when_then:
+  - given: "User navigates to statistics menu"
+    when: "User selects a time period filter (this week, this month, first/second half, this year, last week, specific year)"
+    then: "System displays work notes with at least one completed todo within the selected period"
+
+  - given: "Statistics dashboard is displayed"
+    when: "System aggregates work notes for the selected period"
+    then: "System shows work note list, summary statistics, and visualization charts"
+
+  - given: "Work note has multiple todos"
+    when: "At least one todo status is '완료'"
+    then: "Work note is included in the statistics for the period containing the completion"
+
+  - given: "User selects '직전주' filter"
+    when: "Current date is any day of the week"
+    then: "System calculates previous week as Monday to Sunday (7 days) of the last complete week"
+
+  - given: "User wants to see specific year statistics"
+    when: "User selects a year from year selector"
+    then: "System shows all work notes with completed todos from January 1 to December 31 of that year"
+
+acceptance_tests:
+  - id: TEST-stats-1
+    desc: "Work note with at least one completed todo appears in statistics"
+    steps:
+      - "Create work note with 3 todos: 2 completed, 1 in progress"
+      - "Query statistics for the period containing completion dates"
+      - "Verify work note appears in results"
+
+  - id: TEST-stats-2
+    desc: "Work note with no completed todos does not appear in statistics"
+    steps:
+      - "Create work note with todos all in '진행중', '보류', or '중단' status"
+      - "Query statistics for any period"
+      - "Verify work note does not appear in results"
+
+  - id: TEST-stats-3
+    desc: "Time period filters work correctly"
+    steps:
+      - "Create work notes with completed todos in different weeks/months/years"
+      - "Select '이번주' filter and verify only current week work notes appear"
+      - "Select '이번달' filter and verify only current month work notes appear"
+      - "Select '1~6월' filter and verify only first half work notes appear"
+      - "Select '7~12월' filter and verify only second half work notes appear"
+      - "Select '올해' filter and verify only current year work notes appear"
+      - "Select '직전주' filter and verify only last week (Mon-Sun) work notes appear"
+
+  - id: TEST-stats-4
+    desc: "Summary statistics calculate correctly"
+    steps:
+      - "Query statistics with known data set"
+      - "Verify total work note count matches filtered results"
+      - "Verify total completed todos count is accurate"
+      - "Verify completion rate calculation is correct"
+      - "Verify category distribution counts are accurate"
+
+  - id: TEST-stats-5
+    desc: "Statistics include person and department information"
+    steps:
+      - "Query statistics for work notes assigned to specific persons"
+      - "Verify person names and departments are displayed"
+      - "Verify person-based aggregation shows correct counts"
+
+  - id: TEST-stats-6
+    desc: "Year selector allows viewing historical data"
+    steps:
+      - "Select year 2024 from year selector"
+      - "Verify only 2024 work notes with completed todos appear"
+      - "Select year 2025 from year selector"
+      - "Verify only 2025 work notes with completed todos appear"
+
+data_model:
+  completion_criteria: "Work note has at least one todo with status = '완료'"
+
+  time_periods:
+    - name: "이번주"
+      description: "Current week (Monday to Sunday)"
+      calculation: "Start of current week (Monday) to end of current week (Sunday)"
+
+    - name: "이번달"
+      description: "Current month"
+      calculation: "First day of current month to last day of current month"
+
+    - name: "1~6월"
+      description: "First half of year (January to June)"
+      calculation: "Jan 1 to Jun 30 of selected year"
+
+    - name: "7~12월"
+      description: "Second half of year (July to December)"
+      calculation: "Jul 1 to Dec 31 of selected year"
+
+    - name: "올해"
+      description: "Current year"
+      calculation: "Jan 1 to Dec 31 of current year"
+
+    - name: "직전주"
+      description: "Last complete week (Monday to Sunday)"
+      calculation: "Start of previous week (Monday) to end of previous week (Sunday)"
+
+    - name: "특정 년도"
+      description: "Specific year selected by user"
+      calculation: "Jan 1 to Dec 31 of selected year"
+
+  statistics_metrics:
+    - name: "총 업무노트 수"
+      description: "Total count of work notes matching filter criteria"
+
+    - name: "완료된 할일 수"
+      description: "Total count of todos with status '완료' in filtered work notes"
+
+    - name: "할일 완료율"
+      description: "Percentage of completed todos out of all todos in filtered work notes"
+      calculation: "(completed_todos / total_todos) * 100"
+
+    - name: "카테고리별 분포"
+      description: "Work note count grouped by task category"
+
+    - name: "담당자별 분포"
+      description: "Work note count grouped by assigned person (OWNER role)"
+
+    - name: "부서별 분포"
+      description: "Work note count grouped by department (via person assignment)"
+
+  display_components:
+    - name: "Period Filter Tabs"
+      description: "Tab navigation for selecting time period"
+      items: ["이번주", "이번달", "1~6월", "7~12월", "올해", "직전주"]
+
+    - name: "Year Selector"
+      description: "Dropdown to select specific year for statistics"
+
+    - name: "Summary Cards"
+      description: "Key metrics displayed as card components"
+      metrics: ["총 업무노트 수", "완료된 할일 수", "할일 완료율"]
+
+    - name: "Distribution Charts"
+      description: "Visual charts for category and person distribution"
+      types: ["Bar chart", "Pie chart"]
+
+    - name: "Work Note List"
+      description: "Table showing filtered work notes with details"
+      columns: ["제목", "카테고리", "담당자", "완료된 할일", "생성일", "수정일"]
+
+technical_requirements:
+  backend:
+    - description: "Repository method to query work notes with completed todos"
+      signature: "findCompletedWorkNotes(startDate: string, endDate: string): Promise<WorkNoteWithStats[]>"
+
+    - description: "Calculate statistics for given time period"
+      signature: "getStatistics(startDate: string, endDate: string): Promise<WorkNoteStatistics>"
+
+    - description: "Support filtering by person, department, category"
+      parameters: ["personId?", "deptName?", "category?"]
+
+  frontend:
+    - description: "Statistics page component with period filter tabs"
+      route: "/statistics"
+
+    - description: "Reusable chart components for data visualization"
+      components: ["BarChart", "PieChart", "SummaryCard"]
+
+    - description: "Date calculation utilities for period boundaries"
+      utilities: ["getWeekBounds", "getMonthBounds", "getHalfYearBounds", "getLastWeekBounds"]
+
+integration_points:
+  - entity: "WorkNote"
+    relationship: "Primary data source for statistics"
+
+  - entity: "Todo"
+    relationship: "Completion status determines inclusion in statistics"
+
+  - entity: "Person"
+    relationship: "Provides assignee information for grouping"
+
+  - entity: "Department"
+    relationship: "Provides department information for grouping"
+
+  - entity: "TaskCategory"
+    relationship: "Provides category information for grouping"
+
+dependencies:
+  governance:
+    - "coding-style.md - API naming conventions"
+    - "patterns.md - Repository pattern for data access"
+
+  specs:
+    - SPEC-worknote-1: "Work note entity and CRUD operations"
+    - SPEC-todo-1: "Todo status and completion tracking"
+    - SPEC-person-1: "Person entity and assignment"
+
+linked_tasks: []
+
+notes: |
+  Implementation should follow SDD × TDD approach:
+  1. Create repository tests for completed work note queries
+  2. Implement repository methods (RED → GREEN → REFACTOR)
+  3. Create API endpoint tests
+  4. Implement API endpoints
+  5. Create frontend component tests
+  6. Implement frontend UI
+
+  Statistics calculation should be efficient - consider adding database indexes
+  on todos.status and relevant date columns if query performance is poor.
+
+  Future enhancements could include:
+  - Export statistics to CSV/Excel
+  - Trend analysis (week-over-week, month-over-month comparison)
+  - Personal statistics dashboard for individual contributors
+  - Team productivity metrics
