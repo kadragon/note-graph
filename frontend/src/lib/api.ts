@@ -44,6 +44,8 @@ import type {
   ProjectStats,
   AssignWorkNoteRequest,
   ProjectFilters,
+  WorkNoteStatistics,
+  StatisticsQueryParams,
 } from '@/types/api';
 
 /**
@@ -679,6 +681,20 @@ class APIClient {
       `/admin/embed-pending${queryString ? `?${queryString}` : ''}`,
       { method: 'POST' }
     );
+  }
+
+  // Statistics
+  getStatistics(params: StatisticsQueryParams) {
+    const queryParams = new URLSearchParams();
+    queryParams.set('period', params.period);
+    if (params.year) queryParams.set('year', params.year.toString());
+    if (params.startDate) queryParams.set('startDate', params.startDate);
+    if (params.endDate) queryParams.set('endDate', params.endDate);
+    if (params.personId) queryParams.set('personId', params.personId);
+    if (params.deptName) queryParams.set('deptName', params.deptName);
+    if (params.category) queryParams.set('category', params.category);
+
+    return this.request<WorkNoteStatistics>(`/statistics?${queryParams.toString()}`);
   }
 }
 

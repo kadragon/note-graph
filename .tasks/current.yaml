@@ -1,20 +1,2 @@
-# Current Task
-# Only one task should be active at a time
-
-current_task:
-  task_id: TASK-044
-  spec_id: SPEC-project-1
-  title: "Write comprehensive tests for project management"
-  status: in_progress
-  started_at: "2025-11-29"
-
-notes: |
-  Resuming paused test coverage task for SPEC-project-1. Added integration coverage for
-  project detail associations, file metrics in stats, and project deletion archiving files
-  to R2 archive prefix. Implemented archiveProjectFiles in ProjectFileService and wired
-  DELETE /projects/:id to use it. Relevant tests passing:
-  - npm test -- tests/integration/project-routes.test.ts
-  - npm test -- tests/integration/project-files.test.ts tests/unit/project-file-service.test.ts
-  Coverage run with `npm run test:coverage` failed due to Workers pool inability to load
-  node:inspector (known @vitest/coverage-v8 issue). Need alternative strategy (Node env
-  subset, nyc on unit tests, or CI-side bundling) to measure coverage.
+# No active task
+# Use "next task" command to select from backlog

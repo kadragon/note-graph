@@ -24,6 +24,7 @@ import aiDraft from './routes/ai-draft';
 import pdf from './routes/pdf';
 import admin from './routes/admin';
 import { projects } from './routes/projects';
+import statistics from './routes/statistics';
 
 // Re-export Env type for compatibility
 export type { Env };
@@ -69,6 +70,7 @@ api.get('/', (c) => {
       ai: '/api/ai',
       pdfJobs: '/api/pdf-jobs',
       admin: '/api/admin',
+      statistics: '/api/statistics',
     },
   });
 });
@@ -88,6 +90,7 @@ api.route('/rag', rag);
 api.route('/ai', aiDraft);
 api.route('/pdf-jobs', pdf);
 api.route('/admin', admin);
+api.route('/statistics', statistics);
 
 // Mount API router to main app
 app.route('/', api);
