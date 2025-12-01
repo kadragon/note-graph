@@ -160,9 +160,8 @@ export class TodoRepository {
     // Calculate tomorrow midnight UTC for wait_until comparison
     // wait_until represents "wait until the day before this date"
     // So if wait_until is "2025-12-01", it means wait until 2025-11-30, show from 2025-12-01
-    const today = new Date();
-    const todayDateString = today.toISOString().split('T')[0];
-    const tomorrowMidnight = new Date(`${todayDateString}T00:00:00.000Z`);
+    const tomorrowMidnight = new Date();
+    tomorrowMidnight.setUTCHours(0, 0, 0, 0);
     tomorrowMidnight.setUTCDate(tomorrowMidnight.getUTCDate() + 1);
     const tomorrowMidnightISO = tomorrowMidnight.toISOString();
 
@@ -189,7 +188,8 @@ export class TodoRepository {
     // Apply view filters
     switch (query.view) {
       case 'today': {
-        // wait_until < tomorrow (or null) + due_date from yearStart to today
+        // due_date from yearStart to today
+        // wait_until filtering is handled by the common filter below
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
         // Use the earlier of todayEnd and yearEnd as the effective end date
@@ -197,17 +197,11 @@ export class TodoRepository {
 
         conditions.push(
           `t.status != ?`,
-          `(t.wait_until IS NULL OR t.wait_until < ?)`,
           `t.due_date IS NOT NULL`,
           `t.due_date >= ?`,
           `t.due_date <= ?`
         );
-        params.push(
-          '완료',
-          tomorrowMidnightISO,
-          yearStart.toISOString(),
-          effectiveEnd.toISOString()
-        );
+        params.push('완료', yearStart.toISOString(), effectiveEnd.toISOString());
         break;
       }
 
