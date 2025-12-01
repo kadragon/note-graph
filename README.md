@@ -197,21 +197,32 @@ npm run test:coverage
 npm run deploy
 ```
 
-## API Documentation
+## 문서
 
-API는 OpenAPI 3.0.3 스펙으로 정의되어 있습니다. 자세한 내용은 프로젝트 루트의 `openapi.yaml` 파일을 참조하세요.
+### 사용자 가이드
+- **[사용자 가이드](docs/USER_GUIDE.md)**: 시스템 사용 방법, 기능 설명 (한국어)
 
-### Main Endpoints
+### 개발자 문서
+- **[개발 환경 설정](docs/SETUP.md)**: 로컬 개발 환경 구축 가이드
+- **[시스템 아키텍처](docs/ARCHITECTURE.md)**: 아키텍처, 설계 결정, 기술 스택
+- **[API 문서](docs/API.md)**: 모든 API 엔드포인트 상세 설명
+- **[배포 가이드](docs/DEPLOYMENT.md)**: Cloudflare Workers 배포 방법
+
+### API 엔드포인트
 
 - **Auth**: `GET /me`
 - **Persons**: `GET|POST /persons`, `GET|PUT /persons/{personId}`
 - **Departments**: `GET|POST /departments`, `GET|PUT /departments/{deptName}`
 - **Work Notes**: `GET|POST /work-notes`, `GET|PUT|DELETE /work-notes/{workId}`
 - **Todos**: `GET /todos`, `PATCH /todos/{todoId}`
+- **Projects**: `GET|POST /projects`, `GET|PUT|DELETE /projects/{projectId}`
 - **Search**: `POST /search/work-notes`
 - **RAG**: `POST /rag/query`
 - **AI Draft**: `POST /ai/work-notes/draft-from-text`
 - **PDF**: `POST /pdf-jobs`, `GET /pdf-jobs/{jobId}`
+- **Statistics**: `GET /statistics`
+
+자세한 내용은 [API 문서](docs/API.md) 또는 `openapi.yaml` 파일을 참조하세요.
 
 ## Task Management
 

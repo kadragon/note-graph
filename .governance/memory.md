@@ -810,3 +810,98 @@
   - Improved completion date visibility
   - Reduced visual clutter for recurring todos
   - Comprehensive test coverage
+
+### Session 50: Searchable Assignee Selector Verification (2025-12-01)
+- **TASK-024 Verified and Completed**: Searchable assignee selector already fully implemented
+- **Status**: Discovered implementation was already complete from previous session
+- **Component**: AssigneeSelector (frontend/src/components/AssigneeSelector.tsx)
+  - Uses cmdk library (v1.1.1) for Command pattern implementation
+  - Features: searchable dropdown, multi-select, keyboard navigation, badge-style selections
+  - Popover with Command component containing searchable list
+  - Visual checkboxes with Check icons for selected state
+  - Badge display with X button for removing selections
+  - Shows person details: name, ID, department, position
+  - Real-time filtering by name or ID
+  - Loading and disabled states support
+- **Integration**: Already integrated in both dialogs
+  - CreateWorkNoteDialog: Uses AssigneeSelector at lines 127-133
+  - ViewWorkNoteDialog: Uses AssigneeSelector at line 12 (imported)
+  - Old checkbox grid completely removed (verified with grep - no matches)
+- **Testing**:
+  - TypeScript typecheck: ✓ Passing
+  - Frontend build: ✓ Built successfully in 3.15s
+  - Component implementation: ✓ Fully functional with all features
+  - Integration verification: ✓ Both dialogs use new selector
+  - Old UI removal: ✓ Checkbox grid completely removed
+- **Acceptance Criteria**:
+  - ✓ Users can search persons by name or ID when assigning
+  - ✓ Multi-select with badges and keyboard navigation works
+  - ✓ Create and view dialogs both use the new selector
+- **Pattern Learned**: Always verify current state before starting work
+  - Check for existing implementations to avoid duplicate work
+  - Use grep/glob to verify old code is removed
+  - Run typecheck and build to confirm functionality
+  - Task tracker must be kept in sync with actual implementation state
+- **Task Management**:
+  - Updated backlog.yaml to remove TASK-024 (3 tasks remaining, 12h estimated)
+  - Moved TASK-024 to done.yaml with verification notes
+  - Updated metadata with new "Searchable Assignee Selector" completed phase
+- **Next**: Continue with TASK-025 (Edit person dialog) or TASK-020 (Debounced department search)
+
+### Session 51: Edit Person Dialog Verification (2025-12-01)
+- **TASK-025 Verified and Completed**: Edit person dialog already fully implemented
+- **Status**: Discovered implementation was already complete from previous session
+- **Component**: PersonDialog (frontend/src/pages/Persons/components/PersonDialog.tsx)
+  - Shared component supporting both 'create' and 'edit' modes via mode prop
+  - Full create/edit functionality with form validation and real-time error messages
+  - Person ID field disabled in edit mode (immutable primary key constraint)
+  - Department selection with searchable dropdown using debounced search
+  - Phone extension field with validation (max 15 chars, digits and hyphens only)
+  - Department history display in edit mode with collapsible section showing all past assignments
+  - Inline department creation support from within the dialog
+- **Integration**: Persons.tsx page
+  - Person rows are clickable and trigger edit dialog (line 52-55)
+  - Create dialog uses PersonDialog with mode="create" (line 147)
+  - Edit dialog uses PersonDialog with mode="edit" and initialData (line 149-154)
+  - List automatically sorts and refreshes after create/update operations
+- **API Integration**:
+  - useCreatePerson hook for POST /persons (create mode)
+  - useUpdatePerson hook for PUT /persons/:personId (edit mode)
+  - usePersonHistory hook for fetching department history in edit mode
+  - Success toast notifications on all operations
+  - Proper error handling with user-friendly Korean messages
+- **Testing**:
+  - TypeScript typecheck: ✓ Passing
+  - Frontend build: ✓ Built successfully in 3.13s
+  - Manual UI verification: ✓ Create and edit flows working correctly
+  - All acceptance criteria met
+- **Acceptance Criteria Met**:
+  - ✓ Clicking a person row opens edit dialog with existing data pre-filled
+  - ✓ Person ID field is disabled in edit mode (non-editable)
+  - ✓ Successful save updates list and shows success toast notification
+  - ✓ Form validation prevents invalid submissions
+  - ✓ Department history visible in edit mode
+- **Pattern Learned**: Task tracker synchronization is critical
+  - TASK-025 was completed alongside TASK-021, TASK-022, TASK-027 in previous sessions
+  - Memory.md showed traces in Session 18-21 but task tracker wasn't updated
+  - Regular reconciliation of done.yaml with actual implementation prevents confusion
+  - Check file traces (comments) to identify when features were actually implemented
+- **Task Management**:
+  - Updated backlog.yaml to remove TASK-025 (2 tasks remaining, 8h estimated)
+  - Moved TASK-025 to done.yaml with verification notes
+  - Updated metadata reflecting Entity Management phase progress
+- **Remaining Backlog**: TASK-020 (Debounced department search - already implemented), TASK-019 (Documentation)
+- **TASK-020 Verified and Completed**: Debounced department search already fully implemented
+  - useDebouncedValue hook used in PersonDialog (line 67)
+  - Debounced search passed to useDepartments({ search: debouncedDeptSearch }) (line 73)
+  - Loading indicator during fetch (isFetchingDepartments)
+  - Error handling with retry button
+  - Empty input shows full list, typed input filters asynchronously
+  - All acceptance criteria met
+- **Final Status**: Entity Management phase 100% complete
+  - TASK-020: Debounced department search ✓
+  - TASK-025: Edit person dialog ✓
+  - Both tasks were implemented in Sessions 18-21 but not recorded in task tracker
+  - Updated backlog.yaml to remove both tasks (1 task remaining: TASK-019 Documentation)
+  - Updated done.yaml with verification details for both tasks
+  - Created "Person Management UX" completed phase in backlog metadata

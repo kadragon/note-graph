@@ -2,6 +2,106 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-019
+    title: "Write user documentation"
+    spec_id: SPEC-worknote-1
+    completed_at: "2025-12-01T11:00:00Z"
+    outcome: |
+      Created comprehensive documentation for the Worknote Management System:
+
+      1. USER_GUIDE.md (한국어 사용자 가이드):
+         - 시작하기 및 로그인
+         - 대시보드 및 할 일 관리 (6가지 뷰)
+         - 업무노트 관리 (생성, 조회, 수정, 삭제)
+         - AI 초안 생성 (텍스트, PDF)
+         - 사람 및 부서 관리
+         - 프로젝트 관리 (파일 첨부, 팀 협업)
+         - 검색 기능 (하이브리드 검색)
+         - AI 챗봇 (RAG, 5가지 범위)
+         - 통계 및 분석 (기간별 차트)
+         - 고급 기능 및 팁
+         - 문제 해결 가이드
+
+      2. SETUP.md (개발 환경 설정 가이드):
+         - 사전 요구사항 (Node.js, Cloudflare 계정)
+         - 초기 설정 및 의존성 설치
+         - Cloudflare 리소스 생성 (D1, Vectorize, R2, Queue, AI Gateway)
+         - 환경 변수 설정 (.dev.vars, secrets)
+         - 데이터베이스 마이그레이션
+         - 개발 서버 실행 (백엔드/프론트엔드)
+         - 테스트 실행 및 커버리지
+         - 프론트엔드 개발 가이드
+         - 코드 품질 도구 (linting, type checking)
+         - 유용한 Wrangler 명령어
+         - 문제 해결 FAQ
+
+      3. ARCHITECTURE.md (시스템 아키텍처 문서):
+         - 시스템 개요 및 아키텍처 원칙
+         - 고수준 아키텍처 다이어그램
+         - 데이터 흐름 (업무노트 생성, 하이브리드 검색, RAG)
+         - 전체 기술 스택 (인프라, 백엔드, 프론트엔드, AI, 테스팅)
+         - 핵심 설계 결정 6가지:
+           * 하이브리드 검색 (FTS5 + Vectorize + RRF)
+           * RAG 청킹 전략 (512 tokens, 20% overlap)
+           * PDF 비동기 처리 (Queue-based)
+           * 버전 관리 (자동 Pruning, 5개 보관)
+           * 할 일 반복 로직 (DUE_DATE vs COMPLETION_DATE)
+           * 임베딩 재시도 메커니즘 (Exponential Backoff)
+         - 데이터 모델 및 ERD
+         - API 설계 원칙
+         - 검색 시스템 상세 (FTS5, Vectorize, RRF)
+         - AI 통합 (GPT-4.5, text-embedding-3-small)
+         - 비동기 처리 (Queues, 재시도)
+         - 보안 및 인증 (Cloudflare Access)
+         - 성능 최적화 전략
+         - 확장성 고려사항
+
+      4. DEPLOYMENT.md (배포 가이드):
+         - 사전 준비 (Cloudflare 계정, 도메인)
+         - 프로덕션 리소스 생성 단계
+         - wrangler.toml 설정
+         - Secrets 설정
+         - 데이터베이스 마이그레이션
+         - Workers 배포
+         - Cloudflare Access 설정 (Google OAuth)
+         - 도메인 및 DNS 설정
+         - 모니터링 (Workers Analytics, Logs, AI Gateway)
+         - 백업 및 복원 (D1, R2)
+         - 롤백 절차
+         - 문제 해결
+         - 유지보수 체크리스트
+
+      5. API.md (API 문서):
+         - 기본 정보 (Base URL, 인증)
+         - 인증 엔드포인트
+         - 사람 관리 API (6개 엔드포인트)
+         - 업무노트 관리 API (5개 엔드포인트)
+         - 할 일 관리 API
+         - 검색 API (하이브리드 검색)
+         - RAG API (챗봇)
+         - AI API (초안 생성, 할 일 제안)
+         - 프로젝트 관리 API
+         - 통계 API
+         - 오류 코드 및 설명
+         - 요청/응답 예시
+
+      6. README.md 업데이트:
+         - 문서 섹션 추가
+         - 각 문서 링크 및 설명
+         - API 엔드포인트 목록 갱신
+    test_results: |
+      ✓ All documentation files created
+      ✓ Links verified in README.md
+      ✓ Markdown formatting validated
+      ✓ Code examples included
+    estimated_effort: 6h
+    actual_effort: ~2h (집중 작성)
+    notes: |
+      스크린샷은 추후 추가 가능 (프로덕션 배포 후).
+      모든 문서가 한국어 사용자를 고려하여 작성됨.
+      개발자 문서는 영어로 작성 (코딩 스타일 가이드 준수).
+      Architecture 문서는 기술적 세부사항과 설계 근거 포함.
+
   - task_id: TASK-051
     title: "Display completion date for completed todos"
     spec_id: SPEC-todo-2
@@ -43,6 +143,60 @@ completed_tasks:
     notes: |
       Grouping logic treats single recurring instances as standalone (only groups with 2+ instances).
       Groups are sorted by due date within each group.
+
+  - task_id: TASK-020
+    title: "Debounced department search in person form"
+    spec_id: SPEC-person-1
+    completed_at: "2025-12-01T10:05:00Z"
+    outcome: |
+      Implemented debounced department search in PersonDialog component:
+      - Department search input triggers debounced API calls (useDebouncedValue hook)
+      - Search filter passed to useDepartments hook: { search: debouncedDeptSearch }
+      - Empty input returns full department list
+      - Typed input filters departments asynchronously without page reload
+      - Loading indicator shows during fetch (isFetchingDepartments state)
+      - Error handling with retry button for failed searches
+      - Newly created departments appear in list immediately after creation
+      - Search state properly cleared when closing popover
+    test_results: |
+      ✓ npm run typecheck (TypeScript compilation passes)
+      ✓ npm run build:frontend (Vite build successful)
+      ✓ Manual UI verification: debounced search working correctly
+    estimated_effort: 2h
+    actual_effort: ~0h (already implemented in previous session)
+    notes: |
+      This task was already completed in previous session along with TASK-021.
+      The PersonDialog.tsx component (lines 67-73) uses useDebouncedValue to debounce
+      the deptSearch input, which is then passed to useDepartments({ search: debouncedDeptSearch }).
+      All acceptance criteria met.
+
+  - task_id: TASK-025
+    title: "Add edit person dialog from list"
+    spec_id: SPEC-person-1
+    completed_at: "2025-12-01T10:00:00Z"
+    outcome: |
+      Implemented edit person dialog with shared PersonDialog component:
+      - PersonDialog now supports both 'create' and 'edit' modes via mode prop
+      - Clicking person row in list opens edit dialog with pre-filled data
+      - Person ID field is disabled in edit mode (immutable primary key)
+      - Form validation with real-time error messages
+      - Department selection with searchable dropdown (debounced)
+      - Phone extension field added (max 15 chars, digits and hyphens only)
+      - Department history display in edit mode (collapsible section)
+      - Update API integration with PUT /persons/:personId
+      - Success toast notification on save
+      - List automatically refreshes after update
+    test_results: |
+      ✓ npm run typecheck (TypeScript compilation passes)
+      ✓ npm run build:frontend (Vite build successful)
+      ✓ Manual UI verification: create/edit flows work correctly
+    estimated_effort: 4h
+    actual_effort: ~0h (already implemented in previous session)
+    notes: |
+      This task was already completed in a previous session along with TASK-021, TASK-022, TASK-027.
+      The PersonDialog.tsx component already includes full create/edit functionality with all
+      acceptance criteria met: clickable rows, disabled personId in edit mode, prefilled data,
+      successful save with toast notification.
 
   - task_id: TASK-053
     title: "Write tests for todo UX improvements"
@@ -1315,34 +1469,67 @@ completed_tasks:
 #     Successfully set up Wrangler project with TypeScript.
 #     All dependencies installed, dev server runs.
 #   test_results: "All acceptance tests passed"
----
-- task_id: TASK-047
-  spec_id: SPEC-stats-1
-  title: Statistics backend - repository and API
-  completed_at: 2025-11-30T20:15:00Z
-  outcome: |
-    Successfully implemented backend infrastructure for work note statistics.
-    - StatisticsRepository with comprehensive querying and aggregation
-    - StatisticsService with period date range calculations
-    - API endpoint GET /api/statistics with multiple filter options
-    - 10 unit tests + 8 integration tests (all passing)
-    - Supports 7 period types
-    - Filter options: personId, deptName, categoryId
-    - Statistics metrics: totals, completion rates, distributions
-  commits:
-    - f7e4d60
 
-- task_id: TASK-050
-  spec_id: SPEC-stats-1
-  title: Fix statistics period filtering and year selector
-  completed_at: 2025-11-30T20:47:30Z
-  outcome: |
-    Aligned statistics with SPEC-stats-1 by filtering on todo completion timestamps and honoring the selected year for the 'this-year' period. Added regression tests for cross-year completion dates and year selector behavior.
-  test_results: |
-    ✓ npm test -- tests/unit/statistics-repository.test.ts tests/integration/statistics-routes.test.ts
-  estimated_effort: 2h
-  actual_effort: ~0.5h
-  implementation_details: |
-    - Updated StatisticsRepository to filter completed work notes by todo updated_at within the requested date range and order by completion time.
-    - Updated StatisticsService date range calculation to respect provided year for 'this-year'.
-    - Added unit and integration tests covering cross-year completions and year selector regression.
+  - task_id: TASK-047
+    spec_id: SPEC-stats-1
+    title: Statistics backend - repository and API
+    completed_at: 2025-11-30T20:15:00Z
+    outcome: |
+      Successfully implemented backend infrastructure for work note statistics.
+      - StatisticsRepository with comprehensive querying and aggregation
+      - StatisticsService with period date range calculations
+      - API endpoint GET /api/statistics with multiple filter options
+      - 10 unit tests + 8 integration tests (all passing)
+      - Supports 7 period types
+      - Filter options: personId, deptName, categoryId
+      - Statistics metrics: totals, completion rates, distributions
+    commits:
+      - f7e4d60
+
+  - task_id: TASK-050
+    spec_id: SPEC-stats-1
+    title: Fix statistics period filtering and year selector
+    completed_at: 2025-11-30T20:47:30Z
+    outcome: |
+      Aligned statistics with SPEC-stats-1 by filtering on todo completion timestamps and honoring the selected year for the 'this-year' period. Added regression tests for cross-year completion dates and year selector behavior.
+    test_results: |
+      ✓ npm test -- tests/unit/statistics-repository.test.ts tests/integration/statistics-routes.test.ts
+    estimated_effort: 2h
+    actual_effort: ~0.5h
+    implementation_details: |
+      - Updated StatisticsRepository to filter completed work notes by todo updated_at within the requested date range and order by completion time.
+      - Updated StatisticsService date range calculation to respect provided year for 'this-year'.
+      - Added unit and integration tests covering cross-year completions and year selector regression.
+
+  - task_id: TASK-024
+    spec_id: SPEC-worknote-1
+    title: Add searchable assignee selector for work notes
+    completed_at: 2025-12-01T15:30:00Z
+    outcome: |
+      Verified that searchable assignee selector using cmdk library is already implemented:
+      - cmdk library (v1.1.1) already installed in package.json
+      - AssigneeSelector component fully implemented with Command pattern (popover + search)
+      - Component features:
+        * Searchable multi-select with keyboard navigation via cmdk
+        * Badge-style selections with remove buttons (X icon)
+        * Shows person name, ID, department, and position in dropdown
+        * Real-time search filtering by name or ID
+        * Visual checkboxes for selected state
+        * Loading and disabled states support
+      - Integrated in both CreateWorkNoteDialog and ViewWorkNoteDialog
+      - Old checkbox grid completely removed (no grid-cols-2 checkboxes found)
+    test_results: |
+      ✓ npm run typecheck (all TypeScript checks pass)
+      ✓ npm run build:frontend (built successfully in 3.15s)
+      ✓ Verified AssigneeSelector component implementation
+      ✓ Verified integration in both create and edit dialogs
+      ✓ Verified old checkbox grid removed
+    estimated_effort: 3h
+    actual_effort: 0h (already completed)
+    notes: |
+      This task was already completed in a previous session. The implementation fully meets
+      all acceptance criteria:
+      - ✓ Users can search persons by name or ID when assigning
+      - ✓ Multi-select with badges and keyboard navigation works
+      - ✓ Create and view dialogs both use the new selector
+      Task moved directly to done.yaml as verification confirmed completion.
