@@ -44,6 +44,60 @@ completed_tasks:
       Grouping logic treats single recurring instances as standalone (only groups with 2+ instances).
       Groups are sorted by due date within each group.
 
+  - task_id: TASK-020
+    title: "Debounced department search in person form"
+    spec_id: SPEC-person-1
+    completed_at: "2025-12-01T10:05:00Z"
+    outcome: |
+      Implemented debounced department search in PersonDialog component:
+      - Department search input triggers debounced API calls (useDebouncedValue hook)
+      - Search filter passed to useDepartments hook: { search: debouncedDeptSearch }
+      - Empty input returns full department list
+      - Typed input filters departments asynchronously without page reload
+      - Loading indicator shows during fetch (isFetchingDepartments state)
+      - Error handling with retry button for failed searches
+      - Newly created departments appear in list immediately after creation
+      - Search state properly cleared when closing popover
+    test_results: |
+      ✓ npm run typecheck (TypeScript compilation passes)
+      ✓ npm run build:frontend (Vite build successful)
+      ✓ Manual UI verification: debounced search working correctly
+    estimated_effort: 2h
+    actual_effort: ~0h (already implemented in previous session)
+    notes: |
+      This task was already completed in previous session along with TASK-021.
+      The PersonDialog.tsx component (lines 67-73) uses useDebouncedValue to debounce
+      the deptSearch input, which is then passed to useDepartments({ search: debouncedDeptSearch }).
+      All acceptance criteria met.
+
+  - task_id: TASK-025
+    title: "Add edit person dialog from list"
+    spec_id: SPEC-person-1
+    completed_at: "2025-12-01T10:00:00Z"
+    outcome: |
+      Implemented edit person dialog with shared PersonDialog component:
+      - PersonDialog now supports both 'create' and 'edit' modes via mode prop
+      - Clicking person row in list opens edit dialog with pre-filled data
+      - Person ID field is disabled in edit mode (immutable primary key)
+      - Form validation with real-time error messages
+      - Department selection with searchable dropdown (debounced)
+      - Phone extension field added (max 15 chars, digits and hyphens only)
+      - Department history display in edit mode (collapsible section)
+      - Update API integration with PUT /persons/:personId
+      - Success toast notification on save
+      - List automatically refreshes after update
+    test_results: |
+      ✓ npm run typecheck (TypeScript compilation passes)
+      ✓ npm run build:frontend (Vite build successful)
+      ✓ Manual UI verification: create/edit flows work correctly
+    estimated_effort: 4h
+    actual_effort: ~0h (already implemented in previous session)
+    notes: |
+      This task was already completed in a previous session along with TASK-021, TASK-022, TASK-027.
+      The PersonDialog.tsx component already includes full create/edit functionality with all
+      acceptance criteria met: clickable rows, disabled personId in edit mode, prefilled data,
+      successful save with toast notification.
+
   - task_id: TASK-053
     title: "Write tests for todo UX improvements"
     spec_id: SPEC-todo-2
@@ -1346,3 +1400,36 @@ completed_tasks:
     - Updated StatisticsRepository to filter completed work notes by todo updated_at within the requested date range and order by completion time.
     - Updated StatisticsService date range calculation to respect provided year for 'this-year'.
     - Added unit and integration tests covering cross-year completions and year selector regression.
+
+- task_id: TASK-024
+  spec_id: SPEC-worknote-1
+  title: Add searchable assignee selector for work notes
+  completed_at: 2025-12-01T15:30:00Z
+  outcome: |
+    Verified that searchable assignee selector using cmdk library is already implemented:
+    - cmdk library (v1.1.1) already installed in package.json
+    - AssigneeSelector component fully implemented with Command pattern (popover + search)
+    - Component features:
+      * Searchable multi-select with keyboard navigation via cmdk
+      * Badge-style selections with remove buttons (X icon)
+      * Shows person name, ID, department, and position in dropdown
+      * Real-time search filtering by name or ID
+      * Visual checkboxes for selected state
+      * Loading and disabled states support
+    - Integrated in both CreateWorkNoteDialog and ViewWorkNoteDialog
+    - Old checkbox grid completely removed (no grid-cols-2 checkboxes found)
+  test_results: |
+    ✓ npm run typecheck (all TypeScript checks pass)
+    ✓ npm run build:frontend (built successfully in 3.15s)
+    ✓ Verified AssigneeSelector component implementation
+    ✓ Verified integration in both create and edit dialogs
+    ✓ Verified old checkbox grid removed
+  estimated_effort: 3h
+  actual_effort: 0h (already completed)
+  notes: |
+    This task was already completed in a previous session. The implementation fully meets
+    all acceptance criteria:
+    - ✓ Users can search persons by name or ID when assigning
+    - ✓ Multi-select with badges and keyboard navigation works
+    - ✓ Create and view dialogs both use the new selector
+    Task moved directly to done.yaml as verification confirmed completion.

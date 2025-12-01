@@ -1,50 +1,4 @@
 tasks:
-  - task_id: TASK-024
-    spec_id: SPEC-worknote-1
-    title: "Add searchable assignee selector for work notes"
-    description: |
-      Replace the checkbox grid assignee picker with a searchable multi-select
-      (cmdk + popover). Improves UX for large person lists with keyboard
-      navigation and badge-style selections.
-    priority: 3
-    status: paused
-    estimated_effort: 3h
-    acceptance_criteria:
-      - "Users can search persons by name or ID when assigning"
-      - "Multi-select with badges and keyboard navigation works"
-      - "Create and view dialogs both use the new selector"
-
-  - task_id: TASK-025
-    spec_id: SPEC-person-1
-    title: "Add edit person dialog from list"
-    description: |
-      Make person rows clickable to open a shared create/edit dialog, with
-      prefilled data and PUT /persons/:personId integration. Person ID remains
-      immutable in edit mode.
-    priority: 3
-    status: paused
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "Clicking a person row opens edit dialog with existing data"
-      - "Person ID field is disabled in edit mode"
-      - "Successful save updates list and shows toast"
-
-
-  - task_id: TASK-020
-    spec_id: SPEC-person-1
-    title: "Debounced department search in person form"
-    description: |
-      When the department list is large, typing in the person creation form
-      should trigger debounced, asynchronous department search and update the
-      selectable list without reloading the page.
-    priority: 4
-    status: pending
-    estimated_effort: 2h
-    acceptance_criteria:
-      - "Department input fetches filtered results as user types (debounce)"
-      - "Empty input shows the full list"
-      - "Newly added department still appears and remains selectable"
-
   - task_id: TASK-019
     spec_id: SPEC-worknote-1
     title: "Write user documentation"
@@ -64,14 +18,9 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 4
-  total_estimated_effort: 15 hours
+  total_tasks: 1
+  total_estimated_effort: 6 hours
   phases:
-    - name: "Entity Management"
-      tasks: [TASK-024, TASK-025, TASK-020]
-      effort: 9h
-      priority: 3-4
-
     - name: "Deployment & Docs"
       tasks: [TASK-019]
       effort: 6h
@@ -87,3 +36,13 @@ metadata:
       tasks: [TASK-051, TASK-052, TASK-053]
       status: "✅ COMPLETE"
       note: "Completion date display and recurring todo grouping fully implemented with tests"
+
+    - name: "Searchable Assignee Selector"
+      tasks: [TASK-024]
+      status: "✅ COMPLETE"
+      note: "Verified complete implementation with cmdk-based searchable multi-select (already done in previous session)"
+
+    - name: "Person Management UX"
+      tasks: [TASK-020, TASK-025]
+      status: "✅ COMPLETE"
+      note: "Edit person dialog and debounced department search both verified complete (implemented in previous sessions)"
