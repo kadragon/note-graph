@@ -55,7 +55,8 @@ export function groupRecurringTodos(todos: Todo[]): GroupedTodos {
         groupKey,
         title: groupTodos[0].title, // Use original title from first todo
         repeatRule: groupTodos[0].repeatRule || 'NONE',
-        todos: groupTodos.sort((a, b) => {
+        // Create a shallow copy before sorting to avoid mutating the original array
+        todos: [...groupTodos].sort((a, b) => {
           // Sort by due date (or createdAt if no due date)
           const aDate = a.dueDate || a.createdAt;
           const bDate = b.dueDate || b.createdAt;
