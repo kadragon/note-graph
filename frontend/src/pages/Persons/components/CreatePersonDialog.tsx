@@ -1,6 +1,6 @@
-// Trace: SPEC-person-1, TASK-022
+// Trace: SPEC-person-1, TASK-021, TASK-022
 
-import { Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useCreateDepartment, useDepartments } from '@/hooks/useDepartments';
 import { useCreatePerson } from '@/hooks/usePersons';
 import { toCreateDepartmentRequest } from '@/lib/mappers/department';
@@ -38,10 +39,17 @@ export function CreatePersonDialog({ open, onOpenChange }: CreatePersonDialogPro
   const [currentDept, setCurrentDept] = useState('');
   const [currentPosition, setCurrentPosition] = useState('');
   const [deptOpen, setDeptOpen] = useState(false);
+  const [deptSearch, setDeptSearch] = useState('');
   const [newDeptName, setNewDeptName] = useState('');
 
   const createPersonMutation = useCreatePerson();
-  const { data: departments = [] } = useDepartments();
+  const debouncedDeptSearch = useDebouncedValue(deptSearch);
+  const {
+    data: departments = [],
+    isFetching: isFetchingDepartments,
+    isError: isDepartmentsError,
+    refetch: refetchDepartments,
+  } = useDepartments({ search: debouncedDeptSearch });
   const createDeptMutation = useCreateDepartment();
 
   const selectedDept = departments.find((d) => d.deptName === currentDept);
@@ -76,6 +84,7 @@ export function CreatePersonDialog({ open, onOpenChange }: CreatePersonDialogPro
       setCurrentDept(dept.deptName);
       setNewDeptName('');
       setDeptOpen(false);
+      setDeptSearch('');
     } catch {
       // Error handled by mutation hook
     }
@@ -116,7 +125,13 @@ export function CreatePersonDialog({ open, onOpenChange }: CreatePersonDialogPro
 
             <div className="grid gap-2">
               <Label>부서 (선택)</Label>
-              <Popover open={deptOpen} onOpenChange={setDeptOpen}>
+              <Popover
+                open={deptOpen}
+                onOpenChange={(openState) => {
+                  setDeptOpen(openState);
+                  if (!openState) setDeptSearch('');
+                }}
+              >
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -130,33 +145,64 @@ export function CreatePersonDialog({ open, onOpenChange }: CreatePersonDialogPro
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0">
                   <Command>
-                    <CommandInput placeholder="부서 검색..." />
+                    <CommandInput
+                      placeholder="부서 검색..."
+                      value={deptSearch}
+                      onValueChange={setDeptSearch}
+                      autoFocus
+                      aria-label="부서 검색"
+                    />
+                    {isFetchingDepartments && (
+                      <div
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground"
+                        aria-busy="true"
+                        aria-live="polite"
+                      >
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        검색 중...
+                      </div>
+                    )}
                     <CommandList>
                       <CommandEmpty>
-                        <div className="p-2">
-                          <p className="text-sm text-muted-foreground mb-2">부서가 없습니다.</p>
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="새 부서명"
-                              value={newDeptName}
-                              onChange={(e) => setNewDeptName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  void handleCreateDept();
-                                }
-                              }}
-                            />
+                        {isDepartmentsError ? (
+                          <div role="alert" className="p-2 space-y-2">
+                            <p className="text-sm text-destructive">부서를 불러오지 못했습니다.</p>
                             <Button
                               type="button"
                               size="sm"
-                              onClick={() => void handleCreateDept()}
-                              disabled={createDeptMutation.isPending}
+                              variant="outline"
+                              onClick={() => void refetchDepartments()}
+                              className="w-full"
                             >
-                              <Plus className="h-4 w-4" />
+                              다시 시도
                             </Button>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="p-2">
+                            <p className="text-sm text-muted-foreground mb-2">부서가 없습니다.</p>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="새 부서명"
+                                value={newDeptName}
+                                onChange={(e) => setNewDeptName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    void handleCreateDept();
+                                  }
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => void handleCreateDept()}
+                                disabled={createDeptMutation.isPending}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </CommandEmpty>
                       <CommandGroup>
                         {departments.map((dept) => (
@@ -166,6 +212,7 @@ export function CreatePersonDialog({ open, onOpenChange }: CreatePersonDialogPro
                             onSelect={() => {
                               setCurrentDept(dept.deptName);
                               setDeptOpen(false);
+                              setDeptSearch('');
                             }}
                           >
                             <Check
