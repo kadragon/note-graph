@@ -1,32 +1,15 @@
-tasks:
-  - task_id: TASK-019
-    spec_id: SPEC-worknote-1
-    title: "Write user documentation"
-    description: |
-      Create user guide and developer documentation.
-      - User guide (Korean) with screenshots
-      - API documentation (auto-generated from OpenAPI spec)
-      - Developer setup guide
-      - Architecture overview
-      - Deployment guide
-    priority: 6
-    status: pending
-    estimated_effort: 6h
-    acceptance_criteria:
-      - "User guide complete"
-      - "API docs published"
-      - "Setup guide tested by new user"
+tasks: []
 
 metadata:
-  total_tasks: 1
-  total_estimated_effort: 6 hours
-  phases:
-    - name: "Deployment & Docs"
-      tasks: [TASK-019]
-      effort: 6h
-      priority: 6
+  total_tasks: 0
+  total_estimated_effort: 0 hours
+  phases: []
 
   completed_phases:
+    - name: "Deployment & Docs"
+      tasks: [TASK-019]
+      status: "✅ COMPLETE"
+      note: "Comprehensive documentation created (User Guide, Setup, Architecture, Deployment, API)"
     - name: "Statistics Feature"
       tasks: [TASK-047, TASK-048, TASK-049, TASK-050]
       status: "✅ COMPLETE"
