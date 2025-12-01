@@ -202,7 +202,12 @@ export class TodoRepository {
           `t.due_date >= ?`,
           `t.due_date <= ?`
         );
-        params.push('완료', tomorrowMidnightISO, yearStart.toISOString(), effectiveEnd.toISOString());
+        params.push(
+          '완료',
+          tomorrowMidnightISO,
+          yearStart.toISOString(),
+          effectiveEnd.toISOString()
+        );
         break;
       }
 
