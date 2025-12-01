@@ -129,9 +129,14 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
       }
     }
 
-    // Validate phoneExt (optional, but if provided must be 4 digits)
-    if (phoneExt.trim() && !/^\d{4}$/.test(phoneExt.trim())) {
-      newErrors.phoneExt = '연락처는 4자리 숫자여야 합니다';
+    // Validate phoneExt (optional, but if provided must match backend schema)
+    // Backend: max 15 chars, digits and hyphens only (src/schemas/person.ts:19-23)
+    if (phoneExt.trim()) {
+      if (phoneExt.trim().length > 15) {
+        newErrors.phoneExt = '연락처는 15자 이하여야 합니다';
+      } else if (!/^[\d-]+$/.test(phoneExt.trim())) {
+        newErrors.phoneExt = '연락처는 숫자와 하이픈(-)만 입력 가능합니다';
+      }
     }
 
     // Validate currentDept (optional, but if provided must be within limits)
@@ -271,8 +276,8 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
                     setErrors((prev) => ({ ...prev, phoneExt: undefined }));
                   }
                 }}
-                placeholder="4자리 내선번호 (예: 3346)"
-                maxLength={4}
+                placeholder="연락처 (예: 3346, 043-230-3346)"
+                maxLength={15}
                 className={cn(errors.phoneExt && 'border-destructive')}
               />
               {errors.phoneExt && <p className="text-sm text-destructive">{errors.phoneExt}</p>}

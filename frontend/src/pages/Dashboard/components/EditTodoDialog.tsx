@@ -1,6 +1,7 @@
 import { format, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { TODO_STATUS } from '@/constants/todoStatus';
 import { useUpdateTodo } from '@/hooks/useTodos';
+import { toUTCISOString } from '@/lib/utils';
 import type { CustomIntervalUnit, RecurrenceType, RepeatRule, Todo, TodoStatus } from '@/types/api';
 
 interface EditTodoDialogProps {
@@ -53,12 +55,6 @@ const RECURRENCE_TYPE_OPTIONS: Array<{ value: RecurrenceType; label: string }> =
   { value: 'DUE_DATE', label: '마감일 기준' },
   { value: 'COMPLETION_DATE', label: '완료일 기준' },
 ];
-
-// Helper function to convert date string to UTC ISO string
-// This prevents timezone issues where dates shift by one day
-const toUTCISOString = (dateString: string): string => {
-  return new Date(`${dateString}T00:00:00.000Z`).toISOString();
-};
 
 export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTodoDialogProps) {
   const [title, setTitle] = useState('');
@@ -255,14 +251,12 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
 
             {repeatRule !== 'NONE' && (
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="skipWeekends"
                   checked={skipWeekends}
-                  onChange={(e) => setSkipWeekends(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300"
+                  onCheckedChange={(checked) => setSkipWeekends(checked === true)}
                 />
-                <Label htmlFor="skipWeekends" className="text-sm font-normal">
+                <Label htmlFor="skipWeekends" className="text-sm font-normal cursor-pointer">
                   주말 제외 (토/일요일은 다음 월요일로)
                 </Label>
               </div>

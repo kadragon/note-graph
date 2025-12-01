@@ -40,9 +40,17 @@ import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { useDeleteTodo, useToggleTodo } from '@/hooks/useTodos';
 import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
 import { API } from '@/lib/api';
-import { formatPersonBadge } from '@/lib/utils';
+import { formatPersonBadge, toUTCISOString } from '@/lib/utils';
 import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
-import type { CreateTodoRequest, Todo, TodoStatus, WorkNote } from '@/types/api';
+import type {
+  CreateTodoRequest,
+  CustomIntervalUnit,
+  RecurrenceType,
+  RepeatRule,
+  Todo,
+  TodoStatus,
+  WorkNote,
+} from '@/types/api';
 import { groupRecurringTodos } from './groupRecurringTodos';
 import { RecurringTodoGroup } from './RecurringTodoGroup';
 import { TodoListItem } from './TodoListItem';
@@ -50,6 +58,30 @@ import { TodoListItem } from './TodoListItem';
 // Markdown plugin configurations
 const remarkPlugins = [remarkGfm];
 const rehypePlugins = [rehypeSanitize, rehypeHighlight];
+
+// Constants for styling (same as EditTodoDialog)
+const SELECT_CLASS_NAME =
+  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+
+// Options data for dropdowns
+const REPEAT_RULE_OPTIONS: Array<{ value: RepeatRule; label: string }> = [
+  { value: 'NONE', label: '반복 안함' },
+  { value: 'DAILY', label: '매일' },
+  { value: 'WEEKLY', label: '매주' },
+  { value: 'MONTHLY', label: '매월' },
+  { value: 'CUSTOM', label: '커스텀' },
+];
+
+const CUSTOM_UNIT_OPTIONS: Array<{ value: CustomIntervalUnit; label: string }> = [
+  { value: 'DAY', label: '일' },
+  { value: 'WEEK', label: '주' },
+  { value: 'MONTH', label: '개월' },
+];
+
+const RECURRENCE_TYPE_OPTIONS: Array<{ value: RecurrenceType; label: string }> = [
+  { value: 'DUE_DATE', label: '마감일 기준' },
+  { value: 'COMPLETION_DATE', label: '완료일 기준' },
+];
 
 interface ViewWorkNoteDialogProps {
   workNote: WorkNote | null;
@@ -72,6 +104,12 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
   const [todoDescription, setTodoDescription] = useState('');
   // Set default due date to today in YYYY-MM-DD format
   const [todoDueDate, setTodoDueDate] = useState(getTodayString);
+  const [todoWaitUntil, setTodoWaitUntil] = useState('');
+  const [todoRepeatRule, setTodoRepeatRule] = useState<RepeatRule>('NONE');
+  const [todoRecurrenceType, setTodoRecurrenceType] = useState<RecurrenceType>('DUE_DATE');
+  const [todoCustomInterval, setTodoCustomInterval] = useState<number>(1);
+  const [todoCustomUnit, setTodoCustomUnit] = useState<CustomIntervalUnit>('MONTH');
+  const [todoSkipWeekends, setTodoSkipWeekends] = useState(false);
 
   // Refs for focusing specific sections when entering edit mode
   const categorySectionRef = useRef<HTMLDivElement | null>(null);
@@ -166,8 +204,14 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
       void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
       setTodoTitle('');
       setTodoDescription('');
-      // Reset due date to today
+      // Reset all form fields to defaults
       setTodoDueDate(getTodayString());
+      setTodoWaitUntil('');
+      setTodoRepeatRule('NONE');
+      setTodoRecurrenceType('DUE_DATE');
+      setTodoCustomInterval(1);
+      setTodoCustomUnit('MONTH');
+      setTodoSkipWeekends(false);
       setShowAddTodo(false);
       toast({
         title: '성공',
@@ -183,15 +227,29 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
     },
   });
 
+  const handleTodoWaitUntilChange = (value: string) => {
+    setTodoWaitUntil(value);
+    if (!todoDueDate && value) {
+      setTodoDueDate(value);
+    }
+  };
+
   const handleAddTodo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!todoTitle.trim()) return;
 
+    const effectiveDueDate = todoDueDate || (todoWaitUntil ? todoWaitUntil : '');
+
     const todoData: CreateTodoRequest = {
       title: todoTitle.trim(),
       description: todoDescription.trim() || undefined,
-      dueDate: todoDueDate ? new Date(todoDueDate).toISOString() : undefined,
-      repeatRule: 'NONE',
+      dueDate: effectiveDueDate ? toUTCISOString(effectiveDueDate) : undefined,
+      waitUntil: todoWaitUntil ? toUTCISOString(todoWaitUntil) : undefined,
+      repeatRule: todoRepeatRule,
+      recurrenceType: todoRecurrenceType,
+      customInterval: todoRepeatRule === 'CUSTOM' ? todoCustomInterval : undefined,
+      customUnit: todoRepeatRule === 'CUSTOM' ? todoCustomUnit : undefined,
+      skipWeekends: todoSkipWeekends,
     };
 
     createTodoMutation.mutate(todoData);
@@ -560,6 +618,18 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
                     />
                   </div>
                   <div className="grid gap-2">
+                    <Label htmlFor="todo-wait-until">대기일 (선택사항)</Label>
+                    <Input
+                      id="todo-wait-until"
+                      type="date"
+                      value={todoWaitUntil}
+                      onChange={(e) => handleTodoWaitUntilChange(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      이 날짜까지 대시보드에서 숨겨집니다.
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
                     <Label htmlFor="todo-due-date">마감일 (선택사항)</Label>
                     <Input
                       id="todo-due-date"
@@ -568,6 +638,87 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
                       onChange={(e) => setTodoDueDate(e.target.value)}
                     />
                   </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="todo-repeat-rule">반복 설정</Label>
+                    <select
+                      id="todo-repeat-rule"
+                      value={todoRepeatRule}
+                      onChange={(e) => setTodoRepeatRule(e.target.value as RepeatRule)}
+                      className={SELECT_CLASS_NAME}
+                    >
+                      {REPEAT_RULE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {todoRepeatRule === 'CUSTOM' && (
+                    <div className="grid gap-2">
+                      <Label>커스텀 반복 간격</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={todoCustomInterval}
+                          onChange={(e) => setTodoCustomInterval(parseInt(e.target.value, 10) || 1)}
+                          className="w-20"
+                        />
+                        <select
+                          value={todoCustomUnit}
+                          onChange={(e) => setTodoCustomUnit(e.target.value as CustomIntervalUnit)}
+                          className={SELECT_CLASS_NAME}
+                        >
+                          {CUSTOM_UNIT_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="flex items-center text-sm text-muted-foreground">
+                          마다
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {todoRepeatRule !== 'NONE' && (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="todo-skip-weekends"
+                        checked={todoSkipWeekends}
+                        onCheckedChange={(checked) => setTodoSkipWeekends(checked === true)}
+                      />
+                      <Label
+                        htmlFor="todo-skip-weekends"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        주말 제외 (토/일요일은 다음 월요일로)
+                      </Label>
+                    </div>
+                  )}
+                  {todoRepeatRule !== 'NONE' && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="todo-recurrence-type">반복 기준</Label>
+                      <select
+                        id="todo-recurrence-type"
+                        value={todoRecurrenceType}
+                        onChange={(e) => setTodoRecurrenceType(e.target.value as RecurrenceType)}
+                        className={SELECT_CLASS_NAME}
+                      >
+                        {RECURRENCE_TYPE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        {todoRecurrenceType === 'DUE_DATE'
+                          ? '다음 할일은 현재 마감일을 기준으로 생성됩니다.'
+                          : '다음 할일은 완료한 날짜를 기준으로 생성됩니다.'}
+                      </p>
+                    </div>
+                  )}
                   <Button type="submit" disabled={createTodoMutation.isPending} className="w-full">
                     {createTodoMutation.isPending ? '추가 중...' : '추가'}
                   </Button>
