@@ -10,18 +10,18 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Format date with year if different from current year
- * Uses Korean locale for localized date format
+ * Uses numeric date format (MM-DD or YYYY-MM-DD)
  *
  * @param dateString - ISO date string
- * @returns Formatted date string: 'yyyy년 M월 d일' if different year, 'M월 d일' if same year
+ * @returns Formatted date string: 'yyyy-MM-dd' if different year, 'MM-dd' if same year
  *
  * @example
  * // Current year is 2025
  * formatDateWithYear('2025-12-23T00:00:00.000Z')
- * // returns '12월 23일'
+ * // returns '12-23'
  *
  * formatDateWithYear('2026-01-01T00:00:00.000Z')
- * // returns '2026년 1월 1일'
+ * // returns '2026-01-01'
  */
 export function formatDateWithYear(dateString: string): string {
   const date = parseISO(dateString);
@@ -29,9 +29,9 @@ export function formatDateWithYear(dateString: string): string {
   const dateYear = getYear(date);
 
   if (dateYear !== currentYear) {
-    return format(date, 'yyyy년 M월 d일', { locale: ko });
+    return format(date, 'yyyy-MM-dd', { locale: ko });
   }
-  return format(date, 'M월 d일', { locale: ko });
+  return format(date, 'MM-dd', { locale: ko });
 }
 
 /**
@@ -128,4 +128,19 @@ export function preserveLineBreaksForMarkdown(text: string): string {
     .split('\n')
     .map((line, index, lines) => (index === lines.length - 1 ? line : `${line}  \n`))
     .join('');
+}
+
+/**
+ * Convert date string to UTC ISO string
+ * This prevents timezone issues where dates shift by one day
+ *
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @returns ISO string with UTC timezone (e.g., "2025-12-01T00:00:00.000Z")
+ *
+ * @example
+ * toUTCISOString('2025-12-01')
+ * // returns '2025-12-01T00:00:00.000Z'
+ */
+export function toUTCISOString(dateString: string): string {
+  return new Date(`${dateString}T00:00:00.000Z`).toISOString();
 }
