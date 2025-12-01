@@ -2,6 +2,72 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-051
+    title: "Display completion date for completed todos"
+    spec_id: SPEC-todo-2
+    completed_at: "2025-12-01T09:38:00Z"
+    outcome: |
+      Updated TodoItem component and ViewWorkNoteDialog to show completion date
+      (updatedAt) instead of wait/due dates when todo status is '완료'.
+      - TodoItem: Shows "완료: {date}" for completed todos
+      - ViewWorkNoteDialog: Shows "완료: {date}" badge for completed todos
+      - Wait and due date badges hidden for completed todos
+      - Works in both dashboard and work note detail views
+    test_results: |
+      ✓ npm run typecheck (TypeScript compilation)
+      ✓ Manual testing in UI
+    estimated_effort: 2h
+    actual_effort: ~0.5h
+    notes: |
+      Simple conditional rendering change - no backend modifications required.
+      Used existing updatedAt field from Todo type.
+
+  - task_id: TASK-052
+    title: "Implement recurring todo grouping in work note detail"
+    spec_id: SPEC-todo-2
+    completed_at: "2025-12-01T09:39:00Z"
+    outcome: |
+      Created recurring todo grouping system for work note detail dialog:
+      - Created groupRecurringTodos helper function (case-insensitive grouping by title + repeatRule)
+      - Created RecurringTodoGroup component with expand/collapse functionality
+      - Integrated into ViewWorkNoteDialog with separate rendering for recurring vs standalone todos
+      - Groups show instance count (e.g., "3개 (2개 완료)")
+      - Groups show next due date when collapsed
+      - Todos with repeatRule=NONE or single instances remain standalone
+      - Supports all CRUD operations (toggle, edit, delete) on grouped todos
+    test_results: |
+      ✓ npm run typecheck (TypeScript compilation)
+      ✓ tests/unit/groupRecurringTodos.test.ts: 9/9 tests passing
+    estimated_effort: 3h
+    actual_effort: ~1.5h
+    notes: |
+      Grouping logic treats single recurring instances as standalone (only groups with 2+ instances).
+      Groups are sorted by due date within each group.
+
+  - task_id: TASK-053
+    title: "Write tests for todo UX improvements"
+    spec_id: SPEC-todo-2
+    completed_at: "2025-12-01T09:39:00Z"
+    outcome: |
+      Created comprehensive unit tests for recurring todo grouping:
+      - 9 test cases covering all grouping scenarios
+      - Tests for grouping by title + repeat rule
+      - Tests for non-recurring todo handling
+      - Tests for mixed recurring/non-recurring scenarios
+      - Tests for single instance handling (treated as standalone)
+      - Tests for case-insensitive grouping
+      - Tests for sorting within groups
+      - Tests for different repeat rules
+      - Tests for empty list and missing due dates
+    test_results: |
+      ✓ tests/unit/groupRecurringTodos.test.ts: 9/9 tests passing
+      ✓ All test cases from SPEC-todo-2 covered
+    estimated_effort: 1h
+    actual_effort: ~0.5h
+    notes: |
+      Completion date display logic is simple conditional rendering - tested manually.
+      Focus on grouping algorithm which has more complex logic.
+
   - task_id: TASK-021
     title: "Improve department search UX in person form"
     spec_id: SPEC-person-1

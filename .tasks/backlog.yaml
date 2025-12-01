@@ -73,12 +73,17 @@ metadata:
       priority: 3-4
 
     - name: "Deployment & Docs"
-      tasks: [TASK-018, TASK-019]
+      tasks: [TASK-019]
       effort: 6h
       priority: 6
 
   completed_phases:
     - name: "Statistics Feature"
-      tasks: [TASK-047, TASK-048, TASK-049]
+      tasks: [TASK-047, TASK-048, TASK-049, TASK-050]
       status: "✅ COMPLETE"
-      note: "All 3 tasks completed - backend, frontend, and comprehensive tests"
+      note: "All tasks completed - backend, frontend, comprehensive tests, and period/year fix"
+
+    - name: "Todo UX Improvements"
+      tasks: [TASK-051, TASK-052, TASK-053]
+      status: "✅ COMPLETE"
+      note: "Completion date display and recurring todo grouping fully implemented with tests"
