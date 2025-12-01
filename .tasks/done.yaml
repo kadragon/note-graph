@@ -1469,67 +1469,67 @@ completed_tasks:
 #     Successfully set up Wrangler project with TypeScript.
 #     All dependencies installed, dev server runs.
 #   test_results: "All acceptance tests passed"
----
-- task_id: TASK-047
-  spec_id: SPEC-stats-1
-  title: Statistics backend - repository and API
-  completed_at: 2025-11-30T20:15:00Z
-  outcome: |
-    Successfully implemented backend infrastructure for work note statistics.
-    - StatisticsRepository with comprehensive querying and aggregation
-    - StatisticsService with period date range calculations
-    - API endpoint GET /api/statistics with multiple filter options
-    - 10 unit tests + 8 integration tests (all passing)
-    - Supports 7 period types
-    - Filter options: personId, deptName, categoryId
-    - Statistics metrics: totals, completion rates, distributions
-  commits:
-    - f7e4d60
 
-- task_id: TASK-050
-  spec_id: SPEC-stats-1
-  title: Fix statistics period filtering and year selector
-  completed_at: 2025-11-30T20:47:30Z
-  outcome: |
-    Aligned statistics with SPEC-stats-1 by filtering on todo completion timestamps and honoring the selected year for the 'this-year' period. Added regression tests for cross-year completion dates and year selector behavior.
-  test_results: |
-    ✓ npm test -- tests/unit/statistics-repository.test.ts tests/integration/statistics-routes.test.ts
-  estimated_effort: 2h
-  actual_effort: ~0.5h
-  implementation_details: |
-    - Updated StatisticsRepository to filter completed work notes by todo updated_at within the requested date range and order by completion time.
-    - Updated StatisticsService date range calculation to respect provided year for 'this-year'.
-    - Added unit and integration tests covering cross-year completions and year selector regression.
+  - task_id: TASK-047
+    spec_id: SPEC-stats-1
+    title: Statistics backend - repository and API
+    completed_at: 2025-11-30T20:15:00Z
+    outcome: |
+      Successfully implemented backend infrastructure for work note statistics.
+      - StatisticsRepository with comprehensive querying and aggregation
+      - StatisticsService with period date range calculations
+      - API endpoint GET /api/statistics with multiple filter options
+      - 10 unit tests + 8 integration tests (all passing)
+      - Supports 7 period types
+      - Filter options: personId, deptName, categoryId
+      - Statistics metrics: totals, completion rates, distributions
+    commits:
+      - f7e4d60
 
-- task_id: TASK-024
-  spec_id: SPEC-worknote-1
-  title: Add searchable assignee selector for work notes
-  completed_at: 2025-12-01T15:30:00Z
-  outcome: |
-    Verified that searchable assignee selector using cmdk library is already implemented:
-    - cmdk library (v1.1.1) already installed in package.json
-    - AssigneeSelector component fully implemented with Command pattern (popover + search)
-    - Component features:
-      * Searchable multi-select with keyboard navigation via cmdk
-      * Badge-style selections with remove buttons (X icon)
-      * Shows person name, ID, department, and position in dropdown
-      * Real-time search filtering by name or ID
-      * Visual checkboxes for selected state
-      * Loading and disabled states support
-    - Integrated in both CreateWorkNoteDialog and ViewWorkNoteDialog
-    - Old checkbox grid completely removed (no grid-cols-2 checkboxes found)
-  test_results: |
-    ✓ npm run typecheck (all TypeScript checks pass)
-    ✓ npm run build:frontend (built successfully in 3.15s)
-    ✓ Verified AssigneeSelector component implementation
-    ✓ Verified integration in both create and edit dialogs
-    ✓ Verified old checkbox grid removed
-  estimated_effort: 3h
-  actual_effort: 0h (already completed)
-  notes: |
-    This task was already completed in a previous session. The implementation fully meets
-    all acceptance criteria:
-    - ✓ Users can search persons by name or ID when assigning
-    - ✓ Multi-select with badges and keyboard navigation works
-    - ✓ Create and view dialogs both use the new selector
-    Task moved directly to done.yaml as verification confirmed completion.
+  - task_id: TASK-050
+    spec_id: SPEC-stats-1
+    title: Fix statistics period filtering and year selector
+    completed_at: 2025-11-30T20:47:30Z
+    outcome: |
+      Aligned statistics with SPEC-stats-1 by filtering on todo completion timestamps and honoring the selected year for the 'this-year' period. Added regression tests for cross-year completion dates and year selector behavior.
+    test_results: |
+      ✓ npm test -- tests/unit/statistics-repository.test.ts tests/integration/statistics-routes.test.ts
+    estimated_effort: 2h
+    actual_effort: ~0.5h
+    implementation_details: |
+      - Updated StatisticsRepository to filter completed work notes by todo updated_at within the requested date range and order by completion time.
+      - Updated StatisticsService date range calculation to respect provided year for 'this-year'.
+      - Added unit and integration tests covering cross-year completions and year selector regression.
+
+  - task_id: TASK-024
+    spec_id: SPEC-worknote-1
+    title: Add searchable assignee selector for work notes
+    completed_at: 2025-12-01T15:30:00Z
+    outcome: |
+      Verified that searchable assignee selector using cmdk library is already implemented:
+      - cmdk library (v1.1.1) already installed in package.json
+      - AssigneeSelector component fully implemented with Command pattern (popover + search)
+      - Component features:
+        * Searchable multi-select with keyboard navigation via cmdk
+        * Badge-style selections with remove buttons (X icon)
+        * Shows person name, ID, department, and position in dropdown
+        * Real-time search filtering by name or ID
+        * Visual checkboxes for selected state
+        * Loading and disabled states support
+      - Integrated in both CreateWorkNoteDialog and ViewWorkNoteDialog
+      - Old checkbox grid completely removed (no grid-cols-2 checkboxes found)
+    test_results: |
+      ✓ npm run typecheck (all TypeScript checks pass)
+      ✓ npm run build:frontend (built successfully in 3.15s)
+      ✓ Verified AssigneeSelector component implementation
+      ✓ Verified integration in both create and edit dialogs
+      ✓ Verified old checkbox grid removed
+    estimated_effort: 3h
+    actual_effort: 0h (already completed)
+    notes: |
+      This task was already completed in a previous session. The implementation fully meets
+      all acceptance criteria:
+      - ✓ Users can search persons by name or ID when assigning
+      - ✓ Multi-select with badges and keyboard navigation works
+      - ✓ Create and view dialogs both use the new selector
+      Task moved directly to done.yaml as verification confirmed completion.
