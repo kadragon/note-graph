@@ -319,12 +319,12 @@ export class APIClient {
   }
 
   // Departments
-  getDepartments(params?: { q?: string; limit?: number }) {
+  getDepartments(params?: { q?: string; limit?: number }, signal?: AbortSignal) {
     const query = new URLSearchParams();
     if (params?.q) query.set('q', params.q);
     if (params?.limit) query.set('limit', params.limit.toString());
     const qs = query.toString();
-    return this.request<Department[]>(`/departments${qs ? `?${qs}` : ''}`);
+    return this.request<Department[]>(`/departments${qs ? `?${qs}` : ''}`, { signal });
   }
 
   createDepartment(data: CreateDepartmentRequest) {

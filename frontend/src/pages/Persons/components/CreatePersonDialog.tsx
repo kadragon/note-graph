@@ -48,7 +48,8 @@ export function CreatePersonDialog({ open, onOpenChange }: CreatePersonDialogPro
     data: departments = [],
     isFetching: isFetchingDepartments,
     isError: isDepartmentsError,
-  } = useDepartments({ search: debouncedDeptSearch, limit: 5 });
+    refetch: refetchDepartments,
+  } = useDepartments({ search: debouncedDeptSearch });
   const createDeptMutation = useCreateDepartment();
 
   const selectedDept = departments.find((d) => d.deptName === currentDept);
@@ -149,19 +150,33 @@ export function CreatePersonDialog({ open, onOpenChange }: CreatePersonDialogPro
                       value={deptSearch}
                       onValueChange={setDeptSearch}
                       autoFocus
+                      aria-label="부서 검색"
                     />
                     {isFetchingDepartments && (
-                      <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <div
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground"
+                        aria-busy="true"
+                        aria-live="polite"
+                      >
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                         검색 중...
                       </div>
                     )}
                     <CommandList>
                       <CommandEmpty>
                         {isDepartmentsError ? (
-                          <p className="p-2 text-sm text-destructive">
-                            부서를 불러오지 못했습니다.
-                          </p>
+                          <div role="alert" className="p-2 space-y-2">
+                            <p className="text-sm text-destructive">부서를 불러오지 못했습니다.</p>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void refetchDepartments()}
+                              className="w-full"
+                            >
+                              다시 시도
+                            </Button>
+                          </div>
                         ) : (
                           <div className="p-2">
                             <p className="text-sm text-muted-foreground mb-2">부서가 없습니다.</p>
@@ -190,7 +205,7 @@ export function CreatePersonDialog({ open, onOpenChange }: CreatePersonDialogPro
                         )}
                       </CommandEmpty>
                       <CommandGroup>
-                        {departments.slice(0, 5).map((dept) => (
+                        {departments.map((dept) => (
                           <CommandItem
                             key={dept.deptName}
                             value={dept.deptName}
