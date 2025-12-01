@@ -80,7 +80,7 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.7.2",
     "vite": "^7.2.2",
-    "vitest": "^3.2.4",
+    "vitest": "^4.0.14",
     "wrangler": "^4.47.0"
   },
   "engines": {
