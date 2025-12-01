@@ -2,6 +2,24 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-021
+    title: "Improve department search UX in person form"
+    spec_id: SPEC-person-1
+    completed_at: "2025-12-01T00:00:00Z"
+    outcome: |
+      Enhanced person dialog department selector with debounced backend search (q + limit=5),
+      loading spinner, error feedback, and suggestion cap. Search resets on close/select and
+      keeps keyboard navigation via Command autofocus. Added debounced value hook and updated
+      departments API/hook to accept query params.
+    test_results: |
+      ✓ npm test -- tests/unit/api-departments.test.ts
+      ✓ npm run lint
+      ✓ npm run typecheck
+    estimated_effort: 2h
+    actual_effort: ~1h
+    notes: |
+      UI uses existing Command keyboard controls (arrow/enter/escape). Inline department creation
+      preserved with error handling in empty state.
   - task_id: TASK-049
     title: "Statistics comprehensive tests"
     spec_id: SPEC-stats-1

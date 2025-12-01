@@ -1,12 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
-import type { CreateDepartmentRequest, UpdateDepartmentRequest } from '@/types/api';
+import type { CreateDepartmentRequest, Department, UpdateDepartmentRequest } from '@/types/api';
 import { useToast } from './use-toast';
 
-export function useDepartments() {
-  return useQuery({
-    queryKey: ['departments'],
-    queryFn: () => API.getDepartments(),
+interface UseDepartmentsOptions {
+  search?: string;
+  limit?: number;
+  enabled?: boolean;
+}
+
+export function useDepartments(options?: UseDepartmentsOptions) {
+  const { search, limit, enabled = true } = options ?? {};
+
+  return useQuery<Department[]>({
+    queryKey: ['departments', search ?? '', limit ?? null],
+    queryFn: () => API.getDepartments({ q: search, limit }),
+    enabled,
+    staleTime: 30_000,
   });
 }
 

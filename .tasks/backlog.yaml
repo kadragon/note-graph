@@ -29,20 +29,6 @@ tasks:
       - "Person ID field is disabled in edit mode"
       - "Successful save updates list and shows toast"
 
-  - task_id: TASK-021
-    spec_id: SPEC-person-1
-    title: "Improve department search UX in person form"
-    description: |
-      Add loading/error feedback, keyboard navigation, and limit search results
-      to 5 items with debounced async queries for the department selector in the
-      person creation form.
-    priority: 4
-    status: pending
-    estimated_effort: 2h
-    acceptance_criteria:
-      - "Debounced search shows up to 5 suggestions"
-      - "Loading and error states visible during search"
-      - "Keyboard arrows/Enter select suggestions"
 
   - task_id: TASK-020
     spec_id: SPEC-person-1
@@ -58,27 +44,6 @@ tasks:
       - "Department input fetches filtered results as user types (debounce)"
       - "Empty input shows the full list"
       - "Newly added department still appears and remains selectable"
-
-  - task_id: TASK-018
-    spec_id: SPEC-auth-1
-    title: "Configure Cloudflare Access and deploy"
-    description: |
-      Set up production environment.
-      - Configure Cloudflare Access with Google OAuth
-      - Set up AI Gateway with rate limits
-      - Create production D1 database
-      - Create Vectorize index
-      - Set up R2 bucket with lifecycle rules
-      - Configure Queue
-      - Deploy Workers
-      - Test end-to-end in production
-    priority: 6
-    status: pending
-    estimated_effort: 4h
-    acceptance_criteria:
-      - "Production environment fully functional"
-      - "Authentication works"
-      - "All services integrated"
 
   - task_id: TASK-019
     spec_id: SPEC-worknote-1
@@ -99,17 +64,17 @@ tasks:
       - "Setup guide tested by new user"
 
 metadata:
-  total_tasks: 9
-  total_estimated_effort: 36 hours
+  total_tasks: 4
+  total_estimated_effort: 15 hours
   phases:
     - name: "Entity Management"
-      tasks: [TASK-024, TASK-025, TASK-020, TASK-021]
-      effort: 11h
+      tasks: [TASK-024, TASK-025, TASK-020]
+      effort: 9h
       priority: 3-4
 
     - name: "Deployment & Docs"
       tasks: [TASK-018, TASK-019]
-      effort: 10h
+      effort: 6h
       priority: 6
 
   completed_phases:
