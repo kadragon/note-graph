@@ -1,9 +1,9 @@
-// Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2, SPEC-ui-1, TASK-034
+// Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2, SPEC-ui-1, TASK-034, SPEC-todo-2, TASK-051, TASK-052
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Edit2, Pencil, Save, Trash2, X } from 'lucide-react';
+import { Edit2, Save, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
@@ -40,9 +40,12 @@ import { useTaskCategories } from '@/hooks/useTaskCategories';
 import { useDeleteTodo, useToggleTodo } from '@/hooks/useTodos';
 import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
 import { API } from '@/lib/api';
-import { formatDateWithYear, formatPersonBadge, preserveLineBreaksForMarkdown } from '@/lib/utils';
+import { formatPersonBadge } from '@/lib/utils';
 import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
 import type { CreateTodoRequest, Todo, TodoStatus, WorkNote } from '@/types/api';
+import { groupRecurringTodos } from './groupRecurringTodos';
+import { RecurringTodoGroup } from './RecurringTodoGroup';
+import { TodoListItem } from './TodoListItem';
 
 // Markdown plugin configurations
 const remarkPlugins = [remarkGfm];
@@ -576,94 +579,44 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
               ) : todos.length === 0 ? (
                 <p className="text-sm text-muted-foreground">등록된 할일이 없습니다.</p>
               ) : (
-                <div className="space-y-2">
-                  {todos.map((todo) => {
-                    const isNonToggleableStatus =
-                      todo.status === TODO_STATUS.ON_HOLD || todo.status === TODO_STATUS.STOPPED;
-                    const descriptionWithBreaks = todo.description
-                      ? preserveLineBreaksForMarkdown(todo.description)
-                      : '';
-                    return (
-                      <div
-                        key={todo.id}
-                        className="flex items-start gap-3 p-3 border rounded-md hover:bg-accent/50 transition-colors"
-                      >
-                        <Checkbox
-                          checked={todo.status === TODO_STATUS.COMPLETED}
-                          onCheckedChange={() => handleToggleTodoStatus(todo.id, todo.status)}
-                          disabled={toggleTodoMutation.isPending || isNonToggleableStatus}
-                          title={
-                            isNonToggleableStatus
-                              ? '보류/중단 상태는 체크박스로 변경할 수 없습니다'
-                              : undefined
-                          }
-                          className="mt-0.5"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-base font-semibold leading-snug ${todo.status === TODO_STATUS.COMPLETED ? 'line-through text-muted-foreground' : ''}`}
-                          >
-                            {todo.title}
-                          </p>
-                          {todo.description && (
-                            <div className="mt-1 text-xs text-muted-foreground leading-snug break-words">
-                              <div className="[&>*]:m-0 [&>p]:mb-1">
-                                <ReactMarkdown
-                                  remarkPlugins={remarkPlugins}
-                                  rehypePlugins={rehypePlugins}
-                                >
-                                  {descriptionWithBreaks}
-                                </ReactMarkdown>
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            <Badge
-                              variant={
-                                todo.status === TODO_STATUS.COMPLETED ? 'secondary' : 'default'
-                              }
-                              className="text-xs"
-                            >
-                              {todo.status}
-                            </Badge>
-                            {todo.waitUntil && (
-                              <Badge variant="outline" className="text-xs">
-                                대기: {formatDateWithYear(todo.waitUntil)}
-                              </Badge>
-                            )}
-                            {todo.dueDate && (
-                              <Badge variant="outline" className="text-xs">
-                                마감: {formatDateWithYear(todo.dueDate)}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
+                (() => {
+                  const grouped = groupRecurringTodos(todos);
+                  return (
+                    <div className="space-y-3">
+                      {/* Recurring todo groups */}
+                      {grouped.recurring.map((group) => (
+                        <RecurringTodoGroup
+                          key={group.groupKey}
+                          group={group}
+                          onToggleTodo={handleToggleTodoStatus}
+                          onEditTodo={(todo) => {
                             setEditTodo(todo);
                             setEditTodoDialogOpen(true);
                           }}
-                          className="h-8 w-8 p-0 shrink-0"
-                        >
-                          <Pencil className="h-3 w-3" />
-                          <span className="sr-only">수정</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteTodoId(todo.id)}
-                          disabled={deleteTodoMutation.isPending}
-                          className="h-8 w-8 p-0 shrink-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          <span className="sr-only">삭제</span>
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
+                          onDeleteTodo={(todoId) => setDeleteTodoId(todoId)}
+                          togglePending={toggleTodoMutation.isPending}
+                          deletePending={deleteTodoMutation.isPending}
+                        />
+                      ))}
+
+                      {/* Standalone todos (non-recurring) */}
+                      {grouped.standalone.map((todo) => (
+                        <TodoListItem
+                          key={todo.id}
+                          todo={todo}
+                          onToggle={handleToggleTodoStatus}
+                          onEdit={(todo) => {
+                            setEditTodo(todo);
+                            setEditTodoDialogOpen(true);
+                          }}
+                          onDelete={(todoId) => setDeleteTodoId(todoId)}
+                          togglePending={toggleTodoMutation.isPending}
+                          deletePending={deleteTodoMutation.isPending}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()
               )}
             </div>
           </div>

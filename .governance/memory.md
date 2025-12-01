@@ -781,3 +781,32 @@
 - Added regression tests: unit test for cross-year completion inclusion; integration test ensuring /api/statistics?period=this-year honors year parameter (TEST-stats-6).
 - Tests run: `npm test -- tests/unit/statistics-repository.test.ts tests/integration/statistics-routes.test.ts` (pass).
 - Next: Resume TASK-044 (SPEC-project-1) or pick next backlog item.
+
+### Session 49: Todo UX Improvements (2025-12-01)
+- **TASK-051 Completed** (SPEC-todo-2): Updated TodoItem and ViewWorkNoteDialog to display completion date (updatedAt) for completed todos instead of wait/due dates
+  - Shows "완료: {date}" badge for completed todos (status='완료')
+  - Hides wait_until and due_date badges for completed todos
+  - Works in both dashboard and work note detail views
+  - Simple conditional rendering using existing updatedAt field
+- **TASK-052 Completed** (SPEC-todo-2): Implemented recurring todo grouping in work note detail
+  - Created `groupRecurringTodos` helper function with case-insensitive grouping by title + repeatRule
+  - Created `RecurringTodoGroup` component with expand/collapse functionality
+  - Groups show instance count (e.g., "3개 (2개 완료)") and next due date when collapsed
+  - Only groups todos with 2+ instances; single instances remain standalone
+  - Todos sorted by due date within each group
+  - Full CRUD support (toggle, edit, delete) on grouped todos
+  - Non-recurring todos (repeatRule=NONE) displayed separately
+- **TASK-053 Completed** (SPEC-todo-2): Comprehensive tests for recurring todo grouping
+  - 9 unit tests in `tests/unit/groupRecurringTodos.test.ts` covering all scenarios
+  - Test cases: grouping by title+rule, non-recurring handling, mixed scenarios, single instances, case-insensitivity, sorting, different repeat rules
+  - All tests passing (9/9)
+- **Pattern Learned**: For UX improvements with complex grouping logic:
+  - Extract grouping logic into pure functions (testable without UI)
+  - Use IIFE (Immediately Invoked Function Expression) pattern for inline grouping in JSX: `{(() => { const grouped = group(data); return <Component />; })()}`
+  - Treat single recurring instances as standalone to avoid cluttered UI
+  - Case-insensitive grouping improves user experience (normalize with trim + lowercase)
+  - Component reusability: RecurringTodoGroup handles all CRUD operations via callbacks
+- **Status**: Todo UX Improvements Phase COMPLETE (3/3 tasks: TASK-051, TASK-052, TASK-053)
+  - Improved completion date visibility
+  - Reduced visual clutter for recurring todos
+  - Comprehensive test coverage
