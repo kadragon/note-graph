@@ -1,4 +1,4 @@
-// Trace: SPEC-stats-1, TASK-047, TASK-050
+// Trace: SPEC-stats-1, TASK-047, TASK-050, TASK-054
 /**
  * Statistics repository for work note completion metrics
  */
@@ -28,6 +28,36 @@ interface AssignedPersonDetail {
 
 export class StatisticsRepository {
   constructor(private db: D1Database) {}
+
+  /**
+   * Helper: Extract owners from work notes
+   * Reduces code duplication between person and department distribution calculations
+   */
+  private getOwnersFromWorkNotes(workNotes: WorkNoteWithStats[]): Array<{
+    personId: string;
+    personName: string;
+    currentDept: string | null;
+  }> {
+    const owners: Array<{
+      personId: string;
+      personName: string;
+      currentDept: string | null;
+    }> = [];
+
+    for (const workNote of workNotes) {
+      for (const person of workNote.assignedPersons) {
+        if (person.role === 'OWNER') {
+          owners.push({
+            personId: person.personId,
+            personName: person.personName,
+            currentDept: person.currentDept,
+          });
+        }
+      }
+    }
+
+    return owners;
+  }
 
   /**
    * Find work notes with at least one completed todo within date range
@@ -164,6 +194,11 @@ export class StatisticsRepository {
     // Get all completed work notes
     const workNotes = await this.findCompletedWorkNotes(startDate, endDate, options);
 
+    // Default category name to null for all work notes
+    for (const workNote of workNotes) {
+      workNote.categoryName = null;
+    }
+
     // Calculate summary metrics
     const totalWorkNotes = workNotes.length;
     const totalCompletedTodos = workNotes.reduce((sum, wn) => sum + wn.completedTodoCount, 0);
@@ -173,6 +208,7 @@ export class StatisticsRepository {
     // Calculate category distribution
     // Batch fetch categories for all work notes to avoid N+1 query problem
     const categoryMap = new Map<string | null, number>();
+    const categoryNameById = new Map<string | null, string | null>();
     const workNoteIds = workNotes.map((wn) => wn.workId);
 
     if (workNoteIds.length > 0) {
@@ -180,55 +216,69 @@ export class StatisticsRepository {
         .prepare(
           `SELECT
             wntc.work_id as workId,
-            tc.category_id as categoryId
+            tc.category_id as categoryId,
+            tc.name as categoryName
            FROM work_note_task_category wntc
            INNER JOIN task_categories tc ON wntc.category_id = tc.category_id
            WHERE wntc.work_id IN (${workNoteIds.map(() => '?').join(',')})`
         )
         .bind(...workNoteIds)
-        .all<{ workId: string; categoryId: string }>();
+        .all<{ workId: string; categoryId: string; categoryName: string }>();
 
       // Build category map from work notes
-      const categoryByWorkId = new Map<string, string>();
+      const categoryByWorkId = new Map<string, { categoryId: string; categoryName: string }>();
       for (const row of categoriesResult.results || []) {
         if (!categoryByWorkId.has(row.workId)) {
-          categoryByWorkId.set(row.workId, row.categoryId);
+          categoryByWorkId.set(row.workId, {
+            categoryId: row.categoryId,
+            categoryName: row.categoryName,
+          });
+        }
+        if (!categoryNameById.has(row.categoryId)) {
+          categoryNameById.set(row.categoryId, row.categoryName);
         }
       }
 
-      // Count categories
+      // Count categories and attach category names to work notes
+      // Note: workNote.category comes from work_notes table, categoryName from task_categories join
       for (const workNote of workNotes) {
-        const categoryId = categoryByWorkId.get(workNote.workId) || null;
+        const categoryInfo = categoryByWorkId.get(workNote.workId);
+        const categoryId = categoryInfo?.categoryId || null;
+        const categoryName = categoryInfo?.categoryName || null;
+
+        // Attach human-readable category name for UI display
+        workNote.categoryName = categoryName;
+
+        // Count distribution by categoryId (not by work_notes.category field)
         categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
       }
     }
 
     const byCategory: CategoryDistribution[] = Array.from(categoryMap.entries()).map(
-      ([category, count]) => ({
-        category,
+      ([categoryId, count]) => ({
+        categoryId,
+        categoryName: categoryNameById.get(categoryId) ?? null,
         count,
       })
     );
 
-    // Calculate person distribution
+    // Calculate person distribution using helper
+    const owners = this.getOwnersFromWorkNotes(workNotes);
+
     const personMap = new Map<
       string,
       { personName: string; currentDept: string | null; count: number }
     >();
-    for (const workNote of workNotes) {
-      for (const person of workNote.assignedPersons) {
-        if (person.role === 'OWNER') {
-          const existing = personMap.get(person.personId);
-          if (existing) {
-            existing.count += 1;
-          } else {
-            personMap.set(person.personId, {
-              personName: person.personName,
-              currentDept: person.currentDept,
-              count: 1,
-            });
-          }
-        }
+    for (const owner of owners) {
+      const existing = personMap.get(owner.personId);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        personMap.set(owner.personId, {
+          personName: owner.personName,
+          currentDept: owner.currentDept,
+          count: 1,
+        });
       }
     }
 
@@ -241,15 +291,11 @@ export class StatisticsRepository {
       })
     );
 
-    // Calculate department distribution
+    // Calculate department distribution using helper
     const deptMap = new Map<string | null, number>();
-    for (const workNote of workNotes) {
-      for (const person of workNote.assignedPersons) {
-        if (person.role === 'OWNER') {
-          const deptName = person.currentDept;
-          deptMap.set(deptName, (deptMap.get(deptName) || 0) + 1);
-        }
-      }
+    for (const owner of owners) {
+      const deptName = owner.currentDept;
+      deptMap.set(deptName, (deptMap.get(deptName) || 0) + 1);
     }
 
     const byDepartment: DepartmentDistribution[] = Array.from(deptMap.entries()).map(

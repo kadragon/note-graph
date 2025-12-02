@@ -1533,3 +1533,19 @@ completed_tasks:
       - ✓ Multi-select with badges and keyboard navigation works
       - ✓ Create and view dialogs both use the new selector
       Task moved directly to done.yaml as verification confirmed completion.
+
+  - task_id: TASK-054
+    spec_id: SPEC-stats-1
+    title: "Statistics dashboard UI polish (spacing, labels, interactions)"
+    completed_at: 2025-12-02T14:30:00Z
+    outcome: |
+      - Added page-container padding to statistics page to create spacing from sidebar.
+      - Category distribution now uses 업무 구분명 via categoryName; person/department charts removed from UI.
+      - Statistics work note table shows category name, completion counts, and updated date (YYYY-MM-DD).
+      - Clicking a row opens the WorkNote detail dialog for in-context viewing.
+      - Backend statistics response now includes categoryName for distributions and work notes.
+    test_results: |
+      ✓ npm test -- tests/unit/statistics-repository.test.ts tests/integration/statistics-routes.test.ts
+    estimated_effort: 2h
+    actual_effort: ~1h
+    notes: "Implements user feedback for statistics dashboard; maintains SPEC-stats-1 alignment."

@@ -905,3 +905,12 @@
   - Updated backlog.yaml to remove both tasks (1 task remaining: TASK-019 Documentation)
   - Updated done.yaml with verification details for both tasks
   - Created "Person Management UX" completed phase in backlog metadata
+
+### Session 52: Statistics UI Polish (2025-12-02)
+- **TASK-054 (SPEC-stats-1)**: Addressed user feedback on statistics dashboard and table.
+- UI spacing: Statistics page now uses `page-container` padding to create clear gap from sidebar.
+- Category naming: Statistics repository now returns `categoryName` alongside `categoryId`; category distribution chart and work note list display 업무 구분명.
+- Charts: Removed 담당자/부서 분포 charts from UI; only category distribution remains.
+- Work note table: Columns trimmed to 제목/카테고리/완료된 할일/수정일(YYYY-MM-DD); category name shown; rows clickable to open `ViewWorkNoteDialog`.
+- Backend: Added categoryName propagation in statistics responses; default null handling; updated types.
+- Tests: Updated statistics unit & integration tests for category names; targeted vitest suites pass.
