@@ -20,9 +20,10 @@ const getRepeatRuleLabel = (repeatRule: RepeatRule): string => {
 interface TodoItemProps {
   todo: Todo;
   onTodoClick?: (todo: Todo) => void;
+  showWorkTitle?: boolean;
 }
 
-export function TodoItem({ todo, onTodoClick }: TodoItemProps) {
+export function TodoItem({ todo, onTodoClick, showWorkTitle = true }: TodoItemProps) {
   const toggleTodo = useToggleTodo();
   const isCompleted = todo.status === TODO_STATUS.COMPLETED;
 
@@ -65,7 +66,7 @@ export function TodoItem({ todo, onTodoClick }: TodoItemProps) {
           {todo.title}
         </p>
         <div className="flex flex-wrap items-center gap-2 mt-2">
-          {todo.workTitle && (
+          {showWorkTitle && todo.workTitle && (
             <Badge variant="secondary" className="gap-1 text-xs font-normal">
               <FileText className="h-3 w-3" />
               {todo.workTitle}
