@@ -1,4 +1,4 @@
-// Trace: SPEC-stats-1, TASK-047
+// Trace: SPEC-stats-1, TASK-047, TASK-054
 /**
  * Type definitions for statistics feature
  */
@@ -29,13 +29,15 @@ export interface WorkNoteWithStats extends WorkNote {
     currentDept: string | null;
     role: 'OWNER' | 'RELATED';
   }>;
+  categoryName?: string | null;
 }
 
 /**
  * Category distribution item
  */
 export interface CategoryDistribution {
-  category: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
   count: number;
 }
 

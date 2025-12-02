@@ -1,4 +1,4 @@
-// Trace: SPEC-stats-1, TASK-047, TASK-050, TEST-stats-3, TEST-stats-4, TEST-stats-6
+// Trace: SPEC-stats-1, TASK-047, TASK-050, TASK-054, TEST-stats-3, TEST-stats-4, TEST-stats-6
 /**
  * Integration tests for statistics API routes
  */
@@ -47,11 +47,17 @@ describe('Statistics API Routes', () => {
           `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
         ).bind('P001', '홍길동', '개발팀'),
         testEnv.DB.prepare(
+          `INSERT INTO task_categories (category_id, name, created_at) VALUES (?, ?, ?)`
+        ).bind('CAT-001', '버그수정', `${today}T00:00:00Z`),
+        testEnv.DB.prepare(
           `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
         ).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
         testEnv.DB.prepare(
           `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
         ).bind('WORK-001', 'P001', 'OWNER'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_task_category (work_id, category_id) VALUES (?, ?)`
+        ).bind('WORK-001', 'CAT-001'),
         testEnv.DB.prepare(
           `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
         ).bind(
@@ -86,6 +92,7 @@ describe('Statistics API Routes', () => {
       expect(data.summary.totalTodos).toBe(2);
       expect(data.distributions).toBeDefined();
       expect(data.workNotes).toHaveLength(1);
+      expect(data.distributions.byCategory[0].categoryName).toBe('버그수정');
     });
 
     it('should return empty statistics when no completed todos exist', async () => {

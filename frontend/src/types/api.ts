@@ -447,10 +447,12 @@ export interface WorkNoteStatisticsItem {
     currentDept: string | null;
     role: 'OWNER' | 'RELATED';
   }>;
+  categoryName?: string | null;
 }
 
 export interface CategoryDistribution {
-  category: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
   count: number;
 }
 

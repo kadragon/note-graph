@@ -1,4 +1,4 @@
-// Trace: SPEC-stats-1, TASK-047, TASK-050
+// Trace: SPEC-stats-1, TASK-047, TASK-050, TASK-054
 /**
  * Statistics repository for work note completion metrics
  */
@@ -164,6 +164,11 @@ export class StatisticsRepository {
     // Get all completed work notes
     const workNotes = await this.findCompletedWorkNotes(startDate, endDate, options);
 
+    // Default category name to null for all work notes
+    for (const workNote of workNotes) {
+      workNote.categoryName = null;
+    }
+
     // Calculate summary metrics
     const totalWorkNotes = workNotes.length;
     const totalCompletedTodos = workNotes.reduce((sum, wn) => sum + wn.completedTodoCount, 0);
@@ -173,6 +178,7 @@ export class StatisticsRepository {
     // Calculate category distribution
     // Batch fetch categories for all work notes to avoid N+1 query problem
     const categoryMap = new Map<string | null, number>();
+    const categoryNameById = new Map<string | null, string | null>();
     const workNoteIds = workNotes.map((wn) => wn.workId);
 
     if (workNoteIds.length > 0) {
@@ -180,32 +186,52 @@ export class StatisticsRepository {
         .prepare(
           `SELECT
             wntc.work_id as workId,
-            tc.category_id as categoryId
+            tc.category_id as categoryId,
+            tc.name as categoryName
            FROM work_note_task_category wntc
            INNER JOIN task_categories tc ON wntc.category_id = tc.category_id
            WHERE wntc.work_id IN (${workNoteIds.map(() => '?').join(',')})`
         )
         .bind(...workNoteIds)
-        .all<{ workId: string; categoryId: string }>();
+        .all<{ workId: string; categoryId: string; categoryName: string }>();
 
       // Build category map from work notes
-      const categoryByWorkId = new Map<string, string>();
+      const categoryByWorkId = new Map<string, { categoryId: string; categoryName: string }>();
       for (const row of categoriesResult.results || []) {
         if (!categoryByWorkId.has(row.workId)) {
-          categoryByWorkId.set(row.workId, row.categoryId);
+          categoryByWorkId.set(row.workId, {
+            categoryId: row.categoryId,
+            categoryName: row.categoryName,
+          });
+        }
+        if (!categoryNameById.has(row.categoryId)) {
+          categoryNameById.set(row.categoryId, row.categoryName);
         }
       }
 
       // Count categories
       for (const workNote of workNotes) {
-        const categoryId = categoryByWorkId.get(workNote.workId) || null;
+        const categoryInfo = categoryByWorkId.get(workNote.workId);
+        const categoryId = categoryInfo?.categoryId || null;
+        const categoryName = categoryInfo?.categoryName || null;
+
+        // Attach category name for UI display; keep category id if not set
+        workNote.categoryName = categoryName;
+        if (!workNote.category && categoryId) {
+          workNote.category = categoryId;
+        }
+
         categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
+        if (!categoryNameById.has(categoryId)) {
+          categoryNameById.set(categoryId, categoryName);
+        }
       }
     }
 
     const byCategory: CategoryDistribution[] = Array.from(categoryMap.entries()).map(
-      ([category, count]) => ({
-        category,
+      ([categoryId, count]) => ({
+        categoryId,
+        categoryName: categoryNameById.get(categoryId) ?? null,
         count,
       })
     );

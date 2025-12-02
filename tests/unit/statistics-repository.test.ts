@@ -1,4 +1,4 @@
-// Trace: SPEC-stats-1, TASK-047, TASK-050, TEST-stats-1, TEST-stats-2, TEST-stats-3
+// Trace: SPEC-stats-1, TASK-047, TASK-050, TASK-054, TEST-stats-1, TEST-stats-2, TEST-stats-3
 /**
  * Unit tests for StatisticsRepository
  */
@@ -491,16 +491,18 @@ describe('StatisticsRepository', () => {
       expect(stats.summary.completionRate).toBeCloseTo(66.67, 1); // 4/6 * 100
     });
 
-    it('should calculate category distribution correctly', async () => {
+    it('should calculate category distribution correctly with names', async () => {
       // Act
       const stats = await repo.calculateStatistics('2025-01-01', '2025-01-31');
 
       // Assert
       expect(stats.distributions.byCategory).toHaveLength(2);
-      const bugCategory = stats.distributions.byCategory.find((c) => c.category === 'CAT-BUG');
-      const featCategory = stats.distributions.byCategory.find((c) => c.category === 'CAT-FEAT');
+      const bugCategory = stats.distributions.byCategory.find((c) => c.categoryId === 'CAT-BUG');
+      const featCategory = stats.distributions.byCategory.find((c) => c.categoryId === 'CAT-FEAT');
       expect(bugCategory?.count).toBe(2);
       expect(featCategory?.count).toBe(1);
+      expect(bugCategory?.categoryName).toBe('버그수정');
+      expect(featCategory?.categoryName).toBe('기능개발');
     });
 
     it('should calculate person distribution correctly', async () => {
@@ -539,6 +541,7 @@ describe('StatisticsRepository', () => {
       expect(stats.workNotes[0]).toHaveProperty('completedTodoCount');
       expect(stats.workNotes[0]).toHaveProperty('totalTodoCount');
       expect(stats.workNotes[0]).toHaveProperty('assignedPersons');
+      expect(stats.workNotes[0]).toHaveProperty('categoryName');
     });
   });
 });

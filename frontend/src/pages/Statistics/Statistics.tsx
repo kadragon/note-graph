@@ -1,9 +1,11 @@
-// Trace: SPEC-stats-1, TASK-048
+// Trace: SPEC-stats-1, TASK-048, TASK-054
 /**
  * Statistics dashboard page
  */
 
+import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -12,12 +14,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { API } from '@/lib/api';
 import {
   formatDateRange,
   getAvailableYears,
   getStatisticsPeriodLabel,
   type StatisticsPeriod,
 } from '@/lib/date-utils';
+import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDialog';
 import { DistributionCharts } from './components/DistributionCharts';
 import { SummaryCards } from './components/SummaryCards';
 import { WorkNotesTable } from './components/WorkNotesTable';
@@ -36,15 +40,38 @@ export default function Statistics() {
   const { period, setPeriod, year, setYear, dateRange, statistics, isLoading, error } =
     useStatistics();
 
+  const [selectedWorkNoteId, setSelectedWorkNoteId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const { data: selectedWorkNote } = useQuery({
+    queryKey: ['statistics-work-note', selectedWorkNoteId],
+    queryFn: () =>
+      selectedWorkNoteId ? API.getWorkNote(selectedWorkNoteId) : Promise.resolve(null),
+    enabled: !!selectedWorkNoteId,
+  });
+
+  const handleWorkNoteClick = (workNoteId: string) => {
+    setSelectedWorkNoteId(workNoteId);
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setSelectedWorkNoteId(null);
+    }
+  };
+
   const availableYears = getAvailableYears();
   const needsYearSelector = period === 'first-half' || period === 'second-half';
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">통계 대시보드</h1>
-        <p className="text-muted-foreground mt-2">완료된 할일을 포함한 업무노트 통계</p>
+    <div className="page-container space-y-6">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">통계 대시보드</h1>
+          <p className="page-description">완료된 할일을 포함한 업무노트 통계</p>
+        </div>
       </div>
 
       {/* Filters */}
@@ -111,16 +138,18 @@ export default function Statistics() {
           />
 
           {/* Distribution Charts */}
-          <DistributionCharts
-            byCategory={statistics.distributions.byCategory}
-            byPerson={statistics.distributions.byPerson}
-            byDepartment={statistics.distributions.byDepartment}
-          />
+          <DistributionCharts byCategory={statistics.distributions.byCategory} />
 
           {/* Work Notes Table */}
-          <WorkNotesTable workNotes={statistics.workNotes} />
+          <WorkNotesTable workNotes={statistics.workNotes} onSelect={handleWorkNoteClick} />
         </div>
       )}
+
+      <ViewWorkNoteDialog
+        workNote={selectedWorkNote || null}
+        open={isDialogOpen}
+        onOpenChange={handleDialogOpenChange}
+      />
     </div>
   );
 }
