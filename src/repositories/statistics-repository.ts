@@ -30,6 +30,36 @@ export class StatisticsRepository {
   constructor(private db: D1Database) {}
 
   /**
+   * Helper: Extract owners from work notes
+   * Reduces code duplication between person and department distribution calculations
+   */
+  private getOwnersFromWorkNotes(workNotes: WorkNoteWithStats[]): Array<{
+    personId: string;
+    personName: string;
+    currentDept: string | null;
+  }> {
+    const owners: Array<{
+      personId: string;
+      personName: string;
+      currentDept: string | null;
+    }> = [];
+
+    for (const workNote of workNotes) {
+      for (const person of workNote.assignedPersons) {
+        if (person.role === 'OWNER') {
+          owners.push({
+            personId: person.personId,
+            personName: person.personName,
+            currentDept: person.currentDept,
+          });
+        }
+      }
+    }
+
+    return owners;
+  }
+
+  /**
    * Find work notes with at least one completed todo within date range
    * Supports filtering by person, department, and category
    */
@@ -209,22 +239,18 @@ export class StatisticsRepository {
         }
       }
 
-      // Count categories
+      // Count categories and attach category names to work notes
+      // Note: workNote.category comes from work_notes table, categoryName from task_categories join
       for (const workNote of workNotes) {
         const categoryInfo = categoryByWorkId.get(workNote.workId);
         const categoryId = categoryInfo?.categoryId || null;
         const categoryName = categoryInfo?.categoryName || null;
 
-        // Attach category name for UI display; keep category id if not set
+        // Attach human-readable category name for UI display
         workNote.categoryName = categoryName;
-        if (!workNote.category && categoryId) {
-          workNote.category = categoryId;
-        }
 
+        // Count distribution by categoryId (not by work_notes.category field)
         categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
-        if (!categoryNameById.has(categoryId)) {
-          categoryNameById.set(categoryId, categoryName);
-        }
       }
     }
 
@@ -236,25 +262,23 @@ export class StatisticsRepository {
       })
     );
 
-    // Calculate person distribution
+    // Calculate person distribution using helper
+    const owners = this.getOwnersFromWorkNotes(workNotes);
+
     const personMap = new Map<
       string,
       { personName: string; currentDept: string | null; count: number }
     >();
-    for (const workNote of workNotes) {
-      for (const person of workNote.assignedPersons) {
-        if (person.role === 'OWNER') {
-          const existing = personMap.get(person.personId);
-          if (existing) {
-            existing.count += 1;
-          } else {
-            personMap.set(person.personId, {
-              personName: person.personName,
-              currentDept: person.currentDept,
-              count: 1,
-            });
-          }
-        }
+    for (const owner of owners) {
+      const existing = personMap.get(owner.personId);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        personMap.set(owner.personId, {
+          personName: owner.personName,
+          currentDept: owner.currentDept,
+          count: 1,
+        });
       }
     }
 
@@ -267,15 +291,11 @@ export class StatisticsRepository {
       })
     );
 
-    // Calculate department distribution
+    // Calculate department distribution using helper
     const deptMap = new Map<string | null, number>();
-    for (const workNote of workNotes) {
-      for (const person of workNote.assignedPersons) {
-        if (person.role === 'OWNER') {
-          const deptName = person.currentDept;
-          deptMap.set(deptName, (deptMap.get(deptName) || 0) + 1);
-        }
-      }
+    for (const owner of owners) {
+      const deptName = owner.currentDept;
+      deptMap.set(deptName, (deptMap.get(deptName) || 0) + 1);
     }
 
     const byDepartment: DepartmentDistribution[] = Array.from(deptMap.entries()).map(

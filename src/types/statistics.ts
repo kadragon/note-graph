@@ -29,6 +29,10 @@ export interface WorkNoteWithStats extends WorkNote {
     currentDept: string | null;
     role: 'OWNER' | 'RELATED';
   }>;
+  /**
+   * Human-readable category name from task_categories table
+   * Used for UI display instead of categoryId
+   */
   categoryName?: string | null;
 }
 
@@ -36,8 +40,11 @@ export interface WorkNoteWithStats extends WorkNote {
  * Category distribution item
  */
 export interface CategoryDistribution {
+  /** Category ID from task_categories table (used for filtering/grouping) */
   categoryId: string | null;
+  /** Human-readable category name (used for UI display) */
   categoryName: string | null;
+  /** Number of work notes in this category */
   count: number;
 }
 
