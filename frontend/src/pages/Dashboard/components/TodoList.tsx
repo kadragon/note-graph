@@ -56,7 +56,7 @@ export function TodoList({
           </div>
           <div className="divide-y rounded-md border bg-card">
             {group.todos.map((todo) => (
-              <TodoItem key={todo.id} todo={todo} onTodoClick={onTodoClick} />
+              <TodoItem key={todo.id} todo={todo} onTodoClick={onTodoClick} showWorkTitle={false} />
             ))}
           </div>
         </div>
