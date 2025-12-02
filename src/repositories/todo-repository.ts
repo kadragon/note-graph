@@ -182,8 +182,8 @@ export class TodoRepository {
 
     // Get selected year (default to current year)
     const selectedYear = query.year || new Date().getFullYear();
-    const yearStart = new Date(selectedYear, 0, 1, 0, 0, 0, 0);
-    const yearEnd = new Date(selectedYear, 11, 31, 23, 59, 59, 999);
+    const yearStart = new Date(Date.UTC(selectedYear, 0, 1, 0, 0, 0, 0));
+    const yearEnd = new Date(Date.UTC(selectedYear, 11, 31, 23, 59, 59, 999));
 
     // Apply view filters
     switch (query.view) {
@@ -191,7 +191,7 @@ export class TodoRepository {
         // due_date from yearStart to today
         // wait_until filtering is handled by the common filter below
         const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
+        todayEnd.setUTCHours(23, 59, 59, 999);
         // Use the earlier of todayEnd and yearEnd as the effective end date
         const effectiveEnd = new Date(Math.min(todayEnd.getTime(), yearEnd.getTime()));
 
@@ -208,12 +208,12 @@ export class TodoRepository {
       case 'week': {
         // due_date from yearStart to this week Friday
         const today = new Date();
-        const dayOfWeek = today.getDay();
+        const dayOfWeek = today.getUTCDay();
         // Calculate days until Friday (5)
         const daysUntilFriday = dayOfWeek <= 5 ? 5 - dayOfWeek : 5 + 7 - dayOfWeek;
         const weekEnd = new Date(today);
-        weekEnd.setDate(today.getDate() + daysUntilFriday);
-        weekEnd.setHours(23, 59, 59, 999);
+        weekEnd.setUTCDate(today.getUTCDate() + daysUntilFriday);
+        weekEnd.setUTCHours(23, 59, 59, 999);
         // Use the earlier of weekEnd and yearEnd as the effective end date
         const effectiveEnd = new Date(Math.min(weekEnd.getTime(), yearEnd.getTime()));
 
@@ -230,7 +230,9 @@ export class TodoRepository {
       case 'month': {
         // due_date from yearStart to end of this month
         const today = new Date();
-        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+        const monthEnd = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0, 23, 59, 59, 999)
+        );
         // Use the earlier of monthEnd and yearEnd as the effective end date
         const effectiveEnd = new Date(Math.min(monthEnd.getTime(), yearEnd.getTime()));
 
