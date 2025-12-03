@@ -175,6 +175,7 @@ export interface Todo {
   skipWeekends?: boolean;
   workNoteId?: string;
   workTitle?: string;
+  workCategory?: string;
   createdAt: string;
   updatedAt: string;
 }

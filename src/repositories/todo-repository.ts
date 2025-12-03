@@ -154,6 +154,32 @@ export class TodoRepository {
   /**
    * Find all todos with view filters
    */
+  /**
+   * Helper function to calculate end date in UTC for time-based views
+   */
+  private getEndDateUTC(view: 'today' | 'week' | 'month'): Date {
+    const now = new Date();
+
+    switch (view) {
+      case 'today': {
+        const endDate = new Date(now);
+        endDate.setUTCHours(23, 59, 59, 999);
+        return endDate;
+      }
+      case 'week': {
+        const dayOfWeek = now.getUTCDay();
+        const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+        const endDate = new Date(now);
+        endDate.setUTCDate(now.getUTCDate() + daysUntilFriday);
+        endDate.setUTCHours(23, 59, 59, 999);
+        return endDate;
+      }
+      case 'month': {
+        return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+      }
+    }
+  }
+
   async findAll(query: ListTodosQuery): Promise<TodoWithWorkNote[]> {
     const now = new Date().toISOString();
 
@@ -172,7 +198,7 @@ export class TodoRepository {
              t.repeat_rule as repeatRule, t.recurrence_type as recurrenceType,
              t.custom_interval as customInterval, t.custom_unit as customUnit,
              t.skip_weekends as skipWeekends,
-             w.title as workTitle
+             w.title as workTitle, w.category as workCategory
       FROM todos t
       LEFT JOIN work_notes w ON t.work_id = w.work_id
     `;
@@ -180,67 +206,16 @@ export class TodoRepository {
     const conditions: string[] = [];
     const params: (string | number)[] = [];
 
-    // Get selected year (default to current year)
-    const selectedYear = query.year || new Date().getFullYear();
-    const yearStart = new Date(selectedYear, 0, 1, 0, 0, 0, 0);
-    const yearEnd = new Date(selectedYear, 11, 31, 23, 59, 59, 999);
-
     // Apply view filters
     switch (query.view) {
-      case 'today': {
-        // due_date from yearStart to today
-        // wait_until filtering is handled by the common filter below
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
-        // Use the earlier of todayEnd and yearEnd as the effective end date
-        const effectiveEnd = new Date(Math.min(todayEnd.getTime(), yearEnd.getTime()));
-
-        conditions.push(
-          `t.status != ?`,
-          `t.due_date IS NOT NULL`,
-          `t.due_date >= ?`,
-          `t.due_date <= ?`
-        );
-        params.push('완료', yearStart.toISOString(), effectiveEnd.toISOString());
-        break;
-      }
-
-      case 'week': {
-        // due_date from yearStart to this week Friday
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        // Calculate days until Friday (5)
-        const daysUntilFriday = dayOfWeek <= 5 ? 5 - dayOfWeek : 5 + 7 - dayOfWeek;
-        const weekEnd = new Date(today);
-        weekEnd.setDate(today.getDate() + daysUntilFriday);
-        weekEnd.setHours(23, 59, 59, 999);
-        // Use the earlier of weekEnd and yearEnd as the effective end date
-        const effectiveEnd = new Date(Math.min(weekEnd.getTime(), yearEnd.getTime()));
-
-        conditions.push(
-          `t.status != ?`,
-          `t.due_date IS NOT NULL`,
-          `t.due_date >= ?`,
-          `t.due_date <= ?`
-        );
-        params.push('완료', yearStart.toISOString(), effectiveEnd.toISOString());
-        break;
-      }
-
+      case 'today':
+      case 'week':
       case 'month': {
-        // due_date from yearStart to end of this month
-        const today = new Date();
-        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
-        // Use the earlier of monthEnd and yearEnd as the effective end date
-        const effectiveEnd = new Date(Math.min(monthEnd.getTime(), yearEnd.getTime()));
+        // Time-based views: show incomplete todos with due_date up to the end of the period
+        const endDate = this.getEndDateUTC(query.view);
 
-        conditions.push(
-          `t.status != ?`,
-          `t.due_date IS NOT NULL`,
-          `t.due_date >= ?`,
-          `t.due_date <= ?`
-        );
-        params.push('완료', yearStart.toISOString(), effectiveEnd.toISOString());
+        conditions.push(`t.status != ?`, `t.due_date IS NOT NULL`, `t.due_date <= ?`);
+        params.push('완료', endDate.toISOString());
         break;
       }
 
@@ -252,22 +227,16 @@ export class TodoRepository {
       }
 
       case 'remaining': {
-        // All incomplete todos in selected year
-        conditions.push(
-          `t.status != ?`,
-          `(t.due_date IS NULL OR (t.due_date >= ? AND t.due_date <= ?))`
-        );
-        params.push('완료', yearStart.toISOString(), yearEnd.toISOString());
+        // All incomplete todos (no year restriction)
+        conditions.push(`t.status != ?`);
+        params.push('완료');
         break;
       }
 
       case 'completed': {
-        // All completed todos in selected year
-        conditions.push(
-          `t.status = ?`,
-          `(t.due_date IS NULL OR (t.due_date >= ? AND t.due_date <= ?))`
-        );
-        params.push('완료', yearStart.toISOString(), yearEnd.toISOString());
+        // All completed todos (no year restriction)
+        conditions.push(`t.status = ?`);
+        params.push('완료');
         break;
       }
 

@@ -93,6 +93,7 @@ interface BackendTodo {
   createdAt: string;
   updatedAt: string;
   workTitle?: string;
+  workCategory?: string;
 }
 
 export class APIClient {
@@ -265,6 +266,7 @@ export class APIClient {
       id: backendTodo.todoId,
       workNoteId: backendTodo.workId,
       workTitle: backendTodo.workTitle,
+      workCategory: backendTodo.workCategory,
       title: backendTodo.title,
       description: backendTodo.description,
       status: backendTodo.status,
