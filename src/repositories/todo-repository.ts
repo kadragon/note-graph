@@ -168,7 +168,7 @@ export class TodoRepository {
       }
       case 'week': {
         const dayOfWeek = now.getUTCDay();
-        const daysUntilFriday = dayOfWeek <= 5 ? 5 - dayOfWeek : 5 + 7 - dayOfWeek;
+        const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
         const endDate = new Date(now);
         endDate.setUTCDate(now.getUTCDate() + daysUntilFriday);
         endDate.setUTCHours(23, 59, 59, 999);

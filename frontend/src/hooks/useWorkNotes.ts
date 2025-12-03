@@ -27,8 +27,8 @@ export function useWorkNotesWithStats() {
             // 한 번의 순회로 모든 통계 계산
             // Calculate tomorrow midnight for consistent wait_until comparison
             const tomorrowMidnight = new Date(now);
-            tomorrowMidnight.setHours(0, 0, 0, 0);
             tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
+            tomorrowMidnight.setHours(0, 0, 0, 0);
 
             const { completed, pending, remaining } = todos.reduce(
               (acc, todo) => {
