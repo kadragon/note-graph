@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { isAfter, startOfDay } from 'date-fns';
 import { TODO_STATUS } from '@/constants/todoStatus';
 import { API } from '@/lib/api';
 import type { CreateWorkNoteRequest, UpdateWorkNoteRequest, WorkNoteWithStats } from '@/types/api';
@@ -26,16 +25,20 @@ export function useWorkNotesWithStats() {
             const todos = await API.getWorkNoteTodos(workNote.id);
             const total = todos.length;
             // 한 번의 순회로 모든 통계 계산
+            // Calculate tomorrow midnight for consistent wait_until comparison
+            const tomorrowMidnight = new Date(now);
+            tomorrowMidnight.setHours(0, 0, 0, 0);
+            tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
+
             const { completed, pending, remaining } = todos.reduce(
               (acc, todo) => {
                 if (todo.status === TODO_STATUS.COMPLETED) {
                   acc.completed++;
                 } else {
-                  // 미완료 상태: waitUntil이 오늘 이후(미래)면 pending, 아니면 remaining
-                  // 날짜 단위 비교를 위해 startOfDay로 정규화
+                  // 미완료 상태: waitUntil이 내일 이후면 pending, 아니면 remaining
+                  // 백엔드와 동일한 로직: waitUntil < tomorrowMidnight이면 remaining
                   const hasFutureWaitUntil =
-                    todo.waitUntil &&
-                    isAfter(startOfDay(new Date(todo.waitUntil)), startOfDay(now));
+                    todo.waitUntil && new Date(todo.waitUntil) >= tomorrowMidnight;
                   if (hasFutureWaitUntil) {
                     acc.pending++;
                   } else {

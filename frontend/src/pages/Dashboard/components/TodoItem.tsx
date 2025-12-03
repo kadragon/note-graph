@@ -66,6 +66,11 @@ export function TodoItem({ todo, onTodoClick, showWorkTitle = true }: TodoItemPr
           {todo.title}
         </p>
         <div className="flex flex-wrap items-center gap-2 mt-2">
+          {showWorkTitle && todo.workCategory && (
+            <Badge variant="outline" className="text-xs font-normal">
+              {todo.workCategory}
+            </Badge>
+          )}
           {showWorkTitle && todo.workTitle && (
             <Badge variant="secondary" className="gap-1 text-xs font-normal">
               <FileText className="h-3 w-3" />

@@ -44,8 +44,9 @@ export interface Todo {
 }
 
 /**
- * Todo with work note title (for display)
+ * Todo with work note title and category (for display)
  */
 export interface TodoWithWorkNote extends Todo {
   workTitle?: string;
+  workCategory?: string;
 }
