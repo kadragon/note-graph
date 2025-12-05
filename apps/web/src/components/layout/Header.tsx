@@ -1,7 +1,7 @@
+import { Input } from '@web/components/ui/input';
 import { Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Input } from '@/components/ui/input';
 
 // Map paths to breadcrumb titles
 const pathTitles: Record<string, { title: string; subtitle: string }> = {

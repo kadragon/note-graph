@@ -1,8 +1,8 @@
 // Trace: TASK-024, SPEC-worknote-1
-import { useState } from 'react';
-import { AssigneeSelector } from '@/components/AssigneeSelector';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+
+import { AssigneeSelector } from '@web/components/AssigneeSelector';
+import { Button } from '@web/components/ui/button';
+import { Checkbox } from '@web/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -10,13 +10,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { usePersons } from '@/hooks/usePersons';
-import { useTaskCategories } from '@/hooks/useTaskCategories';
-import { useCreateWorkNote } from '@/hooks/useWorkNotes';
+} from '@web/components/ui/dialog';
+import { Input } from '@web/components/ui/input';
+import { Label } from '@web/components/ui/label';
+import { Textarea } from '@web/components/ui/textarea';
+import { usePersons } from '@web/hooks/usePersons';
+import { useTaskCategories } from '@web/hooks/useTaskCategories';
+import { useCreateWorkNote } from '@web/hooks/useWorkNotes';
+import { useState } from 'react';
 
 interface CreateWorkNoteDialogProps {
   open: boolean;

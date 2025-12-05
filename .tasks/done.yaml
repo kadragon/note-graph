@@ -14,6 +14,12 @@ completed_tasks:
     completed_at: "2025-12-05T00:31:00Z"
     outcome: |
       Moved Worker sources from apps/worker/src to apps/worker for flatter layout. Updated aliases/entrypoints (tsconfig paths, vitest main, wrangler main, lint-staged glob) to new path. Validation commands (lint, typecheck, test, build) all succeed post-change.
+  - task_id: TASK-repo-structure-3
+    title: "Restore worker layout to apps/worker/src"
+    spec_id: SPEC-devx-structure-1
+    completed_at: "2025-12-05T00:48:00Z"
+    outcome: |
+      Reverted flattening at user request: backend code returned to apps/worker/src. Restored path mappings and entrypoints in tsconfig*, vitest, wrangler, lint-staged. Confirmed with lint, typecheck, test, build.
   - task_id: TASK-019
     title: "Write user documentation"
     spec_id: SPEC-worknote-1

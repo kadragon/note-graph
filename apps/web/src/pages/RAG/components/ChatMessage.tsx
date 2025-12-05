@@ -1,5 +1,5 @@
-import { Badge } from '@/components/ui/badge';
-import type { RAGSource } from '@/types/api';
+import { Badge } from '@web/components/ui/badge';
+import type { RAGSource } from '@web/types/api';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';

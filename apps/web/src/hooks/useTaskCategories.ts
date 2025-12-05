@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { API } from '@/lib/api';
-import type { CreateTaskCategoryRequest, UpdateTaskCategoryRequest } from '@/types/api';
+import { API } from '@web/lib/api';
+import type { CreateTaskCategoryRequest, UpdateTaskCategoryRequest } from '@web/types/api';
 import { useToast } from './use-toast';
 
 export function useTaskCategories() {

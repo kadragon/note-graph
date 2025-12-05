@@ -1,10 +1,7 @@
 // Trace: SPEC-project-1, TASK-043
 
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Eye, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
 import {
   Table,
   TableBody,
@@ -12,8 +9,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import type { Project, ProjectStatus } from '@/types/api';
+} from '@web/components/ui/table';
+import type { Project, ProjectStatus } from '@web/types/api';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Eye, Trash2 } from 'lucide-react';
 
 interface ProjectsTableProps {
   projects: Project[];

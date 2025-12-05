@@ -1,9 +1,7 @@
 // Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2
 
-import { Check, ChevronsUpDown, X } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -11,10 +9,12 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn, formatPersonBadge } from '@/lib/utils';
-import type { Person } from '@/types/api';
+} from '@web/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@web/components/ui/popover';
+import { cn, formatPersonBadge } from '@web/lib/utils';
+import type { Person } from '@web/types/api';
+import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 
 interface AssigneeSelectorProps {
   persons: Person[];

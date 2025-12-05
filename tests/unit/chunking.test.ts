@@ -1,8 +1,8 @@
 // Trace: SPEC-rag-1, TASK-016
 // Unit tests for ChunkingService
 
+import { ChunkingService } from '@worker/services/chunking-service';
 import { describe, expect, it } from 'vitest';
-import { ChunkingService } from '@/services/chunking-service';
 
 describe('ChunkingService', () => {
   const chunkingService = new ChunkingService();

@@ -1,12 +1,12 @@
 // Trace: SPEC-worknote-1, TASK-032
 
 import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@web/hooks/use-toast';
+import { usePersons } from '@web/hooks/usePersons';
+import { useTaskCategories } from '@web/hooks/useTaskCategories';
+import { API } from '@web/lib/api';
+import type { AIDraftPayload, AIDraftReference, AIDraftTodo, Person } from '@web/types/api';
 import { useCallback, useEffect, useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { usePersons } from '@/hooks/usePersons';
-import { useTaskCategories } from '@/hooks/useTaskCategories';
-import { API } from '@/lib/api';
-import type { AIDraftPayload, AIDraftReference, AIDraftTodo, Person } from '@/types/api';
 
 // Extended todo type with stable UI identifier
 export interface SuggestedTodo extends AIDraftTodo {

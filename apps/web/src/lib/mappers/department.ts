@@ -1,7 +1,7 @@
 // Trace: SPEC-dept-1, TASK-022
 // Helpers for mapping department form data to API payloads
 
-import type { CreateDepartmentRequest } from '@/types/api';
+import type { CreateDepartmentRequest } from '@web/types/api';
 
 export function toCreateDepartmentRequest(
   name: string,

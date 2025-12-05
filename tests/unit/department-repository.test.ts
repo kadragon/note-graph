@@ -2,11 +2,11 @@
 // Unit tests for DepartmentRepository
 
 import { env } from 'cloudflare:test';
+import { DepartmentRepository } from '@worker/repositories/department-repository';
+import type { CreateDepartmentInput, UpdateDepartmentInput } from '@worker/schemas/department';
+import type { Env } from '@worker/types/env';
+import { ConflictError, NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DepartmentRepository } from '@/repositories/department-repository';
-import type { CreateDepartmentInput, UpdateDepartmentInput } from '@/schemas/department';
-import type { Env } from '@/types/env';
-import { ConflictError, NotFoundError } from '@/types/errors';
 
 const testEnv = env as unknown as Env;
 

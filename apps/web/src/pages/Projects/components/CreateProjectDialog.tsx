@@ -1,7 +1,7 @@
 // Trace: SPEC-project-1, TASK-043
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+
+import { Button } from '@web/components/ui/button';
+import { Checkbox } from '@web/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -9,21 +9,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@web/components/ui/dialog';
+import { Input } from '@web/components/ui/input';
+import { Label } from '@web/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { useDepartments } from '@/hooks/useDepartments';
-import { usePersons } from '@/hooks/usePersons';
-import { useCreateProject } from '@/hooks/useProjects';
-import type { ProjectPriority, ProjectStatus } from '@/types/api';
+} from '@web/components/ui/select';
+import { Textarea } from '@web/components/ui/textarea';
+import { useDepartments } from '@web/hooks/useDepartments';
+import { usePersons } from '@web/hooks/usePersons';
+import { useCreateProject } from '@web/hooks/useProjects';
+import type { ProjectPriority, ProjectStatus } from '@web/types/api';
+import { useState } from 'react';
 
 interface CreateProjectDialogProps {
   open: boolean;

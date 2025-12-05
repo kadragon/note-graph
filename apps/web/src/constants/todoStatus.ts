@@ -1,4 +1,4 @@
-import type { TodoStatus } from '@/types/api';
+import type { TodoStatus } from '@web/types/api';
 
 export const TODO_STATUS: Record<string, TodoStatus> = {
   IN_PROGRESS: '진행중',

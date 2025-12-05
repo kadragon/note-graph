@@ -1,7 +1,5 @@
-import { Check, ChevronsUpDown, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -9,10 +7,12 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import type { Department, Person, WorkNote } from '@/types/api';
+} from '@web/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@web/components/ui/popover';
+import { cn } from '@web/lib/utils';
+import type { Department, Person, WorkNote } from '@web/types/api';
+import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 // 제네릭 필터 선택 컴포넌트
 interface FilterSelectorProps<T> {

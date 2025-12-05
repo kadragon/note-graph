@@ -43,7 +43,7 @@ Modern React frontend for the Note Graph application, built with Vite, TypeScrip
 npm run dev
 
 # Or start frontend only
-cd apps/web && npm run dev
+npm run dev:frontend
 ```
 
 The Vite dev server will start on `http://localhost:5173` and automatically proxy API requests to the backend.
@@ -123,7 +123,7 @@ apps/web/
 All API endpoints are typed and available through the `API` object:
 
 ```typescript
-import { API } from '@/lib/api';
+import { API } from '@web/lib/api';
 
 // Fetch todos
 const todos = await API.getTodos('today');
@@ -137,7 +137,7 @@ await API.updateTodo(todoId, { status: 'completed' });
 Server state is managed with TanStack React Query:
 
 ```typescript
-import { useTodos, useToggleTodo } from '@/hooks/useTodos';
+import { useTodos, useToggleTodo } from '@web/hooks/useTodos';
 
 function MyComponent() {
   const { data: todos, isLoading } = useTodos('today');
@@ -164,7 +164,7 @@ Todo status changes are optimistically updated:
 User feedback is provided through toast notifications:
 
 ```typescript
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@web/hooks/use-toast';
 
 function MyComponent() {
   const { toast } = useToast();
@@ -187,10 +187,10 @@ function MyComponent() {
 All UI components are located in `src/components/ui/`:
 
 ```tsx
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Button } from '@web/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@web/components/ui/card';
+import { Checkbox } from '@web/components/ui/checkbox';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@web/components/ui/tabs';
 
 function Example() {
   return (

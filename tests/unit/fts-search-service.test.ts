@@ -2,8 +2,8 @@
 // Unit tests for FTS Search Service
 
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
+import { FtsSearchService } from '@worker/services/fts-search-service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FtsSearchService } from '@/services/fts-search-service';
 
 describe('FtsSearchService', () => {
   let mockDb: D1Database;

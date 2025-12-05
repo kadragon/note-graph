@@ -1,15 +1,16 @@
 // Trace: SPEC-todo-2, PR#121 review feedback - extract reusable todo item component
+
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
+import { Checkbox } from '@web/components/ui/checkbox';
+import { TODO_STATUS } from '@web/constants/todoStatus';
+import { cn, formatDateWithYear, preserveLineBreaksForMarkdown } from '@web/lib/utils';
+import type { Todo, TodoStatus } from '@web/types/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { TODO_STATUS } from '@/constants/todoStatus';
-import { cn, formatDateWithYear, preserveLineBreaksForMarkdown } from '@/lib/utils';
-import type { Todo, TodoStatus } from '@/types/api';
 
 const remarkPlugins = [remarkGfm];
 const rehypePlugins = [rehypeSanitize, rehypeHighlight];

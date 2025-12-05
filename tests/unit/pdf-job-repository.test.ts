@@ -6,10 +6,10 @@ import type {
   WorkNoteDraft,
   WorkNoteDraftWithReferences,
 } from '@shared/types/pdf';
+import { PdfJobRepository } from '@worker/repositories/pdf-job-repository';
+import type { Env } from '@worker/types/env';
+import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PdfJobRepository } from '@/repositories/pdf-job-repository';
-import type { Env } from '@/types/env';
-import { NotFoundError } from '@/types/errors';
 
 const testEnv = env as unknown as Env;
 

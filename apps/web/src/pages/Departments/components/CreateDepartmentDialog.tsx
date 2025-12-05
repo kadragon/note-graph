@@ -1,6 +1,6 @@
 // Trace: SPEC-dept-1, TASK-022
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+
+import { Button } from '@web/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,11 +8,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useCreateDepartment } from '@/hooks/useDepartments';
-import { toCreateDepartmentRequest } from '@/lib/mappers/department';
+} from '@web/components/ui/dialog';
+import { Input } from '@web/components/ui/input';
+import { Label } from '@web/components/ui/label';
+import { useCreateDepartment } from '@web/hooks/useDepartments';
+import { toCreateDepartmentRequest } from '@web/lib/mappers/department';
+import { useState } from 'react';
 
 interface CreateDepartmentDialogProps {
   open: boolean;

@@ -1,10 +1,10 @@
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
+import { usePDFJob, useSavePDFDraft, useUploadPDF } from '@web/hooks/usePDF';
+import type { PDFJobStatus } from '@web/types/api';
 import { Save } from 'lucide-react';
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { usePDFJob, useSavePDFDraft, useUploadPDF } from '@/hooks/usePDF';
-import type { PDFJobStatus } from '@/types/api';
 import { FileDropzone } from './components/FileDropzone';
 
 export default function PDFUpload() {

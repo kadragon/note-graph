@@ -35,11 +35,11 @@
     // Path Mapping
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./apps/worker/*"],
-      "@/types/*": ["./apps/worker/types/*"],
-      "@/services/*": ["./apps/worker/services/*"],
-      "@/handlers/*": ["./apps/worker/handlers/*"],
-      "@/utils/*": ["./apps/worker/utils/*"],
+      "@/*": ["./apps/worker/src/*"],
+      "@/types/*": ["./apps/worker/src/types/*"],
+      "@/services/*": ["./apps/worker/src/services/*"],
+      "@/handlers/*": ["./apps/worker/src/handlers/*"],
+      "@/utils/*": ["./apps/worker/src/utils/*"],
       "@shared/*": ["./packages/shared/*"]
     },
 
@@ -50,7 +50,7 @@
     "skipLibCheck": true
   },
 
-  "include": ["apps/worker/**/*", "packages/shared/**/*"],
+  "include": ["apps/worker/src/**/*", "packages/shared/**/*"],
 
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "apps/web"]
 }

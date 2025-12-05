@@ -4,7 +4,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./apps/worker/*"],
+      "@/*": ["./apps/worker/src/*"],
       "@shared/*": ["./packages/shared/*"],
       "@web/*": ["./apps/web/src/*"]
     }

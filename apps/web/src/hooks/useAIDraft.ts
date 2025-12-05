@@ -1,8 +1,8 @@
 // Trace: TASK-027, SPEC-worknote-1
 import { useMutation } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
-import { API } from '@/lib/api';
-import type { AIGenerateDraftRequest } from '@/types/api';
+import { useToast } from '@web/hooks/use-toast';
+import { API } from '@web/lib/api';
+import type { AIGenerateDraftRequest } from '@web/types/api';
 
 export function useGenerateDraftWithSimilar() {
   const { toast } = useToast();

@@ -4,9 +4,9 @@
  */
 
 import { env } from 'cloudflare:test';
+import { StatisticsRepository } from '@worker/repositories/statistics-repository';
+import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { StatisticsRepository } from '@/repositories/statistics-repository';
-import type { Env } from '@/types/env';
 
 const testEnv = env as unknown as Env;
 

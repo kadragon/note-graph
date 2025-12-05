@@ -3,10 +3,10 @@
  * Hook for managing statistics data and filters
  */
 
+import { API } from '@web/lib/api';
+import { type DateRange, getStatisticsPeriodRange } from '@web/lib/date-utils';
+import type { StatisticsPeriod, WorkNoteStatistics } from '@web/types/api';
 import { useCallback, useEffect, useState } from 'react';
-import { API } from '@/lib/api';
-import { type DateRange, getStatisticsPeriodRange } from '@/lib/date-utils';
-import type { StatisticsPeriod, WorkNoteStatistics } from '@/types/api';
 
 interface UseStatisticsOptions {
   initialPeriod?: StatisticsPeriod;

@@ -3,8 +3,8 @@
 
 import { env, SELF } from 'cloudflare:test';
 import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
+import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Env } from '@/types/env';
 
 const testEnv = env as unknown as Env;
 

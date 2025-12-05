@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { Tabs, TabsList, TabsTrigger } from '@web/components/ui/tabs';
+import { useTodos } from '@web/hooks/useTodos';
+import { API } from '@web/lib/api';
+import { ViewWorkNoteDialog } from '@web/pages/WorkNotes/components/ViewWorkNoteDialog';
+import type { Todo, TodoView } from '@web/types/api';
 import { Calendar, CalendarDays, CalendarRange, ListTodo } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useTodos } from '@/hooks/useTodos';
-import { API } from '@/lib/api';
-import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDialog';
-import type { Todo, TodoView } from '@/types/api';
 import { TodoList } from './TodoList';
 
 const TODO_VIEWS: { value: TodoView; label: string; icon: ReactNode }[] = [

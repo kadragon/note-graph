@@ -1,12 +1,8 @@
 // Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-045, TASK-LLM-IMPORT
 
-import { format, parseISO } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { FileText, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import {
   Table,
   TableBody,
@@ -14,10 +10,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { usePersons } from '@/hooks/usePersons';
-import { getDepartmentColor } from '@/lib/utils';
-import type { Person } from '@/types/api';
+} from '@web/components/ui/table';
+import { usePersons } from '@web/hooks/usePersons';
+import { getDepartmentColor } from '@web/lib/utils';
+import type { Person } from '@web/types/api';
+import { format, parseISO } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { FileText, Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { PersonDialog } from './components/PersonDialog';
 import { PersonImportDialog } from './components/PersonImportDialog';
 

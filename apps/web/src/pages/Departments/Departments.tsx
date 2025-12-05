@@ -1,12 +1,8 @@
 // Trace: SPEC-dept-1, TASK-022
 
-import { format, parseISO } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Plus } from 'lucide-react';
-import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import {
   Table,
   TableBody,
@@ -14,8 +10,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { useDepartments, useUpdateDepartment } from '@/hooks/useDepartments';
+} from '@web/components/ui/table';
+import { useDepartments, useUpdateDepartment } from '@web/hooks/useDepartments';
+import { format, parseISO } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import { CreateDepartmentDialog } from './components/CreateDepartmentDialog';
 
 export default function Departments() {

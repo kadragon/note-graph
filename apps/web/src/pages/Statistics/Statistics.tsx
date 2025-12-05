@@ -4,24 +4,24 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { API } from '@/lib/api';
+} from '@web/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@web/components/ui/tabs';
+import { API } from '@web/lib/api';
 import {
   formatDateRange,
   getAvailableYears,
   getStatisticsPeriodLabel,
   type StatisticsPeriod,
-} from '@/lib/date-utils';
-import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDialog';
+} from '@web/lib/date-utils';
+import { ViewWorkNoteDialog } from '@web/pages/WorkNotes/components/ViewWorkNoteDialog';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import { DistributionCharts } from './components/DistributionCharts';
 import { SummaryCards } from './components/SummaryCards';
 import { WorkNotesTable } from './components/WorkNotesTable';

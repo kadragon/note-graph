@@ -1,4 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScrollArea } from '@web/components/ui/scroll-area';
+import { API } from '@web/lib/api';
+import { cn } from '@web/lib/utils';
 import {
   BarChart3,
   BriefcaseBusiness,
@@ -14,9 +17,6 @@ import {
   User,
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { API } from '@/lib/api';
-import { cn } from '@/lib/utils';
 
 interface NavItem {
   path: string;

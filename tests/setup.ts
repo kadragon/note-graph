@@ -4,9 +4,9 @@ import { env } from 'cloudflare:test';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import type { D1Database } from '@cloudflare/workers-types';
+import type { Env } from '@worker/types/env';
 // Trace: SPEC-devx-1, TASK-028
 import { beforeAll } from 'vitest';
-import type { Env } from '@/types/env';
 
 const migrationModules = import.meta.glob('../migrations/*.sql', {
   eager: true,

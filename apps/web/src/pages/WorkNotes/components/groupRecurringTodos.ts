@@ -1,5 +1,5 @@
 // Trace: SPEC-todo-2, TASK-052
-import type { Todo } from '@/types/api';
+import type { Todo } from '@web/types/api';
 
 export interface RecurringTodoGroup {
   groupKey: string;

@@ -1,21 +1,21 @@
 // Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-030, TASK-032
 
-import { FileText, Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { DraftEditorForm } from '@/components/DraftEditorForm';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { DraftEditorForm } from '@web/components/DraftEditorForm';
+import { Badge } from '@web/components/ui/badge';
+import { Card } from '@web/components/ui/card';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
-import { useAIDraftForm } from '@/hooks/useAIDraftForm';
-import { usePDFJob, useUploadPDF } from '@/hooks/usePDF';
-import { FileDropzone } from '@/pages/PDFUpload/components/FileDropzone';
+} from '@web/components/ui/dialog';
+import { useToast } from '@web/hooks/use-toast';
+import { useAIDraftForm } from '@web/hooks/useAIDraftForm';
+import { usePDFJob, useUploadPDF } from '@web/hooks/usePDF';
+import { FileDropzone } from '@web/pages/PDFUpload/components/FileDropzone';
+import { FileText, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface CreateFromPDFDialogProps {
   open: boolean;

@@ -1,12 +1,12 @@
 // Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-021, TASK-022, TASK-025, TASK-027
 
-import { format, parseISO } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Check, ChevronsUpDown, History, Loader2, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@web/components/ui/collapsible';
 import {
   Command,
   CommandEmpty,
@@ -14,7 +14,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command';
+} from '@web/components/ui/command';
 import {
   Dialog,
   DialogContent,
@@ -22,16 +22,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useCreateDepartment, useDepartments } from '@/hooks/useDepartments';
-import { useCreatePerson, usePersonHistory, useUpdatePerson } from '@/hooks/usePersons';
-import { toCreateDepartmentRequest } from '@/lib/mappers/department';
-import { cn } from '@/lib/utils';
-import type { Person } from '@/types/api';
+} from '@web/components/ui/dialog';
+import { Input } from '@web/components/ui/input';
+import { Label } from '@web/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@web/components/ui/popover';
+import { useDebouncedValue } from '@web/hooks/useDebouncedValue';
+import { useCreateDepartment, useDepartments } from '@web/hooks/useDepartments';
+import { useCreatePerson, usePersonHistory, useUpdatePerson } from '@web/hooks/usePersons';
+import { toCreateDepartmentRequest } from '@web/lib/mappers/department';
+import { cn } from '@web/lib/utils';
+import type { Person } from '@web/types/api';
+import { format, parseISO } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Check, ChevronsUpDown, History, Loader2, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface PersonDialogProps {
   open: boolean;

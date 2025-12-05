@@ -1,5 +1,5 @@
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { WorkNoteWithStats } from '@/types/api';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@web/components/ui/table';
+import type { WorkNoteWithStats } from '@web/types/api';
 import { WorkNoteRow } from './WorkNoteRow';
 
 interface WorkNotesTableProps {

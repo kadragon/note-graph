@@ -1,10 +1,10 @@
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
+import { TableCell, TableRow } from '@web/components/ui/table';
+import type { WorkNoteWithStats } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { TableCell, TableRow } from '@/components/ui/table';
-import type { WorkNoteWithStats } from '@/types/api';
 
 interface WorkNoteRowProps {
   workNote: WorkNoteWithStats;

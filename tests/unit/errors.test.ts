@@ -1,7 +1,6 @@
 // Trace: TASK-016
 // Unit tests for domain error classes
 
-import { describe, expect, it } from 'vitest';
 import {
   BadRequestError,
   ConflictError,
@@ -9,7 +8,8 @@ import {
   NotFoundError,
   RateLimitError,
   ValidationError,
-} from '@/types/errors';
+} from '@worker/types/errors';
+import { describe, expect, it } from 'vitest';
 
 describe('Domain Errors', () => {
   describe('DomainError', () => {

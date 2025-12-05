@@ -3,10 +3,10 @@
 
 import { env } from 'cloudflare:test';
 import type { CreateProjectData, UpdateProjectData } from '@shared/types/project';
+import { ProjectRepository } from '@worker/repositories/project-repository';
+import type { Env } from '@worker/types/env';
+import { ConflictError, NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ProjectRepository } from '@/repositories/project-repository';
-import type { Env } from '@/types/env';
-import { ConflictError, NotFoundError } from '@/types/errors';
 
 const testEnv = env as unknown as Env;
 

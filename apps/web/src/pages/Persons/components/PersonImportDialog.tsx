@@ -1,9 +1,7 @@
 // Trace: TASK-LLM-IMPORT
 
-import { FileText, Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,11 +9,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useImportPerson, useParsePersonFromText } from '@/hooks/usePersons';
-import type { ParsedPersonData } from '@/types/api';
+} from '@web/components/ui/dialog';
+import { Label } from '@web/components/ui/label';
+import { Textarea } from '@web/components/ui/textarea';
+import { useImportPerson, useParsePersonFromText } from '@web/hooks/usePersons';
+import type { ParsedPersonData } from '@web/types/api';
+import { FileText, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface PersonImportDialogProps {
   open: boolean;

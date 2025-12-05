@@ -1,10 +1,11 @@
 // Trace: SPEC-ai-draft-refs-1, TASK-029, TASK-030
 // Shared component for displaying AI-suggested work note references
+
+import { Card } from '@web/components/ui/card';
+import { Checkbox } from '@web/components/ui/checkbox';
+import { Label } from '@web/components/ui/label';
+import type { AIDraftReference } from '@web/types/api';
 import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import type { AIDraftReference } from '@/types/api';
 
 interface AIReferenceListProps {
   references: AIDraftReference[];

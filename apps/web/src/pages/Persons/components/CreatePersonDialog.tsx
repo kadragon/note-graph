@@ -1,8 +1,6 @@
 // Trace: SPEC-person-1, TASK-021, TASK-022
 
-import { Check, ChevronsUpDown, Loader2, Plus } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@web/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -10,7 +8,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command';
+} from '@web/components/ui/command';
 import {
   Dialog,
   DialogContent,
@@ -18,15 +16,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useCreateDepartment, useDepartments } from '@/hooks/useDepartments';
-import { useCreatePerson } from '@/hooks/usePersons';
-import { toCreateDepartmentRequest } from '@/lib/mappers/department';
-import { cn } from '@/lib/utils';
+} from '@web/components/ui/dialog';
+import { Input } from '@web/components/ui/input';
+import { Label } from '@web/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@web/components/ui/popover';
+import { useDebouncedValue } from '@web/hooks/useDebouncedValue';
+import { useCreateDepartment, useDepartments } from '@web/hooks/useDepartments';
+import { useCreatePerson } from '@web/hooks/usePersons';
+import { toCreateDepartmentRequest } from '@web/lib/mappers/department';
+import { cn } from '@web/lib/utils';
+import { Check, ChevronsUpDown, Loader2, Plus } from 'lucide-react';
+import { useState } from 'react';
 
 interface CreatePersonDialogProps {
   open: boolean;

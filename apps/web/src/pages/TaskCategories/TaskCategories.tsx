@@ -1,7 +1,3 @@
-import { format, parseISO } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,9 +7,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+} from '@web/components/ui/alert-dialog';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import {
   Table,
   TableBody,
@@ -21,9 +17,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { useDeleteTaskCategory, useTaskCategories } from '@/hooks/useTaskCategories';
-import type { TaskCategory } from '@/types/api';
+} from '@web/components/ui/table';
+import { useDeleteTaskCategory, useTaskCategories } from '@web/hooks/useTaskCategories';
+import type { TaskCategory } from '@web/types/api';
+import { format, parseISO } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { CreateTaskCategoryDialog } from './components/CreateTaskCategoryDialog';
 import { EditTaskCategoryDialog } from './components/EditTaskCategoryDialog';
 

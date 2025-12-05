@@ -1,15 +1,7 @@
 // Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2, SPEC-ui-1, TASK-034, SPEC-todo-2, TASK-051, TASK-052
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Edit2, Save, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
-import { AssigneeSelector } from '@/components/AssigneeSelector';
+import { AssigneeSelector } from '@web/components/AssigneeSelector';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,29 +11,29 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+} from '@web/components/ui/alert-dialog';
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
+import { Checkbox } from '@web/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { TODO_STATUS } from '@/constants/todoStatus';
-import { useToast } from '@/hooks/use-toast';
-import { usePersons } from '@/hooks/usePersons';
-import { useTaskCategories } from '@/hooks/useTaskCategories';
-import { useDeleteTodo, useToggleTodo } from '@/hooks/useTodos';
-import { useUpdateWorkNote } from '@/hooks/useWorkNotes';
-import { API } from '@/lib/api';
-import { formatPersonBadge, toUTCISOString } from '@/lib/utils';
-import { EditTodoDialog } from '@/pages/Dashboard/components/EditTodoDialog';
+} from '@web/components/ui/dialog';
+import { Input } from '@web/components/ui/input';
+import { Label } from '@web/components/ui/label';
+import { Textarea } from '@web/components/ui/textarea';
+import { TODO_STATUS } from '@web/constants/todoStatus';
+import { useToast } from '@web/hooks/use-toast';
+import { usePersons } from '@web/hooks/usePersons';
+import { useTaskCategories } from '@web/hooks/useTaskCategories';
+import { useDeleteTodo, useToggleTodo } from '@web/hooks/useTodos';
+import { useUpdateWorkNote } from '@web/hooks/useWorkNotes';
+import { API } from '@web/lib/api';
+import { formatPersonBadge, toUTCISOString } from '@web/lib/utils';
+import { EditTodoDialog } from '@web/pages/Dashboard/components/EditTodoDialog';
 import type {
   CreateTodoRequest,
   CustomIntervalUnit,
@@ -50,7 +42,15 @@ import type {
   Todo,
   TodoStatus,
   WorkNote,
-} from '@/types/api';
+} from '@web/types/api';
+import { format, parseISO } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Edit2, Save, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
 import { groupRecurringTodos } from './groupRecurringTodos';
 import { RecurringTodoGroup } from './RecurringTodoGroup';
 import { TodoListItem } from './TodoListItem';

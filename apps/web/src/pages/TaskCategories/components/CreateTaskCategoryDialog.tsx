@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@web/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,10 +6,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useCreateTaskCategory } from '@/hooks/useTaskCategories';
+} from '@web/components/ui/dialog';
+import { Input } from '@web/components/ui/input';
+import { Label } from '@web/components/ui/label';
+import { useCreateTaskCategory } from '@web/hooks/useTaskCategories';
+import { useState } from 'react';
 
 interface CreateTaskCategoryDialogProps {
   open: boolean;

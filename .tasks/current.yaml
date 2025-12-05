@@ -1,14 +1,14 @@
 task:
-  task_id: TASK-repo-structure-2
-  title: "Flatten worker app root (remove apps/worker/src)"
+  task_id: TASK-repo-structure-3
+  title: "Restore worker layout to apps/worker/src"
   spec_id: SPEC-devx-structure-1
   status: done
   test_refs:
     - TEST-devx-structure-1
     - TEST-devx-structure-2
     - TEST-devx-structure-3
-  started_at: "2025-12-05T00:25:00Z"
-  completed_at: "2025-12-05T00:31:00Z"
+  started_at: "2025-12-05T00:40:00Z"
+  completed_at: "2025-12-05T00:48:00Z"
   outcome: |
-    Flattened backend layout by moving Worker sources from apps/worker/src to apps/worker. Updated aliases and entrypoints (tsconfig*, vitest, wrangler, lint-staged) to new paths; reran lint/typecheck/tests/build successfully.
+    Reverted worker layout flattening: moved backend code back under apps/worker/src and restored path aliases/entrypoints (tsconfig*, vitest, wrangler, lint-staged). Re-validated lint, typecheck, tests, and build successfully.
 message: "Task completed"

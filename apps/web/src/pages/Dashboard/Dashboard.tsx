@@ -1,5 +1,5 @@
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { CheckSquare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TodoTabs } from './components/TodoTabs';
 
 export default function Dashboard() {

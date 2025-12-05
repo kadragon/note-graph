@@ -1,5 +1,5 @@
 // Trace: SPEC-todo-1, TASK-046
-import type { Todo } from '@/types/api';
+import type { Todo } from '@web/types/api';
 
 export interface WorkNoteTodoGroup {
   workNoteId: string | null;

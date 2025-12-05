@@ -1,11 +1,7 @@
 // Trace: SPEC-project-1, TASK-043
 
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Download, File, Trash2, Upload } from 'lucide-react';
-import { useCallback, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import {
   Table,
   TableBody,
@@ -13,9 +9,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { useDeleteProjectFile, useProjectFiles, useUploadProjectFile } from '@/hooks/useProjects';
-import { API } from '@/lib/api';
+} from '@web/components/ui/table';
+import {
+  useDeleteProjectFile,
+  useProjectFiles,
+  useUploadProjectFile,
+} from '@web/hooks/useProjects';
+import { API } from '@web/lib/api';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Download, File, Trash2, Upload } from 'lucide-react';
+import { useCallback, useState } from 'react';
 
 interface ProjectFilesProps {
   projectId: string;

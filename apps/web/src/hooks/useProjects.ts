@@ -1,12 +1,12 @@
 // Trace: SPEC-project-1, TASK-043
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { API } from '@/lib/api';
+import { API } from '@web/lib/api';
 import type {
   AssignWorkNoteRequest,
   CreateProjectRequest,
   ProjectFilters,
   UpdateProjectRequest,
-} from '@/types/api';
+} from '@web/types/api';
 import { useToast } from './use-toast';
 
 export function useProjects(filters?: ProjectFilters) {

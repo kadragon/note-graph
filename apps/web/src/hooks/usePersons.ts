@@ -1,11 +1,11 @@
 // Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-LLM-IMPORT
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { API } from '@/lib/api';
+import { API } from '@web/lib/api';
 import type {
   CreatePersonRequest,
   ImportPersonFromTextRequest,
   UpdatePersonRequest,
-} from '@/types/api';
+} from '@web/types/api';
 import { useToast } from './use-toast';
 
 export function usePersons() {

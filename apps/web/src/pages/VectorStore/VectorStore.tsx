@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle2, Clock, Database, Loader2, Play, RefreshCw } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,12 +9,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { API } from '@/lib/api';
-import type { BatchProcessResult } from '@/types/api';
+} from '@web/components/ui/alert-dialog';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@web/components/ui/card';
+import { useToast } from '@web/hooks/use-toast';
+import { API } from '@web/lib/api';
+import type { BatchProcessResult } from '@web/types/api';
+import { AlertCircle, CheckCircle2, Clock, Database, Loader2, Play, RefreshCw } from 'lucide-react';
 
 const BATCH_SIZE = 10;
 

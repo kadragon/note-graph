@@ -1,10 +1,10 @@
+import { Badge } from '@web/components/ui/badge';
+import { Checkbox } from '@web/components/ui/checkbox';
+import { TODO_STATUS } from '@web/constants/todoStatus';
+import { useToggleTodo } from '@web/hooks/useTodos';
+import { cn, formatDateWithYear } from '@web/lib/utils';
+import type { RepeatRule, Todo } from '@web/types/api';
 import { CalendarDays, Clock, FileText, RefreshCw } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { TODO_STATUS } from '@/constants/todoStatus';
-import { useToggleTodo } from '@/hooks/useTodos';
-import { cn, formatDateWithYear } from '@/lib/utils';
-import type { RepeatRule, Todo } from '@/types/api';
 
 // Repeat rule to Korean label mapping
 const REPEAT_RULE_LABELS: Partial<Record<RepeatRule, string>> = {

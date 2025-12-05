@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { API } from '@/lib/api';
-import type { RAGQueryRequest } from '@/types/api';
+import { API } from '@web/lib/api';
+import type { RAGQueryRequest } from '@web/types/api';
 import { useToast } from './use-toast';
 
 export function useRAGQuery() {

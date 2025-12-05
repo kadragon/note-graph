@@ -46,7 +46,7 @@ import type {
   User,
   WorkNote,
   WorkNoteStatistics,
-} from '@/types/api';
+} from '@web/types/api';
 
 /**
  * Backend work note response format

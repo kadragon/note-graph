@@ -1,14 +1,14 @@
 // Trace: SPEC-project-1, TASK-043
 
+import { Badge } from '@web/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@web/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
+import { useProject, useProjectStats } from '@web/hooks/useProjects';
+import type { ProjectStatus } from '@web/types/api';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useProject, useProjectStats } from '@/hooks/useProjects';
-import type { ProjectStatus } from '@/types/api';
 import { ProjectFiles } from './ProjectFiles';
 import { ProjectTodos } from './ProjectTodos';
 import { ProjectWorkNotes } from './ProjectWorkNotes';

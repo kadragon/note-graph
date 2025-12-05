@@ -926,3 +926,20 @@
 - **TASK-repo-structure-2 (SPEC-devx-structure-1)**: Flattened backend layout by removing `apps/worker/src` and placing sources directly under `apps/worker/`.
 - Updated tooling to match new paths: tsconfig aliases/include, vitest alias & main, wrangler `main`, lint-staged glob. Frontend unaffected.
 - Re-verified commands: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` all pass.
+
+### Session 55: Path Alias Refinement (2025-12-05)
+- **Follow-up to PR #135 review**: Improved path alias clarity and consistency across the monorepo.
+- Renamed `@/*` alias to `@worker/*` in all backend/test configurations (tsconfig.json, tsconfig.backend.json, vitest.config.ts) to clearly distinguish worker code from web code.
+- Removed ambiguous `@/` alias from frontend configs (vite.config.ts, tsconfig.app.json, components.json); frontend now exclusively uses `@web/*` for internal imports.
+- Updated all import statements: backend/test files from `@/` to `@worker/`, frontend files from `@/` to `@web/` including lazy imports in App.tsx.
+- Fixed vitest mock path in project-files integration test from `@/` to `@worker/`.
+- Standardized build scripts in package.json: `build` now calls `build:frontend` then `build:backend` for clearer separation.
+- Verified apps/web/README.md commands and code examples use correct aliases.
+- Confirmed .gitignore already includes `dist/` for build outputs.
+- Validation: All commands pass (lint, typecheck, test with 565 tests, build producing dist/web and dist/worker).
+
+### Session 55: Worker Layout Revert (2025-12-05)
+- **TASK-repo-structure-3 (SPEC-devx-structure-1)**: Reverted backend flattening; code back under `apps/worker/src`.
+- Restored aliases/entrypoints: tsconfig paths, vitest alias/main, wrangler main, lint-staged glob.
+- Validation rerun: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` all pass.
+- Decision: keep traditional `src/` for backend while retaining apps/packages structure for clarity.

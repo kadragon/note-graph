@@ -24,9 +24,8 @@
     /* Path alias */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./apps/web/src/*"],
-      "@shared/*": ["./packages/shared/*"],
-      "@web/*": ["./apps/web/src/*"]
+      "@web/*": ["./apps/web/src/*"],
+      "@shared/*": ["./packages/shared/*"]
     }
   },
   "include": ["apps/web/src", "packages/shared"]

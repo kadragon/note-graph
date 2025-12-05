@@ -1,21 +1,21 @@
 // Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-029, TASK-032
 
-import { FileEdit, Sparkles } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { DraftEditorForm } from '@/components/DraftEditorForm';
-import { Button } from '@/components/ui/button';
+import { DraftEditorForm } from '@web/components/DraftEditorForm';
+import { Button } from '@web/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { useGenerateDraftWithSimilar } from '@/hooks/useAIDraft';
-import { useAIDraftForm } from '@/hooks/useAIDraftForm';
+} from '@web/components/ui/dialog';
+import { Label } from '@web/components/ui/label';
+import { Textarea } from '@web/components/ui/textarea';
+import { useToast } from '@web/hooks/use-toast';
+import { useGenerateDraftWithSimilar } from '@web/hooks/useAIDraft';
+import { useAIDraftForm } from '@web/hooks/useAIDraftForm';
+import { FileEdit, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface CreateFromTextDialogProps {
   open: boolean;

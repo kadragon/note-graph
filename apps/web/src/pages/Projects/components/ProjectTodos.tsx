@@ -1,9 +1,7 @@
 // Trace: SPEC-project-1, TASK-043
 
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@web/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import {
   Table,
   TableBody,
@@ -11,9 +9,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { useProjectTodos } from '@/hooks/useProjects';
-import type { ProjectStats, TodoStatus } from '@/types/api';
+} from '@web/components/ui/table';
+import { useProjectTodos } from '@web/hooks/useProjects';
+import type { ProjectStats, TodoStatus } from '@web/types/api';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 interface ProjectTodosProps {
   projectId: string;

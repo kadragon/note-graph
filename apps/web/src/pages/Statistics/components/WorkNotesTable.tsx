@@ -3,9 +3,7 @@
  * Table showing work notes with completion statistics
  */
 
-import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import {
   Table,
   TableBody,
@@ -13,8 +11,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import type { WorkNoteStatisticsItem } from '@/types/api';
+} from '@web/components/ui/table';
+import type { WorkNoteStatisticsItem } from '@web/types/api';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 interface WorkNotesTableProps {
   workNotes: WorkNoteStatisticsItem[];

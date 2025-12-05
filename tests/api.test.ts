@@ -3,8 +3,8 @@
 // Demonstrates testing infrastructure for Cloudflare Workers
 
 import { env, SELF } from 'cloudflare:test';
+import type { Env } from '@worker/types/env';
 import { beforeAll, describe, expect, it } from 'vitest';
-import type { Env } from '@/types/env';
 
 describe('API Integration Tests', () => {
   beforeAll(async () => {

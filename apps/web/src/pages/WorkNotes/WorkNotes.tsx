@@ -1,5 +1,3 @@
-import { FileEdit, FileText, Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,12 +7,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDeleteWorkNote, useWorkNotesWithStats } from '@/hooks/useWorkNotes';
-import type { WorkNote } from '@/types/api';
+} from '@web/components/ui/alert-dialog';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
+import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/useWorkNotes';
+import type { WorkNote } from '@web/types/api';
+import { FileEdit, FileText, Plus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { CreateFromPDFDialog } from './components/CreateFromPDFDialog';
 import { CreateFromTextDialog } from './components/CreateFromTextDialog';
 import { CreateWorkNoteDialog } from './components/CreateWorkNoteDialog';

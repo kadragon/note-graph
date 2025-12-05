@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { TODO_STATUS } from '@/constants/todoStatus';
-import { API } from '@/lib/api';
-import type { CreateWorkNoteRequest, UpdateWorkNoteRequest, WorkNoteWithStats } from '@/types/api';
+import { TODO_STATUS } from '@web/constants/todoStatus';
+import { API } from '@web/lib/api';
+import type {
+  CreateWorkNoteRequest,
+  UpdateWorkNoteRequest,
+  WorkNoteWithStats,
+} from '@web/types/api';
 import { useToast } from './use-toast';
 
 export function useWorkNotes() {

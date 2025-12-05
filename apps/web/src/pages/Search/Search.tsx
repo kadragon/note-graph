@@ -1,12 +1,7 @@
-import { format, parseISO } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Building2, FileText, type LucideIcon, Search as SearchIcon, User } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Badge } from '@web/components/ui/badge';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
+import { Input } from '@web/components/ui/input';
 import {
   Table,
   TableBody,
@@ -14,9 +9,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { useSearch } from '@/hooks/useSearch';
-import type { DepartmentSearchResult, PersonSearchResult, SearchResult } from '@/types/api';
+} from '@web/components/ui/table';
+import { useSearch } from '@web/hooks/useSearch';
+import type { DepartmentSearchResult, PersonSearchResult, SearchResult } from '@web/types/api';
+import { format, parseISO } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Building2, FileText, type LucideIcon, Search as SearchIcon, User } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 interface SearchResultsSectionProps {
   icon: LucideIcon;

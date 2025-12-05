@@ -1,16 +1,16 @@
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent } from '@web/components/ui/card';
+import { Input } from '@web/components/ui/input';
+import { ScrollArea } from '@web/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
+import { useDepartments } from '@web/hooks/useDepartments';
+import { usePersons } from '@web/hooks/usePersons';
+import { useRAGQuery } from '@web/hooks/useRAG';
+import { useWorkNotes } from '@web/hooks/useWorkNotes';
+import type { RAGResponse, RAGScope } from '@web/types/api';
 import { Send } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDepartments } from '@/hooks/useDepartments';
-import { usePersons } from '@/hooks/usePersons';
-import { useRAGQuery } from '@/hooks/useRAG';
-import { useWorkNotes } from '@/hooks/useWorkNotes';
-import type { RAGResponse, RAGScope } from '@/types/api';
 import { ChatMessage } from './components/ChatMessage';
 import {
   DepartmentFilterSelector,

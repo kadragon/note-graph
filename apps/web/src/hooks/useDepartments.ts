@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { DEPARTMENT_SEARCH_LIMIT } from '@/constants/search';
-import { API } from '@/lib/api';
-import type { CreateDepartmentRequest, Department, UpdateDepartmentRequest } from '@/types/api';
+import { DEPARTMENT_SEARCH_LIMIT } from '@web/constants/search';
+import { API } from '@web/lib/api';
+import type { CreateDepartmentRequest, Department, UpdateDepartmentRequest } from '@web/types/api';
 import { useToast } from './use-toast';
 
 interface UseDepartmentsOptions {

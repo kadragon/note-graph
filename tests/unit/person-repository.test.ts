@@ -2,11 +2,11 @@
 // Unit tests for PersonRepository
 
 import { env } from 'cloudflare:test';
+import { PersonRepository } from '@worker/repositories/person-repository';
+import type { CreatePersonInput, UpdatePersonInput } from '@worker/schemas/person';
+import type { Env } from '@worker/types/env';
+import { ConflictError, NotFoundError, ValidationError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PersonRepository } from '@/repositories/person-repository';
-import type { CreatePersonInput, UpdatePersonInput } from '@/schemas/person';
-import type { Env } from '@/types/env';
-import { ConflictError, NotFoundError, ValidationError } from '@/types/errors';
 
 const testEnv = env as unknown as Env;
 

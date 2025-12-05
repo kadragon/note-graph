@@ -1,11 +1,7 @@
 // Trace: SPEC-project-1, TASK-043
 
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -13,14 +9,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@web/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@web/components/ui/select';
 import {
   Table,
   TableBody,
@@ -28,13 +24,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@web/components/ui/table';
 import {
   useAssignWorkNoteToProject,
   useProject,
   useRemoveWorkNoteFromProject,
-} from '@/hooks/useProjects';
-import { useWorkNotes } from '@/hooks/useWorkNotes';
+} from '@web/hooks/useProjects';
+import { useWorkNotes } from '@web/hooks/useWorkNotes';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface ProjectWorkNotesProps {
   projectId: string;

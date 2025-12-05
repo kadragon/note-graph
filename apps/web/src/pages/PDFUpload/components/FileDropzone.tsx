@@ -1,6 +1,6 @@
+import { Card } from '@web/components/ui/card';
 import { Upload } from 'lucide-react';
 import { useCallback } from 'react';
-import { Card } from '@/components/ui/card';
 
 interface FileDropzoneProps {
   onFileSelect: (file: File) => void;

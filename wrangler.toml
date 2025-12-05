@@ -3,7 +3,7 @@
 # Trace: SPEC-ai-draft-1, SPEC-rag-1, TASK-026
 
 name = "note-graph"
-main = "apps/worker/index.ts"
+main = "apps/worker/src/index.ts"
 compatibility_date = "2025-01-01"
 
 # Disable workers.dev subdomain (using custom domain instead)

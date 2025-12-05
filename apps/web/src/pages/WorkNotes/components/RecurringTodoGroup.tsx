@@ -1,10 +1,11 @@
 // Trace: SPEC-todo-2, TASK-052, PR#121 review feedback
+
+import { Badge } from '@web/components/ui/badge';
+import { TODO_STATUS } from '@web/constants/todoStatus';
+import { formatDateWithYear } from '@web/lib/utils';
+import type { Todo, TodoStatus } from '@web/types/api';
 import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { TODO_STATUS } from '@/constants/todoStatus';
-import { formatDateWithYear } from '@/lib/utils';
-import type { Todo, TodoStatus } from '@/types/api';
 import type { RecurringTodoGroup as RecurringTodoGroupType } from './groupRecurringTodos';
 import { TodoListItem } from './TodoListItem';
 

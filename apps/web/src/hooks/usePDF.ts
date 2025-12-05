@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { API } from '@/lib/api';
+import { API } from '@web/lib/api';
 import { useToast } from './use-toast';
 import { useCreateWorkNote } from './useWorkNotes';
 

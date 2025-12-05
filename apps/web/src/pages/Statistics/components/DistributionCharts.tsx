@@ -3,9 +3,9 @@
  * Distribution chart for category statistics
  */
 
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
+import type { CategoryDistribution } from '@web/types/api';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { CategoryDistribution } from '@/types/api';
 
 interface DistributionChartsProps {
   byCategory: CategoryDistribution[];

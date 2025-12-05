@@ -1,7 +1,5 @@
 // Trace: SPEC-project-1, TASK-043
 
-import { Filter, Plus, RotateCcw } from 'lucide-react';
-import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,20 +9,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+} from '@web/components/ui/alert-dialog';
+import { Button } from '@web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
+import { Input } from '@web/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { usePersons } from '@/hooks/usePersons';
-import { useDeleteProject, useProjects } from '@/hooks/useProjects';
-import type { Project, ProjectStatus } from '@/types/api';
+} from '@web/components/ui/select';
+import { usePersons } from '@web/hooks/usePersons';
+import { useDeleteProject, useProjects } from '@web/hooks/useProjects';
+import type { Project, ProjectStatus } from '@web/types/api';
+import { Filter, Plus, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
 import { CreateProjectDialog } from './components/CreateProjectDialog';
 import { ProjectDetailDialog } from './components/ProjectDetailDialog';
 import { ProjectsTable } from './components/ProjectsTable';

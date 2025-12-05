@@ -1,15 +1,20 @@
 // Trace: SPEC-worknote-1, TASK-032
+
+import { AIReferenceList } from '@web/components/AIReferenceList';
+import { AssigneeSelector } from '@web/components/AssigneeSelector';
+import { Button } from '@web/components/ui/button';
+import { Card } from '@web/components/ui/card';
+import { Checkbox } from '@web/components/ui/checkbox';
+import { DialogFooter } from '@web/components/ui/dialog';
+import { Input } from '@web/components/ui/input';
+import { Label } from '@web/components/ui/label';
+import { Textarea } from '@web/components/ui/textarea';
+import type {
+  AIDraftFormActions,
+  AIDraftFormData,
+  AIDraftFormState,
+} from '@web/hooks/useAIDraftForm';
 import { Trash2 } from 'lucide-react';
-import { AIReferenceList } from '@/components/AIReferenceList';
-import { AssigneeSelector } from '@/components/AssigneeSelector';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import type { AIDraftFormActions, AIDraftFormData, AIDraftFormState } from '@/hooks/useAIDraftForm';
 
 interface DraftEditorFormProps {
   state: AIDraftFormState;

@@ -1,6 +1,6 @@
+import { Badge } from '@web/components/ui/badge';
+import type { Todo } from '@web/types/api';
 import { CheckCircle2, FolderOpen } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import type { Todo } from '@/types/api';
 import { groupTodosByWorkNote } from './groupTodosByWorkNote';
 // Trace: SPEC-todo-1, TASK-046
 import { TodoItem } from './TodoItem';

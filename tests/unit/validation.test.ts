@@ -1,11 +1,11 @@
 // Trace: TASK-016
 // Unit tests for validation utilities
 
+import { ValidationError } from '@worker/types/errors';
+import { validateBody, validateParams, validateQuery } from '@worker/utils/validation';
 import type { Context } from 'hono';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { ValidationError } from '@/types/errors';
-import { validateBody, validateParams, validateQuery } from '@/utils/validation';
 
 describe('Validation Utilities', () => {
   describe('validateBody()', () => {

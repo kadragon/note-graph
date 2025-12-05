@@ -2,11 +2,11 @@
 // Unit tests for WorkNoteRepository
 
 import { env } from 'cloudflare:test';
+import { WorkNoteRepository } from '@worker/repositories/work-note-repository';
+import type { CreateWorkNoteInput, UpdateWorkNoteInput } from '@worker/schemas/work-note';
+import type { Env } from '@worker/types/env';
+import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { WorkNoteRepository } from '@/repositories/work-note-repository';
-import type { CreateWorkNoteInput, UpdateWorkNoteInput } from '@/schemas/work-note';
-import type { Env } from '@/types/env';
-import { NotFoundError } from '@/types/errors';
 
 const testEnv = env as unknown as Env;
 

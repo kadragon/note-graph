@@ -3,11 +3,11 @@
 import { env } from 'cloudflare:test';
 import type { AuthUser } from '@shared/types/auth';
 import { AuthenticationError } from '@shared/types/auth';
+import { getMeHandler } from '@worker/handlers/auth';
+import { authMiddleware, getAuthUser } from '@worker/middleware/auth';
+import type { Env } from '@worker/types/env';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getMeHandler } from '@/handlers/auth';
-import { authMiddleware, getAuthUser } from '@/middleware/auth';
-import type { Env } from '@/types/env';
 
 const testEnv = env as unknown as Env;
 
