@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, CalendarDays, CalendarRange, ListTodo } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTodos } from '@/hooks/useTodos';
 import { API } from '@/lib/api';
@@ -8,7 +8,7 @@ import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDia
 import type { Todo, TodoView } from '@/types/api';
 import { TodoList } from './TodoList';
 
-const TODO_VIEWS: { value: TodoView; label: string; icon: React.ReactNode }[] = [
+const TODO_VIEWS: { value: TodoView; label: string; icon: ReactNode }[] = [
   { value: 'today', label: '오늘', icon: <Calendar className="h-4 w-4" /> },
   { value: 'week', label: '이번 주', icon: <CalendarDays className="h-4 w-4" /> },
   { value: 'month', label: '이번 달', icon: <CalendarRange className="h-4 w-4" /> },
