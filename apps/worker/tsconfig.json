@@ -1,4 +1,5 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     // Language and Environment
     "target": "ES2022",
@@ -30,18 +31,7 @@
     "verbatimModuleSyntax": false,
 
     // Output
-    "outDir": "./dist/worker",
-
-    // Path Mapping
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./apps/worker/src/*"],
-      "@/types/*": ["./apps/worker/src/types/*"],
-      "@/services/*": ["./apps/worker/src/services/*"],
-      "@/handlers/*": ["./apps/worker/src/handlers/*"],
-      "@/utils/*": ["./apps/worker/src/utils/*"],
-      "@shared/*": ["./packages/shared/*"]
-    },
+    "outDir": "../../dist/worker",
 
     // Cloudflare Workers Types
     "types": ["@cloudflare/workers-types"],
@@ -49,8 +39,6 @@
     // Skip lib check for faster compilation
     "skipLibCheck": true
   },
-
-  "include": ["apps/worker/src/**/*", "packages/shared/**/*"],
-
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "apps/web"]
+  "include": ["./src/**/*", "../../packages/shared/**/*"],
+  "exclude": ["node_modules", "../../dist", "**/*.test.ts", "**/*.spec.ts", "../web"]
 }

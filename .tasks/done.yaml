@@ -1567,3 +1567,16 @@ completed_tasks:
     estimated_effort: 2h
     actual_effort: ~1h
     notes: "Implements user feedback for statistics dashboard; maintains SPEC-stats-1 alignment."
+
+  - task_id: TASK-devx-structure-2
+    spec_id: SPEC-devx-structure-1
+    title: "Relocate tsconfig files into app directories and add shared base config"
+    completed_at: 2025-12-05T01:28:00Z
+    outcome: |
+      - Introduced tsconfig.base.json to centralize path aliases for worker/web/shared code.
+      - Moved worker config to apps/worker/tsconfig.json and web config to apps/web/tsconfig.json; root tsconfig.json now references both.
+      - Updated package.json scripts and lint-staged globs to use the new tsconfig paths.
+    test_results: |
+      ✓ npm run typecheck
+    estimated_effort: 0.5h
+    actual_effort: ~0.3h

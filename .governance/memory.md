@@ -943,3 +943,9 @@
 - Restored aliases/entrypoints: tsconfig paths, vitest alias/main, wrangler main, lint-staged glob.
 - Validation rerun: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` all pass.
 - Decision: keep traditional `src/` for backend while retaining apps/packages structure for clarity.
+
+### Session 56: Tsconfig Relocation (2025-12-05)
+- **TASK-devx-structure-2 (SPEC-devx-structure-1)**: Moved TypeScript configs next to their apps and added `tsconfig.base.json` for shared path aliases.
+- New locations: `apps/worker/tsconfig.json`, `apps/web/tsconfig.json`; root `tsconfig.json` now references both.
+- Scripts and lint-staged globs updated to use app-local configs; shared aliases centralized in `tsconfig.base.json`.
+- Validation: `npm run typecheck` passes after relocation.

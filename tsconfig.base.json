@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./apps/worker/src/*"],
+      "@/types/*": ["./apps/worker/src/types/*"],
+      "@/services/*": ["./apps/worker/src/services/*"],
+      "@/handlers/*": ["./apps/worker/src/handlers/*"],
+      "@/utils/*": ["./apps/worker/src/utils/*"],
+      "@shared/*": ["./packages/shared/*"],
+      "@web/*": ["./apps/web/src/*"]
+    }
+  }
+}
