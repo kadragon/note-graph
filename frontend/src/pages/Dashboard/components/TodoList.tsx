@@ -29,7 +29,7 @@ export function TodoList({
   if (todos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-        <CheckCircle2 className="h-12 w-12 mb-3 opacity-50" />
+        <CheckCircle2 className="h-12 w-12 mb-3 opacity-50" aria-hidden="true" />
         <p className="text-sm">할 일이 없습니다.</p>
       </div>
     );
@@ -53,7 +53,7 @@ export function TodoList({
         <div key={group.workNoteId ?? 'no-work'} className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <FolderOpen className="h-4 w-4 text-primary" />
+              <FolderOpen className="h-4 w-4 text-primary" aria-hidden="true" />
               {group.workTitle}
             </div>
             <Badge variant="secondary" className="text-xs">

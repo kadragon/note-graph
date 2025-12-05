@@ -9,10 +9,22 @@ import type { Todo, TodoView } from '@/types/api';
 import { TodoList } from './TodoList';
 
 const TODO_VIEWS: { value: TodoView; label: string; icon: ReactNode }[] = [
-  { value: 'today', label: '오늘', icon: <Calendar className="h-4 w-4" /> },
-  { value: 'week', label: '이번 주', icon: <CalendarDays className="h-4 w-4" /> },
-  { value: 'month', label: '이번 달', icon: <CalendarRange className="h-4 w-4" /> },
-  { value: 'remaining', label: '남은일', icon: <ListTodo className="h-4 w-4" /> },
+  { value: 'today', label: '오늘', icon: <Calendar className="h-4 w-4" aria-hidden="true" /> },
+  {
+    value: 'week',
+    label: '이번 주',
+    icon: <CalendarDays className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    value: 'month',
+    label: '이번 달',
+    icon: <CalendarRange className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    value: 'remaining',
+    label: '남은일',
+    icon: <ListTodo className="h-4 w-4" aria-hidden="true" />,
+  },
 ];
 
 export function TodoTabs() {
