@@ -1,6 +1,13 @@
 // Trace: SPEC-pdf-1, TASK-014
 // PDF upload route with synchronous processing
 
+import type {
+  PdfJobResponse,
+  PdfUploadMetadata,
+  WorkNoteDraft,
+  WorkNoteDraftWithReferences,
+} from '@shared/types/pdf';
+import type { SimilarWorkNoteReference } from '@shared/types/search';
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { PdfJobRepository } from '../repositories/pdf-job-repository.js';
@@ -9,13 +16,6 @@ import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { WorkNoteService } from '../services/work-note-service.js';
 import type { Env } from '../types/env.js';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
-import type {
-  PdfJobResponse,
-  PdfUploadMetadata,
-  WorkNoteDraft,
-  WorkNoteDraftWithReferences,
-} from '../types/pdf.js';
-import type { SimilarWorkNoteReference } from '../types/search.js';
 
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB

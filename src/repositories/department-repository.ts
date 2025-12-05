@@ -4,8 +4,8 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
+import type { Department, DepartmentMember, DepartmentWorkNote } from '@shared/types/department';
 import type { CreateDepartmentInput, UpdateDepartmentInput } from '../schemas/department';
-import type { Department, DepartmentMember, DepartmentWorkNote } from '../types/department';
 import { ConflictError, NotFoundError } from '../types/errors';
 
 export class DepartmentRepository {

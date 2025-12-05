@@ -4,9 +4,9 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
+import type { Person, PersonDeptHistory, PersonWorkNote } from '@shared/types/person';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/person';
 import { ConflictError, NotFoundError, ValidationError } from '../types/errors';
-import type { Person, PersonDeptHistory, PersonWorkNote } from '../types/person';
 
 export class PersonRepository {
   constructor(private db: D1Database) {}

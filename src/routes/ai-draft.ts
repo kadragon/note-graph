@@ -3,6 +3,7 @@
  * AI-powered work note draft generation routes
  */
 
+import type { AuthUser } from '@shared/types/auth';
 import type { Context, Next } from 'hono';
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
@@ -10,7 +11,6 @@ import { TaskCategoryRepository } from '../repositories/task-category-repository
 import { DraftFromTextRequestSchema, TodoSuggestionsRequestSchema } from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
 import { WorkNoteService } from '../services/work-note-service';
-import type { AuthUser } from '../types/auth';
 import type { Env } from '../types/env';
 import { NotFoundError, RateLimitError } from '../types/errors';
 import { validateBody } from '../utils/validation';

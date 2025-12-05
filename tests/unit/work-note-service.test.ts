@@ -1,9 +1,10 @@
 // Trace: SPEC-ai-draft-refs-1, TASK-029, TASK-031
+
+import type { ReferenceTodo } from '@shared/types/search';
+import type { WorkNote } from '@shared/types/work-note';
 import { describe, expect, it, vi } from 'vitest';
 import { WorkNoteService } from '../../src/services/work-note-service';
 import type { Env } from '../../src/types/env';
-import type { ReferenceTodo } from '../../src/types/search';
-import type { WorkNote } from '../../src/types/work-note';
 
 // Minimal env stub to satisfy constructor; services are mocked per test
 const dummyEnv = {

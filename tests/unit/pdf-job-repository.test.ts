@@ -1,15 +1,15 @@
 // Unit tests for PdfJobRepository
 
 import { env } from 'cloudflare:test';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { PdfJobRepository } from '../../src/repositories/pdf-job-repository';
-import type { Env } from '../../src/types/env';
-import { NotFoundError } from '../../src/types/errors';
 import type {
   PdfUploadMetadata,
   WorkNoteDraft,
   WorkNoteDraftWithReferences,
-} from '../../src/types/pdf';
+} from '@shared/types/pdf';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { PdfJobRepository } from '../../src/repositories/pdf-job-repository';
+import type { Env } from '../../src/types/env';
+import { NotFoundError } from '../../src/types/errors';
 
 const testEnv = env as unknown as Env;
 

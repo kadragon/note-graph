@@ -1,10 +1,10 @@
 // Unit tests for EmbeddingService and VectorizeService
 
 import { env } from 'cloudflare:test';
+import type { ChunkMetadata } from '@shared/types/search';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EmbeddingService, VectorizeService } from '../../src/services/embedding-service';
 import type { Env } from '../../src/types/env';
-import type { ChunkMetadata } from '../../src/types/search';
 
 const testEnv = env as unknown as Env;
 

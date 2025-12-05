@@ -1,8 +1,9 @@
 // Trace: SPEC-rag-1, TASK-012, TASK-041
+
+import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
 import { RagQueryRequestSchema } from '../schemas/rag';
 import { RagService } from '../services/rag-service';
-import type { AuthUser } from '../types/auth';
 import type { Env } from '../types/env';
 import { BadRequestError, RateLimitError } from '../types/errors';
 import { validateBody } from '../utils/validation';

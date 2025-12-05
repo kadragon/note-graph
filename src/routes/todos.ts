@@ -3,6 +3,7 @@
  * Todo management routes
  */
 
+import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../index';
@@ -10,7 +11,6 @@ import { authMiddleware } from '../middleware/auth';
 import { TodoRepository } from '../repositories/todo-repository';
 import { listTodosQuerySchema, updateTodoSchema } from '../schemas/todo';
 import { WorkNoteService } from '../services/work-note-service';
-import type { AuthUser } from '../types/auth';
 import { DomainError } from '../types/errors';
 import { validateBody, validateQuery } from '../utils/validation';
 

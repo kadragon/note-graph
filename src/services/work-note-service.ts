@@ -4,6 +4,8 @@
  * Uses embedded_at tracking for embedding state management
  */
 
+import type { SimilarWorkNoteReference } from '@shared/types/search';
+import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { format } from 'date-fns';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import type {
@@ -12,8 +14,6 @@ import type {
   UpdateWorkNoteInput,
 } from '../schemas/work-note';
 import type { Env } from '../types/env';
-import type { SimilarWorkNoteReference } from '../types/search';
-import type { WorkNote, WorkNoteDetail } from '../types/work-note';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingService, VectorizeService } from './embedding-service';
 

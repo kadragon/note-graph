@@ -1,11 +1,11 @@
 // Unit tests for AIDraftService
 
 import { env } from 'cloudflare:test';
+import type { WorkNote } from '@shared/types/work-note';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AIDraftService } from '../../src/services/ai-draft-service';
 import type { Env } from '../../src/types/env';
 import { RateLimitError } from '../../src/types/errors';
-import type { WorkNote } from '../../src/types/work-note';
 
 const testEnv = env as unknown as Env;
 

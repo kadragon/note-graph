@@ -9,11 +9,11 @@ import type {
   R2ObjectBody,
   R2PutOptions,
 } from '@cloudflare/workers-types';
+import type { ProjectFile } from '@shared/types/project';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as projectFileService from '../../src/services/project-file-service.js';
 import type { Env } from '../../src/types/env';
 import { BadRequestError } from '../../src/types/errors';
-import type { ProjectFile } from '../../src/types/project';
 
 vi.mock('../../src/services/project-file-service.js', () => {
   const uploadFile = vi.fn();

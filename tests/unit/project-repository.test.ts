@@ -2,11 +2,11 @@
 // Unit tests for ProjectRepository
 
 import { env } from 'cloudflare:test';
+import type { CreateProjectData, UpdateProjectData } from '@shared/types/project';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ProjectRepository } from '../../src/repositories/project-repository';
 import type { Env } from '../../src/types/env';
 import { ConflictError, NotFoundError } from '../../src/types/errors';
-import type { CreateProjectData, UpdateProjectData } from '../../src/types/project';
 
 const testEnv = env as unknown as Env;
 

@@ -8,11 +8,11 @@ import type {
   R2ObjectBody,
   R2PutOptions,
 } from '@cloudflare/workers-types';
+import type { ProjectFile } from '@shared/types/project';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectFileService } from '../../src/services/project-file-service';
 import type { Env } from '../../src/types/env';
 import { BadRequestError, NotFoundError } from '../../src/types/errors';
-import type { ProjectFile } from '../../src/types/project';
 
 // Simple in-memory R2 mock
 class MockR2Bucket implements R2Bucket {

@@ -1,14 +1,14 @@
 // Trace: SPEC-pdf-1, TASK-014
 // Repository for managing PDF processing jobs in D1 database
 
-import { NotFoundError } from '../types/errors.js';
 import type {
   PdfJob,
   PdfJobStatus,
   PdfUploadMetadata,
   WorkNoteDraft,
   WorkNoteDraftWithReferences,
-} from '../types/pdf.js';
+} from '@shared/types/pdf';
+import { NotFoundError } from '../types/errors.js';
 
 /**
  * PdfJobRepository

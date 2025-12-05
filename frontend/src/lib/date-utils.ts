@@ -3,6 +3,7 @@
  * Date calculation utilities for statistics period boundaries
  */
 
+import type { StatisticsPeriod } from '@shared/types/statistics';
 import {
   endOfMonth,
   endOfWeek,
@@ -15,13 +16,7 @@ import {
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
-export type StatisticsPeriod =
-  | 'this-week'
-  | 'this-month'
-  | 'first-half'
-  | 'second-half'
-  | 'this-year'
-  | 'last-week';
+export type { StatisticsPeriod };
 
 export interface DateRange {
   startDate: string; // ISO 8601 date string (YYYY-MM-DD)
@@ -101,6 +96,12 @@ export function getStatisticsPeriodRange(period: StatisticsPeriod, year?: number
       };
     }
 
+    case 'custom':
+      return {
+        startDate: format(now, 'yyyy-MM-dd'),
+        endDate: format(now, 'yyyy-MM-dd'),
+      };
+
     default:
       throw new Error(`Unknown period: ${period as never}`);
   }
@@ -119,6 +120,7 @@ export function getStatisticsPeriodLabel(period: StatisticsPeriod, year?: number
     'second-half': `${targetYear}년 7~12월`,
     'this-year': `${targetYear}년 올해`,
     'last-week': '직전주',
+    custom: '직접 입력',
   };
 
   return labels[period];

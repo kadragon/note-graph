@@ -3,6 +3,7 @@
  * Work note management routes with integrated RAG support
  */
 
+import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { authMiddleware } from '../middleware/auth';
@@ -14,7 +15,6 @@ import {
   updateWorkNoteSchema,
 } from '../schemas/work-note';
 import { WorkNoteService } from '../services/work-note-service';
-import type { AuthUser } from '../types/auth';
 import type { Env } from '../types/env';
 import { DomainError } from '../types/errors';
 import { validateBody, validateQuery } from '../utils/validation';

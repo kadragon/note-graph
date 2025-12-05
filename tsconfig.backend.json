@@ -31,7 +31,6 @@
 
     // Output
     "outDir": "./dist",
-    "rootDir": "./src",
 
     // Path Mapping
     "baseUrl": ".",
@@ -40,7 +39,8 @@
       "@/types/*": ["./src/types/*"],
       "@/services/*": ["./src/services/*"],
       "@/handlers/*": ["./src/handlers/*"],
-      "@/utils/*": ["./src/utils/*"]
+      "@/utils/*": ["./src/utils/*"],
+      "@shared/*": ["./shared/*"]
     },
 
     // Cloudflare Workers Types
@@ -50,7 +50,7 @@
     "skipLibCheck": true
   },
 
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "shared/**/*"],
 
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "frontend"]
 }

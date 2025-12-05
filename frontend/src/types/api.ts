@@ -3,7 +3,59 @@ export interface User {
   email: string;
 }
 
-// Work Note types
+// Shared type re-exports
+// Using import + export pattern for types used within this file
+import type { Department } from '@shared/types/department';
+import type { PdfJobResponse, PdfJobStatus, WorkNoteDraft } from '@shared/types/pdf';
+import type { EmploymentStatus, Person, PersonDeptHistory } from '@shared/types/person';
+import type {
+  Project,
+  ProjectDetail,
+  ProjectFile,
+  ProjectParticipant,
+  ProjectParticipantRole,
+  ProjectPriority,
+  ProjectStats,
+  ProjectStatus,
+} from '@shared/types/project';
+import type {
+  DepartmentSearchItem,
+  PersonSearchItem,
+  RagContextSnippet,
+  RagScope,
+  SimilarWorkNoteReference,
+} from '@shared/types/search';
+import type {
+  CategoryDistribution,
+  DepartmentDistribution,
+  PersonDistribution,
+  StatisticsPeriod,
+} from '@shared/types/statistics';
+import type { TaskCategory } from '@shared/types/task-category';
+
+export type { Department, TaskCategory };
+export type { EmploymentStatus, Person, PersonDeptHistory };
+export type {
+  Project,
+  ProjectDetail,
+  ProjectFile,
+  ProjectParticipant,
+  ProjectParticipantRole,
+  ProjectPriority,
+  ProjectStats,
+  ProjectStatus,
+};
+export type { CategoryDistribution, DepartmentDistribution, PersonDistribution, StatisticsPeriod };
+export type PersonSearchResult = PersonSearchItem;
+export type DepartmentSearchResult = DepartmentSearchItem;
+export type RAGScope = RagScope;
+export type RAGSource = RagContextSnippet;
+export type AIDraftReference = SimilarWorkNoteReference;
+export type AIDraftPayload = WorkNoteDraft;
+export type PDFJobStatus = PdfJobStatus;
+export type PDFJob = PdfJobResponse;
+
+// Work Note types (Frontend View Model)
 export interface WorkNote {
   id: string;
   title: string;
@@ -54,32 +106,6 @@ export interface UpdateWorkNoteRequest {
   relatedWorkIds?: string[];
 }
 
-// Person types
-export type EmploymentStatus = '재직' | '휴직' | '퇴직';
-
-export interface Person {
-  personId: string;
-  name: string;
-  phoneExt?: string | null; // Up to 15 chars phone number (e.g., '043-123-4567')
-  currentDept?: string | null;
-  currentPosition?: string | null;
-  currentRoleDesc?: string | null;
-  employmentStatus: EmploymentStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PersonDeptHistory {
-  id: number;
-  personId: string;
-  deptName: string;
-  position: string | null;
-  roleDesc: string | null;
-  startDate: string;
-  endDate: string | null;
-  isActive: boolean;
-}
-
 export interface CreatePersonRequest {
   personId: string;
   name: string;
@@ -119,14 +145,6 @@ export interface ImportPersonResponse {
   isNew: boolean;
 }
 
-// Department types
-export interface Department {
-  deptName: string;
-  description?: string | null;
-  isActive: boolean;
-  createdAt: string;
-}
-
 export interface CreateDepartmentRequest {
   deptName: string;
   description?: string;
@@ -135,14 +153,6 @@ export interface CreateDepartmentRequest {
 export interface UpdateDepartmentRequest {
   description?: string;
   isActive?: boolean;
-}
-
-// Task Category types
-export interface TaskCategory {
-  categoryId: string;
-  name: string;
-  isActive: boolean;
-  createdAt: string;
 }
 
 export interface CreateTaskCategoryRequest {
@@ -154,7 +164,7 @@ export interface UpdateTaskCategoryRequest {
   isActive?: boolean;
 }
 
-// Todo types
+// Todo types (Frontend View Model)
 export type TodoStatus = '진행중' | '완료' | '보류' | '중단';
 export type TodoView = 'today' | 'week' | 'month' | 'remaining' | 'completed';
 export type RepeatRule = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM';
@@ -219,21 +229,6 @@ export interface SearchResult {
   createdAt: string;
 }
 
-export interface PersonSearchResult {
-  personId: string;
-  name: string;
-  currentDept: string | null;
-  currentPosition: string | null;
-  phoneExt: string | null;
-  employmentStatus: string;
-}
-
-export interface DepartmentSearchResult {
-  deptName: string;
-  description: string | null;
-  isActive: boolean;
-}
-
 export interface UnifiedSearchResult {
   workNotes: SearchResult[];
   persons: PersonSearchResult[];
@@ -242,8 +237,6 @@ export interface UnifiedSearchResult {
 }
 
 // RAG types
-export type RAGScope = 'global' | 'person' | 'department' | 'work' | 'project';
-
 export interface RAGQueryRequest {
   query: string;
   scope: RAGScope;
@@ -252,13 +245,6 @@ export interface RAGQueryRequest {
   workId?: string;
   projectId?: string;
   topK?: number;
-}
-
-export interface RAGSource {
-  workId: string;
-  title: string;
-  snippet: string;
-  score: number;
 }
 
 export interface RAGResponse {
@@ -274,42 +260,12 @@ export interface AIGenerateDraftRequest {
   deptName?: string;
 }
 
-export interface AIDraftTodo {
-  title: string;
-  description?: string;
-  dueDate?: string;
-}
-
-export interface AIDraftReference {
-  workId: string;
-  title: string;
-  category?: string;
-  similarityScore?: number;
-}
-
-export interface AIDraftPayload {
-  title: string;
-  category: string;
-  content: string;
-  todos: AIDraftTodo[];
-}
+// Extract Todo type from AIDraftPayload
+export type AIDraftTodo = import('@shared/types/pdf').WorkNoteDraft['todos'][number];
 
 export interface AIGenerateDraftResponse {
   draft: AIDraftPayload;
   references: AIDraftReference[];
-}
-
-// PDF types
-export type PDFJobStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'ERROR';
-
-export interface PDFJob {
-  jobId: string;
-  status: PDFJobStatus;
-  createdAt: string;
-  updatedAt: string;
-  draft?: AIDraftPayload;
-  references?: AIDraftReference[];
-  errorMessage?: string;
 }
 
 // Vector Store types
@@ -326,70 +282,11 @@ export interface BatchProcessResult {
 }
 
 // Project types
-export type ProjectStatus = '진행중' | '완료' | '보류' | '중단';
-export type ProjectPriority = '높음' | '중간' | '낮음';
-export type ProjectParticipantRole = '리더' | '참여자' | '검토자';
-
 export interface ProjectFilters {
   status?: ProjectStatus;
   leaderPersonId?: string;
   startDate?: string;
   endDate?: string;
-}
-
-export interface Project {
-  projectId: string;
-  name: string;
-  description?: string | null;
-  status: ProjectStatus;
-  tags?: string | null;
-  priority?: ProjectPriority | null;
-  startDate?: string | null;
-  targetEndDate?: string | null;
-  actualEndDate?: string | null;
-  leaderPersonId?: string | null;
-  deptName?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt?: string | null;
-}
-
-export interface ProjectParticipant {
-  id: number;
-  projectId: string;
-  personId: string;
-  role: ProjectParticipantRole;
-  joinedAt: string;
-  personName?: string;
-}
-
-export interface ProjectFile {
-  fileId: string;
-  projectId: string;
-  r2Key: string;
-  originalName: string;
-  fileType: string;
-  fileSize: number;
-  uploadedBy: string;
-  uploadedAt: string;
-  embeddedAt?: string | null;
-  deletedAt?: string | null;
-}
-
-export interface ProjectStats {
-  totalTodos: number;
-  completedTodos: number;
-  pendingTodos: number;
-  onHoldTodos: number;
-  fileCount: number;
-  totalFileSize: number;
-}
-
-export interface ProjectDetail extends Project {
-  participants?: ProjectParticipant[];
-  workNotes?: WorkNote[];
-  files?: ProjectFile[];
-  stats?: ProjectStats;
 }
 
 export interface CreateProjectRequest {
@@ -423,14 +320,6 @@ export interface AssignWorkNoteRequest {
 }
 
 // Statistics types
-export type StatisticsPeriod =
-  | 'this-week'
-  | 'this-month'
-  | 'first-half'
-  | 'second-half'
-  | 'this-year'
-  | 'last-week';
-
 export interface WorkNoteStatisticsItem {
   workId: string;
   title: string;
@@ -453,27 +342,6 @@ export interface WorkNoteStatisticsItem {
    * Used for UI display instead of categoryId
    */
   categoryName?: string | null;
-}
-
-export interface CategoryDistribution {
-  /** Category ID from task_categories table (used for filtering/grouping) */
-  categoryId: string | null;
-  /** Human-readable category name (used for UI display) */
-  categoryName: string | null;
-  /** Number of work notes in this category */
-  count: number;
-}
-
-export interface PersonDistribution {
-  personId: string;
-  personName: string;
-  currentDept: string | null;
-  count: number;
-}
-
-export interface DepartmentDistribution {
-  deptName: string | null;
-  count: number;
 }
 
 export interface WorkNoteStatistics {

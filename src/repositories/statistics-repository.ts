@@ -10,7 +10,7 @@ import type {
   PersonDistribution,
   WorkNoteStatistics,
   WorkNoteWithStats,
-} from '../types/statistics';
+} from '@shared/types/statistics';
 
 interface FindCompletedWorkNotesOptions {
   personId?: string;

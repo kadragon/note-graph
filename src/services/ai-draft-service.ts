@@ -3,10 +3,10 @@
  * AI draft service for work note generation using GPT-4.5
  */
 
+import type { AIDraftTodo, ReferenceTodo, WorkNoteDraft } from '@shared/types/search';
+import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
 import { RateLimitError } from '../types/errors';
-import type { AIDraftTodo, ReferenceTodo, WorkNoteDraft } from '../types/search';
-import type { WorkNote } from '../types/work-note';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { getTodayDateUTC } from '../utils/date';
 

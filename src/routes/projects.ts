@@ -3,6 +3,7 @@
  * API routes for Project management
  */
 
+import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { ProjectRepository } from '../repositories/project-repository';
@@ -14,7 +15,6 @@ import {
   updateProjectSchema,
 } from '../schemas/project';
 import { ProjectFileService } from '../services/project-file-service';
-import type { AuthUser } from '../types/auth';
 import type { Env } from '../types/env';
 import { BadRequestError, ConflictError, NotFoundError } from '../types/errors';
 import { validateBody, validateQuery } from '../utils/validation';

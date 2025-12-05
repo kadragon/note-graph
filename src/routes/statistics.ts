@@ -3,12 +3,12 @@
  * Statistics routes for work note completion metrics
  */
 
+import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { authMiddleware } from '../middleware/auth';
 import { statisticsQuerySchema } from '../schemas/statistics';
 import { StatisticsService } from '../services/statistics-service';
-import type { AuthUser } from '../types/auth';
 import type { Env } from '../types/env';
 import { DomainError } from '../types/errors';
 import { validateQuery } from '../utils/validation';

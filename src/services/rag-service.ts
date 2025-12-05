@@ -1,9 +1,9 @@
 // Trace: SPEC-rag-1, TASK-012, TASK-041
 import type { D1Database } from '@cloudflare/workers-types';
+import type { RagContextSnippet, RagQueryFilters, RagQueryResponse } from '@shared/types/search';
+import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
 import { RateLimitError } from '../types/errors';
-import type { RagContextSnippet, RagQueryFilters, RagQueryResponse } from '../types/search';
-import type { WorkNote } from '../types/work-note';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingService, VectorizeService } from './embedding-service';

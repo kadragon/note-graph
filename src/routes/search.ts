@@ -1,5 +1,11 @@
 // Trace: SPEC-search-1, TASK-009, TASK-011
 
+import type { AuthUser } from '@shared/types/auth';
+import type {
+  DepartmentSearchItem,
+  PersonSearchItem,
+  UnifiedSearchResponse,
+} from '@shared/types/search';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
@@ -7,13 +13,7 @@ import { DepartmentRepository } from '../repositories/department-repository';
 import { PersonRepository } from '../repositories/person-repository';
 import { searchWorkNotesSchema } from '../schemas/search';
 import { HybridSearchService } from '../services/hybrid-search-service';
-import type { AuthUser } from '../types/auth';
 import type { Env } from '../types/env';
-import type {
-  DepartmentSearchItem,
-  PersonSearchItem,
-  UnifiedSearchResponse,
-} from '../types/search';
 import { validateBody } from '../utils/validation';
 
 const search = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();

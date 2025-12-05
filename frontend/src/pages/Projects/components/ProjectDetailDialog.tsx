@@ -175,7 +175,7 @@ export function ProjectDetailDialog({ open, onOpenChange, projectId }: ProjectDe
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">파일 수</p>
-                      <p className="text-2xl font-bold">{stats.fileCount}</p>
+                      <p className="text-2xl font-bold">{stats.totalFiles}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">총 파일 크기</p>
