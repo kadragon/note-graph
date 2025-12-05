@@ -1,4 +1,5 @@
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, FolderOpen } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import type { Todo } from '@/types/api';
 import { groupTodosByWorkNote } from './groupTodosByWorkNote';
 // Trace: SPEC-todo-1, TASK-046
@@ -50,11 +51,16 @@ export function TodoList({
     <div className="space-y-6">
       {groups.map((group) => (
         <div key={group.workNoteId ?? 'no-work'} className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-foreground">{group.workTitle}</div>
-            <span className="text-xs text-muted-foreground">{group.todos.length}개</span>
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <FolderOpen className="h-4 w-4 text-primary" />
+              {group.workTitle}
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {group.todos.length}개
+            </Badge>
           </div>
-          <div className="divide-y rounded-md border bg-card">
+          <div className="divide-y rounded-md border bg-card shadow-sm">
             {group.todos.map((todo) => (
               <TodoItem key={todo.id} todo={todo} onTodoClick={onTodoClick} showWorkTitle={false} />
             ))}
