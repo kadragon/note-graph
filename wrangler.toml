@@ -89,6 +89,7 @@ local_protocol = "http"
 # Build Configuration
 # ============================================================================
 # Wrangler uses ES modules format by default (no build config needed for TypeScript)
+# Note: TypeScript path mapping (@shared/*) is configured in tsconfig.json
 
 # ============================================================================
 # Static Assets

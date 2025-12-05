@@ -1,4 +1,10 @@
 {
   "files": [],
-  "references": [{ "path": "./tsconfig.backend.json" }, { "path": "./tsconfig.app.json" }]
+  "references": [{ "path": "./tsconfig.backend.json" }, { "path": "./tsconfig.app.json" }],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["./shared/*"]
+    }
+  }
 }
