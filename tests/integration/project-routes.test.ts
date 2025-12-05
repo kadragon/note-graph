@@ -656,7 +656,7 @@ describe('Project API Routes', () => {
       expect(stats.totalTodos).toBe(2);
       expect(stats.completedTodos).toBe(1);
       expect(stats.pendingTodos).toBe(1);
-      expect(stats.fileCount).toBe(2);
+      expect(stats.totalFiles).toBe(2);
       expect(stats.totalFileSize).toBe(25000);
     });
 

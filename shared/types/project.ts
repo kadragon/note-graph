@@ -89,7 +89,7 @@ export interface ProjectStats {
   completedTodos: number;
   pendingTodos: number;
   onHoldTodos: number;
-  fileCount: number;
+  totalFiles: number;
   totalFileSize: number; // bytes
   lastActivity: string | null; // ISO 8601 timestamp of most recent update
 }

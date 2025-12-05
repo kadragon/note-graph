@@ -204,7 +204,7 @@ acceptance_tests:
     desc: "Project statistics include file metrics"
     given: "Project with 5 files totaling 25MB"
     when: "GET /projects/:projectId/stats"
-    then: "Returns fileCount=5, totalFileSize=25000000 (bytes)"
+    then: "Returns totalFiles=5, totalFileSize=25000000 (bytes)"
 
 dependencies:
   - governance: "patterns.md (Repository Pattern, Queue-based Processing, R2 Storage)"

@@ -511,7 +511,7 @@ export class ProjectRepository {
       completedTodos: todoStats?.completed || 0,
       pendingTodos: todoStats?.pending || 0,
       onHoldTodos: todoStats?.on_hold || 0,
-      fileCount: fileStats?.count || 0,
+      totalFiles: fileStats?.count || 0,
       totalFileSize: fileStats?.total_size || 0,
       lastActivity: lastActivity?.updated_at || null,
     };

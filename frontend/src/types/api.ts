@@ -3,49 +3,57 @@ export interface User {
   email: string;
 }
 
-import type { Department as SharedDepartment } from '@shared/types/department';
-// Shared Entities
+// Shared type re-exports
+// Using import + export pattern for types used within this file
+import type { Department } from '@shared/types/department';
+import type { PdfJobResponse, PdfJobStatus, WorkNoteDraft } from '@shared/types/pdf';
+import type { EmploymentStatus, Person, PersonDeptHistory } from '@shared/types/person';
 import type {
-  EmploymentStatus as SharedEmploymentStatus,
-  Person as SharedPerson,
-  PersonDeptHistory as SharedPersonDeptHistory,
-} from '@shared/types/person';
-import type {
-  Project as SharedProject,
-  ProjectDetail as SharedProjectDetail,
-  ProjectFile as SharedProjectFile,
-  ProjectParticipant as SharedProjectParticipant,
-  ProjectParticipantRole as SharedProjectParticipantRole,
-  ProjectPriority as SharedProjectPriority,
-  ProjectStats as SharedProjectStats,
-  ProjectStatus as SharedProjectStatus,
+  Project,
+  ProjectDetail,
+  ProjectFile,
+  ProjectParticipant,
+  ProjectParticipantRole,
+  ProjectPriority,
+  ProjectStats,
+  ProjectStatus,
 } from '@shared/types/project';
 import type {
-  CategoryDistribution as SharedCategoryDistribution,
-  DepartmentDistribution as SharedDepartmentDistribution,
-  PersonDistribution as SharedPersonDistribution,
-  StatisticsPeriod as SharedStatisticsPeriod,
+  DepartmentSearchItem,
+  PersonSearchItem,
+  RagContextSnippet,
+  RagScope,
+  SimilarWorkNoteReference,
+} from '@shared/types/search';
+import type {
+  CategoryDistribution,
+  DepartmentDistribution,
+  PersonDistribution,
+  StatisticsPeriod,
 } from '@shared/types/statistics';
-import type { TaskCategory as SharedTaskCategory } from '@shared/types/task-category';
+import type { TaskCategory } from '@shared/types/task-category';
 
-// Re-exports of shared types that match frontend needs exactly
-export type EmploymentStatus = SharedEmploymentStatus;
-export type Person = SharedPerson;
-export type PersonDeptHistory = SharedPersonDeptHistory;
-export type Department = SharedDepartment;
-export type TaskCategory = SharedTaskCategory;
-export type Project = SharedProject;
-export type ProjectDetail = SharedProjectDetail;
-export type ProjectFile = SharedProjectFile;
-export type ProjectParticipant = SharedProjectParticipant;
-export type ProjectParticipantRole = SharedProjectParticipantRole;
-export type ProjectPriority = SharedProjectPriority;
-export type ProjectStats = SharedProjectStats;
-export type ProjectStatus = SharedProjectStatus;
-export type StatisticsPeriod = SharedStatisticsPeriod;
-export type CategoryDistribution = SharedCategoryDistribution;
-export type DepartmentDistribution = SharedDepartmentDistribution;
-export type PersonDistribution = SharedPersonDistribution;
+export type { Department, TaskCategory };
+export type { EmploymentStatus, Person, PersonDeptHistory };
+export type {
+  Project,
+  ProjectDetail,
+  ProjectFile,
+  ProjectParticipant,
+  ProjectParticipantRole,
+  ProjectPriority,
+  ProjectStats,
+  ProjectStatus,
+};
+export type { CategoryDistribution, DepartmentDistribution, PersonDistribution, StatisticsPeriod };
+export type PersonSearchResult = PersonSearchItem;
+export type DepartmentSearchResult = DepartmentSearchItem;
+export type RAGScope = RagScope;
+export type RAGSource = RagContextSnippet;
+export type AIDraftReference = SimilarWorkNoteReference;
+export type AIDraftPayload = WorkNoteDraft;
+export type PDFJobStatus = PdfJobStatus;
+export type PDFJob = PdfJobResponse;
 
 // Work Note types (Frontend View Model)
 export interface WorkNote {
@@ -221,14 +229,6 @@ export interface SearchResult {
   createdAt: string;
 }
 
-import type {
-  DepartmentSearchItem as SharedDepartmentSearchItem,
-  PersonSearchItem as SharedPersonSearchItem,
-} from '@shared/types/search';
-
-export type PersonSearchResult = SharedPersonSearchItem;
-export type DepartmentSearchResult = SharedDepartmentSearchItem;
-
 export interface UnifiedSearchResult {
   workNotes: SearchResult[];
   persons: PersonSearchResult[];
@@ -237,13 +237,6 @@ export interface UnifiedSearchResult {
 }
 
 // RAG types
-import type {
-  RagContextSnippet as SharedRagContextSnippet,
-  RagScope as SharedRagScope,
-} from '@shared/types/search';
-
-export type RAGScope = SharedRagScope;
-
 export interface RAGQueryRequest {
   query: string;
   scope: RAGScope;
@@ -253,8 +246,6 @@ export interface RAGQueryRequest {
   projectId?: string;
   topK?: number;
 }
-
-export type RAGSource = SharedRagContextSnippet;
 
 export interface RAGResponse {
   answer: string;
@@ -269,28 +260,13 @@ export interface AIGenerateDraftRequest {
   deptName?: string;
 }
 
-// Re-map AIDraftPayload to WorkNoteDraft
-// Note: WorkNoteDraft in shared/types/pdf.ts matches AIDraftPayload
-// but we need to check imports.
-import type { WorkNoteDraft as PdfWorkNoteDraft } from '@shared/types/pdf';
-export type AIDraftPayload = PdfWorkNoteDraft;
-
 // Extract Todo type from AIDraftPayload
-export type AIDraftTodo = AIDraftPayload['todos'][number];
-
-import type { SimilarWorkNoteReference } from '@shared/types/search';
-export type AIDraftReference = SimilarWorkNoteReference;
+export type AIDraftTodo = import('@shared/types/pdf').WorkNoteDraft['todos'][number];
 
 export interface AIGenerateDraftResponse {
   draft: AIDraftPayload;
   references: AIDraftReference[];
 }
-
-// PDF types
-import type { PdfJobResponse, PdfJobStatus } from '@shared/types/pdf';
-
-export type PDFJobStatus = PdfJobStatus;
-export type PDFJob = PdfJobResponse;
 
 // Vector Store types
 export interface EmbeddingStats {
