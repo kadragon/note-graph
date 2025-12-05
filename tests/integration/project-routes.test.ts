@@ -12,7 +12,7 @@ import type {
 } from '@cloudflare/workers-types';
 import type { Project, ProjectDetail, ProjectStats } from '@shared/types/project';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Env } from '../../src/types/env';
+import type { Env } from '@/types/env';
 
 type WritableEnv = {
   -readonly [K in keyof Env]: Env[K];

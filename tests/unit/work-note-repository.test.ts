@@ -3,10 +3,10 @@
 
 import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { WorkNoteRepository } from '../../src/repositories/work-note-repository';
-import type { CreateWorkNoteInput, UpdateWorkNoteInput } from '../../src/schemas/work-note';
-import type { Env } from '../../src/types/env';
-import { NotFoundError } from '../../src/types/errors';
+import { WorkNoteRepository } from '@/repositories/work-note-repository';
+import type { CreateWorkNoteInput, UpdateWorkNoteInput } from '@/schemas/work-note';
+import type { Env } from '@/types/env';
+import { NotFoundError } from '@/types/errors';
 
 const testEnv = env as unknown as Env;
 

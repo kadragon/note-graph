@@ -2,8 +2,8 @@
 
 import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { RagService } from '../../src/services/rag-service';
-import type { Env } from '../../src/types/env';
+import { RagService } from '@/services/rag-service';
+import type { Env } from '@/types/env';
 
 interface TestRagService extends RagService {
   vectorizeService: typeof mockVectorize;

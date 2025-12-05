@@ -3,10 +3,10 @@
 
 import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PersonRepository } from '../../src/repositories/person-repository';
-import type { CreatePersonInput, UpdatePersonInput } from '../../src/schemas/person';
-import type { Env } from '../../src/types/env';
-import { ConflictError, NotFoundError, ValidationError } from '../../src/types/errors';
+import { PersonRepository } from '@/repositories/person-repository';
+import type { CreatePersonInput, UpdatePersonInput } from '@/schemas/person';
+import type { Env } from '@/types/env';
+import { ConflictError, NotFoundError, ValidationError } from '@/types/errors';
 
 const testEnv = env as unknown as Env;
 

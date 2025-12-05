@@ -3,7 +3,7 @@
 
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FtsSearchService } from '../../src/services/fts-search-service';
+import { FtsSearchService } from '@/services/fts-search-service';
 
 describe('FtsSearchService', () => {
   let mockDb: D1Database;

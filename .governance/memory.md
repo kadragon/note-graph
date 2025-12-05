@@ -914,3 +914,15 @@
 - Work note table: Columns trimmed to 제목/카테고리/완료된 할일/수정일(YYYY-MM-DD); category name shown; rows clickable to open `ViewWorkNoteDialog`.
 - Backend: Added categoryName propagation in statistics responses; default null handling; updated types.
 - Tests: Updated statistics unit & integration tests for category names; targeted vitest suites pass.
+
+### Session 53: Repository Layout Consolidation (2025-12-05)
+- **TASK-repo-structure-1 (SPEC-devx-structure-1)**: Consolidated repository into clearer apps/packages layout.
+- Backend moved to `apps/worker/`, frontend to `apps/web/`, shared types to `packages/shared/`; frontend build output now `dist/web/` and Wrangler assets updated accordingly.
+- Updated toolchain configs (tsconfig paths/outDir, Vite root/outDir & aliases, Vitest aliases/main entry, Tailwind content paths, lint-staged globs, components.json) plus documentation (README, SETUP, DEPLOYMENT) to reflect new paths.
+- Retired legacy root `public/` output; created `dist/web` target; tests now import frontend helpers via `@web` alias.
+- Verification: `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass after relocation.
+
+### Session 54: Worker Root Flattening (2025-12-05)
+- **TASK-repo-structure-2 (SPEC-devx-structure-1)**: Flattened backend layout by removing `apps/worker/src` and placing sources directly under `apps/worker/`.
+- Updated tooling to match new paths: tsconfig aliases/include, vitest alias & main, wrangler `main`, lint-staged glob. Frontend unaffected.
+- Re-verified commands: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` all pass.

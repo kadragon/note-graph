@@ -2,15 +2,15 @@
 // Unit tests for Zod validation schemas
 
 import { describe, expect, it } from 'vitest';
-import { createDepartmentSchema, updateDepartmentSchema } from '../../src/schemas/department';
-import { createPersonSchema, updatePersonSchema } from '../../src/schemas/person';
-import { ragQuerySchema, searchWorkNotesSchema } from '../../src/schemas/search';
+import { createDepartmentSchema, updateDepartmentSchema } from '@/schemas/department';
+import { createPersonSchema, updatePersonSchema } from '@/schemas/person';
+import { ragQuerySchema, searchWorkNotesSchema } from '@/schemas/search';
 import {
   createWorkNoteSchema,
   listWorkNotesQuerySchema,
   updateWorkNoteSchema,
   workNotePersonSchema,
-} from '../../src/schemas/work-note';
+} from '@/schemas/work-note';
 
 describe('Schema Validation', () => {
   describe('Work Note Schemas', () => {

@@ -52,17 +52,16 @@ note-graph/
 │   ├── current.yaml      # Active task
 │   └── done.yaml         # Completed tasks
 │
-├── src/                  # Source code
-│   ├── index.ts          # Worker entry point
-│   ├── types/            # TypeScript types
-│   ├── models/           # Data models
-│   ├── services/         # Business logic
-│   ├── handlers/         # API handlers
-│   ├── utils/            # Utilities
-│   └── middleware/       # Request middleware
+├── apps/
+│   ├── worker/           # Cloudflare Worker backend (Hono API, services, utils)
+│   └── web/              # React SPA (Vite, Tailwind, shadcn/ui)
+│
+├── packages/
+│   └── shared/           # Cross-app TypeScript types
 │
 ├── migrations/           # D1 database migrations
-├── tests/                # Test files
+├── tests/                # Test files (unit + integration)
+├── dist/                 # Build output (worker bundle, web assets under dist/web)
 └── wrangler.toml         # Cloudflare Workers config
 ```
 

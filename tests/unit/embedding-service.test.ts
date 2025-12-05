@@ -3,8 +3,8 @@
 import { env } from 'cloudflare:test';
 import type { ChunkMetadata } from '@shared/types/search';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { EmbeddingService, VectorizeService } from '../../src/services/embedding-service';
-import type { Env } from '../../src/types/env';
+import { EmbeddingService, VectorizeService } from '@/services/embedding-service';
+import type { Env } from '@/types/env';
 
 const testEnv = env as unknown as Env;
 

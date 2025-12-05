@@ -4,7 +4,7 @@
 
 import { env, SELF } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
-import type { Env } from '../src/types/env';
+import type { Env } from '@/types/env';
 
 describe('API Integration Tests', () => {
   beforeAll(async () => {

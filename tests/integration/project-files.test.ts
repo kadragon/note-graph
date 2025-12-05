@@ -11,11 +11,11 @@ import type {
 } from '@cloudflare/workers-types';
 import type { ProjectFile } from '@shared/types/project';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import * as projectFileService from '../../src/services/project-file-service.js';
-import type { Env } from '../../src/types/env';
-import { BadRequestError } from '../../src/types/errors';
+import * as projectFileService from '@/services/project-file-service.js';
+import type { Env } from '@/types/env';
+import { BadRequestError } from '@/types/errors';
 
-vi.mock('../../src/services/project-file-service.js', () => {
+vi.mock('@/services/project-file-service.js', () => {
   const uploadFile = vi.fn();
   const listFiles = vi.fn();
   const streamFile = vi.fn();
@@ -40,7 +40,7 @@ vi.mock('../../src/services/project-file-service.js', () => {
   };
 });
 
-vi.mock('../../src/services/project-file-service', () => {
+vi.mock('@/services/project-file-service', () => {
   const uploadFile = vi.fn();
   const listFiles = vi.fn();
   const streamFile = vi.fn();

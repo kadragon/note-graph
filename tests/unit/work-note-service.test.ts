@@ -3,8 +3,8 @@
 import type { ReferenceTodo } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
 import { describe, expect, it, vi } from 'vitest';
-import { WorkNoteService } from '../../src/services/work-note-service';
-import type { Env } from '../../src/types/env';
+import { WorkNoteService } from '@/services/work-note-service';
+import type { Env } from '@/types/env';
 
 // Minimal env stub to satisfy constructor; services are mocked per test
 const dummyEnv = {

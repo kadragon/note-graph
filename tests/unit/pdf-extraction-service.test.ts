@@ -1,7 +1,7 @@
 // Unit tests for PdfExtractionService
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PdfExtractionService } from '../../src/services/pdf-extraction-service';
-import { CorruptPdfError } from '../../src/types/errors';
+import { PdfExtractionService } from '@/services/pdf-extraction-service';
+import { CorruptPdfError } from '@/types/errors';
 
 describe('PdfExtractionService', () => {
   let service: PdfExtractionService;

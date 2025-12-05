@@ -9,7 +9,7 @@ import {
   NotFoundError,
   RateLimitError,
   ValidationError,
-} from '../../src/types/errors';
+} from '@/types/errors';
 
 describe('Domain Errors', () => {
   describe('DomainError', () => {

@@ -1,8 +1,8 @@
 // Trace: SPEC-person-1, TASK-021
 
+import { DEPARTMENT_SEARCH_LIMIT } from '@web/constants/search';
+import { APIClient } from '@web/lib/api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEPARTMENT_SEARCH_LIMIT } from '../../frontend/src/constants/search';
-import { APIClient } from '../../frontend/src/lib/api';
 
 describe('APIClient.getDepartments', () => {
   const api = new APIClient();

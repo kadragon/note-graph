@@ -88,10 +88,10 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json}": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
-    "src/**/*.{ts,tsx}": [
+    "apps/worker/**/*.{ts,tsx}": [
       "bash -c 'tsc --noEmit --project tsconfig.backend.json'",
       "vitest related --run"
     ],
-    "frontend/src/**/*.{ts,tsx}": "bash -c 'tsc --noEmit --project tsconfig.app.json'"
+    "apps/web/src/**/*.{ts,tsx}": "bash -c 'tsc --noEmit --project tsconfig.app.json'"
   }
 }

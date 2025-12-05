@@ -3,10 +3,10 @@
 
 import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DepartmentRepository } from '../../src/repositories/department-repository';
-import type { CreateDepartmentInput, UpdateDepartmentInput } from '../../src/schemas/department';
-import type { Env } from '../../src/types/env';
-import { ConflictError, NotFoundError } from '../../src/types/errors';
+import { DepartmentRepository } from '@/repositories/department-repository';
+import type { CreateDepartmentInput, UpdateDepartmentInput } from '@/schemas/department';
+import type { Env } from '@/types/env';
+import { ConflictError, NotFoundError } from '@/types/errors';
 
 const testEnv = env as unknown as Env;
 

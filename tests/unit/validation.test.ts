@@ -4,8 +4,8 @@
 import type { Context } from 'hono';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { ValidationError } from '../../src/types/errors';
-import { validateBody, validateParams, validateQuery } from '../../src/utils/validation';
+import { ValidationError } from '@/types/errors';
+import { validateBody, validateParams, validateQuery } from '@/utils/validation';
 
 describe('Validation Utilities', () => {
   describe('validateBody()', () => {

@@ -24,9 +24,10 @@
     /* Path alias */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./frontend/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@/*": ["./apps/web/src/*"],
+      "@shared/*": ["./packages/shared/*"],
+      "@web/*": ["./apps/web/src/*"]
     }
   },
-  "include": ["frontend/src", "shared"]
+  "include": ["apps/web/src", "packages/shared"]
 }

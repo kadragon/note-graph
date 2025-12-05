@@ -1,0 +1,21 @@
+spec_id: SPEC-devx-structure-1
+title: "Consolidate repo layout for backend, frontend, shared packages"
+given_when_then:
+  - given: "Root directory contains mixed backend, frontend, and generated artifacts"
+    when: "We adopt a clear apps/packages layout with updated configs"
+    then: "Developers can locate backend, frontend, and shared code without root clutter"
+  - given: "Existing npm scripts (dev, build, test, lint) rely on paths"
+    when: "The layout changes are applied"
+    then: "All primary scripts run successfully without path errors"
+acceptance_tests:
+  - id: TEST-devx-structure-1
+    desc: "npm run lint and npm run typecheck succeed after relocation"
+  - id: TEST-devx-structure-2
+    desc: "npm run test succeeds after relocation"
+  - id: TEST-devx-structure-3
+    desc: "npm run build outputs backend bundle and frontend static assets to expected locations"
+dependencies:
+  - governance: "coding-style"
+  - governance: "memory"
+linked_tasks:
+  - TASK-repo-structure-1

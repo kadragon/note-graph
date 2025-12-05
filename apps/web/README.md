@@ -43,7 +43,7 @@ Modern React frontend for the Note Graph application, built with Vite, TypeScrip
 npm run dev
 
 # Or start frontend only
-npm run dev:frontend
+cd apps/web && npm run dev
 ```
 
 The Vite dev server will start on `http://localhost:5173` and automatically proxy API requests to the backend.
@@ -58,10 +58,12 @@ npm run build:frontend
 npm run build
 ```
 
+Build output is emitted to `dist/web/` (served by Wrangler assets binding).
+
 ## Project Structure
 
 ```
-frontend/
+apps/web/
 ├── src/
 │   ├── components/
 │   │   ├── ui/              # shadcn/ui components
@@ -99,7 +101,7 @@ frontend/
 │   ├── App.tsx
 │   └── main.tsx
 ├── index.html
-└── public/                  # Build output
+└── public/                  # Static assets copied into build
 ```
 
 ## Tech Stack

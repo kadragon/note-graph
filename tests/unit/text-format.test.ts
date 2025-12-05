@@ -1,6 +1,6 @@
 // Trace: SPEC-ui-1, TASK-034
+import { preserveLineBreaksForMarkdown } from '@web/lib/utils';
 import { describe, expect, it } from 'vitest';
-import { preserveLineBreaksForMarkdown } from '../../frontend/src/lib/utils';
 
 describe('preserveLineBreaksForMarkdown', () => {
   it('converts single newlines to markdown line breaks', () => {

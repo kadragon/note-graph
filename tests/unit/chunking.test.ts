@@ -2,7 +2,7 @@
 // Unit tests for ChunkingService
 
 import { describe, expect, it } from 'vitest';
-import { ChunkingService } from '../../src/services/chunking-service';
+import { ChunkingService } from '@/services/chunking-service';
 
 describe('ChunkingService', () => {
   const chunkingService = new ChunkingService();

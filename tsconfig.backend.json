@@ -30,17 +30,17 @@
     "verbatimModuleSyntax": false,
 
     // Output
-    "outDir": "./dist",
+    "outDir": "./dist/worker",
 
     // Path Mapping
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@/types/*": ["./src/types/*"],
-      "@/services/*": ["./src/services/*"],
-      "@/handlers/*": ["./src/handlers/*"],
-      "@/utils/*": ["./src/utils/*"],
-      "@shared/*": ["./shared/*"]
+      "@/*": ["./apps/worker/*"],
+      "@/types/*": ["./apps/worker/types/*"],
+      "@/services/*": ["./apps/worker/services/*"],
+      "@/handlers/*": ["./apps/worker/handlers/*"],
+      "@/utils/*": ["./apps/worker/utils/*"],
+      "@shared/*": ["./packages/shared/*"]
     },
 
     // Cloudflare Workers Types
@@ -50,7 +50,7 @@
     "skipLibCheck": true
   },
 
-  "include": ["src/**/*", "shared/**/*"],
+  "include": ["apps/worker/**/*", "packages/shared/**/*"],
 
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "frontend"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "apps/web"]
 }

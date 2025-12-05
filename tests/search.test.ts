@@ -2,8 +2,8 @@
 
 import type { SearchResultItem } from '@shared/types/search';
 import { describe, expect, it, vi } from 'vitest';
-import { EmbeddingService } from '../src/services/embedding-service';
-import type { Env } from '../src/types/env';
+import { EmbeddingService } from '@/services/embedding-service';
+import type { Env } from '@/types/env';
 
 describe('Search Functionality', () => {
   describe('TASK-010: Embedding Service (OpenAI Integration)', () => {

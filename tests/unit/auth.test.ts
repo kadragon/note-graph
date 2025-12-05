@@ -5,9 +5,9 @@ import type { AuthUser } from '@shared/types/auth';
 import { AuthenticationError } from '@shared/types/auth';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getMeHandler } from '../../src/handlers/auth';
-import { authMiddleware, getAuthUser } from '../../src/middleware/auth';
-import type { Env } from '../../src/types/env';
+import { getMeHandler } from '@/handlers/auth';
+import { authMiddleware, getAuthUser } from '@/middleware/auth';
+import type { Env } from '@/types/env';
 
 const testEnv = env as unknown as Env;
 

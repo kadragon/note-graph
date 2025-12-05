@@ -3,10 +3,10 @@
 
 import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { TodoRepository } from '../../src/repositories/todo-repository';
-import type { CreateTodoInput, UpdateTodoInput } from '../../src/schemas/todo';
-import type { Env } from '../../src/types/env';
-import { NotFoundError } from '../../src/types/errors';
+import { TodoRepository } from '@/repositories/todo-repository';
+import type { CreateTodoInput, UpdateTodoInput } from '@/schemas/todo';
+import type { Env } from '@/types/env';
+import { NotFoundError } from '@/types/errors';
 
 const testEnv = env as unknown as Env;
 

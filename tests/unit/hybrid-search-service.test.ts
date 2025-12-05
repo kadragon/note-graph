@@ -3,8 +3,8 @@
 
 import type { D1Database, D1PreparedStatement, D1Result } from '@cloudflare/workers-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HybridSearchService } from '../../src/services/hybrid-search-service';
-import type { Env } from '../../src/types/env';
+import { HybridSearchService } from '@/services/hybrid-search-service';
+import type { Env } from '@/types/env';
 
 interface MockVectorizeIndex {
   query: ReturnType<typeof vi.fn>;
