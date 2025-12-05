@@ -1,2 +1,2 @@
-status: none
-message: "No active task. Backlog is empty."
+task: null
+message: "No active task"

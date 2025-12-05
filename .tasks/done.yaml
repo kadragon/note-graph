@@ -2,6 +2,24 @@
 # Tasks moved here upon completion with timestamps and outcomes
 
 completed_tasks:
+  - task_id: TASK-repo-structure-1
+    title: "Reorganize repository into apps/packages layout"
+    spec_id: SPEC-devx-structure-1
+    completed_at: "2025-12-05T00:21:00Z"
+    outcome: |
+      Restructured repository: backend under apps/worker, frontend under apps/web, shared types under packages/shared. Updated toolchain configs (tsconfig*, Vite, Vitest, Wrangler, Tailwind, lint-staged) and docs (README, SETUP, DEPLOYMENT) to reflect new paths and asset output (dist/web). Ran verification: npm run lint, npm run typecheck, npm run test, npm run build.
+  - task_id: TASK-repo-structure-2
+    title: "Flatten worker app root (remove apps/worker/src)"
+    spec_id: SPEC-devx-structure-1
+    completed_at: "2025-12-05T00:31:00Z"
+    outcome: |
+      Moved Worker sources from apps/worker/src to apps/worker for flatter layout. Updated aliases/entrypoints (tsconfig paths, vitest main, wrangler main, lint-staged glob) to new path. Validation commands (lint, typecheck, test, build) all succeed post-change.
+  - task_id: TASK-repo-structure-3
+    title: "Restore worker layout to apps/worker/src"
+    spec_id: SPEC-devx-structure-1
+    completed_at: "2025-12-05T00:48:00Z"
+    outcome: |
+      Reverted flattening at user request: backend code returned to apps/worker/src. Restored path mappings and entrypoints in tsconfig*, vitest, wrangler, lint-staged. Confirmed with lint, typecheck, test, build.
   - task_id: TASK-019
     title: "Write user documentation"
     spec_id: SPEC-worknote-1
@@ -1549,3 +1567,16 @@ completed_tasks:
     estimated_effort: 2h
     actual_effort: ~1h
     notes: "Implements user feedback for statistics dashboard; maintains SPEC-stats-1 alignment."
+
+  - task_id: TASK-devx-structure-2
+    spec_id: SPEC-devx-structure-1
+    title: "Relocate tsconfig files into app directories and add shared base config"
+    completed_at: 2025-12-05T01:28:00Z
+    outcome: |
+      - Introduced tsconfig.base.json to centralize path aliases for worker/web/shared code.
+      - Moved worker config to apps/worker/tsconfig.json and web config to apps/web/tsconfig.json; root tsconfig.json now references both.
+      - Updated package.json scripts and lint-staged globs to use the new tsconfig paths.
+    test_results: |
+      ✓ npm run typecheck
+    estimated_effort: 0.5h
+    actual_effort: ~0.3h

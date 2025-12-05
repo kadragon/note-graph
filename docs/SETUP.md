@@ -356,7 +356,7 @@ wrangler dev
 ```bash
 npm run dev:frontend
 # 또는
-cd frontend && npm run dev
+cd apps/web && npm run dev
 ```
 
 - **URL**: http://localhost:5173
@@ -440,26 +440,26 @@ npm run build:frontend
 ```
 
 빌드 결과:
-- **출력 디렉토리**: `public/`
+- **출력 디렉토리**: `dist/web/`
 - **Static Assets**: HTML, CSS, JS
 - **Vite 번들**: 최적화된 프로덕션 빌드
 
 ### 프론트엔드 타입 체크
 
 ```bash
-cd frontend && npm run typecheck
+cd apps/web && npm run typecheck
 ```
 
 ### 프론트엔드 린트
 
 ```bash
-cd frontend && npm run lint
+cd apps/web && npm run lint
 ```
 
 ### 프론트엔드 구조
 
 ```
-frontend/
+apps/web/
 ├── src/
 │   ├── components/       # 재사용 가능한 UI 컴포넌트
 │   ├── pages/            # 페이지 컴포넌트

@@ -2,10 +2,10 @@
 
 import { env } from 'cloudflare:test';
 import type { WorkNote } from '@shared/types/work-note';
+import { AIDraftService } from '@worker/services/ai-draft-service';
+import type { Env } from '@worker/types/env';
+import { RateLimitError } from '@worker/types/errors';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AIDraftService } from '../../src/services/ai-draft-service';
-import type { Env } from '../../src/types/env';
-import { RateLimitError } from '../../src/types/errors';
 
 const testEnv = env as unknown as Env;
 

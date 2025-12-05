@@ -2,9 +2,9 @@
 // Unit tests for Hybrid Search Service - Public API Testing
 
 import type { D1Database, D1PreparedStatement, D1Result } from '@cloudflare/workers-types';
+import { HybridSearchService } from '@worker/services/hybrid-search-service';
+import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HybridSearchService } from '../../src/services/hybrid-search-service';
-import type { Env } from '../../src/types/env';
 
 interface MockVectorizeIndex {
   query: ReturnType<typeof vi.fn>;

@@ -1,16 +1,16 @@
 // Trace: SPEC-worknote-1, TASK-004, TASK-016
 // Unit tests for Zod validation schemas
 
-import { describe, expect, it } from 'vitest';
-import { createDepartmentSchema, updateDepartmentSchema } from '../../src/schemas/department';
-import { createPersonSchema, updatePersonSchema } from '../../src/schemas/person';
-import { ragQuerySchema, searchWorkNotesSchema } from '../../src/schemas/search';
+import { createDepartmentSchema, updateDepartmentSchema } from '@worker/schemas/department';
+import { createPersonSchema, updatePersonSchema } from '@worker/schemas/person';
+import { ragQuerySchema, searchWorkNotesSchema } from '@worker/schemas/search';
 import {
   createWorkNoteSchema,
   listWorkNotesQuerySchema,
   updateWorkNoteSchema,
   workNotePersonSchema,
-} from '../../src/schemas/work-note';
+} from '@worker/schemas/work-note';
+import { describe, expect, it } from 'vitest';
 
 describe('Schema Validation', () => {
   describe('Work Note Schemas', () => {

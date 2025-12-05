@@ -1,10 +1,5 @@
 {
+  "extends": "./tsconfig.base.json",
   "files": [],
-  "references": [{ "path": "./tsconfig.backend.json" }, { "path": "./tsconfig.app.json" }],
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["./shared/*"]
-    }
-  }
+  "references": [{ "path": "./apps/worker/tsconfig.json" }, { "path": "./apps/web/tsconfig.json" }]
 }

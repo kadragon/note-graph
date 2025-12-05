@@ -11,8 +11,8 @@ import type {
   VectorizeIndex,
 } from '@cloudflare/workers-types';
 import type { Project, ProjectDetail, ProjectStats } from '@shared/types/project';
+import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Env } from '../../src/types/env';
 
 type WritableEnv = {
   -readonly [K in keyof Env]: Env[K];

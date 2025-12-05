@@ -93,6 +93,8 @@ npm run db:migrate
 npm run build:frontend
 ```
 
+빌드 산출물은 `dist/web/`에 생성되며 Wrangler 자산 바인딩으로 배포됩니다.
+
 ### 6. Workers 배포
 
 ```bash

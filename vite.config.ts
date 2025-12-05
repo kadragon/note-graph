@@ -20,13 +20,13 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './frontend/src'),
-      '@shared': path.resolve(__dirname, './shared'),
+      '@web': path.resolve(__dirname, './apps/web/src'),
+      '@shared': path.resolve(__dirname, './packages/shared'),
     },
   },
-  root: './frontend',
+  root: './apps/web',
   build: {
-    outDir: '../public',
+    outDir: '../../dist/web',
     emptyOutDir: true,
     rollupOptions: {
       output: {

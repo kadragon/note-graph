@@ -8,6 +8,13 @@
  */
 
 import {
+  formatDateRange,
+  getAvailableYears,
+  getStatisticsPeriodLabel,
+  getStatisticsPeriodRange,
+  type StatisticsPeriod,
+} from '@web/lib/date-utils';
+import {
   endOfMonth,
   endOfWeek,
   endOfYear,
@@ -17,13 +24,6 @@ import {
   subWeeks,
 } from 'date-fns';
 import { describe, expect, it } from 'vitest';
-import {
-  formatDateRange,
-  getAvailableYears,
-  getStatisticsPeriodLabel,
-  getStatisticsPeriodRange,
-  type StatisticsPeriod,
-} from '../../frontend/src/lib/date-utils';
 
 describe('Date Utils - getStatisticsPeriodRange', () => {
   describe('this-week period', () => {

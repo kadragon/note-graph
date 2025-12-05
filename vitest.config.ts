@@ -4,15 +4,17 @@ import path from "path";
 export default defineWorkersConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@shared": path.resolve(__dirname, "./shared"),
+      "@": path.resolve(__dirname, "./apps/worker/src"),
+      "@worker": path.resolve(__dirname, "./apps/worker/src"),
+      "@web": path.resolve(__dirname, "./apps/web/src"),
+      "@shared": path.resolve(__dirname, "./packages/shared"),
     },
   },
   test: {
     poolOptions: {
       workers: {
         singleWorker: true,
-        main: "./src/index.ts",
+        main: "./apps/worker/src/index.ts",
         miniflare: {
           // Miniflare options for local testing
           compatibilityDate: "2024-01-01",

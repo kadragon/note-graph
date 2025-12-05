@@ -1,9 +1,9 @@
 // Trace: SPEC-search-1, TASK-009, TASK-010, TASK-011
 
 import type { SearchResultItem } from '@shared/types/search';
+import { EmbeddingService } from '@worker/services/embedding-service';
+import type { Env } from '@worker/types/env';
 import { describe, expect, it, vi } from 'vitest';
-import { EmbeddingService } from '../src/services/embedding-service';
-import type { Env } from '../src/types/env';
 
 describe('Search Functionality', () => {
   describe('TASK-010: Embedding Service (OpenAI Integration)', () => {

@@ -8,8 +8,9 @@
     "dev": "concurrently \"npm:dev:frontend\" \"npm:dev:backend\"",
     "dev:frontend": "vite",
     "dev:backend": "wrangler dev",
-    "build": "vite build && tsc --project tsconfig.backend.json",
+    "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "vite build",
+    "build:backend": "tsc --project apps/worker/tsconfig.json",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "deploy:with-migrations": "npm run build && wrangler deploy && wrangler d1 migrations apply worknote-db --remote",
@@ -88,10 +89,10 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json}": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
-    "src/**/*.{ts,tsx}": [
-      "bash -c 'tsc --noEmit --project tsconfig.backend.json'",
+    "apps/worker/src/**/*.{ts,tsx}": [
+      "bash -c 'tsc --noEmit --project apps/worker/tsconfig.json'",
       "vitest related --run"
     ],
-    "frontend/src/**/*.{ts,tsx}": "bash -c 'tsc --noEmit --project tsconfig.app.json'"
+    "apps/web/src/**/*.{ts,tsx}": "bash -c 'tsc --noEmit --project apps/web/tsconfig.json'"
   }
 }

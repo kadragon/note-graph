@@ -4,7 +4,7 @@ export default {
   darkMode: ['class'],
   // Content paths for Tailwind to scan
   content: [
-    './frontend/index.html',
-    './frontend/src/**/*.{js,ts,jsx,tsx}',
+    './apps/web/index.html',
+    './apps/web/src/**/*.{js,ts,jsx,tsx}',
   ],
 };

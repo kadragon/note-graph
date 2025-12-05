@@ -2,11 +2,11 @@
 // Unit tests for TodoRepository
 
 import { env } from 'cloudflare:test';
+import { TodoRepository } from '@worker/repositories/todo-repository';
+import type { CreateTodoInput, UpdateTodoInput } from '@worker/schemas/todo';
+import type { Env } from '@worker/types/env';
+import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { TodoRepository } from '../../src/repositories/todo-repository';
-import type { CreateTodoInput, UpdateTodoInput } from '../../src/schemas/todo';
-import type { Env } from '../../src/types/env';
-import { NotFoundError } from '../../src/types/errors';
 
 const testEnv = env as unknown as Env;
 
