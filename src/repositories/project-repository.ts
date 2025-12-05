@@ -4,8 +4,6 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
-import { nanoid } from 'nanoid';
-import { ConflictError, NotFoundError } from '../types/errors';
 import type {
   CreateProjectData,
   Project,
@@ -13,10 +11,13 @@ import type {
   ProjectFile,
   ProjectFilters,
   ProjectParticipant,
+  ProjectParticipantRole,
   ProjectStats,
   ProjectWorkNote,
   UpdateProjectData,
-} from '../types/project';
+} from '@shared/types/project';
+import { nanoid } from 'nanoid';
+import { ConflictError, NotFoundError } from '../types/errors';
 
 export class ProjectRepository {
   constructor(private db: D1Database) {}
@@ -325,7 +326,7 @@ export class ProjectRepository {
       id: r.id as number,
       projectId: r.project_id as string,
       personId: r.person_id as string,
-      role: r.role as string,
+      role: r.role as ProjectParticipantRole,
       joinedAt: r.joined_at as string,
       personName: r.person_name as string,
       currentDept: (r.current_dept as string) || null,
@@ -510,7 +511,7 @@ export class ProjectRepository {
       completedTodos: todoStats?.completed || 0,
       pendingTodos: todoStats?.pending || 0,
       onHoldTodos: todoStats?.on_hold || 0,
-      totalFiles: fileStats?.count || 0,
+      fileCount: fileStats?.count || 0,
       totalFileSize: fileStats?.total_size || 0,
       lastActivity: lastActivity?.updated_at || null,
     };

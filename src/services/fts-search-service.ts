@@ -1,7 +1,7 @@
 // Trace: SPEC-search-1, TASK-009
 import type { D1Database } from '@cloudflare/workers-types';
-import type { SearchFilters, SearchResultItem } from '../types/search';
-import type { WorkNote } from '../types/work-note';
+import type { SearchFilters, SearchResultItem } from '@shared/types/search';
+import type { WorkNote } from '@shared/types/work-note';
 
 /**
  * FTS (Full-Text Search) service for lexical search using D1 FTS5

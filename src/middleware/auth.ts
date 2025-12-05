@@ -8,9 +8,9 @@
  * For development/testing, falls back to X-Test-User-Email header.
  */
 
+import { AuthenticationError, type AuthUser } from '@shared/types/auth';
 import type { Context, Next } from 'hono';
 import type { Env } from '../index';
-import { AuthenticationError, type AuthUser } from '../types/auth';
 
 /**
  * Cloudflare Access authentication header

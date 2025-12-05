@@ -3,10 +3,10 @@
  * Statistics service for work note metrics with period calculations
  */
 
+import type { StatisticsDateRange, WorkNoteStatistics } from '@shared/types/statistics';
 import { StatisticsRepository } from '../repositories/statistics-repository';
 import type { StatisticsPeriod } from '../schemas/statistics';
 import type { Env } from '../types/env';
-import type { StatisticsDateRange, WorkNoteStatistics } from '../types/statistics';
 
 export class StatisticsService {
   private repository: StatisticsRepository;

@@ -2,9 +2,9 @@
 // Integration tests for work note to project association
 
 import { env, SELF } from 'cloudflare:test';
+import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Env } from '../../src/types/env';
-import type { WorkNote, WorkNoteDetail } from '../../src/types/work-note';
 
 const testEnv = env as unknown as Env;
 

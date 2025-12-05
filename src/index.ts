@@ -4,6 +4,8 @@
  * Personal work note management system with AI-powered features
  */
 
+import type { AuthUser } from '@shared/types/auth';
+import { AuthenticationError } from '@shared/types/auth';
 import { Hono } from 'hono';
 import { getMeHandler } from './handlers/auth';
 import { authMiddleware } from './middleware/auth';
@@ -11,7 +13,6 @@ import admin from './routes/admin';
 import aiDraft from './routes/ai-draft';
 import departments from './routes/departments';
 import pdf from './routes/pdf';
-
 // Route imports
 import persons from './routes/persons';
 import { projects } from './routes/projects';
@@ -21,8 +22,6 @@ import statistics from './routes/statistics';
 import taskCategories from './routes/task-categories';
 import todos from './routes/todos';
 import workNotes from './routes/work-notes';
-import type { AuthUser } from './types/auth';
-import { AuthenticationError } from './types/auth';
 import type { Env } from './types/env';
 import { DomainError } from './types/errors';
 

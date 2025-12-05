@@ -2,10 +2,11 @@
 // Embedding processor for bulk reindexing operations
 
 import type { D1Result } from '@cloudflare/workers-types';
+import type { ChunkMetadata } from '@shared/types/search';
+import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { format } from 'date-fns';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import type { Env } from '../types/env';
-import type { WorkNote } from '../types/work-note';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingService, VectorizeService } from './embedding-service';
 
@@ -336,7 +337,7 @@ export class EmbeddingProcessor {
    */
   private prepareWorkNoteChunksWithDetails(
     workNote: WorkNote,
-    details: import('../types/work-note').WorkNoteDetail | undefined
+    details: WorkNoteDetail | undefined
   ): ChunkToEmbed[] {
     const personIds = details?.persons.map((p) => p.personId) || [];
     // Use first person's current department (single-department-per-note assumption)
@@ -393,7 +394,7 @@ export class EmbeddingProcessor {
       const chunksForVectorize = chunks.map((c) => ({
         id: c.id,
         text: c.text,
-        metadata: c.metadata as import('../types/search').ChunkMetadata,
+        metadata: c.metadata as ChunkMetadata,
       }));
 
       await this.vectorizeService.upsertChunks(chunksForVectorize);

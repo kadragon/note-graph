@@ -10,9 +10,9 @@ import type {
   R2PutOptions,
   VectorizeIndex,
 } from '@cloudflare/workers-types';
+import type { Project, ProjectDetail, ProjectStats } from '@shared/types/project';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Env } from '../../src/types/env';
-import type { Project, ProjectDetail, ProjectStats } from '../../src/types/project';
 
 type WritableEnv = {
   -readonly [K in keyof Env]: Env[K];

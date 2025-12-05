@@ -2,11 +2,11 @@
 // Unit tests for ProjectRepository
 
 import { env } from 'cloudflare:test';
+import type { CreateProjectData, UpdateProjectData } from '@shared/types/project';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ProjectRepository } from '../../src/repositories/project-repository';
 import type { Env } from '../../src/types/env';
 import { ConflictError, NotFoundError } from '../../src/types/errors';
-import type { CreateProjectData, UpdateProjectData } from '../../src/types/project';
 
 const testEnv = env as unknown as Env;
 
@@ -692,7 +692,7 @@ describe('ProjectRepository', () => {
       expect(result.completedTodos).toBe(1);
       expect(result.pendingTodos).toBe(1);
       expect(result.onHoldTodos).toBe(1);
-      expect(result.totalFiles).toBe(2);
+      expect(result.fileCount).toBe(2);
       expect(result.totalFileSize).toBe(3072); // 1024 + 2048
       expect(result.lastActivity).toBeDefined();
     });
@@ -715,7 +715,7 @@ describe('ProjectRepository', () => {
       expect(result.completedTodos).toBe(0);
       expect(result.pendingTodos).toBe(0);
       expect(result.onHoldTodos).toBe(0);
-      expect(result.totalFiles).toBe(0);
+      expect(result.fileCount).toBe(0);
       expect(result.totalFileSize).toBe(0);
       expect(result.lastActivity).toBeNull();
     });
@@ -768,7 +768,7 @@ describe('ProjectRepository', () => {
       expect(result?.files).toHaveLength(1);
       expect(result?.stats).toBeDefined();
       expect(result?.stats.totalWorkNotes).toBe(1);
-      expect(result?.stats.totalFiles).toBe(1);
+      expect(result?.stats.fileCount).toBe(1);
     });
 
     it('should return null for non-existent project', async () => {

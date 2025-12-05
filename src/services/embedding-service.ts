@@ -1,6 +1,7 @@
 // Trace: SPEC-search-1, TASK-010
+
+import type { ChunkMetadata } from '@shared/types/search';
 import type { Env } from '../types/env';
-import type { ChunkMetadata } from '../types/search';
 import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
 
 /**
@@ -74,7 +75,7 @@ export class EmbeddingService {
   }
 }
 
-import type { TextChunk } from '../types/search';
+import type { TextChunk } from '@shared/types/search';
 // Import for chunk ID generation
 import { ChunkingService } from './chunking-service.js';
 

@@ -1,5 +1,5 @@
 // Trace: SPEC-rag-1, TASK-012
-import type { ChunkMetadata, TextChunk } from '../types/search';
+import type { ChunkMetadata, TextChunk } from '@shared/types/search';
 
 /**
  * Configuration for text chunking

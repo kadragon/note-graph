@@ -1,8 +1,8 @@
 // Trace: SPEC-search-1, TASK-011
 import type { D1Database } from '@cloudflare/workers-types';
+import type { SearchFilters, SearchResultItem } from '@shared/types/search';
+import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
-import type { SearchFilters, SearchResultItem } from '../types/search';
-import type { WorkNote } from '../types/work-note';
 import { EmbeddingService, VectorizeService } from './embedding-service';
 import { FtsSearchService } from './fts-search-service';
 

@@ -4,16 +4,16 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
-import { nanoid } from 'nanoid';
-import type { CreateTodoInput, ListTodosQuery, UpdateTodoInput } from '../schemas/todo';
-import { NotFoundError } from '../types/errors';
 import type {
   CustomIntervalUnit,
   RecurrenceType,
   RepeatRule,
   Todo,
   TodoWithWorkNote,
-} from '../types/todo';
+} from '@shared/types/todo';
+import { nanoid } from 'nanoid';
+import type { CreateTodoInput, ListTodosQuery, UpdateTodoInput } from '../schemas/todo';
+import { NotFoundError } from '../types/errors';
 
 export class TodoRepository {
   constructor(private db: D1Database) {}

@@ -3,10 +3,10 @@
  * Authentication API handlers
  */
 
+import type { AuthUser } from '@shared/types/auth';
 import type { Context } from 'hono';
 import type { Env } from '../index';
 import { getAuthUser } from '../middleware/auth';
-import type { AuthUser } from '../types/auth';
 
 /**
  * GET /me - Get current authenticated user information

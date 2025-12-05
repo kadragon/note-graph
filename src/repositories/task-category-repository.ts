@@ -4,10 +4,10 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
+import type { TaskCategory, TaskCategoryWorkNote } from '@shared/types/task-category';
 import { nanoid } from 'nanoid';
 import type { CreateTaskCategoryInput, UpdateTaskCategoryInput } from '../schemas/task-category';
 import { ConflictError, NotFoundError } from '../types/errors';
-import type { TaskCategory, TaskCategoryWorkNote } from '../types/task-category';
 
 /**
  * Database row type for task category

@@ -34,13 +34,18 @@ export type ProjectStatus = '진행중' | '완료' | '보류' | '중단';
 export type ProjectPriority = '높음' | '중간' | '낮음';
 
 /**
+ * Project participant role values
+ */
+export type ProjectParticipantRole = '리더' | '참여자' | '검토자';
+
+/**
  * Project participant (team member)
  */
 export interface ProjectParticipant {
   id: number;
   projectId: string;
   personId: string;
-  role: string; // e.g., '리더', '참여자', '검토자'
+  role: ProjectParticipantRole; // e.g., '리더', '참여자', '검토자'
   joinedAt: string; // ISO 8601 timestamp
   personName?: string; // Joined from persons table
   currentDept?: string | null; // Joined from persons table
@@ -84,7 +89,7 @@ export interface ProjectStats {
   completedTodos: number;
   pendingTodos: number;
   onHoldTodos: number;
-  totalFiles: number;
+  fileCount: number;
   totalFileSize: number; // bytes
   lastActivity: string | null; // ISO 8601 timestamp of most recent update
 }

@@ -5,10 +5,10 @@
  */
 
 import type { D1Database, R2Bucket, R2Object, R2ObjectBody } from '@cloudflare/workers-types';
+import type { ProjectFile } from '@shared/types/project';
 import { nanoid } from 'nanoid';
 import type { Env } from '../types/env';
 import { BadRequestError, NotFoundError } from '../types/errors';
-import type { ProjectFile } from '../types/project';
 import { ChunkingService } from './chunking-service.js';
 import { EmbeddingService, VectorizeService } from './embedding-service.js';
 import { FileTextExtractionService } from './file-text-extraction-service.js';

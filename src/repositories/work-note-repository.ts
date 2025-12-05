@@ -4,6 +4,15 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
+import type { ReferenceTodo } from '@shared/types/search';
+import type { TaskCategory } from '@shared/types/task-category';
+import type {
+  WorkNote,
+  WorkNoteDetail,
+  WorkNotePersonAssociation,
+  WorkNoteRelation,
+  WorkNoteVersion,
+} from '@shared/types/work-note';
 import { nanoid } from 'nanoid';
 import type {
   CreateWorkNoteInput,
@@ -11,15 +20,6 @@ import type {
   UpdateWorkNoteInput,
 } from '../schemas/work-note';
 import { NotFoundError } from '../types/errors';
-import type { ReferenceTodo } from '../types/search';
-import type { TaskCategory } from '../types/task-category';
-import type {
-  WorkNote,
-  WorkNoteDetail,
-  WorkNotePersonAssociation,
-  WorkNoteRelation,
-  WorkNoteVersion,
-} from '../types/work-note';
 
 const MAX_VERSIONS = 5;
 
