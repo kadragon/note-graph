@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { Calendar, CalendarDays, CalendarRange, ListTodo } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTodos } from '@/hooks/useTodos';
 import { API } from '@/lib/api';
@@ -7,11 +8,23 @@ import { ViewWorkNoteDialog } from '@/pages/WorkNotes/components/ViewWorkNoteDia
 import type { Todo, TodoView } from '@/types/api';
 import { TodoList } from './TodoList';
 
-const TODO_VIEWS: { value: TodoView; label: string }[] = [
-  { value: 'today', label: '오늘' },
-  { value: 'week', label: '이번 주' },
-  { value: 'month', label: '이번 달' },
-  { value: 'remaining', label: '남은일' },
+const TODO_VIEWS: { value: TodoView; label: string; icon: ReactNode }[] = [
+  { value: 'today', label: '오늘', icon: <Calendar className="h-4 w-4" aria-hidden="true" /> },
+  {
+    value: 'week',
+    label: '이번 주',
+    icon: <CalendarDays className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    value: 'month',
+    label: '이번 달',
+    icon: <CalendarRange className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    value: 'remaining',
+    label: '남은일',
+    icon: <ListTodo className="h-4 w-4" aria-hidden="true" />,
+  },
 ];
 
 export function TodoTabs() {
@@ -42,7 +55,8 @@ export function TodoTabs() {
         <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as TodoView)}>
           <TabsList className="w-full justify-start">
             {TODO_VIEWS.map((view) => (
-              <TabsTrigger key={view.value} value={view.value}>
+              <TabsTrigger key={view.value} value={view.value} className="gap-2">
+                {view.icon}
                 {view.label}
               </TabsTrigger>
             ))}

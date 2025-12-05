@@ -57,15 +57,15 @@ export function TodoItem({ todo, onTodoClick, showWorkTitle = true }: TodoItemPr
         className="flex-1 min-w-0 cursor-pointer text-left"
         onClick={handleClick}
       >
-        <p
-          className={cn(
-            'text-sm font-medium leading-tight',
-            isCompleted && 'line-through text-muted-foreground'
-          )}
-        >
-          {todo.title}
-        </p>
-        <div className="flex flex-wrap items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p
+            className={cn(
+              'text-sm font-medium leading-tight',
+              isCompleted && 'line-through text-muted-foreground'
+            )}
+          >
+            {todo.title}
+          </p>
           {showWorkTitle && todo.workCategory && (
             <Badge variant="outline" className="text-xs font-normal">
               {todo.workCategory}
