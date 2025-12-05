@@ -10,7 +10,7 @@
 ## TypeScript Conventions
 
 ### Naming
-- **Files**: kebab-case (`work-note-service.ts`)
+- **Files**: kebab-case (`work-note-service.ts`, `user-profile.tsx`) - *All files, including React components, utilities, and hooks.*
 - **Classes**: PascalCase (`WorkNoteService`)
 - **Interfaces/Types**: PascalCase with descriptive names (`WorkNote`, `TodoStatus`)
 - **Functions**: camelCase (`createWorkNote`)

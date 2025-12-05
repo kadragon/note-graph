@@ -1,21 +1,21 @@
-import AppLayout from '@web/components/layout/AppLayout';
+import AppLayout from '@web/components/layout/app-layout';
 import { Toaster } from '@web/components/ui/toaster';
 import { Loader2 } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 
 // Lazy load page components
-const Dashboard = lazy(() => import('@web/pages/Dashboard'));
-const WorkNotes = lazy(() => import('@web/pages/WorkNotes'));
-const Persons = lazy(() => import('@web/pages/Persons'));
-const Departments = lazy(() => import('@web/pages/Departments'));
-const TaskCategories = lazy(() => import('@web/pages/TaskCategories/TaskCategories'));
-const Search = lazy(() => import('@web/pages/Search'));
-const RAG = lazy(() => import('@web/pages/RAG'));
-const PDFUpload = lazy(() => import('@web/pages/PDFUpload'));
-const VectorStore = lazy(() => import('@web/pages/VectorStore'));
-const Projects = lazy(() => import('@web/pages/Projects'));
-const Statistics = lazy(() => import('@web/pages/Statistics'));
+const Dashboard = lazy(() => import('@web/pages/dashboard'));
+const WorkNotes = lazy(() => import('@web/pages/work-notes'));
+const Persons = lazy(() => import('@web/pages/persons'));
+const Departments = lazy(() => import('@web/pages/departments'));
+const TaskCategories = lazy(() => import('@web/pages/task-categories/task-categories'));
+const Search = lazy(() => import('@web/pages/search'));
+const RAG = lazy(() => import('@web/pages/rag'));
+const PDFUpload = lazy(() => import('@web/pages/pdf-upload'));
+const VectorStore = lazy(() => import('@web/pages/vector-store'));
+const Projects = lazy(() => import('@web/pages/projects'));
+const Statistics = lazy(() => import('@web/pages/statistics'));
 
 function App() {
   return (
