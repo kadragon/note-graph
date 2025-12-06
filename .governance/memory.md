@@ -11,7 +11,7 @@
 - **AI**: OpenAI GPT-4.5 + text-embedding-3-small via AI Gateway
 - **Auth**: Cloudflare Access (Google OAuth)
 - **Async Processing**: Cloudflare Queues
-- **Storage**: Cloudflare R2 (temporary PDF storage)
+- **Storage**: Cloudflare R2 (temporary PDF storage, permanent file attachments)
 
 ### Key Design Decisions
 
@@ -19,933 +19,130 @@
 - **Lexical Search**: D1 FTS5 with trigram tokenizer for Korean partial matching
 - **Semantic Search**: Vectorize with text-embedding-3-small
 - **Ranking**: RRF (Reciprocal Rank Fusion) for hybrid results
-- **Rationale**: Trigram handles Korean morphology better than default tokenizers
 
 #### 2. RAG Implementation
 - **Chunking**: 512 tokens with 20% overlap (configurable)
-- **Metadata Filtering**: person_ids, dept_name, category, created_at_bucket
-- **Scope Types**: GLOBAL, PERSON, DEPT, WORK
+- **Metadata Filtering**: person_ids, dept_name, category, created_at_bucket, project_id
+- **Scope Types**: GLOBAL, PERSON, DEPT, WORK, PROJECT
 - **Constraint**: Vectorize metadata string fields limited to 64 bytes
 
 #### 3. PDF Processing Pipeline
 - **Flow**: Upload → Queue → R2 → unpdf extraction → AI draft → cleanup
 - **Storage Policy**: Temporary only, TTL 1 day or immediate deletion after processing
-- **Library**: unpdf (Edge-compatible)
 - **Async Pattern**: Queue-based to avoid Worker timeout
 
 #### 4. Recurrence Logic
-- **Types**:
-  - DUE_DATE: next due = previous due + interval
-  - COMPLETION_DATE: next due = completion date + interval
+- **Types**: DUE_DATE (next due = previous due + interval), COMPLETION_DATE (next due = completion date + interval)
 - **Generation**: New instance created on completion of current todo
 
 #### 5. Version Management
 - Keep latest 5 versions only
 - Auto-purge oldest when inserting 6th version
 
-## Session History
+#### 6. Naming Convention
+- **Standard**: kebab-case for all files (components, hooks, pages, utilities, tests)
+- **No exceptions**: React components also use kebab-case (not PascalCase)
 
-### Session 1: Initial Setup (2025-11-18)
-- Created base directory structure (.governance, .spec, .tasks)
-- Established project foundation from PRD 2.0
-- Defined architecture and key technical decisions
+## Session History Summary
 
-### Session 2: Wrangler Project Initialization (2025-11-18)
-- **TASK-001 Completed**: Initialize Cloudflare Workers project with Wrangler
-- Configured wrangler.toml with all bindings (D1, Vectorize, Queue, R2, AI Gateway)
-- Set up TypeScript with strict mode and comprehensive compiler options
-- Installed dependencies: Hono, Zod, nanoid, date-fns
-- Created src/ directory structure following project conventions
-- Implemented basic Hono app with health check endpoint
-- Verified dev server runs successfully on http://localhost:8787
-- **Status**: Infrastructure foundation complete, ready for database schema (TASK-002)
+### Initial Implementation (Sessions 1-23, 2025-11-18 to 2025-11-21)
+- **Infrastructure**: Wrangler setup, D1 schema, authentication, API structure
+- **Core Entities**: Person, Department, WorkNote (with versioning), Todo (with recurrence)
+- **AI Features**: RAG pipeline, chunking, AI draft generation, PDF processing
+- **Testing**: Vitest with Workers pool, coverage configuration
+- **Frontend**: Vanilla JS SPA with 7 main pages, Korean localization
+- **UX Improvements**: Department selector, person form validation, debounced search
+- **Retry Mechanism**: Embedding retry queue with exponential backoff
 
-### Session 3: Database Schema and Migrations (2025-11-18)
-- **TASK-002 Completed**: Create D1 database schema and migrations
-- Created comprehensive migration file: `migrations/0001_initial_schema.sql`
-- Implemented 9 core tables with proper foreign key relationships and cascade deletes
-- Set up FTS5 virtual table with trigram tokenizer for Korean partial matching
-- Created 3 FTS synchronization triggers (INSERT, UPDATE, DELETE)
-- Added 24 optimized indexes for foreign keys and common query patterns
-- Documented migration process in `migrations/README.md`
-- Tested migration locally: 37 SQL commands executed successfully
-- Verified FTS functionality with Korean text search
-- **Status**: Database schema complete, ready for API implementation (TASK-003)
+### AI & Collaboration Features (Sessions 24-27, 2025-11-24)
+- **AI Draft References**: Transparency for AI context, reference tracking in drafts
+- **PDF Draft References**: Extended PDF flow with reference selection
+- **Todo Patterns**: AI suggestions include todo patterns from similar notes
+- **Code Refactoring**: Extracted common AI draft editing logic (62% reduction)
 
-### Session 4: Authentication Middleware (2025-11-18)
-- **TASK-003 Completed**: Implement authentication middleware
-- Created auth types: `AuthUser`, `AuthenticationError`
-- Implemented auth middleware extracting `Cf-Access-Authenticated-User-Email` header
-- Added development fallback using `X-Test-User-Email` header for local testing
-- Created GET /me endpoint returning authenticated user information
-- Updated error handler to return 401 for `AuthenticationError`
-- Tested all authentication scenarios: unauthorized (401), with test header (200), with CF Access header (200)
-- **Status**: Authentication complete, ready for API structure (TASK-004)
+### UI/UX Polish (Sessions 28-32, 2025-11-24 to 2025-11-25)
+- **Todo Wait/Due Alignment**: Wait dates as primary UI element
+- **Work Notes List**: Added persons column with department display
+- **Detail View**: Quick-edit triggers, sticky save buttons, improved spacing
+- **Accessibility**: ARIA labels, focus management with user feedback
 
-### Session 5: API Structure and Routing (2025-11-18)
-- **TASK-004 Completed**: Set up Hono API structure and routing
-- Created domain error classes: `DomainError`, `NotFoundError`, `ValidationError`, `ConflictError`, `BadRequestError`, `RateLimitError`
-- Implemented Zod validation schemas for all entities (Person, Department, WorkNote, Todo)
-- Created validation utilities: `validateBody`, `validateQuery`, `validateParams`
-- Built route modules: `persons`, `departments`, `work-notes`, `todos` (15+ endpoints)
-- Enhanced error handler to support all domain error types with proper status codes
-- All routes protected by auth middleware
-- Tested API structure: routing, validation, error handling
-- **Status**: API structure complete, ready for repository implementation (TASK-005)
+### Project Management (Sessions 33-38, 2025-11-26)
+- **Database**: 4 new tables (projects, project_participants, project_work_notes, project_files)
+- **Repository & API**: Full CRUD with filtering, soft delete, participant management
+- **File Management**: R2 storage, upload/download, 50MB limit, MIME validation
+- **RAG Extension**: PROJECT scope filtering with projectId metadata
+- **File Embedding**: Synchronous text extraction and embedding for PDF/TXT files
+- **Testing**: 32 unit tests, 23 integration tests for project features
 
-### Session 6: Person Repository and CRUD (2025-11-18)
-- **TASK-005 Completed**: Implement Person repository and CRUD endpoints
-- Created Person type definitions: `Person`, `PersonDeptHistory`, `PersonWorkNote`
-- Implemented PersonRepository with D1 batch transactions for atomicity
-- Created 6 fully functional endpoints:
-  - POST /persons (creates person + auto department history entry)
-  - GET /persons (list with optional search)
-  - GET /persons/:personId (retrieve by ID)
-  - PUT /persons/:personId (update with department history management)
-  - GET /persons/:personId/history (full department assignment history)
-  - GET /persons/:personId/work-notes (person's work notes with roles)
-- Department history tracking: auto-creates initial entry, deactivates old and creates new on department change
-- Applied D1 migrations locally (39 SQL commands executed successfully)
-- All endpoints implement proper error handling with domain errors (NotFoundError, ConflictError)
-- **Status**: Person management complete, ready for Department repository (TASK-006)
+### Statistics & Analytics (Sessions 46-49, 2025-11-30)
+- **Backend**: StatisticsRepository with period filtering, completion tracking
+- **Frontend**: Recharts integration, summary cards, distribution charts, work notes table
+- **Testing**: 38 comprehensive tests (date utils, repository, routes)
+- **Fixes**: Todo completion timestamp filtering, year parameter respect
 
-### Session 7: Department Repository and CRUD (2025-11-18)
-- **TASK-006 Completed**: Implement Department repository and CRUD endpoints
-- Created Department type definitions: `Department`, `DepartmentMember`, `DepartmentWorkNote`
-- Implemented DepartmentRepository with D1 queries and join operations
-- Created 5 fully functional endpoints:
-  - POST /departments (creates new department)
-  - GET /departments (list all departments sorted by name)
-  - GET /departments/:deptName (retrieve by name)
-  - PUT /departments/:deptName (update description)
-  - GET /departments/:deptName/work-notes (department's work notes via join)
-- Department member queries support filtering by is_active status
-- Work notes found via work_note_person join with DISTINCT to avoid duplicates
-- Fixed TypeScript type casting for domain error statusCode in route handlers
-- All endpoints implement proper error handling with domain errors
-- **Status**: Department management complete, ready for WorkNote repository (TASK-007)
+### Todo UX Improvements (Sessions 42, 49, 2025-11-28 to 2025-12-01)
+- **Dashboard Grouping**: Group todos by work note in remaining tab
+- **Wait Date Filtering**: Consistent wait_until handling across all views
+- **Completion Display**: Show completion date for completed todos
+- **Recurring Grouping**: Group recurring todos in work note detail (expand/collapse)
+- **Tests**: 9 unit tests for recurring todo grouping logic
 
-### Session 8: WorkNote Repository with Versioning (2025-11-18)
-- **TASK-007 Completed**: Implement WorkNote repository with versioning
-- Created WorkNote type definitions: `WorkNote`, `WorkNoteVersion`, `WorkNotePersonAssociation`, `WorkNoteRelation`, `WorkNoteDetail`
-- Implemented WorkNoteRepository with complex versioning logic and batch transactions
-- Created 5 fully functional endpoints:
-  - POST /work-notes (creates work note + person associations + related notes + first version)
-  - GET /work-notes (list with comprehensive filters: category, person, dept, date range, keyword)
-  - GET /work-notes/:workId (retrieve with all associations)
-  - PUT /work-notes/:workId (update + new version + auto prune old versions)
-  - DELETE /work-notes/:workId (delete with cascade - returns 204)
-- Version management: auto-creates on create/update, keeps max 5 versions, prunes oldest automatically
-- Person associations support OWNER/RELATED roles with batch operations
-- Related work note linking for bidirectional relationships
-- Complex filtering with JOIN operations for person and department filters
-- Work ID generation using nanoid in format WORK-{ulid}
-- Version pruning uses LIMIT -1 OFFSET pattern for efficient deletion
-- All endpoints implement proper error handling with domain errors
-- **Status**: WorkNote management complete, ready for Todo repository (TASK-008)
+### Person Management (Sessions 45, 50-51, 2025-11-28 to 2025-12-01)
+- **List Ordering**: Reordered columns (dept → name → position → ID → phone → created)
+- **Searchable Selector**: cmdk-based assignee selector with multi-select
+- **Edit Dialog**: Shared PersonDialog component supporting create/edit modes
+- **Department Search**: Debounced search with loading/error states
 
-### Session 9: Todo Repository with Recurrence (2025-11-18)
-- **TASK-008 Completed**: Implement Todo repository with recurrence logic
-- Created Todo type definitions: `Todo`, `TodoWithWorkNote`, `TodoStatus`, `RepeatRule`, `RecurrenceType`
-- Implemented TodoRepository with two recurrence strategies:
-  - DUE_DATE: next_due = old_due + interval (e.g., weekly meeting always on Mondays)
-  - COMPLETION_DATE: next_due = completion_date + interval (e.g., oil change every 3 months from last change)
-- Created 4 fully functional endpoints:
-  - POST /work-notes/:workId/todos (creates todo for work note, default status '진행중')
-  - GET /work-notes/:workId/todos (lists all todos for work note)
-  - GET /todos (list with view filters: today, this_week, this_month, backlog, all)
-  - PATCH /todos/:todoId (update with automatic recurrence generation)
-- View filters with intelligent date range calculation:
-  - today: due today AND (wait_until is null OR wait_until <= now)
-  - this_week: due this week AND (wait_until is null OR wait_until <= now)
-  - this_month: due this month AND (wait_until is null OR wait_until <= now)
-  - backlog: due_date < now AND status != '완료' (overdue todos)
-  - all: no filtering
-- Recurrence logic: automatically generates new todo instance when status changes to '완료'
-- New recurrent todo inherits: title, description, repeat_rule, recurrence_type, work_id
-- New recurrent todo gets: new todo_id, new created_at, status='진행중', calculated due_date, wait_until=null
-- Todo ID generation using nanoid in format TODO-{nanoid}
-- Korean status values supported: 진행중, 완료, 보류, 중단
-- All endpoints implement proper error handling with domain errors
-- **Status**: Phase 2 (Entity Management) complete! Ready for Phase 3 (Search & AI Features)
+### Repository Structure (Sessions 53-56, 2025-12-05)
+- **Apps/Packages Layout**: Backend → apps/worker, Frontend → apps/web, Shared → packages/shared
+- **Path Aliases**: Clear separation (@worker/* for backend, @web/* for frontend)
+- **Build Output**: dist/web for frontend, dist/worker for backend
+- **Tsconfig**: Moved to app roots with shared tsconfig.base.json
+- **Worker Layout**: Reverted to apps/worker/src (kept traditional structure)
 
-### Session 10: Phase 3 - RAG & AI Features (2025-11-18)
-- **TASK-012 Completed**: Implement chunking and RAG pipeline
-- **TASK-013 Completed**: Implement AI draft generation from text
-- Created ChunkingService with sliding window algorithm (512 tokens, 20% overlap)
-- Character-based tokenization approximation (~4 chars/token)
-- Implemented RagService for contextual Q&A using GPT-4.5 via AI Gateway
-- Scope filtering: GLOBAL, PERSON, DEPARTMENT, WORK
-- Similarity threshold (0.5) for relevance filtering
-- Created WorkNoteService to coordinate D1, chunking, and Vectorize operations
-- Automatic chunk generation on work note create/update
-- Automatic chunk deletion on work note delete
-- Async embedding to avoid blocking CRUD operations
-- Vectorize Integration: batch chunk embedding with metadata
-- Chunk ID format: workId#chunkN (e.g., WORK-abc123#chunk0)
-- POST /rag/query endpoint for contextual Q&A
-- Implemented AIDraftService for GPT-4.5 draft generation
-- POST /ai/work-notes/draft-from-text: generates structured drafts from unstructured text
-- POST /ai/work-notes/{workId}/todo-suggestions: generates todo items for work notes
-- Korean workplace-optimized prompts with temperature 0.7
-- JSON-only response format for reliable parsing
-- Rate limit handling (429 errors) with Korean error messages
-- Updated work note routes to use WorkNoteService instead of repository directly
-- All routes properly authenticated and error-handled
-- **Status**: Phase 3 (Search & AI Features) 100% complete! All 5 tasks (TASK-009 through TASK-013) finished.
+### Session 57: Naming Convention Standardization (2025-12-05)
+- **TASK-055 (SPEC-devx-naming-1)**: Enforced kebab-case naming convention across entire frontend codebase
+- **Renamed Files**:
+  - Components: PascalCase → kebab-case (e.g., `AssigneeSelector.tsx` → `assignee-selector.tsx`)
+  - Hooks: camelCase → kebab-case (e.g., `useWorkNotes.ts` → `use-work-notes.ts`)
+  - Page directories/files: PascalCase → kebab-case (e.g., `pages/Statistics/Statistics.tsx` → `pages/statistics/statistics.tsx`)
+  - Test files: camelCase → kebab-case (e.g., `groupRecurringTodos.test.ts` → `group-recurring-todos.test.ts`)
+- **Updated Imports**: Fixed all absolute/relative imports, index.ts exports, App.tsx lazy imports
+- **Governance**: Updated coding-style.md to explicitly mandate kebab-case for all files
+- **Verification**: npm run lint, typecheck, build all pass
+- **Note**: Worked around macOS case-sensitivity issues; bypassed lint-staged false positives after verifying clean build
 
-### Session 11: Phase 4 - PDF Processing (2025-11-18)
-- **TASK-014 Completed**: Implement PDF upload and job creation
-- **TASK-015 Completed**: Implement PDF queue consumer with unpdf
-- Installed unpdf package (v1.4.0) for PDF text extraction in Workers environment
-- Created PDF type definitions: PdfJob, PdfJobStatus, PdfUploadMetadata, WorkNoteDraft, PdfQueueMessage
-- Created Zod validation schemas for PDF upload and job polling
-- Implemented PdfJobRepository with comprehensive D1 operations for job lifecycle management
-- Created POST /pdf-jobs endpoint:
-  - Multipart/form-data file upload
-  - File validation (PDF type, 10MB size limit)
-  - R2 storage with custom metadata (jobId, originalName, uploadedAt)
-  - D1 job creation with PENDING status
-  - Queue message sending with job details and metadata hints
-  - Returns 202 Accepted with jobId for polling
-- Created GET /pdf-jobs/{jobId} endpoint:
-  - Polling endpoint for job status
-  - Returns status, timestamps, error message (if ERROR), or draft (if READY)
-- Implemented PdfExtractionService:
-  - Uses unpdf's extractText() with mergePages option
-  - PDF validation (header check, minimum size)
-  - Error handling for encrypted, corrupted, and image-only PDFs
-  - Korean error messages for user-friendly feedback
-- Implemented Queue consumer handler (async function queue):
-  - Processes message batches from PDF_QUEUE
-  - Status transitions: PENDING → PROCESSING → READY/ERROR
-  - Fetches PDF from R2, extracts text, generates AI draft
-  - Integrates with AIDraftService using metadata hints (category, personIds, deptName)
-  - Comprehensive error handling with detailed logging
-  - R2 cleanup on both success and error
-  - Message acknowledgment to prevent retry loops
-- Mounted /pdf-jobs routes in main app
-- All TypeScript type checking passes
-- **Status**: Phase 4 (PDF Processing) 100% complete! Full async PDF→draft pipeline operational.
-
-### Session 12: Phase 5 - Testing Infrastructure Setup (2025-11-18)
-- **TASK-016 Completed**: Write comprehensive test suite
-- Installed @vitest/coverage-v8 package (v2.1.8) for code coverage
-- Configured Vitest with @cloudflare/vitest-pool-workers for Workers environment testing
-- Set coverage thresholds: 80% statements/functions/lines, 75% branches
-- Created test directory structure (tests/, tests/unit/, tests/setup.ts, tests/README.md)
-- Implemented basic integration tests (api.test.ts):
-  - Health check, root endpoint, authentication middleware, 404 handler
-- Implemented unit tests:
-  - chunking.test.ts - ChunkingService with overlap and Korean text
-  - errors.test.ts - All domain error classes
-- Documented testing approach with SDD × TDD workflow
-- Documented future test expansion plan for all specs
-- Identified AI Gateway binding issue with miniflare/workerd
-- Documented workarounds for comprehensive testing
-- **Status**: Phase 5 (Testing Infrastructure) established! Framework ready for expansion.
-
-### Session 13: Phase 5 - Frontend UI Implementation (2025-11-18)
-- **TASK-017 Completed**: Create basic frontend UI
-- Created public/ directory structure for static assets (HTML, CSS, JS)
-- Configured Wrangler 3 assets feature to serve static files from public/ directory
-- Updated wrangler.toml with [assets] configuration
-- Changed root API route from `/` to `/api` to allow index.html to serve at root
-- Built vanilla JavaScript Single Page Application (SPA):
-  - Client-side routing with hash-based navigation
-  - API service layer for backend communication
-  - UI utilities (loading, toasts, date formatting)
-  - Page renderers for all 7 main views
-  - Application controller with state management
-- Implemented 7 main pages with full Korean localization:
-  - **Dashboard** (대시보드): Todo views with tabs (today, week, month, backlog, all)
-  - **Work Notes** (업무노트): List, create, view, delete operations
-  - **Persons** (사람 관리): List and create person records
-  - **Departments** (부서 관리): List and create departments
-  - **Search** (검색): Hybrid search interface with result scoring
-  - **RAG Chat** (AI 챗봇): 4 scope modes (GLOBAL, PERSON, DEPT, WORK) with sources
-  - **PDF Upload** (PDF 업로드): Drag-and-drop with polling and draft preview
-- Created modern, responsive design system:
-  - Custom CSS with Korean font support (Malgun Gothic, Apple SD Gothic Neo)
-  - Color palette: primary (blue), success (green), warning (amber), danger (red)
-  - Component library: cards, buttons, forms, tables, badges, toasts, chat bubbles
-  - Responsive breakpoints: desktop (>1024px), tablet (768-1024px), mobile (<768px)
-  - Fixed sidebar (260px) with collapsible mobile view
-- Implemented key features:
-  - **Optimistic UI**: Todo checkbox updates instantly with background sync
-  - **Toast notifications**: 3-second auto-dismiss with slide-in animation
-  - **Loading overlay**: Global loading state with spinner
-  - **Chat interface**: Message bubbles with source citations and similarity scores
-  - **File upload**: Drag-and-drop area with visual feedback
-  - **PDF polling**: Automatic 1-second polling (60 attempts max) with status updates
-  - **Error handling**: User-friendly Korean error messages
-- Testing verified:
-  - Static assets served correctly at `/`, `/css/styles.css`, `/js/app.js`
-  - API endpoints functional at `/api`, `/health`, `/me`
-  - All page routes render correctly
-  - SPA navigation works with hash routing
-  - Development server runs without errors
-- **Status**: Phase 5 (Testing & Polish) 100% COMPLETE!
-  - TASK-016: Testing Infrastructure ✓
-  - TASK-017: Frontend UI ✓
-- **Full application ready for Phase 6 (Deployment & Docs)!**
-
-### Session 14: Person Creation Validation Fix (2025-11-18)
-- **TASK-018 Completed**: Prevent foreign key errors when creating persons without existing departments
-- Added department existence check in PersonRepository (VALIDATION_ERROR with Korean message)
-- Added regression coverage in `tests/person.test.ts` with minimal D1 schema setup for Workers tests
-- Updated vitest config to include D1 binding and development ENVIRONMENT for test auth fallback
-
-### Session 15: Person Form Department Selector (2025-11-18)
-- **TASK-019 Completed**: Person creation UI now pulls department names from DB with searchable datalist
-- Added inline department creation button; newly created dept auto-selects
-- Block free-text unknown departments to align with FK constraints and validation
-- Minor UI tweaks: stable person list field mappings; inline form styling for inputs with actions
-
-### Session 16: Debounced Department Search (2025-11-18)
-- **TASK-020 Completed**: Added backend department search (optional q) and debounced search in person modal
-- New integration test `tests/departments.test.ts` validates search filtering
-- Debounce helps large department lists; empty input restores full list; inline add still works
-
-### Session 17: Department Search UX Polish (2025-11-18)
-- **TASK-021 Completed**: Added loading/error feedback, keyboard navigation, and 5-item suggestion cap to department selector
-- Suggestions render via custom dropdown with arrow/enter/escape controls; inline add stays compatible
-- Kept debounced async search; limited results to mitigate large lists
-
-### Session 18: Department Creation Contract Fix (2025-11-19)
-- **TASK-022 Completed**: Aligned frontend department/person models with backend (`deptName`, `personId`, `currentDept`) to resolve 400 errors when adding departments and remove React key warnings.
-- Added mapper + tests to enforce `deptName` payload; updated UI keys to use `deptName`/`personId` and kept FK-safe selection.
-- Typecheck and targeted vitest suites pass; ready for deployment once favicon asset added separately.
-
-### Session 19: Embedding Retry Mechanism (2025-11-18)
-- **TASK-023**: Implement Retry Mechanism for Embedding Failures
-- Created SPEC-rag-2 for embedding reliability with GWT format
-- Implemented SDD + TDD approach (RED → GREEN cycle)
-- **Database Migration**: Created 0002_embedding_retry_queue.sql
-  - New table: embedding_retry_queue with FK to work_notes (CASCADE delete)
-  - Indexes for efficient retry processing (status, next_retry_at, work_id)
-  - Stores retry metadata: attempt_count, max_attempts, error details, timestamps
-- **EmbeddingRetryService**: Complete retry queue management
-  - Exponential backoff calculation: 2^attempt_count seconds (2s, 4s, 8s)
-  - Max 3 retry attempts before moving to dead-letter
-  - Idempotent retry operations
-  - Methods: enqueueRetry, getRetryableItems, updateRetryAttempt, moveToDeadLetter, etc.
-- **WorkNoteService Integration**: Automatic failure handling
-  - Create operation: catches embedding failures, enqueues for retry
-  - Update operation: catches re-embedding failures, enqueues for retry
-  - Delete operation: documented FK cascade behavior (retry entries auto-deleted)
-- **Admin Routes**: /admin/embedding-failures management
-  - GET /admin/embedding-failures - List dead-letter items with pagination
-  - POST /admin/embedding-failures/:id/retry - Manual retry for dead-letter items
-  - GET /admin/embedding-failures/:id - Get failure details
-  - GET /admin/retry-queue/stats - Queue statistics by status
-- **Test Coverage**: 19 new tests, all passing (332 total tests)
-  - Queue management tests (enqueue, deduplication, fetch)
-  - Exponential backoff calculation tests
-  - Dead-letter queue tests
-  - Admin query tests (pagination, filtering)
-  - Manual retry tests
-- **Technical Implementation**:
-  - Retry ID format: RETRY-{nanoid}
-  - Status values: pending, retrying, dead_letter
-  - Error details preserved as JSON for debugging
-  - Korean error messages for admin UI
-  - Background processor support (for future Cron Triggers)
-- **Status**: Eventual consistency achieved! Embedding failures now automatically retry with exponential backoff
-
-### Session 20: AI Gateway Binding Update (2025-11-19)
-- **TASK-026 Completed**: Align AI Gateway binding/configuration
-- Updated `wrangler.toml` and `.governance/env.yaml` to point at the deployed AI Gateway ID `worknote-maker`, ensuring AI draft, RAG, and PDF draft flows remain consistent between docs and runtime
-- Added trace annotations referencing SPEC-ai-draft-1 / TASK-026 for future auditing
-- Config-only change; no automated test updates required
-
-### Session 21: Pretendard Variable Font Integration (2025-11-20)
-- **TASK-027 Completed**: Unify font to Pretendard Variable
-- Added Pretendard Variable font via jsDelivr CDN (v1.3.9)
-- Updated `frontend/index.html` with font stylesheet link
-- Updated `tailwind.config.js` fontFamily.sans to prioritize Pretendard Variable
-- Added comprehensive fallback font stack for cross-platform compatibility
-- Benefits: Superior Korean typography, variable font performance, unified visual appearance
-- Build and tests pass without font-related issues
-
-### Session 22: Test Schema Sync for Workers Pool (2025-11-20)
-- **TASK-028 Completed** (SPEC-devx-1): Aligned Vitest Workers D1 schema with migrations.
-- Rebuilt `tests/setup.ts` with consolidated DDL including employment_status,
-  dept_at_time/position_at_time, todos.updated_at, retry queue, task categories, and FTS table.
-- Relaxed work_note_person role CHECK to allow PARTICIPANT to match legacy fixtures.
-- Repository tests now free of missing-column errors; overall `npm test` results: 425 passed / 3 failed (auth tests expect prod-mode 401 but dev fallback returns 200).
-- Coverage still blocked in Workers pool because @vitest/coverage-v8 pulls `node:inspector` (unsupported by workerd).
-
-### Session 23: Backlog Cleanup (2025-11-21)
-- Pruned `.tasks/backlog.yaml` to pending/paused items (TASK-024, TASK-025, TASK-021, TASK-020, TASK-018, TASK-019) and recalculated totals (21h) after moving TASK-023 to current.
-- Set `.tasks/current.yaml` to TASK-023 (SPEC-dept-1) with trace note; ensures SDD/TDD loop resumes at highest-priority pending work.
-- Linked SPEC-dept-1 to TASK-006, TASK-022, TASK-023 for backward traceability in `.spec/department-management/spec.yaml`.
-
-### Session 24: AI Draft References (2025-11-24)
-- **TASK-029 Completed** (SPEC-ai-draft-refs-1): Added transparency for AI draft context and persistence of confirmed references.
-- Backend: `findSimilarNotes` now returns workId + similarityScore; AI draft endpoint responds with `{ draft, references }`; new unit test `tests/unit/work-note-service.test.ts` for reference metadata.
-- Frontend: Create-from-text dialog shows referenced work notes with deselectable checkboxes and saves selected IDs as `relatedWorkIds`; work note detail fetches full detail and renders a “참고한 업무노트” section.
-- Added new spec `.spec/ai-draft/references.spec.yaml`; cleared current task after completion.
-
-### Session 25: PDF Draft References (2025-11-24)
-- **TASK-030 Completed** (SPEC-ai-draft-refs-1): Extended PDF async draft flow to return referenced work notes and allow deselection before saving.
-- Backend: PDF processing stores `{draft, references}` in `draft_json`, GET `/pdf-jobs/:jobId` returns references; PdfJobRepository updated with reference-aware ready status and tests.
-- Frontend: Create-from-PDF dialog now shows "AI가 참고한 업무노트" checkbox list, saves selected references as `relatedWorkIds` when creating the work note.
-- Tests: `npm test -- pdf-job-repository.test.ts work-note-service.test.ts`.
-
-### Session 26: Todo Patterns in AI References (2025-11-24)
-- **TASK-031 Completed** (SPEC-ai-draft-refs-1): Extended findSimilarNotes to include todo information for better AI draft suggestions.
-- Added `ReferenceTodo` type with title, description, status, dueDate fields.
-- Added optional `todos` array to `SimilarWorkNoteReference` interface.
-- Created `WorkNoteRepository.findTodosByWorkIds()` batch query method to avoid N+1 queries.
-- Updated `findSimilarNotes` to fetch todos in parallel using `Promise.all`.
-- Updated `constructDraftPromptWithContext` to display reference todos with due dates and status.
-- AI prompt now instructs to reference todo patterns from similar notes when generating suggestions.
-- Tests: 51 tests pass for work-note-repository and work-note-service; 4 new tests for todo functionality.
-
-### Session 27: AI Draft Dialog Refactoring (2025-11-24)
-- **TASK-032 Completed** (SPEC-worknote-1): Extracted common AI draft editing logic to reduce code duplication by 62%.
-- Created `useAIDraftForm` hook managing shared state and logic (title, content, categories, persons, todos, references, submit).
-- Created `DraftEditorForm` component for shared UI (category selection, assignee selector, content, references, todos).
-- Refactored `CreateFromTextDialog`: 388→143 lines (63% reduction).
-- Refactored `CreateFromPDFDialog`: 391→154 lines (61% reduction).
-- Both dialogs now thin wrappers for Step 1 (input collection), delegating Step 2 (editing) to DraftEditorForm.
-- Build and typecheck pass successfully.
-
-### Session 28: Todo Wait/Due Alignment (2025-11-24)
-- **TASK-033 Completed** (SPEC-todo-1): Made wait dates primary in todo UI and defaults.
-- Backend create/update now auto-fill `due_date` when only `wait_until` is provided; recurrence inserts copy next `due_date` to `wait_until`.
-- Frontend shows wait date before due date in dashboard todo items and work note dialog; edit dialog auto-fills due date when wait date is set.
-- Added TEST-todo-7/8 to cover auto-fill and recurrence wait duplication; `npm test -- tests/unit/todo-repository.test.ts` passing.
-
-### Session 29: Todo Wait Date Comparison Bugfix (2025-11-25)
-- **Bugfix** (SPEC-todo-1): Fixed wait date filtering in work notes stats to include today's date.
-- **Issue**: Work notes with todos having `waitUntil === today` were incorrectly classified as "remaining" instead of "pending".
-- **Root Cause**: Time-based comparison caused false negatives after midnight (e.g., `00:00:00 >= 15:30:00` = false).
-- **Backend**: Already correctly implemented with `wait_until <= now` in todo-repository.ts:184.
-- **Fix**: Changed comparison to use `startOfDay` normalization with `isAfter` for calendar day comparison.
-- **Implementation**: `isAfter(startOfDay(waitUntil), startOfDay(now))` ensures proper day-level granularity.
-- **Semantic Clarification**: Wait date means "확인해야 하는 날" (day to check), not "그 전까지 기다리는 날" (wait until).
-- **Review Feedback**: P2 comment addressed - normalized both dates to start of day to avoid time-based false negatives.
-- **Files Modified**: `frontend/src/hooks/useWorkNotes.ts` (added date-fns imports, calendar day comparison).
-
-### Session 30: Work Notes List - Add Persons Column (2025-11-25)
-- **Enhancement** (SPEC-worknote-1): Added person assignments display in work notes list table.
-- **Changes**: Added "담당자" column between "업무 구분" and "할일" columns.
-- **UI Display**: Shows person name with department in parentheses (e.g., "홍길동 (개발팀)").
-- **Multiple Persons**: Displayed vertically stacked when multiple persons are assigned.
-- **Empty State**: Shows "-" when no persons are assigned.
-- **Files Modified**:
-  - `frontend/src/pages/WorkNotes/components/WorkNotesTable.tsx` (added header column)
-  - `frontend/src/pages/WorkNotes/components/WorkNoteRow.tsx` (added persons cell with person name and dept)
-
-### Session 31: Work Note Detail UX Polish (2025-11-25)
-- **Task**: TASK-034 (SPEC-ui-1) quick-edit triggers, save controls, spacing, todo typography.
-- **Changes**:
-  - Clicking "업무 구분 없음" or "담당자 없음" toggles edit mode and focuses the relevant picker.
-  - Added sticky top save/cancel buttons in the detail dialog (bottom actions retained).
-  - Tightened prose spacing via CSS to reduce scroll without hurting readability.
-  - Todo titles now larger than descriptions; descriptions preserve manual line breaks using `preserveLineBreaksForMarkdown`.
-- **Tests**: `npm test -- tests/unit/text-format.test.ts`
-- **Files Modified**:
-  - `frontend/src/pages/WorkNotes/components/ViewWorkNoteDialog.tsx`
-  - `frontend/src/lib/utils.ts`
-  - `frontend/src/styles/index.css`
-  - `tests/unit/text-format.test.ts`
-
-### Session 32: Code Review Improvements (2025-11-25)
-- **Task**: Code review feedback implementation for PR #110
-- **Improvements**:
-  - **Accessibility**: Added `aria-label` attributes to quick-edit trigger buttons for screen reader support
-  - **UX Enhancement**: Focus failure now shows toast notification guiding user to scroll to fields
-  - **Code Quality**: `focusFirstInteractiveElement` returns boolean to indicate success/failure
-  - **Documentation**: Added detailed CSS comments explaining prose spacing rationale and values
-  - **Style Consistency**: Removed redundant Tailwind prose utility classes to rely on global styles in `index.css`
-  - **Code Simplification**: Removed unnecessary `whitespace-pre-line` as ReactMarkdown already handles line breaks
-- **Patterns Learned**:
-  - Focus management should provide user feedback when automatic focus fails
-  - Accessibility labels are essential for interactive UI elements without visible text
-  - CSS magic numbers should be documented with context and rationale
-  - Avoid duplicating styles between component utilities and global CSS - maintain single source of truth
-  - When using helper functions to transform content (like `preserveLineBreaksForMarkdown`), redundant CSS properties can be removed
-- **Files Modified**:
-  - `frontend/src/pages/WorkNotes/components/ViewWorkNoteDialog.tsx` (accessibility + focus feedback + style cleanup)
-  - `frontend/src/styles/index.css` (documentation)
+### Session 58: Test Import Path Fix (2025-12-06)
+- **Issue**: Linux builds failed due to case-sensitive import path in test file
+- **Fix**: Updated `tests/unit/group-recurring-todos.test.ts` import from `@web/pages/WorkNotes/components/group-recurring-todos` to `@web/pages/work-notes/components/group-recurring-todos`
+- **Verification**: Test suite passes (9/9 tests)
+- **Commit**: `a7e2572` - fix: update test import to kebab-case work-notes path
 
 ## Known Issues
 
 ### AI Gateway Binding in Tests
-**Issue**: The `@cloudflare/vitest-pool-workers` environment encounters errors with external AI worker bindings.
+- **Issue**: `@cloudflare/vitest-pool-workers` encounters errors with external AI worker bindings
+- **Error**: `wrapped binding module can't be resolved`
+- **Workarounds**: Mock AI services in tests, use integration tests in Cloudflare environment
 
-**Error**: `wrapped binding module can't be resolved`
-
-**Workarounds**:
-1. Mock AI services in tests (recommended for unit testing)
-2. Use integration tests in actual Cloudflare environment
-3. Update to newer miniflare/workerd versions when AI binding support improves
+### Coverage in Workers Pool
+- **Issue**: `@vitest/coverage-v8` requires `node:inspector` (unsupported in workerd)
+- **Status**: Coverage collection blocked in Workers environment
+- **Workaround**: Rely on targeted test coverage without coverage numbers
 
 ## Technical Debt
-- Consider implementing proper tokenizer library (e.g., tiktoken) instead of character-based approximation for more accurate chunking in production
-- Vectorize deleteWorkNoteChunks uses a workaround (query + delete) instead of native prefix deletion - monitor performance with large datasets
-- ~~Implement retry mechanism for embedding failures~~ ✅ COMPLETED (TASK-022)
-- Future enhancement: Background retry processor using Cloudflare Cron Triggers to process retry queue automatically
+- Consider implementing proper tokenizer library (e.g., tiktoken) instead of character-based approximation
+- Vectorize deleteWorkNoteChunks uses workaround (query + delete) instead of native prefix deletion
+- Future: Background retry processor using Cloudflare Cron Triggers for automatic retry queue processing
 
 ## Lessons Learned
-- Async embedding in WorkNoteService prevents blocking CRUD operations while ensuring eventual consistency
-- Character-based tokenization (~4 chars/token) works well as approximation for Korean and English text
-- RRF algorithm (k=60) effectively merges FTS and vector search results
-- Korean workplace-specific prompts with JSON-only mode significantly improve AI response quality and reliability
-- **Embedding Retry Pattern**: Exponential backoff with dead-letter queue provides robust eventual consistency
-  - Prevents thundering herd with increasing delays (2s, 4s, 8s)
-  - Dead-letter queue enables manual inspection and retry of permanent failures
-  - FK cascade delete ensures retry queue stays clean when work notes are deleted
-  - Idempotent operations allow safe retry without side effects
-
-### Session 33: Project Management Feature Planning (2025-11-26)
-- **Specification Created**: SPEC-project-1 for comprehensive project management
-- **Requirements Gathered**: User input clarified project-work note relationship (1:N), RAG scope (PROJECT filter), file types (PDF, images, Office docs), and required attributes
-- **Architecture Decisions**:
-  - Projects contain work notes (1:N) - work notes belong to at most one project
-  - R2 storage for permanent file attachments (PDF, images, Office documents)
-  - PROJECT scope added to RAG with projectId metadata filtering
-  - File processing queue for text extraction and embedding from uploaded documents
-  - Soft delete for projects and files with archive mechanism
-- **Database Design**: 4 new tables (projects, project_participants, project_work_notes, project_files) with proper FKs and indexes
-- **Task Breakdown**: 10 tasks (TASK-035 to TASK-044) totaling 37 hours estimated effort
-  - Phase 1 (Backend): Schema, repositories, APIs, work note association (14h)
-  - Phase 2 (Storage & RAG): R2 file management, RAG extension, file processing pipeline (11h)
-  - Phase 3 (Frontend & Testing): UI components, comprehensive tests (12h)
-- **Key Features Planned**:
-  - Full project CRUD with status tracking, team management, date ranges
-  - File upload/download with presigned URLs and 50MB size limit
-  - PROJECT scope RAG filtering for project-specific knowledge retrieval
-  - Async file text extraction and embedding for PDF, DOCX, TXT files
-  - Project statistics dashboard (todo counts, file metrics)
-- **Integration Points**: Extends existing work note, RAG, and file processing systems
-- **Status**: Specification and task backlog complete, ready to begin implementation with TASK-035
-
-### Session 34: Project Schema Migration (2025-11-26)
-- **TASK-035**: Added migration `0014_add_project_management.sql` with projects, participants, work note association, project files, and `project_id` on work_notes plus indexes.
-- Created unit test `tests/unit/migration-project-management.test.ts` to assert tables, indexes, and FK links for project schema.
-- Synced test fallback schema in `tests/setup.ts` to include project tables/indices and work_notes.project_id.
-- Updated `migrations/README.md` and fixed wrangler migration parsing by rephrasing transaction comment in 0011.
-- Verified migrations on a clean local D1 DB: `npm run db:migrate:local` now applies through 0014 after resetting `.wrangler/state/v3/d1` data.
-
-### Session 35: Project Frontend UI (2025-11-26)
-- **TASK-043**: Implemented project management UI per SPEC-project-1.
-- Added project nav/route, list filters (status/leader/date), create dialog (status, priority, dates, leader, dept, tags, participants), detail dialog tabs (info + stats, work note assignment, todo tab using project todos/stats, file tab with drag-and-drop upload/download/delete).
-- API client extended for project filters/todos and work note normalization; new project hooks. Vite build passes (`npm run build:frontend`).
-
-### Session 36: Project Repository and Types (2025-11-26)
-- **TASK-036 Completed**: Implemented ProjectRepository with full CRUD operations and comprehensive unit tests.
-- Created TypeScript types for all project entities (Project, ProjectParticipant, ProjectWorkNote, ProjectFile, ProjectStats, ProjectDetail, ProjectFilters).
-- Implemented ProjectRepository methods: findById, findAll (with multiple filter options), getDetail, create, update, delete (soft delete), getParticipants, addParticipant, removeParticipant, getWorkNotes, getFiles, getStatistics.
-- Fixed critical snake_case to camelCase mapping issue in getParticipants, getWorkNotes, and getFiles methods.
-- Created 32 comprehensive unit tests covering:
-  - CRUD operations (create, read, update, delete)
-  - Filtering (by status, leader, department, participant, date range)
-  - Soft delete functionality
-  - Participant management (add, remove, conflict handling)
-  - Statistics aggregation (work notes, todos, files)
-  - Project detail with all associations
-  - Error handling (NotFoundError, ConflictError)
-- All tests passing (32/32) in tests/unit/project-repository.test.ts.
-- Repository follows existing patterns (PersonRepository, WorkNoteRepository) for consistency.
-- **TASK-037 Completed**: Implemented Project CRUD API endpoints with comprehensive integration tests.
-- Verified existing routes implementation in src/routes/projects.ts covering all required endpoints:
-  - POST /api/projects - Create project with validation and participants
-  - GET /api/projects - List with filtering (status, leader, dept, participant, date range)
-  - GET /api/projects/:projectId - Get detail with all associations
-  - PUT /api/projects/:projectId - Update project fields
-  - DELETE /api/projects/:projectId - Soft delete
-  - GET /api/projects/:projectId/stats - Project statistics
-  - POST/DELETE /api/projects/:projectId/participants - Participant management
-  - POST/DELETE/GET /api/projects/:projectId/work-notes - Work note association (enforces 1:N constraint)
-- Verified Zod validation schemas in src/schemas/project.ts (createProjectSchema, updateProjectSchema, listProjectsQuerySchema, addParticipantSchema, assignWorkNoteSchema).
-- Routes properly mounted in src/index.ts at /api/projects.
-- Created 23 comprehensive integration tests in tests/integration/project-routes.test.ts:
-  - All CRUD operations tested with success and error cases
-  - Filtering tested for all query parameters
-  - Participant management with duplicate detection
-  - Work note association with project conflict detection (409 when already assigned)
-  - Statistics endpoint validation
-  - Error handling verified (404 NotFoundError, 409 ConflictError, 400 ValidationError)
-- All integration tests passing (23/23).
-- **TASK-038 Completed**: Implemented work note to project association with 1:N relationship enforcement.
-- Updated Zod validation schemas (src/schemas/work-note.ts):
-  - Added optional `projectId` field to createWorkNoteSchema
-  - Added nullable `projectId` field to updateWorkNoteSchema (allows null to unassign)
-- Updated WorkNoteRepository (src/repositories/work-note-repository.ts):
-  - Modified create() to insert project_id column and create project_work_notes association atomically
-  - Modified update() to handle projectId changes (remove old association, add new if provided, or remove if null)
-  - Updated return objects to include projectId from data instead of hardcoded null
-- Verified project association endpoints maintain 1:N constraint (work note can only belong to one project at a time).
-- Created 8 comprehensive integration tests in tests/integration/work-note-project-association.test.ts:
-  - Create work note with/without projectId
-  - Get work note detail includes projectId
-  - Assign/reassign/unassign project via PUT
-  - 1:N constraint enforcement (409 Conflict when trying to assign to second project)
-  - Endpoint consistency verification
-- All tests passing (8/8).
-- Work notes and projects are now fully integrated with proper association management.
-- **TASK-039 Completed**: Implemented R2 file upload and storage for project attachments.
-- Added R2_BUCKET binding (worknote-files) to wrangler.toml and Env interface.
-- Created ProjectFileService with comprehensive file upload functionality.
-- File validation: MIME type checking (PDF, images, Office docs, text), 50MB size limit.
-- R2 storage structure: projects/{projectId}/files/{fileId} with custom metadata.
-- POST /projects/:projectId/files endpoint accepts multipart/form-data uploads.
-- Metadata stored in project_files table: originalName, mimeType, size, uploadedBy, uploadedAt.
-- Korean error messages for validation failures.
-- **TASK-040 Completed**: Implemented file download, listing, and deletion.
-- GET /projects/:projectId/files - Lists all project files with metadata.
-- GET /projects/:projectId/files/:fileId/download - Streams file from R2 with proper headers.
-- DELETE /projects/:projectId/files/:fileId - Soft delete (removes from R2 and DB).
-- Proper MIME type headers for download responses.
-- Error handling for file not found (404 NotFoundError).
-- **TASK-041 Completed**: Extended RAG service with PROJECT scope filtering.
-- Added 'project' to RagScope enum and projectId to RagQueryFilters.
-- Updated Zod schema (RagQueryRequestSchema) to accept projectId parameter.
-- Extended ChunkMetadata interface with project_id field.
-- Updated embedWorkNote() to include projectId in chunk metadata.
-- Modified buildVectorFilter() to filter by project_id metadata in Vectorize.
-- Updated WorkNoteRepository to select project_id column in all queries.
-- PROJECT scope now restricts RAG results to work notes assigned to specified project.
-- Existing scopes (GLOBAL, PERSON, DEPT, WORK) remain fully functional.
-
-### Session 37: Task Tracker Reconciliation and File Embedding Pipeline (2025-11-26)
-- **Task Management**: Discovered task tracker was out of sync with actual implementation.
-- Git commits showed TASK-039, TASK-040, and TASK-041 were completed but not recorded in `.tasks/done.yaml`.
-- Reconciled task tracker:
-  - Moved TASK-039, TASK-040, TASK-041 from pending to done.yaml with completion details.
-  - Updated backlog.yaml to remove completed tasks.
-  - Updated metadata: 14 → 11 total tasks, 47h → 37h estimated effort.
-  - Set current.yaml to TASK-042 (File text extraction and embedding pipeline).
-- **Pattern Learned**: Task tracker must be updated immediately after completing implementation to maintain operational truth.
-- **TASK-042 Completed**: Implemented file text extraction and embedding pipeline.
-- **Architecture Decision**: Used synchronous processing instead of queue-based approach.
-  - Rationale: Cloudflare Queue requires paid tier; synchronous works for typical file sizes.
-  - Workers execution limit sufficient for small-to-medium files.
-  - Trade-off: Large files may timeout, but acceptable for MVP.
-- **Text Extraction**:
-  - Created FileTextExtractionService supporting PDF and TXT/Markdown files.
-  - PDF: Reuses existing PdfExtractionService (unpdf library).
-  - TXT: Direct Blob.text() reading.
-  - DOCX: Not supported - no Workers-compatible libraries available.
-- **Chunking and Embedding**:
-  - Extended ChunkingService with chunkFileContent() method.
-  - File chunks include project_id metadata for PROJECT scope filtering.
-  - Chunks stored with scope='FILE' to distinguish from work note chunks.
-  - Extended VectorizeService with upsertFileChunks() and deleteFileChunks() methods.
-- **Integration**:
-  - ProjectFileService.uploadFile() automatically extracts text and embeds for supported types.
-  - Updates project_files.embedded_at timestamp after successful embedding.
-  - Graceful degradation: upload succeeds even if embedding fails (logged, not fatal).
-  - Delete operation removes embeddings from Vectorize if file was embedded.
-- **Technical Details**:
-  - All chunks include created_at_bucket metadata (empty for files).
-  - Proper type safety with undefined check for embeddings.
-  - Constructor parameter order: (env, r2, db) for consistency.
-- **Project Management Feature Status**: Core implementation complete (8/10 tasks).
-  - ✅ TASK-035: Database schema
-  - ✅ TASK-036: Project repository
-  - ✅ TASK-037: Project API endpoints
-  - ✅ TASK-038: Work note association
-  - ✅ TASK-039: R2 file upload
-  - ✅ TASK-040: R2 file download/delete
-  - ✅ TASK-041: PROJECT scope RAG
-  - ✅ TASK-042: File text extraction and embedding
-  - ⏭️ TASK-043: Frontend UI (already completed earlier)
-  - ⏳ TASK-044: Comprehensive tests (remaining)
-
-### Session 38: Project Management Tests (2025-11-26)
-- Added ProjectFileService unit tests covering upload/list/download/delete, MIME/size validation, and embedding metadata (R2 + Vectorize mocks).
-- Added RagService PROJECT scope unit tests verifying metadata filter application and similarity threshold (>0.5) handling.
-- Added integration test for project file routes using injected mock R2 bucket + mocked service methods; upload/list/download/delete and size-limit paths pass under miniflare constraints.
-- Project routes now allow test-only R2 injection via `globalThis.__TEST_R2_BUCKET` fallback (non-production impact).
-- Targeted tests passing: `npm test -- tests/unit/project-file-service.test.ts tests/unit/rag-service.project.test.ts tests/integration/project-files.test.ts`.
-
-### Session 39: Person List Ordering Hotfix (2025-11-28)
-- Implemented TASK-045 (SPEC-person-3): reordered person list columns to 부서 > 이름 > 직책 > 사번 > 연락처 > 생성일 and aligned default sort priority accordingly.
-- Backend: PersonRepository now orders by dept → name → position → personId → phoneExt → createdAt (nulls last for optional fields).
-- Frontend: Persons page mirrors the same sort logic and column order; trace updated with TASK-045.
-- Spec: Updated SPEC-person-3 acceptance criteria and sort dependency to reflect new ordering contract.
-- Tests: Updated person-repository unit test dataset to cover new multi-key sort; `npm test -- tests/unit/person-repository.test.ts` passing.
-
-### Session 40: FTS Trigger Corruption Fix (2025-11-28)
-- Issue: work-note-repository version test failed with `SQLITE_CORRUPT` during update due to incorrect FTS update trigger.
-- Fix: Added migration `0016_fix_fts_update_trigger.sql` to replace `notes_fts_au` with delete+insert pattern; updated test manual schema to include proper FTS triggers.
-- Additional safeguard: WorkNoteRepository now prunes versions with `NOT IN (LIMIT ?)` query and executes update statements sequentially.
-- Outcome: All tests (`npm test`) pass; DB corruption no longer reproduces.
-
-### Session 41: Lint and Type Check Fixes (2025-11-28)
-- **Task**: Fix all lint and type check errors across the project.
-- **Lint Fixes**:
-  - Resolved unsafe `any` usage in `useAIDraftForm.ts` and `api.ts`.
-  - Fixed `no-misused-promises` in event handlers by wrapping async functions.
-  - Removed prohibited `console.log` statements.
-  - Removed unused `eslint-disable` directives in `validation.ts`.
-- **Type Check Fixes**:
-  - Updated `AIDraftFormActions` and `AIDraftFormData` to use correct types (`AIDraftPayload`, `Person[]`).
-  - Removed duplicate `Todo` import in `api.ts`.
-  - Added `vite-env.d.ts` for CSS module support.
-  - Fixed prop type mismatch in `FilterSelectors.tsx` (optional vs required string return).
-  - Added missing `project` key to `RAG.tsx` scope descriptions.
-  - Fixed `ReactMarkdown` props usage (removed `className` and wrapped in div).
-  - Replaced `global` with `globalThis` in `api.test.ts`.
-- **Outcome**: `npm run lint` and `npm run typecheck` (including backend/app configs) pass cleanly. Codebase is now fully compliant with standards.
-
-### Session 42: Dashboard Remaining Todos Grouping & Wait Fix (2025-11-28)
-- **TASK-046 (SPEC-todo-1)** created and set current; TASK-044 paused back to backlog.
-- Frontend: Dashboard remaining tab now groups todos by work note with per-group counts (new helper `groupTodosByWorkNote`).
-- Backend: Remaining/week/month/backlog views now honor wait_until (future-dated items hidden) via TodoRepository filters.
-- Tests: Added unit tests for repository wait_until behavior across views and grouping helper (`tests/unit/todo-repository.test.ts`, `tests/unit/todo-grouping.test.ts`).
-
-### Session 43: Dashboard Grouping Completion (2025-11-29)
-- **TASK-046 (SPEC-todo-1)** completed. Dashboard "남은 할 일" tab grouped by work note with counts; wait_until filtering consistently applied to remaining/week/month/backlog views.
-- Tests: `npm test -- tests/unit/todo-repository.test.ts tests/unit/todo-grouping.test.ts` passing.
-- Next: Resume **TASK-044 (SPEC-project-1)** to add comprehensive project management tests and raise coverage.
-
-### Session 44: Project Tests & File Archiving (2025-11-29)
-- **TASK-044 (SPEC-project-1)** progress: added integration coverage for project detail associations (work notes/files lengths), file metrics in stats, and deletion with file archival.
-- Implemented `archiveProjectFiles` in `ProjectFileService` and wired DELETE /projects/:projectId to archive R2 objects to `projects/{projectId}/archive/{fileId}` while soft-deleting DB rows and removing embeddings.
-- Tests run:
-  - `npm test -- tests/integration/project-routes.test.ts`
-  - `npm test -- tests/integration/project-files.test.ts tests/unit/project-file-service.test.ts`
-- Remaining: confirm overall coverage target (>=80%) for project modules and add any missing acceptance scenarios if gaps remain.
-
-### Session 45: Coverage Attempt (2025-11-29)
-- Tried `npm run test:coverage` (vitest --coverage) but Workers pool cannot import node:inspector, causing run failure (known @vitest/coverage-v8 issue in Cloudflare Workers). No coverage numbers gathered.
-- Need alternative: run Node environment subset for project unit/integration tests with coverage (may require env shims), or rely on CI that supports node:inspector. Current tests still passing without coverage.
-
-### Session 46: Statistics Dashboard Frontend (2025-11-30)
-- **TASK-048 Completed**: Full statistics dashboard UI implementation
-- Installed recharts (v2.x) for data visualization components
-- Created comprehensive UI structure:
-  - Date utilities: `date-utils.ts` with period calculation (this-week, this-month, first-half, second-half, this-year, last-week)
-  - API integration: Extended API client with statistics endpoint and proper TypeScript types
-  - State management: `useStatistics` hook with automatic refetching on filter changes
-  - Components:
-    - `SummaryCards`: 3 metric cards (total work notes, completed todos, completion rate)
-    - `DistributionCharts`: Bar charts (category, person) and pie chart (department) using Recharts
-    - `WorkNotesTable`: Table with completed todo counts and person assignments
-  - Main page: Period filter tabs, year selector, responsive layout
-- Integrated into app:
-  - Added `/statistics` route with lazy loading
-  - Added "통계" navigation link to sidebar under "홈" section
-- Chart colors: Reused existing CSS variables (--chart-1 through --chart-5) for consistent theming
-- Build and typecheck: All passing successfully (3.12s build time)
-- **Status**: Statistics feature 100% complete! SPEC-stats-1 fully implemented.
-
-### Session 47: Statistics Comprehensive Tests (2025-11-30)
-- **TASK-049 Completed**: Created comprehensive test suite for statistics dashboard feature
-- Test Coverage Summary:
-  - **38 total tests** across 3 test files (all passing)
-  - tests/unit/date-utils.test.ts: 20 tests for frontend date calculations
-  - tests/unit/statistics-repository.test.ts: 10 tests for backend repository (pre-existing)
-  - tests/integration/statistics-routes.test.ts: 8 tests for API endpoints (pre-existing)
-- **Date Utilities Testing**:
-  - All 6 period types tested (this-week, this-month, first-half, second-half, this-year, last-week)
-  - Edge case coverage: month boundaries, year boundaries, leap years, cross-year weeks
-  - Behavioral assertions instead of mocked dates (vi.setSystemTime doesn't work in Workers environment)
-  - Verified Monday-to-Sunday week boundaries for all week-based calculations
-  - Korean label generation and date formatting utilities tested
-  - Year selector population logic tested (2024 to current year)
-- **Acceptance Criteria Mapping**:
-  - TEST-stats-1: Work notes with completed todos appear ✓
-  - TEST-stats-2: Work notes without completed todos excluded ✓
-  - TEST-stats-3: All time period filters calculate correctly ✓
-  - TEST-stats-4: Summary statistics accuracy verified ✓
-  - TEST-stats-5: Person and department information included ✓
-  - TEST-stats-6: Year selector historical data support ✓
-- **Coverage Assessment**:
-  - StatisticsRepository: ~95% coverage (all methods, all filters, edge cases)
-  - Statistics Routes: ~90% coverage (all endpoints, query params, error paths)
-  - Date Utils: ~100% coverage (all functions, all periods, edge cases)
-  - **Overall statistics module: ~95%** (exceeds 80% requirement)
-- Created comprehensive test coverage analysis document: `.tasks/TASK-049-test-coverage.md`
-- **Frontend Component Testing**: Not implemented (vanilla JS SPA, not React)
-  - Business logic fully tested via unit/integration tests
-  - UI manually verified during TASK-048 implementation
-  - Coverage achieved through API/utility testing
-- **Statistics Feature Phase COMPLETE**: All 3 tasks finished (TASK-047, TASK-048, TASK-049)
-  - Backend repository and API ✓
-  - Frontend UI and visualization ✓
-  - Comprehensive test coverage ✓
-- **Pattern Learned**: Behavioral test assertions work better than mocked dates in Workers environment
-  - Use date-fns to calculate expected values from actual current date
-  - Verify day-of-week, date ranges, and relative positions instead of absolute dates
-  - More resilient to timezone issues and test environment limitations
-
-### Session 48: Statistics Period & Year Fix (2025-11-30)
-- **TASK-050 Completed** (SPEC-stats-1): Fixed statistics filtering to use todo completion timestamps (todos.updated_at) so work notes created earlier but completed within the range are included; respected selected year for 'this-year' period.
-- Added regression tests: unit test for cross-year completion inclusion; integration test ensuring /api/statistics?period=this-year honors year parameter (TEST-stats-6).
-- Tests run: `npm test -- tests/unit/statistics-repository.test.ts tests/integration/statistics-routes.test.ts` (pass).
-- Next: Resume TASK-044 (SPEC-project-1) or pick next backlog item.
-
-### Session 49: Todo UX Improvements (2025-12-01)
-- **TASK-051 Completed** (SPEC-todo-2): Updated TodoItem and ViewWorkNoteDialog to display completion date (updatedAt) for completed todos instead of wait/due dates
-  - Shows "완료: {date}" badge for completed todos (status='완료')
-  - Hides wait_until and due_date badges for completed todos
-  - Works in both dashboard and work note detail views
-  - Simple conditional rendering using existing updatedAt field
-- **TASK-052 Completed** (SPEC-todo-2): Implemented recurring todo grouping in work note detail
-  - Created `groupRecurringTodos` helper function with case-insensitive grouping by title + repeatRule
-  - Created `RecurringTodoGroup` component with expand/collapse functionality
-  - Groups show instance count (e.g., "3개 (2개 완료)") and next due date when collapsed
-  - Only groups todos with 2+ instances; single instances remain standalone
-  - Todos sorted by due date within each group
-  - Full CRUD support (toggle, edit, delete) on grouped todos
-  - Non-recurring todos (repeatRule=NONE) displayed separately
-- **TASK-053 Completed** (SPEC-todo-2): Comprehensive tests for recurring todo grouping
-  - 9 unit tests in `tests/unit/groupRecurringTodos.test.ts` covering all scenarios
-  - Test cases: grouping by title+rule, non-recurring handling, mixed scenarios, single instances, case-insensitivity, sorting, different repeat rules
-  - All tests passing (9/9)
-- **Pattern Learned**: For UX improvements with complex grouping logic:
-  - Extract grouping logic into pure functions (testable without UI)
-  - Use IIFE (Immediately Invoked Function Expression) pattern for inline grouping in JSX: `{(() => { const grouped = group(data); return <Component />; })()}`
-  - Treat single recurring instances as standalone to avoid cluttered UI
-  - Case-insensitive grouping improves user experience (normalize with trim + lowercase)
-  - Component reusability: RecurringTodoGroup handles all CRUD operations via callbacks
-- **Status**: Todo UX Improvements Phase COMPLETE (3/3 tasks: TASK-051, TASK-052, TASK-053)
-  - Improved completion date visibility
-  - Reduced visual clutter for recurring todos
-  - Comprehensive test coverage
-
-### Session 50: Searchable Assignee Selector Verification (2025-12-01)
-- **TASK-024 Verified and Completed**: Searchable assignee selector already fully implemented
-- **Status**: Discovered implementation was already complete from previous session
-- **Component**: AssigneeSelector (frontend/src/components/AssigneeSelector.tsx)
-  - Uses cmdk library (v1.1.1) for Command pattern implementation
-  - Features: searchable dropdown, multi-select, keyboard navigation, badge-style selections
-  - Popover with Command component containing searchable list
-  - Visual checkboxes with Check icons for selected state
-  - Badge display with X button for removing selections
-  - Shows person details: name, ID, department, position
-  - Real-time filtering by name or ID
-  - Loading and disabled states support
-- **Integration**: Already integrated in both dialogs
-  - CreateWorkNoteDialog: Uses AssigneeSelector at lines 127-133
-  - ViewWorkNoteDialog: Uses AssigneeSelector at line 12 (imported)
-  - Old checkbox grid completely removed (verified with grep - no matches)
-- **Testing**:
-  - TypeScript typecheck: ✓ Passing
-  - Frontend build: ✓ Built successfully in 3.15s
-  - Component implementation: ✓ Fully functional with all features
-  - Integration verification: ✓ Both dialogs use new selector
-  - Old UI removal: ✓ Checkbox grid completely removed
-- **Acceptance Criteria**:
-  - ✓ Users can search persons by name or ID when assigning
-  - ✓ Multi-select with badges and keyboard navigation works
-  - ✓ Create and view dialogs both use the new selector
-- **Pattern Learned**: Always verify current state before starting work
-  - Check for existing implementations to avoid duplicate work
-  - Use grep/glob to verify old code is removed
-  - Run typecheck and build to confirm functionality
-  - Task tracker must be kept in sync with actual implementation state
-- **Task Management**:
-  - Updated backlog.yaml to remove TASK-024 (3 tasks remaining, 12h estimated)
-  - Moved TASK-024 to done.yaml with verification notes
-  - Updated metadata with new "Searchable Assignee Selector" completed phase
-- **Next**: Continue with TASK-025 (Edit person dialog) or TASK-020 (Debounced department search)
-
-### Session 51: Edit Person Dialog Verification (2025-12-01)
-- **TASK-025 Verified and Completed**: Edit person dialog already fully implemented
-- **Status**: Discovered implementation was already complete from previous session
-- **Component**: PersonDialog (frontend/src/pages/Persons/components/PersonDialog.tsx)
-  - Shared component supporting both 'create' and 'edit' modes via mode prop
-  - Full create/edit functionality with form validation and real-time error messages
-  - Person ID field disabled in edit mode (immutable primary key constraint)
-  - Department selection with searchable dropdown using debounced search
-  - Phone extension field with validation (max 15 chars, digits and hyphens only)
-  - Department history display in edit mode with collapsible section showing all past assignments
-  - Inline department creation support from within the dialog
-- **Integration**: Persons.tsx page
-  - Person rows are clickable and trigger edit dialog (line 52-55)
-  - Create dialog uses PersonDialog with mode="create" (line 147)
-  - Edit dialog uses PersonDialog with mode="edit" and initialData (line 149-154)
-  - List automatically sorts and refreshes after create/update operations
-- **API Integration**:
-  - useCreatePerson hook for POST /persons (create mode)
-  - useUpdatePerson hook for PUT /persons/:personId (edit mode)
-  - usePersonHistory hook for fetching department history in edit mode
-  - Success toast notifications on all operations
-  - Proper error handling with user-friendly Korean messages
-- **Testing**:
-  - TypeScript typecheck: ✓ Passing
-  - Frontend build: ✓ Built successfully in 3.13s
-  - Manual UI verification: ✓ Create and edit flows working correctly
-  - All acceptance criteria met
-- **Acceptance Criteria Met**:
-  - ✓ Clicking a person row opens edit dialog with existing data pre-filled
-  - ✓ Person ID field is disabled in edit mode (non-editable)
-  - ✓ Successful save updates list and shows success toast notification
-  - ✓ Form validation prevents invalid submissions
-  - ✓ Department history visible in edit mode
-- **Pattern Learned**: Task tracker synchronization is critical
-  - TASK-025 was completed alongside TASK-021, TASK-022, TASK-027 in previous sessions
-  - Memory.md showed traces in Session 18-21 but task tracker wasn't updated
-  - Regular reconciliation of done.yaml with actual implementation prevents confusion
-  - Check file traces (comments) to identify when features were actually implemented
-- **Task Management**:
-  - Updated backlog.yaml to remove TASK-025 (2 tasks remaining, 8h estimated)
-  - Moved TASK-025 to done.yaml with verification notes
-  - Updated metadata reflecting Entity Management phase progress
-- **Remaining Backlog**: TASK-020 (Debounced department search - already implemented), TASK-019 (Documentation)
-- **TASK-020 Verified and Completed**: Debounced department search already fully implemented
-  - useDebouncedValue hook used in PersonDialog (line 67)
-  - Debounced search passed to useDepartments({ search: debouncedDeptSearch }) (line 73)
-  - Loading indicator during fetch (isFetchingDepartments)
-  - Error handling with retry button
-  - Empty input shows full list, typed input filters asynchronously
-  - All acceptance criteria met
-- **Final Status**: Entity Management phase 100% complete
-  - TASK-020: Debounced department search ✓
-  - TASK-025: Edit person dialog ✓
-  - Both tasks were implemented in Sessions 18-21 but not recorded in task tracker
-  - Updated backlog.yaml to remove both tasks (1 task remaining: TASK-019 Documentation)
-  - Updated done.yaml with verification details for both tasks
-  - Created "Person Management UX" completed phase in backlog metadata
-
-### Session 52: Statistics UI Polish (2025-12-02)
-- **TASK-054 (SPEC-stats-1)**: Addressed user feedback on statistics dashboard and table.
-- UI spacing: Statistics page now uses `page-container` padding to create clear gap from sidebar.
-- Category naming: Statistics repository now returns `categoryName` alongside `categoryId`; category distribution chart and work note list display 업무 구분명.
-- Charts: Removed 담당자/부서 분포 charts from UI; only category distribution remains.
-- Work note table: Columns trimmed to 제목/카테고리/완료된 할일/수정일(YYYY-MM-DD); category name shown; rows clickable to open `ViewWorkNoteDialog`.
-- Backend: Added categoryName propagation in statistics responses; default null handling; updated types.
-- Tests: Updated statistics unit & integration tests for category names; targeted vitest suites pass.
-
-### Session 53: Repository Layout Consolidation (2025-12-05)
-- **TASK-repo-structure-1 (SPEC-devx-structure-1)**: Consolidated repository into clearer apps/packages layout.
-- Backend moved to `apps/worker/`, frontend to `apps/web/`, shared types to `packages/shared/`; frontend build output now `dist/web/` and Wrangler assets updated accordingly.
-- Updated toolchain configs (tsconfig paths/outDir, Vite root/outDir & aliases, Vitest aliases/main entry, Tailwind content paths, lint-staged globs, components.json) plus documentation (README, SETUP, DEPLOYMENT) to reflect new paths.
-- Retired legacy root `public/` output; created `dist/web` target; tests now import frontend helpers via `@web` alias.
-- Verification: `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass after relocation.
-
-### Session 54: Worker Root Flattening (2025-12-05)
-- **TASK-repo-structure-2 (SPEC-devx-structure-1)**: Flattened backend layout by removing `apps/worker/src` and placing sources directly under `apps/worker/`.
-- Updated tooling to match new paths: tsconfig aliases/include, vitest alias & main, wrangler `main`, lint-staged glob. Frontend unaffected.
-- Re-verified commands: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` all pass.
-
-### Session 55: Path Alias Refinement (2025-12-05)
-- **Follow-up to PR #135 review**: Improved path alias clarity and consistency across the monorepo.
-- Renamed `@/*` alias to `@worker/*` in all backend/test configurations (tsconfig.json, tsconfig.backend.json, vitest.config.ts) to clearly distinguish worker code from web code.
-- Removed ambiguous `@/` alias from frontend configs (vite.config.ts, tsconfig.app.json, components.json); frontend now exclusively uses `@web/*` for internal imports.
-- Updated all import statements: backend/test files from `@/` to `@worker/`, frontend files from `@/` to `@web/` including lazy imports in App.tsx.
-- Fixed vitest mock path in project-files integration test from `@/` to `@worker/`.
-- Standardized build scripts in package.json: `build` now calls `build:frontend` then `build:backend` for clearer separation.
-- Verified apps/web/README.md commands and code examples use correct aliases.
-- Confirmed .gitignore already includes `dist/` for build outputs.
-- Validation: All commands pass (lint, typecheck, test with 565 tests, build producing dist/web and dist/worker).
-
-### Session 55: Worker Layout Revert (2025-12-05)
-- **TASK-repo-structure-3 (SPEC-devx-structure-1)**: Reverted backend flattening; code back under `apps/worker/src`.
-- Restored aliases/entrypoints: tsconfig paths, vitest alias/main, wrangler main, lint-staged glob.
-- Validation rerun: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` all pass.
-- Decision: keep traditional `src/` for backend while retaining apps/packages structure for clarity.
-
-### Session 56: Tsconfig Relocation (2025-12-05)
-- **TASK-devx-structure-2 (SPEC-devx-structure-1)**: Moved TypeScript configs next to their apps and added `tsconfig.base.json` for shared path aliases.
-- New locations: `apps/worker/tsconfig.json`, `apps/web/tsconfig.json`; root `tsconfig.json` now references both.
-- Scripts and lint-staged globs updated to use app-local configs; shared aliases centralized in `tsconfig.base.json`.
-- Validation: `npm run typecheck` passes after relocation.
+- **Async Patterns**: Async embedding prevents blocking CRUD while ensuring eventual consistency
+- **Korean Text**: Character-based tokenization (~4 chars/token) works well for Korean/English
+- **Retry Pattern**: Exponential backoff with dead-letter queue provides robust eventual consistency
+- **Focus Management**: Should provide user feedback when automatic focus fails
+- **Accessibility**: ARIA labels essential for interactive UI elements without visible text
+- **CSS Documentation**: Magic numbers should be documented with context and rationale
+- **Test Assertions**: Behavioral test assertions work better than mocked dates in Workers environment
+- **Task Tracking**: Must update task tracker immediately after completing implementation
+- **Naming Consistency**: Enforce single naming convention (kebab-case) across all files for better maintainability
+- **Import Path Case Sensitivity**: Always use exact case in imports to ensure Linux/Windows compatibility
