@@ -1,5 +1,5 @@
 // Trace: SPEC-todo-2, TASK-053, TEST-todo-ux-3, TEST-todo-ux-5, TEST-todo-ux-6
-import { groupRecurringTodos } from '@web/pages/WorkNotes/components/group-recurring-todos';
+import { groupRecurringTodos } from '@web/pages/work-notes/components/group-recurring-todos';
 import type { Todo } from '@web/types/api';
 import { describe, expect, it } from 'vitest';
 
