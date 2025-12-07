@@ -32,9 +32,11 @@ import type {
   StatisticsPeriod,
 } from '@shared/types/statistics';
 import type { TaskCategory } from '@shared/types/task-category';
+import type { WorkNoteFile } from '@shared/types/work-note';
 
 export type { Department, TaskCategory };
 export type { EmploymentStatus, Person, PersonDeptHistory };
+export type { WorkNoteFile };
 export type {
   Project,
   ProjectDetail,
@@ -73,6 +75,7 @@ export interface WorkNote {
     relatedWorkId: string;
     relatedWorkTitle?: string;
   }>;
+  files?: WorkNoteFile[];
   createdAt: string;
   updatedAt: string;
 }

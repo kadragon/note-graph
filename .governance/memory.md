@@ -118,6 +118,27 @@
 - **Verification**: Test suite passes (9/9 tests)
 - **Commit**: `a7e2572` - fix: update test import to kebab-case work-notes path
 
+### Session 59: Work Note File Attachments (2025-12-08)
+- **TASK-057 (SPEC-worknote-attachments-1)**: Implemented complete file attachment feature for work notes
+- **Backend Implementation**:
+  - Database migration 0017: `work_note_files` table with R2 key tracking
+  - WorkNoteFile type definition (similar to ProjectFile but without embedding)
+  - WorkNoteFileService: upload, list, stream, delete files + cascade deletion
+  - API routes: POST/GET/DELETE `/work-notes/:workId/files/*`
+  - Updated WorkNoteService.delete() to cascade file deletion
+- **Frontend Implementation**:
+  - WorkNoteFile type exported in api.ts
+  - API client methods: uploadWorkNoteFile, getWorkNoteFiles, downloadWorkNoteFile, deleteWorkNoteFile
+  - React hooks: useWorkNoteFiles, useUploadWorkNoteFile, useDeleteWorkNoteFile, downloadWorkNoteFile utility
+  - WorkNoteFileList component with upload, download, delete UI
+  - Integrated file list into ViewWorkNoteDialog
+- **File Support**:
+  - Max file size: 50MB
+  - Allowed types: PDF, HWP/HWPX, Excel (XLS/XLSX), images (PNG, JPEG, GIF, WebP)
+  - No automatic text extraction or embedding (unlike project files)
+- **Testing**: 13 unit tests for WorkNoteFileService (all passing)
+- **Verification**: TypeScript typecheck and full build successful (backend + frontend)
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
