@@ -1,6 +1,6 @@
-// Trace: SPEC-rag-1, SPEC-rag-2, SPEC-ai-draft-refs-1, TASK-012, TASK-022, TASK-029
+// Trace: SPEC-rag-1, SPEC-rag-2, SPEC-ai-draft-refs-1, SPEC-worknote-attachments-1, TASK-012, TASK-022, TASK-029, TASK-057
 /**
- * Work note service coordinating D1, chunking, and embedding operations
+ * Work note service coordinating D1, chunking, embedding, and file operations
  * Uses embedded_at tracking for embedding state management
  */
 
@@ -16,19 +16,22 @@ import type {
 import type { Env } from '../types/env';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingService, VectorizeService } from './embedding-service';
+import { WorkNoteFileService } from './work-note-file-service';
 
 /**
- * Work note service with integrated RAG support
+ * Work note service with integrated RAG support and file attachments
  *
  * Coordinates:
  * - D1 operations via WorkNoteRepository
  * - Text chunking via ChunkingService
  * - Vector embeddings via VectorizeService
+ * - File attachments via WorkNoteFileService
  */
 export class WorkNoteService {
   private repository: WorkNoteRepository;
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
+  private fileService: WorkNoteFileService | null;
 
   constructor(env: Env) {
     this.repository = new WorkNoteRepository(env.DB);
@@ -36,6 +39,9 @@ export class WorkNoteService {
 
     const embeddingService = new EmbeddingService(env);
     this.vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
+
+    // Initialize file service if R2 bucket is available
+    this.fileService = env.R2_BUCKET ? new WorkNoteFileService(env.R2_BUCKET, env.DB) : null;
   }
 
   /**
@@ -106,10 +112,23 @@ export class WorkNoteService {
   }
 
   /**
-   * Delete work note and remove embeddings
+   * Delete work note, remove embeddings, and delete attached files
    */
   async delete(workId: string): Promise<void> {
-    // Delete from D1
+    // Delete attached files from R2 and DB (async, non-blocking)
+    if (this.fileService) {
+      this.fileService.deleteWorkNoteFiles(workId).catch((error) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        console.error('[WorkNoteService] Failed to delete work note files:', {
+          workId,
+          error: errorMessage,
+        });
+        // Note: Files may remain but work note will be deleted
+      });
+    }
+
+    // Delete from D1 (cascade will handle work_note_files via ON DELETE CASCADE)
     await this.repository.delete(workId);
 
     // Delete chunks from Vectorize (async, non-blocking)

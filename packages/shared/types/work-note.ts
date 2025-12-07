@@ -56,6 +56,21 @@ export interface WorkNoteRelation {
 }
 
 /**
+ * Work note file attachment
+ */
+export interface WorkNoteFile {
+  fileId: string; // FILE-{nanoid}
+  workId: string;
+  r2Key: string; // work-notes/{workId}/files/{fileId}
+  originalName: string;
+  fileType: string; // MIME type
+  fileSize: number; // bytes
+  uploadedBy: string; // email
+  uploadedAt: string; // ISO 8601 timestamp
+  deletedAt: string | null; // ISO 8601 timestamp, null = active
+}
+
+/**
  * Detailed work note with associations
  */
 export interface WorkNoteDetail extends WorkNote {
@@ -63,4 +78,5 @@ export interface WorkNoteDetail extends WorkNote {
   relatedWorkNotes: WorkNoteRelation[];
   categories: TaskCategory[];
   versions?: WorkNoteVersion[];
+  files?: WorkNoteFile[];
 }

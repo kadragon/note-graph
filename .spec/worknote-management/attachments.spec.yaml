@@ -1,0 +1,173 @@
+spec_id: SPEC-worknote-attachments-1
+title: "Work Note File Attachments"
+description: |
+  업무노트에 파일 첨부 기능 추가: 1개 업무노트에 N개의 파일을 첨부하여 관리.
+  Cloudflare R2 스토리지를 사용한 파일 업로드/다운로드/삭제 지원.
+  RAG 임베딩은 수행하지 않음 (단순 첨부파일로만 사용).
+
+given_when_then:
+  # File Upload
+  - given: "User has a work note"
+    when: "User uploads files (PDF, HWP, images, Excel) to work note"
+    then: "System stores files in R2 with metadata and creates file records"
+
+  - given: "User tries to upload file exceeding 50MB"
+    when: "User uploads large file to work note"
+    then: "System rejects upload with error message about size limit"
+
+  - given: "User tries to upload unsupported file type"
+    when: "User uploads file with unsupported extension"
+    then: "System rejects upload with error message about allowed file types"
+
+  # File Management
+  - given: "Files are attached to work note"
+    when: "User views work note detail"
+    then: "System returns file list with metadata (name, type, size, upload date)"
+
+  - given: "Files are attached to work note"
+    when: "User downloads file"
+    then: "System streams file content from R2 with proper headers"
+
+  - given: "Files are attached to work note"
+    when: "User deletes file"
+    then: "System removes file from R2 and deletes file record"
+
+  # Cascade Deletion
+  - given: "Work note has attached files"
+    when: "User deletes work note"
+    then: "System removes all attached files from R2 and database"
+
+acceptance_tests:
+  - id: TEST-worknote-attachments-1
+    desc: "Upload PDF file to work note stores in R2"
+    given: "Work note exists, valid PDF file under 50MB"
+    when: "POST /work-notes/:workId/files with multipart PDF"
+    then: "Returns 201 with fileId, file stored in R2 at work-notes/:workId/files/:fileId"
+
+  - id: TEST-worknote-attachments-2
+    desc: "Upload image file to work note stores in R2"
+    given: "Work note exists, valid PNG image under 50MB"
+    when: "POST /work-notes/:workId/files with multipart PNG"
+    then: "Returns 201 with fileId, file stored in R2 with image/* content-type"
+
+  - id: TEST-worknote-attachments-3
+    desc: "Upload HWP file to work note stores in R2"
+    given: "Work note exists, valid HWP file under 50MB"
+    when: "POST /work-notes/:workId/files with multipart HWP"
+    then: "Returns 201 with fileId, file stored in R2"
+
+  - id: TEST-worknote-attachments-4
+    desc: "Upload Excel file to work note stores in R2"
+    given: "Work note exists, valid XLSX file under 50MB"
+    when: "POST /work-notes/:workId/files with multipart XLSX"
+    then: "Returns 201 with fileId, file stored in R2"
+
+  - id: TEST-worknote-attachments-5
+    desc: "List work note files returns metadata"
+    given: "Work note with 3 files (PDF, PNG, XLSX)"
+    when: "GET /work-notes/:workId/files"
+    then: "Returns 200 with array of 3 files with name, type, size, uploadedAt"
+
+  - id: TEST-worknote-attachments-6
+    desc: "Download file streams content from R2"
+    given: "File attached to work note"
+    when: "GET /work-notes/:workId/files/:fileId/download"
+    then: "Returns 200 with file stream and correct content-type/disposition headers"
+
+  - id: TEST-worknote-attachments-7
+    desc: "Delete file removes from R2 and DB"
+    given: "File attached to work note"
+    when: "DELETE /work-notes/:workId/files/:fileId"
+    then: "Returns 204, file removed from R2, file record deleted"
+
+  - id: TEST-worknote-attachments-8
+    desc: "Upload file exceeding size limit fails"
+    given: "Valid work note, file > 50MB"
+    when: "POST /work-notes/:workId/files with large file"
+    then: "Returns 400 with file size limit error"
+
+  - id: TEST-worknote-attachments-9
+    desc: "Upload unsupported file type fails"
+    given: "Valid work note, unsupported file type (e.g., .exe)"
+    when: "POST /work-notes/:workId/files with .exe file"
+    then: "Returns 400 with unsupported file type error"
+
+  - id: TEST-worknote-attachments-10
+    desc: "Delete work note cascades to files"
+    given: "Work note with 2 attached files"
+    when: "DELETE /work-notes/:workId"
+    then: "Work note deleted, all files removed from R2 and DB"
+
+dependencies:
+  - governance: "patterns.md (Repository Pattern, R2 Storage)"
+  - governance: "coding-style.md (Naming, API Design, Error Handling)"
+  - existing_spec: "SPEC-worknote-1 (Work note structure and versioning)"
+  - existing_spec: "SPEC-project-1 (Project file management - reference implementation)"
+
+linked_tasks:
+  - TASK-056  # To be created
+
+implementation_notes: |
+  ## Database Schema Changes
+
+  ### New Table
+  `work_note_files` - File attachments for work notes
+    - file_id (PK, TEXT, FILE-{nanoid})
+    - work_id (FK to work_notes, CASCADE)
+    - r2_key (TEXT, NOT NULL, work-notes/:workId/files/:fileId)
+    - original_name (TEXT, NOT NULL)
+    - file_type (TEXT, NOT NULL, MIME type)
+    - file_size (INTEGER, bytes)
+    - uploaded_by (TEXT, email from auth)
+    - uploaded_at (TEXT, ISO 8601)
+    - deleted_at (TEXT, ISO 8601, nullable for soft delete)
+
+  ### Indexes
+  - idx_work_note_files_work ON work_note_files(work_id) WHERE deleted_at IS NULL
+  - idx_work_note_files_r2_key ON work_note_files(r2_key)
+  - idx_work_note_files_deleted_at ON work_note_files(deleted_at)
+
+  ## R2 Storage Structure
+  ```
+  work-notes/
+    {workId}/
+      files/
+        {fileId}.{ext}      # Active files
+  ```
+
+  ## Allowed File Types
+  - PDF: application/pdf
+  - HWP: application/x-hwp, application/haansofthwp (HWP 5.x)
+  - HWPX: application/vnd.hancom.hwpx (HWP 2014+)
+  - Excel: application/vnd.ms-excel (.xls), application/vnd.openxmlformats-officedocument.spreadsheetml.sheet (.xlsx)
+  - Images: image/png, image/jpeg, image/jpg, image/gif, image/webp
+
+  ## API Endpoints
+
+  ### File Management
+  - POST   /work-notes/:workId/files                - Upload file (multipart/form-data)
+  - GET    /work-notes/:workId/files                - List work note files
+  - GET    /work-notes/:workId/files/:fileId        - Get file metadata
+  - GET    /work-notes/:workId/files/:fileId/download - Download file (stream from R2)
+  - DELETE /work-notes/:workId/files/:fileId        - Delete file
+
+  ## Service Layer
+
+  ### WorkNoteFileService
+  - uploadFile(workId, file, metadata): WorkNoteFile
+  - listFiles(workId): WorkNoteFile[]
+  - getFile(fileId): WorkNoteFile | null
+  - streamFile(fileId): { body: ReadableStream; headers: Headers }
+  - deleteFile(fileId): void
+  - deleteWorkNoteFiles(workId): void  # Called during work note deletion
+
+  ## Size Limits
+  - File upload: 50MB per file
+  - No automatic text extraction or embedding (unlike project files)
+
+  ## Error Scenarios
+  - Upload file to non-existent work note → 404
+  - Upload file exceeding size limit → 400
+  - Upload unsupported file type → 400
+  - R2 storage failure → 500
+  - Delete work note with files → Cascade delete all files
