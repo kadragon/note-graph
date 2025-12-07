@@ -235,10 +235,8 @@ workNotes.post('/:workId/files', async (c) => {
       return c.json({ code: 'BAD_REQUEST', message: '파일이 제공되지 않았습니다' }, 400);
     }
 
-    // Type assertion: file is now guaranteed to be File-like (Blob with name property)
-    const fileData = file as Blob & { name: string; type: string };
-    const fileBlob = new Blob([await fileData.arrayBuffer()], { type: fileData.type });
-    const originalName = fileData.name;
+    // File from formData is already a File instance (subclass of Blob)
+    const fileData = file as File;
 
     // Get R2 bucket
     const r2Bucket =
@@ -251,8 +249,8 @@ workNotes.post('/:workId/files', async (c) => {
     const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
     const uploadedFile = await fileService.uploadFile({
       workId,
-      file: fileBlob,
-      originalName,
+      file: fileData,
+      originalName: fileData.name,
       uploadedBy: user.email,
     });
 

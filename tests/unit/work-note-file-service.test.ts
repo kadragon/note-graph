@@ -296,19 +296,28 @@ describe('WorkNoteFileService', () => {
       uploadedBy: 'tester@example.com',
     });
 
-    // Delete all files for work note
+    // Delete all files for work note (R2 only - DB cleanup is via ON DELETE CASCADE)
     await service.deleteWorkNoteFiles('WORK-123');
-
-    // Assert - Both files deleted from DB
-    const rows = await baseEnv.DB.prepare(
-      'SELECT file_id FROM work_note_files WHERE work_id = ? AND deleted_at IS NULL'
-    )
-      .bind('WORK-123')
-      .all<Record<string, unknown>>();
-    expect(rows.results).toHaveLength(0);
 
     // Assert - Both files deleted from R2
     expect(r2.storage.has(file1.r2Key)).toBe(false);
     expect(r2.storage.has(file2.r2Key)).toBe(false);
+
+    // Assert - DB records still exist (will be cleaned up by CASCADE when work note is deleted)
+    const rows = await baseEnv.DB.prepare('SELECT file_id FROM work_note_files WHERE work_id = ?')
+      .bind('WORK-123')
+      .all<Record<string, unknown>>();
+    expect(rows.results).toHaveLength(2);
+
+    // Simulate work note deletion (CASCADE deletes file records)
+    await baseEnv.DB.prepare('DELETE FROM work_notes WHERE work_id = ?').bind('WORK-123').run();
+
+    // Assert - DB records cleaned up by CASCADE
+    const rowsAfterCascade = await baseEnv.DB.prepare(
+      'SELECT file_id FROM work_note_files WHERE work_id = ?'
+    )
+      .bind('WORK-123')
+      .all<Record<string, unknown>>();
+    expect(rowsAfterCascade.results).toHaveLength(0);
   });
 });

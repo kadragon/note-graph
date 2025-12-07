@@ -200,7 +200,8 @@ export class WorkNoteFileService {
 
   /**
    * Delete all files for a work note (used during work note deletion)
-   * Called as part of cascade deletion
+   * DB records are cleaned up by ON DELETE CASCADE when parent work_note is deleted.
+   * This method only needs to delete R2 objects.
    */
   async deleteWorkNoteFiles(workId: string): Promise<void> {
     const files = await this.db
@@ -211,37 +212,19 @@ export class WorkNoteFileService {
     `
       )
       .bind(workId)
-      .all<Record<string, unknown>>();
+      .all<{ file_id: string; r2_key: string }>();
 
     if (!files.results || files.results.length === 0) {
       return;
     }
 
-    const now = new Date().toISOString();
-
-    // Delete files in parallel
+    // Delete R2 objects in parallel. DB records will be cleaned up by ON DELETE CASCADE.
     await Promise.all(
       files.results.map(async (row) => {
-        const fileId = row.file_id as string;
-        const r2Key = row.r2_key as string;
-
         try {
-          // Soft delete DB record
-          await this.db
-            .prepare(
-              `
-            UPDATE work_note_files
-            SET deleted_at = ?
-            WHERE file_id = ?
-          `
-            )
-            .bind(now, fileId)
-            .run();
-
-          // Delete from R2
-          await this.r2.delete(r2Key);
+          await this.r2.delete(row.r2_key);
         } catch (error) {
-          console.error(`Failed to delete file ${fileId}:`, error);
+          console.error(`Failed to delete R2 object ${row.r2_key} for file ${row.file_id}:`, error);
           // Non-fatal: continue with other files
         }
       })

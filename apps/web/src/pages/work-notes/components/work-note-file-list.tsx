@@ -1,7 +1,18 @@
 // Trace: SPEC-worknote-attachments-1, TASK-057
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@web/components/ui/alert-dialog';
 import { Button } from '@web/components/ui/button';
 import { Label } from '@web/components/ui/label';
+import { useToast } from '@web/hooks/use-toast';
 import {
   downloadWorkNoteFile,
   useDeleteWorkNoteFile,
@@ -25,6 +36,8 @@ function formatFileSize(bytes: number): string {
 export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFile, setUploadingFile] = useState<File | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<WorkNoteFile | null>(null);
+  const { toast } = useToast();
 
   const { data: files = [], isLoading } = useWorkNoteFiles(workId);
   const uploadMutation = useUploadWorkNoteFile();
@@ -53,12 +66,18 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
       await downloadWorkNoteFile(workId, file.fileId, file.originalName);
     } catch (error) {
       console.error('Download failed:', error);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error instanceof Error ? error.message : '파일을 다운로드할 수 없습니다.',
+      });
     }
   };
 
-  const handleDelete = (fileId: string) => {
-    if (confirm('정말 이 파일을 삭제하시겠습니까?')) {
-      deleteMutation.mutate({ workId, fileId });
+  const handleDeleteConfirm = () => {
+    if (fileToDelete) {
+      deleteMutation.mutate({ workId, fileId: fileToDelete.fileId });
+      setFileToDelete(null);
     }
   };
 
@@ -139,7 +158,7 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(file.fileId)}
+                  onClick={() => setFileToDelete(file)}
                   disabled={deleteMutation.isPending}
                   className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                   title="삭제"
@@ -152,6 +171,26 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>파일 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말 이 파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
