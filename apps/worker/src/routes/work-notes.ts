@@ -220,6 +220,13 @@ workNotes.post('/:workId/files', async (c) => {
     const { workId } = c.req.param();
     const user = c.get('user');
 
+    // Verify work note exists before accepting upload
+    const workNoteService = new WorkNoteService(c.env);
+    const workNote = await workNoteService.findById(workId);
+    if (!workNote) {
+      return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
+    }
+
     // Parse multipart form data
     const formData = await c.req.formData();
     const file = formData.get('file');
@@ -296,7 +303,7 @@ workNotes.get('/:workId/files', async (c) => {
  */
 workNotes.get('/:workId/files/:fileId', async (c) => {
   try {
-    const { fileId } = c.req.param();
+    const { workId, fileId } = c.req.param();
 
     const r2Bucket =
       c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
@@ -308,6 +315,11 @@ workNotes.get('/:workId/files/:fileId', async (c) => {
     const file = await fileService.getFileById(fileId);
 
     if (!file) {
+      return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
+    }
+
+    // Validate file belongs to the specified work note
+    if (file.workId !== workId) {
       return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
     }
 
@@ -329,7 +341,7 @@ workNotes.get('/:workId/files/:fileId', async (c) => {
  */
 workNotes.get('/:workId/files/:fileId/download', async (c) => {
   try {
-    const { fileId } = c.req.param();
+    const { workId, fileId } = c.req.param();
 
     const r2Bucket =
       c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
@@ -338,6 +350,13 @@ workNotes.get('/:workId/files/:fileId/download', async (c) => {
     }
 
     const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
+
+    // Validate file belongs to the specified work note before streaming
+    const file = await fileService.getFileById(fileId);
+    if (!file || file.workId !== workId) {
+      return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
+    }
+
     const { body, headers } = await fileService.streamFile(fileId);
 
     return new Response(body, { headers });
@@ -358,7 +377,7 @@ workNotes.get('/:workId/files/:fileId/download', async (c) => {
  */
 workNotes.delete('/:workId/files/:fileId', async (c) => {
   try {
-    const { fileId } = c.req.param();
+    const { workId, fileId } = c.req.param();
 
     const r2Bucket =
       c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
@@ -367,6 +386,13 @@ workNotes.delete('/:workId/files/:fileId', async (c) => {
     }
 
     const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
+
+    // Validate file belongs to the specified work note before deletion
+    const file = await fileService.getFileById(fileId);
+    if (!file || file.workId !== workId) {
+      return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
+    }
+
     await fileService.deleteFile(fileId);
 
     return c.body(null, 204);
