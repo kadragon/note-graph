@@ -16,19 +16,33 @@ import { getDepartmentColor } from '@web/lib/utils';
 import type { Person } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PersonDialog } from './components/person-dialog';
 import { PersonImportDialog } from './components/person-import-dialog';
 
 export default function Persons() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const { data: persons = [], isLoading } = usePersons();
 
-  // Sort persons by dept → name → position → personId → phoneExt → createdAt (nulls last for optional fields)
+  // Get department filter from URL params
+  const deptFilter = searchParams.get('dept');
+
+  const handleDeptClick = (deptName: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click
+    setSearchParams({ dept: deptName });
+  };
+
+  const clearDeptFilter = () => {
+    setSearchParams({});
+  };
+
+  // Filter and sort persons
   const sortedPersons = useMemo(() => {
     const compareNullable = (a?: string | null, b?: string | null) => {
       if (a == null && b == null) return 0;
@@ -37,7 +51,10 @@ export default function Persons() {
       return a.localeCompare(b, 'ko');
     };
 
-    return [...persons].sort((a, b) => {
+    // Apply department filter
+    const filtered = deptFilter ? persons.filter((p) => p.currentDept === deptFilter) : persons;
+
+    return [...filtered].sort((a, b) => {
       return (
         compareNullable(a.currentDept, b.currentDept) ||
         a.name.localeCompare(b.name, 'ko') ||
@@ -47,7 +64,7 @@ export default function Persons() {
         a.createdAt.localeCompare(b.createdAt)
       );
     });
-  }, [persons]);
+  }, [persons, deptFilter]);
 
   const handleRowClick = (person: Person) => {
     setSelectedPerson(person);
@@ -74,7 +91,25 @@ export default function Persons() {
 
       <Card>
         <CardHeader>
-          <CardTitle>사람 목록</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>사람 목록</CardTitle>
+            {deptFilter && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">부서 필터:</span>
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  {deptFilter}
+                  <button
+                    type="button"
+                    onClick={clearDeptFilter}
+                    className="ml-1 hover:bg-muted rounded-full p-0.5"
+                    aria-label="필터 해제"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -106,7 +141,12 @@ export default function Persons() {
                   >
                     <TableCell>
                       {person.currentDept ? (
-                        <Badge className={getDepartmentColor(person.currentDept)}>
+                        <Badge
+                          className={`${getDepartmentColor(person.currentDept)} cursor-pointer hover:opacity-80 transition-opacity`}
+                          onClick={(e) => {
+                            if (person.currentDept) handleDeptClick(person.currentDept, e);
+                          }}
+                        >
                           {person.currentDept}
                         </Badge>
                       ) : (

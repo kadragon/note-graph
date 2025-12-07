@@ -8,23 +8,39 @@ import type { Person, PersonDeptHistory, PersonWorkNote } from '@shared/types/pe
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/person';
 import { ConflictError, NotFoundError, ValidationError } from '../types/errors';
 
+export interface PersonRepositoryOptions {
+  autoCreateDepartment?: boolean;
+}
+
 export class PersonRepository {
-  constructor(private db: D1Database) {}
+  constructor(
+    private db: D1Database,
+    private options: PersonRepositoryOptions = {}
+  ) {}
 
   /**
-   * Ensure the provided department exists, otherwise throw validation error
+   * Check if department exists
    */
-  private async ensureDepartmentExists(deptName: string): Promise<void> {
+  private async departmentExists(deptName: string): Promise<boolean> {
     const exists = await this.db
       .prepare('SELECT 1 as present FROM departments WHERE dept_name = ?')
       .bind(deptName)
       .first<{ present: number }>();
 
-    if (!exists) {
-      throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
-        deptName,
-      });
-    }
+    return !!exists;
+  }
+
+  /**
+   * Create department insert statement for batch operations
+   */
+  private createDepartmentStatement(deptName: string) {
+    const now = new Date().toISOString();
+    return this.db
+      .prepare(
+        `INSERT INTO departments (dept_name, description, is_active, created_at)
+         VALUES (?, NULL, 1, ?)`
+      )
+      .bind(deptName, now);
   }
 
   /**
@@ -76,6 +92,7 @@ export class PersonRepository {
 
   /**
    * Create new person with optional department history entry
+   * If autoCreateDepartment is enabled, creates department in the same transaction
    */
   async create(data: CreatePersonInput): Promise<Person> {
     const now = new Date().toISOString();
@@ -86,13 +103,25 @@ export class PersonRepository {
       throw new ConflictError(`Person already exists with ID: ${data.personId}`);
     }
 
-    // Validate department existence before inserting history
+    const statements = [];
+
+    // Handle department: check existence and optionally auto-create
     if (data.currentDept) {
-      await this.ensureDepartmentExists(data.currentDept);
+      const deptExists = await this.departmentExists(data.currentDept);
+      if (!deptExists) {
+        if (this.options.autoCreateDepartment) {
+          // Add department creation to the same batch (atomic transaction)
+          statements.push(this.createDepartmentStatement(data.currentDept));
+        } else {
+          throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
+            deptName: data.currentDept,
+          });
+        }
+      }
     }
 
-    const statements = [
-      // Insert person
+    // Insert person
+    statements.push(
       this.db
         .prepare(
           `INSERT INTO persons (person_id, name, phone_ext, current_dept, current_position, current_role_desc, employment_status, created_at, updated_at)
@@ -108,8 +137,8 @@ export class PersonRepository {
           data.employmentStatus || '재직',
           now,
           now
-        ),
-    ];
+        )
+    );
 
     // Create initial department history entry if department is provided
     if (data.currentDept) {
@@ -147,6 +176,7 @@ export class PersonRepository {
 
   /**
    * Update person and manage department history
+   * If autoCreateDepartment is enabled, creates department in the same transaction
    */
   async update(personId: string, data: UpdatePersonInput): Promise<Person> {
     const existing = await this.findById(personId);
@@ -162,8 +192,19 @@ export class PersonRepository {
       data.currentDept !== undefined && data.currentDept !== existing.currentDept;
 
     if (isDeptChanging) {
+      // Handle department: check existence and optionally auto-create
       if (data.currentDept) {
-        await this.ensureDepartmentExists(data.currentDept);
+        const deptExists = await this.departmentExists(data.currentDept);
+        if (!deptExists) {
+          if (this.options.autoCreateDepartment) {
+            // Add department creation to the same batch (atomic transaction)
+            statements.push(this.createDepartmentStatement(data.currentDept));
+          } else {
+            throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
+              deptName: data.currentDept,
+            });
+          }
+        }
       }
 
       // Deactivate current department history entry

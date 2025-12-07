@@ -14,11 +14,13 @@ import {
 import { useDepartments, useUpdateDepartment } from '@web/hooks/use-departments';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Plus } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CreateDepartmentDialog } from './components/create-department-dialog';
 
 export default function Departments() {
+  const navigate = useNavigate();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { data: departments = [], isLoading } = useDepartments();
   const updateDepartmentMutation = useUpdateDepartment();
@@ -28,6 +30,10 @@ export default function Departments() {
       deptName,
       data: { isActive: !currentStatus },
     });
+  };
+
+  const handleViewMembers = (deptName: string) => {
+    navigate(`/persons?dept=${encodeURIComponent(deptName)}`);
   };
 
   return (
@@ -80,14 +86,24 @@ export default function Departments() {
                       })}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleToggleStatus(dept.deptName, dept.isActive)}
-                        disabled={updateDepartmentMutation.isPending}
-                      >
-                        {dept.isActive ? '폐지' : '재개'}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewMembers(dept.deptName)}
+                        >
+                          <Users className="h-4 w-4 mr-1" />
+                          소속 직원
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleToggleStatus(dept.deptName, dept.isActive)}
+                          disabled={updateDepartmentMutation.isPending}
+                        >
+                          {dept.isActive ? '폐지' : '재개'}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
