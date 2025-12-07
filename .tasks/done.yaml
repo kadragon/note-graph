@@ -32,3 +32,29 @@
     notes: |
       PR review feedback identified that Linux builds fail on case-mismatched imports.
       This fix ensures cross-platform compatibility by using exact case matching.
+
+  - task_id: TASK-057
+    title: "Work Note File Attachments"
+    spec_id: SPEC-worknote-attachments-1
+    completed_at: "2025-12-08T08:00:00Z"
+    outcome: |
+      Implemented complete file attachment feature for work notes with backend and frontend.
+      Backend:
+      - Database migration 0017: work_note_files table
+      - WorkNoteFileService with upload, list, stream, delete + cascade deletion
+      - API routes: POST/GET/DELETE /work-notes/:workId/files/*
+      - Updated WorkNoteService.delete() for file cascade
+      Frontend:
+      - API client methods and React hooks
+      - WorkNoteFileList component with upload, download, delete UI
+      - Integrated into ViewWorkNoteDialog
+      File support: 50MB limit, PDF/HWP/HWPX/Excel/images, no auto-embedding
+    test_results: |
+      ✓ 13 unit tests for WorkNoteFileService (all passing)
+      ✓ TypeScript typecheck passed
+      ✓ Full build successful (backend + frontend)
+    estimated_effort: 4h
+    actual_effort: ~3h
+    notes: |
+      Reused patterns from project file management (TASK-039, TASK-042).
+      Simplified implementation: no text extraction or embedding (simple attachment storage).

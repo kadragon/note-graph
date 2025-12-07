@@ -54,6 +54,7 @@ import remarkGfm from 'remark-gfm';
 import { groupRecurringTodos } from './group-recurring-todos';
 import { RecurringTodoGroup } from './recurring-todo-group';
 import { TodoListItem } from './todo-list-item';
+import { WorkNoteFileList } from './work-note-file-list';
 
 // Markdown plugin configurations
 const remarkPlugins = [remarkGfm];
@@ -562,6 +563,11 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
               ) : (
                 <p className="text-sm text-muted-foreground">저장된 참고 업무노트가 없습니다.</p>
               )}
+            </div>
+
+            {/* Files Section */}
+            <div className="border-t pt-4">
+              <WorkNoteFileList workId={currentWorkNote.id} />
             </div>
 
             {/* Edit Actions */}

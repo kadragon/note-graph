@@ -149,3 +149,74 @@ export function useDeleteWorkNote() {
     },
   });
 }
+
+// Work note file hooks
+export function useWorkNoteFiles(workId: string | null) {
+  return useQuery({
+    queryKey: ['work-note-files', workId],
+    queryFn: () => (workId ? API.getWorkNoteFiles(workId) : Promise.resolve([])),
+    enabled: !!workId,
+  });
+}
+
+export function useUploadWorkNoteFile() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ workId, file }: { workId: string; file: File }) =>
+      API.uploadWorkNoteFile(workId, file),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ['work-note-files', variables.workId] });
+      void queryClient.invalidateQueries({ queryKey: ['work-note-detail', variables.workId] });
+      toast({
+        title: '성공',
+        description: '파일이 업로드되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error.message || '파일을 업로드할 수 없습니다.',
+      });
+    },
+  });
+}
+
+export function useDeleteWorkNoteFile() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ workId, fileId }: { workId: string; fileId: string }) =>
+      API.deleteWorkNoteFile(workId, fileId),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ['work-note-files', variables.workId] });
+      void queryClient.invalidateQueries({ queryKey: ['work-note-detail', variables.workId] });
+      toast({
+        title: '성공',
+        description: '파일이 삭제되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error.message || '파일을 삭제할 수 없습니다.',
+      });
+    },
+  });
+}
+
+export async function downloadWorkNoteFile(workId: string, fileId: string, fileName: string) {
+  const blob = await API.downloadWorkNoteFile(workId, fileId);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

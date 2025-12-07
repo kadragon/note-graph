@@ -45,6 +45,7 @@ import type {
   UpdateWorkNoteRequest,
   User,
   WorkNote,
+  WorkNoteFile,
   WorkNoteStatistics,
 } from '@web/types/api';
 
@@ -68,6 +69,17 @@ interface BackendWorkNote {
   relatedWorkNotes?: Array<{
     relatedWorkId: string;
     relatedWorkTitle?: string;
+  }>;
+  files?: Array<{
+    fileId: string;
+    workId: string;
+    r2Key: string;
+    originalName: string;
+    fileType: string;
+    fileSize: number;
+    uploadedBy: string;
+    uploadedAt: string;
+    deletedAt: string | null;
   }>;
   createdAt: string;
   updatedAt: string;
@@ -226,6 +238,40 @@ export class APIClient {
     });
   }
 
+  // Work note file operations
+  async getWorkNoteFiles(workId: string) {
+    return this.request<WorkNoteFile[]>(`/work-notes/${workId}/files`);
+  }
+
+  async uploadWorkNoteFile(workId: string, file: File) {
+    return this.uploadFile<WorkNoteFile>(`/work-notes/${workId}/files`, file);
+  }
+
+  async downloadWorkNoteFile(workId: string, fileId: string) {
+    const headers: Record<string, string> = {};
+
+    // In development, use test auth header
+    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
+      headers['X-Test-User-Email'] = 'test@example.com';
+    }
+
+    const response = await fetch(`${this.baseURL}/work-notes/${workId}/files/${fileId}/download`, {
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error('파일 다운로드에 실패했습니다');
+    }
+
+    return response.blob();
+  }
+
+  async deleteWorkNoteFile(workId: string, fileId: string) {
+    return this.request<void>(`/work-notes/${workId}/files/${fileId}`, {
+      method: 'DELETE',
+    });
+  }
+
   private transformWorkNoteFromBackend(backendWorkNote: BackendWorkNote): WorkNote {
     return {
       id: backendWorkNote.workId,
@@ -235,6 +281,7 @@ export class APIClient {
       categories: backendWorkNote.categories || [],
       persons: backendWorkNote.persons || [],
       relatedWorkNotes: backendWorkNote.relatedWorkNotes || [],
+      files: backendWorkNote.files || [],
       createdAt: backendWorkNote.createdAt,
       updatedAt: backendWorkNote.updatedAt,
     };

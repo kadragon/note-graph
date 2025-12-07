@@ -1,33 +1,9 @@
-tasks:
-  - task_id: TASK-057
-    title: "Work Note File Attachments"
-    spec_id: SPEC-worknote-attachments-1
-    priority: high
-    estimated_effort: 4h
-    description: |
-      Implement file attachment feature for work notes with R2 storage.
-      - Database migration for work_note_files table
-      - WorkNoteFileService (upload, download, delete)
-      - API endpoints (/work-notes/:workId/files/*)
-      - Frontend UI integration
-      - Tests (repository, service, routes)
-    acceptance_criteria:
-      - Users can upload files (PDF, HWP, HWPX, XLS, XLSX, images) to work notes
-      - Files are stored in R2 (work-notes/:workId/files/:fileId)
-      - Max file size: 50MB
-      - Users can view file list in work note detail
-      - Users can download files
-      - Users can delete files
-      - Cascade deletion when work note is deleted
-    dependencies: []
+tasks: []
 
 metadata:
-  total_tasks: 1
-  total_estimated_effort: 4 hours
-  phases:
-    - name: "Work Note Attachments"
-      tasks: [TASK-057]
-      status: "🚧 IN PROGRESS"
+  total_tasks: 0
+  total_estimated_effort: 0 hours
+  phases: []
 
   completed_phases:
     - name: "Deployment & Docs"
