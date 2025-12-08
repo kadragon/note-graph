@@ -174,6 +174,22 @@ describe('WorkNoteFileService', () => {
     expect(result.fileType).toBe('image/png');
   });
 
+  it('normalizes image/jpg mime to image/jpeg', async () => {
+    await insertWorkNote('WORK-123');
+    const file = new Blob(['JPG data'], { type: 'image/jpg' });
+
+    const result = await service.uploadFile({
+      workId: 'WORK-123',
+      file,
+      originalName: 'photo.jpg',
+      uploadedBy: 'tester@example.com',
+    });
+
+    expect(result.fileType).toBe('image/jpeg');
+    const stored = r2.storage.get(result.r2Key);
+    expect(stored?.httpMetadata?.contentType).toBe('image/jpeg');
+  });
+
   it('rejects files exceeding 50MB limit', async () => {
     await insertWorkNote('WORK-123');
     const oversized = { size: 51 * 1024 * 1024, type: 'application/pdf' } as unknown as Blob;

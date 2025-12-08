@@ -17,7 +17,6 @@ const ALLOWED_MIME_TYPES = [
   // Images
   'image/png',
   'image/jpeg',
-  'image/jpg',
   'image/gif',
   'image/webp',
   // HWP (Hancom Office)
@@ -45,7 +44,10 @@ const EXTENSION_MIME_MAP: Record<string, string> = {
 const GENERIC_MIME_TYPES = ['', 'application/octet-stream'];
 
 function resolveFileType(originalName: string, mimeType: string): string {
-  const normalizedMime = (mimeType || '').trim().toLowerCase();
+  let normalizedMime = (mimeType || '').trim().toLowerCase();
+  if (normalizedMime === 'image/jpg') {
+    normalizedMime = 'image/jpeg';
+  }
   const extension = originalName.toLowerCase().split('.').pop();
 
   if (normalizedMime && ALLOWED_MIME_TYPES.includes(normalizedMime)) {
