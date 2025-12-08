@@ -117,3 +117,21 @@
   actual_effort: ~0.5h
   notes: |
     Ad-hoc bug fix. The previous logic unintentionally included future items if they fell within the next UTC day.
+
+- task_id: TASK-062
+  title: "PDF Auto-Attachment on Work Note Save"
+  spec_id: SPEC-pdf-1
+  completed_at: "2025-12-08T14:30:00Z"
+  outcome: |
+    PDF로 업무노트 생성 시 원본 PDF를 첨부파일로 자동 저장하는 기능 구현.
+    - useSavePDFDraft 훅 수정: SavePDFDraftParams 인터페이스로 draft + pdfFile 파라미터 지원
+    - pdf-upload.tsx 수정: handleSaveDraft에서 uploadedFile을 pdfFile로 전달
+    - 에러 처리: 업무노트 생성 성공 후 첨부 실패 시 경고 토스트 표시 (업무노트는 생성됨)
+    - useCreateWorkNote 의존성 제거, API.createWorkNote 직접 호출로 단순화
+  test_results: |
+    ✓ npm run typecheck passed
+    ✓ npm run build passed (frontend + backend)
+  estimated_effort: 1h
+  actual_effort: ~0.5h
+  notes: |
+    기존 첨부파일 API (WorkNoteFileService) 재사용. 클라이언트 순차 호출 방식 채택.

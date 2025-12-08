@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API } from '@web/lib/api';
 import { useToast } from './use-toast';
-import { useCreateWorkNote } from './use-work-notes';
+
+// Trace: spec_id=SPEC-pdf-1, task_id=TASK-062
 
 export function useUploadPDF() {
   const { toast } = useToast();
@@ -36,20 +37,54 @@ export function usePDFJob(jobId: string | null, enabled: boolean) {
   });
 }
 
+interface SavePDFDraftParams {
+  draft: { title: string; category: string; content: string };
+  pdfFile?: File;
+}
+
 export function useSavePDFDraft() {
-  const createWorkNote = useCreateWorkNote();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (draft: { title: string; category: string; content: string }) => {
-      return createWorkNote.mutateAsync(draft);
+    mutationFn: async ({ draft, pdfFile }: SavePDFDraftParams) => {
+      // 1. Create work note first
+      const workNote = await API.createWorkNote(draft);
+
+      // 2. Auto-attach PDF if provided
+      if (pdfFile && workNote.id) {
+        try {
+          await API.uploadWorkNoteFile(workNote.id, pdfFile);
+        } catch (error) {
+          console.error('Failed to attach PDF:', error);
+          // Work note created successfully, but attachment failed
+          toast({
+            variant: 'destructive',
+            title: '주의',
+            description: 'PDF 첨부에 실패했습니다. 업무노트는 생성되었습니다.',
+          });
+        }
+      }
+
+      return workNote;
     },
-    onSuccess: () => {
+    onSuccess: (workNote) => {
       void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      if (workNote?.id) {
+        void queryClient.invalidateQueries({ queryKey: ['work-note-detail', workNote.id] });
+        void queryClient.invalidateQueries({ queryKey: ['work-note-files', workNote.id] });
+      }
       toast({
         title: '성공',
         description: '업무노트로 저장되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error.message || '업무노트 생성에 실패했습니다.',
       });
     },
   });

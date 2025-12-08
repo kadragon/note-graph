@@ -148,6 +148,15 @@
 - **Logic**: "Wait Until" is now treated as a strict "Hidden Until" gate. If `wait_until` > `now`, it is hidden.
 - **Verification**: Added unit test `should exclude todo with wait_until in the near future`. Existing tests passed.
 
+### Session 62: PDF Auto-Attachment (2025-12-08)
+- **TASK-062 (SPEC-pdf-1)**: PDF로 업무노트 생성 시 원본 PDF를 첨부파일로 자동 저장
+- **Implementation**:
+  - `useSavePDFDraft` 훅: `SavePDFDraftParams` 인터페이스로 draft + pdfFile 파라미터 지원
+  - `pdf-upload.tsx`: `handleSaveDraft`에서 `uploadedFile`을 pdfFile로 전달
+  - 에러 처리: 업무노트 생성 성공 후 첨부 실패 시 경고 토스트 (업무노트는 유지)
+- **Design Decision**: 클라이언트 순차 호출 방식 (업무노트 생성 → 파일 첨부), 기존 API 재사용
+- **Verification**: TypeScript typecheck + build 통과
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

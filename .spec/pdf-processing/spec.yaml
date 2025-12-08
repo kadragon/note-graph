@@ -42,6 +42,13 @@ given_when_then:
       Work note created normally (same as manual creation),
       job can be marked complete or deleted
 
+  - given: "User saves PDF draft as work note"
+    when: "Client saves draft with original PDF file available"
+    then: >
+      Work note created first,
+      original PDF automatically attached as file (via work note attachments API),
+      user notified of success (or partial success if attachment fails)
+
 acceptance_tests:
   - id: TEST-pdf-1
     desc: "Upload PDF and create job"
