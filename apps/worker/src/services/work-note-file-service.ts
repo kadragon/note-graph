@@ -42,6 +42,8 @@ const EXTENSION_MIME_MAP: Record<string, string> = {
 };
 
 const GENERIC_MIME_TYPES = ['', 'application/octet-stream'];
+const UNSUPPORTED_FILE_MESSAGE =
+  '지원하지 않는 파일 형식입니다. 허용된 형식: PDF, HWP/HWPX, Excel (XLS/XLSX), 이미지 (PNG, JPEG, GIF, WebP)';
 
 function resolveFileType(originalName: string, mimeType: string): string {
   let normalizedMime = (mimeType || '').trim().toLowerCase();
@@ -55,18 +57,14 @@ function resolveFileType(originalName: string, mimeType: string): string {
   }
 
   if (normalizedMime && !GENERIC_MIME_TYPES.includes(normalizedMime)) {
-    throw new BadRequestError(
-      `지원하지 않는 파일 형식입니다. 허용된 형식: PDF, HWP/HWPX, Excel (XLS/XLSX), 이미지 (PNG, JPEG, GIF, WebP)`
-    );
+    throw new BadRequestError(UNSUPPORTED_FILE_MESSAGE);
   }
 
   if (extension && EXTENSION_MIME_MAP[extension]) {
     return EXTENSION_MIME_MAP[extension];
   }
 
-  throw new BadRequestError(
-    `지원하지 않는 파일 형식입니다. 허용된 형식: PDF, HWP/HWPX, Excel (XLS/XLSX), 이미지 (PNG, JPEG, GIF, WebP)`
-  );
+  throw new BadRequestError(UNSUPPORTED_FILE_MESSAGE);
 }
 
 interface UploadFileParams {
