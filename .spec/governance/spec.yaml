@@ -1,0 +1,13 @@
+spec_id: SPEC-governance-1
+title: "Governance file hygiene"
+given_when_then:
+  - given: "Governance markdown documents capture persistent project knowledge"
+    when: "Team members edit or lint governance files"
+    then: "Each file keeps consistent formatting with a single trailing newline and avoids duplicated bullet entries"
+acceptance_tests:
+  - id: TEST-governance-1
+    desc: "All governance markdown files end with exactly one trailing newline and contain no duplicate bullets in the Lessons Learned section"
+dependencies:
+  - governance: "coding-style"
+linked_tasks:
+  - TASK-059

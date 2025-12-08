@@ -149,6 +149,9 @@
   - **Fix**: Installed `@types/node`, created `tsconfig.node.json` to include config/test files, and added it as a reference in `tsconfig.json`.
   - **Verification**: `npm run typecheck` passes, `npm test` passes (580 tests).
 
+### Session 62: Governance Hygiene (2025-12-08)
+- Added SPEC-governance-1 to codify governance file formatting and ensured `.governance/memory.md` ends with a trailing newline.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -177,3 +180,4 @@
 - **Task Tracking**: Must update task tracker immediately after completing implementation
 - **Naming Consistency**: Enforce single naming convention (kebab-case) across all files for better maintainability
 - **Import Path Case Sensitivity**: Always use exact case in imports to ensure Linux/Windows compatibility
+<!-- Trace: spec_id=SPEC-governance-1, task_id=TASK-059 -->
