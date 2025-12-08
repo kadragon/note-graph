@@ -35,9 +35,12 @@ export default function PDFUpload() {
 
     try {
       await saveDraftMutation.mutateAsync({
-        title: job.draft.title,
-        category: job.draft.category,
-        content: job.draft.content,
+        draft: {
+          title: job.draft.title,
+          category: job.draft.category,
+          content: job.draft.content,
+        },
+        pdfFile: uploadedFile ?? undefined,
       });
       // Reset after save
       setCurrentJobId(null);
