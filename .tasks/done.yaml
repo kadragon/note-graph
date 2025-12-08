@@ -59,31 +59,18 @@
       Reused patterns from project file management (TASK-039, TASK-042).
       Simplified implementation: no text extraction or embedding (simple attachment storage).
 
-  - task_id: TASK-058
-    title: "Refactor PersonRepository department handling"
-    spec_id: SPEC-person-1
-    completed_at: "2025-12-07T23:52:38Z"
+- task_id: TASK-058
+    title: "Allow HWPX uploads with missing MIME type"
+    spec_id: SPEC-worknote-attachments-1
+    completed_at: "2025-12-08T09:21:30Z"
     outcome: |
-      Extracted department existence/auto-create logic into a shared helper to remove duplication between create and update flows.
-      Added strong typing for D1 statements to improve safety.
+      Fixed HWPX upload rejection when browsers omit MIME type.
+      - Added extension-based MIME resolution for allowed types (HWP/HWPX, PDF, Excel, images) with generic MIME fallback.
+      - Ensured stored metadata and R2 contentType use canonical MIME from extension.
+      - Added unit test covering HWPX upload with empty MIME type.
     test_results: |
-      ✓ npm test -- tests/unit/person-repository.test.ts tests/person.test.ts
-    estimated_effort: 0.3h
-    actual_effort: 0.2h
+      ✓ npm test -- work-note-file-service.test.ts (14/14 tests passing)
+    estimated_effort: 0.5h
+    actual_effort: ~0.2h
     notes: |
-      Addresses code review feedback about DRYing department creation logic.
-
-  - task_id: TASK-060
-    title: "Validate department existence on person creation API"
-    spec_id: SPEC-person-1
-    completed_at: "2025-12-07T23:47:11Z"
-    outcome: |
-      Updated person routes to enforce department existence instead of auto-creating departments.
-      - POST /api/persons now returns ValidationError when currentDept is not found.
-      - PUT /api/persons/:personId now validates target department before updating.
-    test_results: |
-      ✓ npm test -- tests/person.test.ts
-    estimated_effort: 0.2h
-    actual_effort: 0.1h
-    notes: |
-      Aligns API behavior with repository validation and integration test expectations.
+      Accepts generic/empty MIME types only when extension is in the allowed list to prevent overly permissive uploads.

@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-attachments-1, TASK-057
+// Trace: SPEC-worknote-attachments-1, TASK-057, TASK-058
 /**
  * Service for managing work note file uploads and R2 storage
  * Note: No automatic text extraction or embedding (unlike project files)
@@ -17,7 +17,6 @@ const ALLOWED_MIME_TYPES = [
   // Images
   'image/png',
   'image/jpeg',
-  'image/jpg',
   'image/gif',
   'image/webp',
   // HWP (Hancom Office)
@@ -28,6 +27,45 @@ const ALLOWED_MIME_TYPES = [
   'application/vnd.ms-excel', // .xls
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
 ];
+
+const EXTENSION_MIME_MAP: Record<string, string> = {
+  pdf: 'application/pdf',
+  hwp: 'application/x-hwp',
+  hwpx: 'application/vnd.hancom.hwpx',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+};
+
+const GENERIC_MIME_TYPES = ['', 'application/octet-stream'];
+const UNSUPPORTED_FILE_MESSAGE =
+  '지원하지 않는 파일 형식입니다. 허용된 형식: PDF, HWP/HWPX, Excel (XLS/XLSX), 이미지 (PNG, JPEG, GIF, WebP)';
+
+function resolveFileType(originalName: string, mimeType: string): string {
+  let normalizedMime = (mimeType || '').trim().toLowerCase();
+  if (normalizedMime === 'image/jpg') {
+    normalizedMime = 'image/jpeg';
+  }
+  const extension = originalName.toLowerCase().split('.').pop();
+
+  if (normalizedMime && ALLOWED_MIME_TYPES.includes(normalizedMime)) {
+    return normalizedMime;
+  }
+
+  if (normalizedMime && !GENERIC_MIME_TYPES.includes(normalizedMime)) {
+    throw new BadRequestError(UNSUPPORTED_FILE_MESSAGE);
+  }
+
+  if (extension && EXTENSION_MIME_MAP[extension]) {
+    return EXTENSION_MIME_MAP[extension];
+  }
+
+  throw new BadRequestError(UNSUPPORTED_FILE_MESSAGE);
+}
 
 interface UploadFileParams {
   workId: string;
@@ -56,12 +94,8 @@ export class WorkNoteFileService {
       );
     }
 
-    // Validate MIME type
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      throw new BadRequestError(
-        `지원하지 않는 파일 형식입니다. 허용된 형식: PDF, HWP/HWPX, Excel (XLS/XLSX), 이미지 (PNG, JPEG, GIF, WebP)`
-      );
-    }
+    // Validate type (MIME or extension) and resolve canonical MIME type
+    const resolvedFileType = resolveFileType(originalName, file.type);
 
     // Generate file ID and R2 key
     const fileId = `FILE-${nanoid()}`;
@@ -71,7 +105,7 @@ export class WorkNoteFileService {
     // Upload to R2
     await this.r2.put(r2Key, file, {
       httpMetadata: {
-        contentType: file.type,
+        contentType: resolvedFileType,
       },
       customMetadata: {
         originalName,
@@ -91,7 +125,7 @@ export class WorkNoteFileService {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
-      .bind(fileId, workId, r2Key, originalName, file.type, file.size, uploadedBy, now)
+      .bind(fileId, workId, r2Key, originalName, resolvedFileType, file.size, uploadedBy, now)
       .run();
 
     return {
@@ -99,7 +133,7 @@ export class WorkNoteFileService {
       workId,
       r2Key,
       originalName,
-      fileType: file.type,
+      fileType: resolvedFileType,
       fileSize: file.size,
       uploadedBy,
       uploadedAt: now,

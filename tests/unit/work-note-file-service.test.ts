@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-attachments-1, TASK-057
+// Trace: SPEC-worknote-attachments-1, TASK-057, TASK-058
 
 import { env } from 'cloudflare:test';
 import type {
@@ -125,6 +125,23 @@ describe('WorkNoteFileService', () => {
     expect(r2.storage.has(result.r2Key)).toBe(true);
   });
 
+  it('uploads HWPX file when browser sends empty mime type', async () => {
+    await insertWorkNote('WORK-123');
+    const file = new Blob(['HWPX content']); // default type = '' in browser for unknown extensions
+
+    const result = await service.uploadFile({
+      workId: 'WORK-123',
+      file,
+      originalName: '정책정보.hwpx',
+      uploadedBy: 'tester@example.com',
+    });
+
+    expect(result.fileType).toBe('application/vnd.hancom.hwpx');
+
+    const stored = r2.storage.get(result.r2Key);
+    expect(stored?.httpMetadata?.contentType).toBe('application/vnd.hancom.hwpx');
+  });
+
   it('uploads Excel file successfully', async () => {
     await insertWorkNote('WORK-123');
     const file = new Blob(['Excel content'], {
@@ -155,6 +172,22 @@ describe('WorkNoteFileService', () => {
     });
 
     expect(result.fileType).toBe('image/png');
+  });
+
+  it('normalizes image/jpg mime to image/jpeg', async () => {
+    await insertWorkNote('WORK-123');
+    const file = new Blob(['JPG data'], { type: 'image/jpg' });
+
+    const result = await service.uploadFile({
+      workId: 'WORK-123',
+      file,
+      originalName: 'photo.jpg',
+      uploadedBy: 'tester@example.com',
+    });
+
+    expect(result.fileType).toBe('image/jpeg');
+    const stored = r2.storage.get(result.r2Key);
+    expect(stored?.httpMetadata?.contentType).toBe('image/jpeg');
   });
 
   it('rejects files exceeding 50MB limit', async () => {
