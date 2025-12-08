@@ -142,22 +142,15 @@
 ### Session 60: HWPX MIME Fallback (2025-12-08)
 - **TASK-058 (SPEC-worknote-attachments-1)**: Enabled extension-based MIME resolution so HWPX files upload even when browsers omit or send generic MIME types; keeps rejection for explicit unsupported MIME values. Added unit test covering empty MIME HWPX upload.
 
-### Session 61: Configuration Fixes (2025-12-08)
-- **Markdownlint**: Incorrect configuration in `.markdownlint.json` caused "Invalid format: boolean, object required" error. Removed `ignore` property and created `.markdownlintignore`.
-- **TypeScript/Vitest**: Fixed "Cannot find module 'path'" error in `vitest.config.ts`.
-  - **Root Cause**: Missing `@types/node` and exclusion of config files from TS context.
-  - **Fix**: Installed `@types/node`, created `tsconfig.node.json` to include config/test files, and added it as a reference in `tsconfig.json`.
-  - **Verification**: `npm run typecheck` passes, `npm test` passes (580 tests).
-
-### Session 62: Governance Hygiene (2025-12-08)
-- Added SPEC-governance-1 to codify governance file formatting and ensured `.governance/memory.md` ends with a trailing newline.
+### Session 61: Todo Wait Until Logic Fix (2025-12-08)
+- **Issue**: Todos with `wait_until` set to "Tomorrow" (KST) were appearing in "Today's Todos" because the KST date start (15:00 UTC previous day) fell within the previous logic's "Today + Tomorrow" window.
+- **Fix**: Updated `TodoRepository.findAll` to compare `wait_until` strictly against `now` instead of `tomorrowMidnight`.
+- **Logic**: "Wait Until" is now treated as a strict "Hidden Until" gate. If `wait_until` > `now`, it is hidden.
+- **Verification**: Added unit test `should exclude todo with wait_until in the near future`. Existing tests passed.
 
 ## Known Issues
 
 ### AI Gateway Binding in Tests
-- **Issue**: `@cloudflare/vitest-pool-workers` encounters errors with external AI worker bindings
-- **Error**: `wrapped binding module can't be resolved`
-- **Workarounds**: Mock AI services in tests, use integration tests in Cloudflare environment
 
 ### Coverage in Workers Pool
 - **Issue**: `@vitest/coverage-v8` requires `node:inspector` (unsupported in workerd)

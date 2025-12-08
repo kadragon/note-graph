@@ -358,6 +358,32 @@ describe('TodoRepository', () => {
 
       expect(result.some((todo) => todo.todoId === 'TODO-OVERDUE-WAIT')).toBe(false);
     });
+
+    it('should exclude todo with wait_until in the near future', async () => {
+      // Arrange
+      const now = new Date();
+      const nearFuture = new Date(now.getTime() + 3600000); // 1 hour later
+
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(
+          'TODO-NEAR-FUTURE',
+          testWorkId,
+          'Near Future',
+          now.toISOString(),
+          nearFuture.toISOString(),
+          '진행중',
+          'NONE'
+        )
+        .run();
+
+      // Act
+      const result = await repository.findAll({ view: 'today' });
+
+      // Assert
+      expect(result.some((t) => t.todoId === 'TODO-NEAR-FUTURE')).toBe(false);
+    });
   });
 
   describe('create()', () => {
