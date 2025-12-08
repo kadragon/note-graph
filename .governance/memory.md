@@ -142,6 +142,13 @@
 ### Session 60: HWPX MIME Fallback (2025-12-08)
 - **TASK-058 (SPEC-worknote-attachments-1)**: Enabled extension-based MIME resolution so HWPX files upload even when browsers omit or send generic MIME types; keeps rejection for explicit unsupported MIME values. Added unit test covering empty MIME HWPX upload.
 
+### Session 61: Configuration Fixes (2025-12-08)
+- **Markdownlint**: Incorrect configuration in `.markdownlint.json` caused "Invalid format: boolean, object required" error. Removed `ignore` property and created `.markdownlintignore`.
+- **TypeScript/Vitest**: Fixed "Cannot find module 'path'" error in `vitest.config.ts`.
+  - **Root Cause**: Missing `@types/node` and exclusion of config files from TS context.
+  - **Fix**: Installed `@types/node`, created `tsconfig.node.json` to include config/test files, and added it as a reference in `tsconfig.json`.
+  - **Verification**: `npm run typecheck` passes, `npm test` passes (580 tests).
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
