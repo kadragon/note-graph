@@ -1,9 +1,9 @@
-// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-018, TASK-027, TASK-045
+// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-018, TASK-027, TASK-045, TASK-058
 /**
  * Person repository for D1 database operations
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import type { Person, PersonDeptHistory, PersonWorkNote } from '@shared/types/person';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/person';
 import { ConflictError, NotFoundError, ValidationError } from '../types/errors';
@@ -41,6 +41,26 @@ export class PersonRepository {
          VALUES (?, NULL, 1, ?)`
       )
       .bind(deptName, now);
+  }
+
+  /**
+   * Helper to check department existence and handle auto-creation
+   */
+  private async handleDepartmentCreation(
+    deptName: string,
+    statements: D1PreparedStatement[]
+  ): Promise<void> {
+    const deptExists = await this.departmentExists(deptName);
+    if (!deptExists) {
+      if (this.options.autoCreateDepartment) {
+        // Add department creation to the same batch (atomic transaction)
+        statements.push(this.createDepartmentStatement(deptName));
+      } else {
+        throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
+          deptName,
+        });
+      }
+    }
   }
 
   /**
@@ -103,21 +123,11 @@ export class PersonRepository {
       throw new ConflictError(`Person already exists with ID: ${data.personId}`);
     }
 
-    const statements = [];
+    const statements: D1PreparedStatement[] = [];
 
     // Handle department: check existence and optionally auto-create
     if (data.currentDept) {
-      const deptExists = await this.departmentExists(data.currentDept);
-      if (!deptExists) {
-        if (this.options.autoCreateDepartment) {
-          // Add department creation to the same batch (atomic transaction)
-          statements.push(this.createDepartmentStatement(data.currentDept));
-        } else {
-          throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
-            deptName: data.currentDept,
-          });
-        }
-      }
+      await this.handleDepartmentCreation(data.currentDept, statements);
     }
 
     // Insert person
@@ -185,7 +195,7 @@ export class PersonRepository {
     }
 
     const now = new Date().toISOString();
-    const statements = [];
+    const statements: D1PreparedStatement[] = [];
 
     // Check if department is being changed
     const isDeptChanging =
@@ -194,17 +204,7 @@ export class PersonRepository {
     if (isDeptChanging) {
       // Handle department: check existence and optionally auto-create
       if (data.currentDept) {
-        const deptExists = await this.departmentExists(data.currentDept);
-        if (!deptExists) {
-          if (this.options.autoCreateDepartment) {
-            // Add department creation to the same batch (atomic transaction)
-            statements.push(this.createDepartmentStatement(data.currentDept));
-          } else {
-            throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
-              deptName: data.currentDept,
-            });
-          }
-        }
+        await this.handleDepartmentCreation(data.currentDept, statements);
       }
 
       // Deactivate current department history entry

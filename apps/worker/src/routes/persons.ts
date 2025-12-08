@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, TASK-005, TASK-LLM-IMPORT
+// Trace: SPEC-person-1, TASK-005, TASK-LLM-IMPORT, TASK-060
 /**
  * Person management routes
  */
@@ -49,13 +49,12 @@ persons.get('/', async (c) => {
 
 /**
  * POST /persons - Create new person
- * If the specified department doesn't exist, it will be created automatically (atomic)
+ * Department must already exist; otherwise returns validation error
  */
 persons.post('/', async (c) => {
   try {
     const data = await validateBody(c, createPersonSchema);
-    // Use autoCreateDepartment option to create department in the same transaction
-    const personRepository = new PersonRepository(c.env.DB, { autoCreateDepartment: true });
+    const personRepository = new PersonRepository(c.env.DB);
     const person = await personRepository.create(data);
 
     return c.json(person, 201);
@@ -99,14 +98,13 @@ persons.get('/:personId', async (c) => {
 
 /**
  * PUT /persons/:personId - Update person
- * If the specified department doesn't exist, it will be created automatically (atomic)
+ * Department must already exist; otherwise returns validation error
  */
 persons.put('/:personId', async (c) => {
   try {
     const { personId } = c.req.param();
     const data = await validateBody(c, updatePersonSchema);
-    // Use autoCreateDepartment option to create department in the same transaction
-    const personRepository = new PersonRepository(c.env.DB, { autoCreateDepartment: true });
+    const personRepository = new PersonRepository(c.env.DB);
     const person = await personRepository.update(personId, data);
 
     return c.json(person);
