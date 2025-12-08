@@ -74,3 +74,30 @@
     actual_effort: ~0.2h
     notes: |
       Accepts generic/empty MIME types only when extension is in the allowed list to prevent overly permissive uploads.
+
+- task_id: TASK-059
+    title: "Governance file hygiene"
+    spec_id: SPEC-governance-1
+    completed_at: "2025-12-08T12:00:00Z"
+    outcome: |
+      Added SPEC-governance-1 to define governance formatting standards and restored the trailing newline in .governance/memory.md.
+      Included a trace marker to maintain spec/task linkage.
+    test_results: |
+      Manual verification: .governance/memory.md ends with a single trailing newline and contains a single import-path bullet.
+    estimated_effort: 0.1h
+    actual_effort: ~0.1h
+    notes: |
+      Resolves review feedback about the missing final newline in governance memory.
+
+- task_id: TASK-060
+    title: "Ensure markdownlintignore newline"
+    spec_id: SPEC-governance-1
+    completed_at: "2025-12-08T12:24:00Z"
+    outcome: |
+      Added trailing newline to .markdownlintignore and documented trace to satisfy governance formatting spec.
+    test_results: |
+      Manual verification: .markdownlintignore ends with a single trailing newline.
+    estimated_effort: 0.05h
+    actual_effort: ~0.05h
+    notes: |
+      Addresses review feedback about missing final newline in ignore file.
