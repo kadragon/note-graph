@@ -139,6 +139,10 @@
 - **Testing**: 13 unit tests for WorkNoteFileService (all passing)
 - **Verification**: TypeScript typecheck and full build successful (backend + frontend)
 
+### Session 60: Person Department Validation (2025-12-07)
+- **TASK-060 (SPEC-person-1)**: Updated POST/PUT /api/persons to require existing departments, returning ValidationError instead of auto-creating departments when currentDept is missing.
+- **TASK-058 (SPEC-person-1)**: DRY'd PersonRepository by extracting department existence/auto-create logic into a helper shared by create/update; typed batch statements as D1PreparedStatement[].
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

@@ -23,6 +23,7 @@ export function useCreatePerson() {
     mutationFn: (data: CreatePersonRequest) => API.createPerson(data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['persons'] });
+      void queryClient.invalidateQueries({ queryKey: ['departments'] });
       toast({
         title: '성공',
         description: '사람이 추가되었습니다.',
@@ -47,6 +48,7 @@ export function useUpdatePerson() {
       API.updatePerson(personId, data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['persons'] });
+      void queryClient.invalidateQueries({ queryKey: ['departments'] });
       toast({
         title: '성공',
         description: '사람 정보가 수정되었습니다.',

@@ -1,4 +1,4 @@
-// Trace: SPEC-person-1, TASK-005, TASK-LLM-IMPORT
+// Trace: SPEC-person-1, TASK-005, TASK-LLM-IMPORT, TASK-060
 /**
  * Person management routes
  */
@@ -9,7 +9,6 @@ import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Env } from '../index';
 import { authMiddleware } from '../middleware/auth';
-import { DepartmentRepository } from '../repositories/department-repository';
 import { PersonRepository } from '../repositories/person-repository';
 import {
   createPersonSchema,
@@ -50,12 +49,13 @@ persons.get('/', async (c) => {
 
 /**
  * POST /persons - Create new person
+ * Department must already exist; otherwise returns validation error
  */
 persons.post('/', async (c) => {
   try {
     const data = await validateBody(c, createPersonSchema);
-    const repository = new PersonRepository(c.env.DB);
-    const person = await repository.create(data);
+    const personRepository = new PersonRepository(c.env.DB);
+    const person = await personRepository.create(data);
 
     return c.json(person, 201);
   } catch (error) {
@@ -98,13 +98,14 @@ persons.get('/:personId', async (c) => {
 
 /**
  * PUT /persons/:personId - Update person
+ * Department must already exist; otherwise returns validation error
  */
 persons.put('/:personId', async (c) => {
   try {
     const { personId } = c.req.param();
     const data = await validateBody(c, updatePersonSchema);
-    const repository = new PersonRepository(c.env.DB);
-    const person = await repository.update(personId, data);
+    const personRepository = new PersonRepository(c.env.DB);
+    const person = await personRepository.update(personId, data);
 
     return c.json(person);
   } catch (error) {
@@ -193,23 +194,13 @@ persons.post('/import-from-text', async (c) => {
 
 /**
  * POST /persons/import - Import person from parsed data (create or update)
+ * Department is auto-created atomically in the same transaction
  */
 persons.post('/import', async (c) => {
   try {
     const data = await validateBody(c, createPersonSchema);
-    const personRepository = new PersonRepository(c.env.DB);
-    const deptRepository = new DepartmentRepository(c.env.DB);
-
-    // Check if department exists, create if not
-    if (data.currentDept) {
-      const existingDept = await deptRepository.findByName(data.currentDept);
-      if (!existingDept) {
-        await deptRepository.create({
-          deptName: data.currentDept,
-          description: undefined,
-        });
-      }
-    }
+    // Use autoCreateDepartment option to create department in the same transaction
+    const personRepository = new PersonRepository(c.env.DB, { autoCreateDepartment: true });
 
     // Check if person already exists
     const existingPerson = await personRepository.findById(data.personId);

@@ -1,29 +1,65 @@
-// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-018, TASK-027, TASK-045
+// Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-018, TASK-027, TASK-045, TASK-058
 /**
  * Person repository for D1 database operations
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import type { Person, PersonDeptHistory, PersonWorkNote } from '@shared/types/person';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/person';
 import { ConflictError, NotFoundError, ValidationError } from '../types/errors';
 
+export interface PersonRepositoryOptions {
+  autoCreateDepartment?: boolean;
+}
+
 export class PersonRepository {
-  constructor(private db: D1Database) {}
+  constructor(
+    private db: D1Database,
+    private options: PersonRepositoryOptions = {}
+  ) {}
 
   /**
-   * Ensure the provided department exists, otherwise throw validation error
+   * Check if department exists
    */
-  private async ensureDepartmentExists(deptName: string): Promise<void> {
+  private async departmentExists(deptName: string): Promise<boolean> {
     const exists = await this.db
       .prepare('SELECT 1 as present FROM departments WHERE dept_name = ?')
       .bind(deptName)
       .first<{ present: number }>();
 
-    if (!exists) {
-      throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
-        deptName,
-      });
+    return !!exists;
+  }
+
+  /**
+   * Create department insert statement for batch operations
+   */
+  private createDepartmentStatement(deptName: string) {
+    const now = new Date().toISOString();
+    return this.db
+      .prepare(
+        `INSERT INTO departments (dept_name, description, is_active, created_at)
+         VALUES (?, NULL, 1, ?)`
+      )
+      .bind(deptName, now);
+  }
+
+  /**
+   * Helper to check department existence and handle auto-creation
+   */
+  private async handleDepartmentCreation(
+    deptName: string,
+    statements: D1PreparedStatement[]
+  ): Promise<void> {
+    const deptExists = await this.departmentExists(deptName);
+    if (!deptExists) {
+      if (this.options.autoCreateDepartment) {
+        // Add department creation to the same batch (atomic transaction)
+        statements.push(this.createDepartmentStatement(deptName));
+      } else {
+        throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
+          deptName,
+        });
+      }
     }
   }
 
@@ -76,6 +112,7 @@ export class PersonRepository {
 
   /**
    * Create new person with optional department history entry
+   * If autoCreateDepartment is enabled, creates department in the same transaction
    */
   async create(data: CreatePersonInput): Promise<Person> {
     const now = new Date().toISOString();
@@ -86,13 +123,15 @@ export class PersonRepository {
       throw new ConflictError(`Person already exists with ID: ${data.personId}`);
     }
 
-    // Validate department existence before inserting history
+    const statements: D1PreparedStatement[] = [];
+
+    // Handle department: check existence and optionally auto-create
     if (data.currentDept) {
-      await this.ensureDepartmentExists(data.currentDept);
+      await this.handleDepartmentCreation(data.currentDept, statements);
     }
 
-    const statements = [
-      // Insert person
+    // Insert person
+    statements.push(
       this.db
         .prepare(
           `INSERT INTO persons (person_id, name, phone_ext, current_dept, current_position, current_role_desc, employment_status, created_at, updated_at)
@@ -108,8 +147,8 @@ export class PersonRepository {
           data.employmentStatus || '재직',
           now,
           now
-        ),
-    ];
+        )
+    );
 
     // Create initial department history entry if department is provided
     if (data.currentDept) {
@@ -147,6 +186,7 @@ export class PersonRepository {
 
   /**
    * Update person and manage department history
+   * If autoCreateDepartment is enabled, creates department in the same transaction
    */
   async update(personId: string, data: UpdatePersonInput): Promise<Person> {
     const existing = await this.findById(personId);
@@ -155,15 +195,16 @@ export class PersonRepository {
     }
 
     const now = new Date().toISOString();
-    const statements = [];
+    const statements: D1PreparedStatement[] = [];
 
     // Check if department is being changed
     const isDeptChanging =
       data.currentDept !== undefined && data.currentDept !== existing.currentDept;
 
     if (isDeptChanging) {
+      // Handle department: check existence and optionally auto-create
       if (data.currentDept) {
-        await this.ensureDepartmentExists(data.currentDept);
+        await this.handleDepartmentCreation(data.currentDept, statements);
       }
 
       // Deactivate current department history entry
