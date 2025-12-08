@@ -55,7 +55,8 @@ export function useSavePDFDraft() {
       if (pdfFile && workNote.id) {
         try {
           await API.uploadWorkNoteFile(workNote.id, pdfFile);
-        } catch {
+        } catch (error) {
+          console.error('Failed to attach PDF:', error);
           // Work note created successfully, but attachment failed
           toast({
             variant: 'destructive',
@@ -67,9 +68,13 @@ export function useSavePDFDraft() {
 
       return workNote;
     },
-    onSuccess: () => {
+    onSuccess: (workNote) => {
       void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
       void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      if (workNote?.id) {
+        void queryClient.invalidateQueries({ queryKey: ['work-note-detail', workNote.id] });
+        void queryClient.invalidateQueries({ queryKey: ['work-note-files', workNote.id] });
+      }
       toast({
         title: '성공',
         description: '업무노트로 저장되었습니다.',
