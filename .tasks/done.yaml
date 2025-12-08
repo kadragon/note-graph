@@ -101,3 +101,19 @@
     actual_effort: ~0.05h
     notes: |
       Addresses review feedback about missing final newline in ignore file.
+
+- task_id: TASK-061
+  title: "Fix Todo Wait Until Timezone Leak"
+  spec_id: SPEC-todo-1
+  completed_at: "2025-12-08T02:16:46Z"
+  outcome: |
+    Fixed logic where todos with 'wait_until' dates set to 'Tomorrow' (KST) appeared in 'Today' list (UTC).
+    Changed the filter condition from 'wait_until < tomorrowMidnight' to 'wait_until <= now'.
+    This ensures 'Wait Until' acts as a strict visibility gate: if the wait time hasn't arrived (in absolute time), the todo remains hidden.
+  test_results: |
+    ✓ Added unit test: 'should exclude todo with wait_until in the near future'
+    ✓ Existing tests passed (42/42)
+  estimated_effort: 0.5h
+  actual_effort: ~0.5h
+  notes: |
+    Ad-hoc bug fix. The previous logic unintentionally included future items if they fell within the next UTC day.

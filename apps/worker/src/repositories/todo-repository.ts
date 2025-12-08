@@ -183,14 +183,6 @@ export class TodoRepository {
   async findAll(query: ListTodosQuery): Promise<TodoWithWorkNote[]> {
     const now = new Date().toISOString();
 
-    // Calculate tomorrow midnight UTC for wait_until comparison
-    // wait_until represents "wait until the day before this date"
-    // So if wait_until is "2025-12-01", it means wait until 2025-11-30, show from 2025-12-01
-    const tomorrowMidnight = new Date();
-    tomorrowMidnight.setUTCHours(0, 0, 0, 0);
-    tomorrowMidnight.setUTCDate(tomorrowMidnight.getUTCDate() + 1);
-    const tomorrowMidnightISO = tomorrowMidnight.toISOString();
-
     let sql = `
       SELECT t.todo_id as todoId, t.work_id as workId,
              t.title, t.description, t.created_at as createdAt, t.updated_at as updatedAt,
@@ -246,10 +238,10 @@ export class TodoRepository {
     }
 
     // For all non-completed views, hide future wait_until items
-    // wait_until < tomorrow means: show items whose wait_until date is today or earlier
+    // wait_until < now means: show items whose wait_until time has passed
     if (query.view && query.view !== 'completed') {
-      conditions.push(`(t.wait_until IS NULL OR t.wait_until < ?)`);
-      params.push(tomorrowMidnightISO);
+      conditions.push(`(t.wait_until IS NULL OR t.wait_until <= ?)`);
+      params.push(now);
     }
 
     // Filter by status if provided (overrides view-based status filter)
