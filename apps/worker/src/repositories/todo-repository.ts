@@ -238,7 +238,7 @@ export class TodoRepository {
     }
 
     // For all non-completed views, hide future wait_until items
-    // wait_until < now means: show items whose wait_until time has passed
+    // wait_until <= now means: show items whose wait_until time has passed or is exactly now
     if (query.view && query.view !== 'completed') {
       conditions.push(`(t.wait_until IS NULL OR t.wait_until <= ?)`);
       params.push(now);
