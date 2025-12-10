@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-attachments-1, TASK-057
+// Trace: SPEC-worknote-attachments-1, TASK-063
 
 import {
   AlertDialog,
@@ -22,6 +22,7 @@ import {
 import type { WorkNoteFile } from '@web/types/api';
 import { Download, FileIcon, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
 
 interface WorkNoteFileListProps {
   workId: string;
@@ -142,7 +143,7 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
         <p className="text-sm text-muted-foreground">첨부된 파일이 없습니다.</p>
       ) : (
         <div className="space-y-2">
-          {files.map((file) => (
+          {sortFilesByUploadedAtDesc(files).map((file) => (
             <div
               key={file.fileId}
               className="flex items-center gap-2 rounded-md border border-border p-3 hover:bg-accent/50 transition-colors"
@@ -159,30 +160,37 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
                   })}
                 </p>
               </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDownload(file)}
-                  className="h-8 w-8 p-0"
-                  title="다운로드"
-                >
-                  <Download className="h-4 w-4" />
-                  <span className="sr-only">다운로드</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFileToDelete(file)}
-                  disabled={deleteMutation.isPending}
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                  title="삭제"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span className="sr-only">삭제</span>
-                </Button>
+              <div className="flex items-center gap-2">
+                {isUploadedToday(file.uploadedAt) && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                    오늘 업로드
+                  </span>
+                )}
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDownload(file)}
+                    className="h-8 w-8 p-0"
+                    title="다운로드"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="sr-only">다운로드</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFileToDelete(file)}
+                    disabled={deleteMutation.isPending}
+                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    title="삭제"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">삭제</span>
+                  </Button>
+                </div>
               </div>
             </div>
           ))}

@@ -157,6 +157,14 @@
 - **Design Decision**: 클라이언트 순차 호출 방식 (업무노트 생성 → 파일 첨부), 기존 API 재사용
 - **Verification**: TypeScript typecheck + build 통과
 
+### Session 63: Work Note Attachment Ordering (2025-12-10)
+- **TASK-063 (SPEC-worknote-attachments-1)**: Sorted work note attachments by `uploadedAt` (newest first) with `fileId` tie-breaker for deterministic UI ordering.
+- Added shared helper `sortFilesByUploadedAtDesc` plus 2 unit tests to enforce ordering and tie-break behavior.
+
+### Session 64: Work Note Attachment Recency Badge (2025-12-10)
+- **TASK-064 (SPEC-worknote-attachments-1)**: Added "오늘 업로드" badge for attachments uploaded on the current local day; shared `isUploadedToday` helper with unit coverage.
+- Badge sits alongside actions, preserving deterministic ordering and improving recency visibility.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -183,3 +191,5 @@
 - **Naming Consistency**: Enforce single naming convention (kebab-case) across all files for better maintainability
 - **Import Path Case Sensitivity**: Always use exact case in imports to ensure Linux/Windows compatibility
 <!-- Trace: spec_id=SPEC-governance-1, task_id=TASK-059 -->
+<!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-063 -->
+<!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-064 -->

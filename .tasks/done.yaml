@@ -135,3 +135,31 @@
   actual_effort: ~0.5h
   notes: |
     기존 첨부파일 API (WorkNoteFileService) 재사용. 클라이언트 순차 호출 방식 채택.
+
+- task_id: TASK-063
+  title: "Sort work note file list by upload time"
+  spec_id: SPEC-worknote-attachments-1
+  completed_at: "2025-12-10T14:10:45Z"
+  outcome: |
+    Added deterministic ordering for work note attachments (newest first) via shared sorting utility
+    and applied it to WorkNoteFileList so latest uploads surface at the top.
+  test_results: |
+    ✓ npm test -- work-note-file-utils.test.ts
+  estimated_effort: 0.3h
+  actual_effort: ~0.2h
+  notes: |
+    Tie-breaker uses fileId for identical timestamps to prevent jittery UI ordering.
+
+- task_id: TASK-064
+  title: "Show 'uploaded today' badge on work note attachments"
+  spec_id: SPEC-worknote-attachments-1
+  completed_at: "2025-12-10T14:49:10Z"
+  outcome: |
+    Added a visible "오늘 업로드" pill for attachments uploaded on the current local day and shared helper
+    to detect recency. Keeps list ordering deterministic while surfacing fresh files.
+  test_results: |
+    ✓ npm test -- work-note-file-utils.test.ts
+  estimated_effort: 0.3h
+  actual_effort: ~0.25h
+  notes: |
+    Recency detection uses local date (Y/M/D) comparison; tie-breaker unchanged.
