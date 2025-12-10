@@ -34,7 +34,13 @@ export function ProjectDetailDialog({ open, onOpenChange, projectId }: ProjectDe
   if (isLoading || !project) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto"
+          aria-describedby={undefined}
+        >
+          <DialogHeader>
+            <DialogTitle className="sr-only">프로젝트 상세</DialogTitle>
+          </DialogHeader>
           <div className="flex items-center justify-center h-48">
             <p className="text-muted-foreground">로딩 중...</p>
           </div>
@@ -45,7 +51,10 @@ export function ProjectDetailDialog({ open, onOpenChange, projectId }: ProjectDe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto"
+        aria-describedby={undefined}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {project.name}

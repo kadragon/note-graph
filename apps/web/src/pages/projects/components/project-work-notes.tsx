@@ -50,7 +50,7 @@ export function ProjectWorkNotes({ projectId }: ProjectWorkNotesProps) {
   const removeMutation = useRemoveWorkNoteFromProject();
 
   const projectWorkNotes = project?.workNotes || [];
-  const assignedWorkNoteIds = new Set(projectWorkNotes.map((wn) => wn.id));
+  const assignedWorkNoteIds = new Set(projectWorkNotes.map((wn) => wn.workId));
   const availableWorkNotes = allWorkNotes.filter((wn) => !assignedWorkNoteIds.has(wn.id));
 
   const handleAssign = async () => {
@@ -94,28 +94,30 @@ export function ProjectWorkNotes({ projectId }: ProjectWorkNotesProps) {
               <TableRow>
                 <TableHead>제목</TableHead>
                 <TableHead>카테고리</TableHead>
-                <TableHead>생성일</TableHead>
+                <TableHead>연결일</TableHead>
                 <TableHead className="text-right">작업</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {projectWorkNotes.map((workNote) => (
                 <TableRow key={workNote.id}>
-                  <TableCell className="font-medium">{workNote.title}</TableCell>
-                  <TableCell>{workNote.category || '-'}</TableCell>
+                  <TableCell className="font-medium">{workNote.workTitle}</TableCell>
+                  <TableCell>{workNote.workCategory || '-'}</TableCell>
                   <TableCell>
                     <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(workNote.createdAt), {
-                        addSuffix: true,
-                        locale: ko,
-                      })}
+                      {workNote.assignedAt
+                        ? formatDistanceToNow(new Date(workNote.assignedAt), {
+                            addSuffix: true,
+                            locale: ko,
+                          })
+                        : '-'}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => void handleRemove(workNote.id)}
+                      onClick={() => void handleRemove(workNote.workId)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

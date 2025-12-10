@@ -586,16 +586,7 @@ export class APIClient {
   }
 
   getProject(projectId: string) {
-    return this.request<ProjectDetail>(`/projects/${projectId}`).then((project) => ({
-      ...project,
-      workNotes: project.workNotes?.map((wn: unknown) => {
-        const item = wn as BackendWorkNote & WorkNote;
-        if (item.id && item.content) return item;
-        const workId = item.workId ?? item.id;
-        const contentRaw = item.contentRaw ?? item.content ?? '';
-        return this.transformWorkNoteFromBackend({ ...item, workId, contentRaw });
-      }),
-    }));
+    return this.request<ProjectDetail>(`/projects/${projectId}`);
   }
 
   createProject(data: CreateProjectRequest) {
