@@ -35,7 +35,7 @@ function formatFileSize(bytes: number): string {
 
 export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [fileToDelete, setFileToDelete] = useState<WorkNoteFile | null>(null);
   const { toast } = useToast();
 
@@ -43,22 +43,31 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const uploadMutation = useUploadWorkNoteFile();
   const deleteMutation = useDeleteWorkNoteFile();
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
 
-    setUploadingFile(file);
-    uploadMutation.mutate(
-      { workId, file },
-      {
-        onSettled: () => {
-          setUploadingFile(null);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+    const filesArray = Array.from(selectedFiles);
+    setUploadingFiles(filesArray);
+
+    // 순차적으로 파일 업로드
+    for (const file of filesArray) {
+      await new Promise<void>((resolve) => {
+        uploadMutation.mutate(
+          { workId, file },
+          {
+            onSettled: () => {
+              setUploadingFiles((prev) => prev.filter((f) => f !== file));
+              resolve();
+            },
           }
-        },
-      }
-    );
+        );
+      });
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleDownload = async (file: WorkNoteFile) => {
@@ -89,33 +98,41 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             onChange={handleFileSelect}
             className="hidden"
             accept=".pdf,.hwp,.hwpx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
-            disabled={uploadMutation.isPending}
+            disabled={uploadingFiles.length > 0}
           />
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploadMutation.isPending}
+            disabled={uploadingFiles.length > 0}
           >
             <Upload className="h-4 w-4 mr-2" />
-            {uploadMutation.isPending ? '업로드 중...' : '파일 업로드'}
+            {uploadingFiles.length > 0 ? '업로드 중...' : '파일 업로드'}
           </Button>
         </div>
       </div>
 
-      {uploadingFile && (
-        <div className="flex items-center gap-2 rounded-md border border-border bg-muted p-3">
-          <FileIcon className="h-5 w-5 text-muted-foreground" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{uploadingFile.name}</p>
-            <p className="text-xs text-muted-foreground">
-              업로드 중... ({formatFileSize(uploadingFile.size)})
-            </p>
-          </div>
+      {uploadingFiles.length > 0 && (
+        <div className="space-y-2">
+          {uploadingFiles.map((file, index) => (
+            <div
+              key={`uploading-${file.name}-${index}`}
+              className="flex items-center gap-2 rounded-md border border-border bg-muted p-3"
+            >
+              <FileIcon className="h-5 w-5 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  업로드 중... ({formatFileSize(file.size)})
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
