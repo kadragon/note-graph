@@ -26,6 +26,10 @@ given_when_then:
     when: "User deletes project"
     then: "System marks project as deleted and archives associated files in R2"
 
+  - given: "A project exists and work notes are assigned to it"
+    when: "User deletes project"
+    then: "System marks project as deleted and detaches assigned work notes (clears associations)"
+
   # Work Note Association
   - given: "A project exists and work notes exist"
     when: "User assigns work notes to project"
@@ -205,6 +209,18 @@ acceptance_tests:
     given: "Project with 5 files totaling 25MB"
     when: "GET /projects/:projectId/stats"
     then: "Returns totalFiles=5, totalFileSize=25000000 (bytes)"
+
+  - id: TEST-project-22
+    desc: "Delete project detaches assigned work notes"
+    given: "Project exists with work notes assigned"
+    when: "DELETE /projects/:projectId"
+    then: "Returns 204, project marked deleted_at, project_work_notes removed, work_notes.project_id cleared"
+
+  - id: TEST-project-23
+    desc: "Assign work note ignores stale links to deleted projects"
+    given: "Work note is linked in project_work_notes to a soft-deleted project"
+    when: "POST /projects/:projectId/work-notes with that workId"
+    then: "Returns 201 and re-links work note to the active project"
 
 dependencies:
   - governance: "patterns.md (Repository Pattern, Queue-based Processing, R2 Storage)"

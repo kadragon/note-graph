@@ -165,6 +165,12 @@
 - **TASK-064 (SPEC-worknote-attachments-1)**: Added "오늘 업로드" badge for attachments uploaded on the current local day; shared `isUploadedToday` helper with unit coverage.
 - Badge sits alongside actions, preserving deterministic ordering and improving recency visibility.
 
+### Session 65: Project soft delete detaches work notes (2025-12-14)
+- **TASK-065 (SPEC-project-1)**: Fixed stale `project_work_notes` links surviving project soft delete, which caused false `CONFLICT` on reassignment.
+- **Implementation**: On project delete, remove `project_work_notes` rows and clear `work_notes.project_id`; on assignment, ignore/clean stale links to deleted projects.
+- **Migration**: Added `0018_cleanup_soft_deleted_project_work_note_links.sql` to clean existing stale data.
+- **Verification**: `npm test` passed.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

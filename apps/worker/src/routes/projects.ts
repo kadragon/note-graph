@@ -1,4 +1,4 @@
-// Trace: SPEC-project-1, TASK-037
+// Trace: SPEC-project-1, TASK-037, TASK-065
 /**
  * API routes for Project management
  */
@@ -201,16 +201,44 @@ projects.post('/:projectId/work-notes', async (c) => {
   // Check if work note already assigned to another project
   const existing = await c.env.DB.prepare(
     `
-    SELECT project_id FROM project_work_notes WHERE work_id = ?
-  `
+      SELECT
+        pwn.project_id as project_id,
+        p.project_id as joined_project_id,
+        p.deleted_at as project_deleted_at
+      FROM project_work_notes pwn
+      LEFT JOIN projects p ON p.project_id = pwn.project_id
+      WHERE pwn.work_id = ?
+    `
   )
     .bind(data.workId)
-    .first<{ project_id: string }>();
+    .first<{
+      project_id: string;
+      joined_project_id: string | null;
+      project_deleted_at: string | null;
+    }>();
 
   if (existing) {
-    throw new ConflictError(
-      `업무노트는 이미 다른 프로젝트(${existing.project_id})에 할당되어 있습니다`
-    );
+    const isStale = !existing.joined_project_id || Boolean(existing.project_deleted_at);
+
+    // Stale links can exist when the project was soft-deleted (deleted_at set),
+    // because FK cascades don't run for soft deletes. Clean them up and continue.
+    if (isStale) {
+      await c.env.DB.batch([
+        c.env.DB.prepare(`DELETE FROM project_work_notes WHERE work_id = ?`).bind(data.workId),
+        c.env.DB.prepare(`UPDATE work_notes SET project_id = NULL WHERE work_id = ?`).bind(
+          data.workId
+        ),
+      ]);
+    } else {
+      // Idempotent: already assigned to this project
+      if (existing.project_id === projectId) {
+        return c.body(null, 201);
+      }
+
+      throw new ConflictError(
+        `업무노트는 이미 다른 프로젝트(${existing.project_id})에 할당되어 있습니다`
+      );
+    }
   }
 
   // Insert association
