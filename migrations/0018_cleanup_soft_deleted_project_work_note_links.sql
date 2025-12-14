@@ -10,8 +10,8 @@ WHERE project_id IN (
 
 -- 2) Remove associations to projects that no longer exist (defensive cleanup).
 DELETE FROM project_work_notes
-WHERE project_id NOT IN (
-  SELECT project_id FROM projects
+WHERE NOT EXISTS (
+  SELECT 1 FROM projects p WHERE p.project_id = project_work_notes.project_id
 );
 
 -- 3) Clear work_notes.project_id for soft-deleted projects.
@@ -25,7 +25,7 @@ WHERE project_id IN (
 UPDATE work_notes
 SET project_id = NULL
 WHERE project_id IS NOT NULL
-  AND project_id NOT IN (
-    SELECT project_id FROM projects
+  AND NOT EXISTS (
+    SELECT 1 FROM projects p WHERE p.project_id = work_notes.project_id
   );
 
