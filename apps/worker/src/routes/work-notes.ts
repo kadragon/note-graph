@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-1, SPEC-rag-1, SPEC-worknote-attachments-1, TASK-007, TASK-010, TASK-012, TASK-057
+// Trace: SPEC-worknote-1, SPEC-rag-1, SPEC-worknote-attachments-1, TASK-007, TASK-010, TASK-012, TASK-057, TASK-066
 /**
  * Work note management routes with integrated RAG support and file attachments
  */
@@ -366,6 +366,43 @@ workNotes.get('/:workId/files/:fileId/download', async (c) => {
       );
     }
     console.error('Error downloading file:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
+});
+
+/**
+ * GET /work-notes/:workId/files/:fileId/view - View file inline (for browser preview)
+ */
+workNotes.get('/:workId/files/:fileId/view', async (c) => {
+  try {
+    const { workId, fileId } = c.req.param();
+
+    const r2Bucket =
+      c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
+    if (!r2Bucket) {
+      throw new Error('R2_BUCKET not configured');
+    }
+
+    const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
+
+    // Validate file belongs to the specified work note before streaming
+    const file = await fileService.getFileById(fileId);
+    if (!file || file.workId !== workId) {
+      return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
+    }
+
+    // Stream with inline disposition for browser viewing
+    const { body, headers } = await fileService.streamFile(fileId, true);
+
+    return new Response(body, { headers });
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
+    }
+    console.error('Error viewing file:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
   }
 });

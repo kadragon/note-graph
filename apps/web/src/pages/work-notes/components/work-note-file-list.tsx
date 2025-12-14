@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-attachments-1, TASK-063
+// Trace: SPEC-worknote-attachments-1, TASK-063, TASK-066
 
 import {
   AlertDialog,
@@ -19,8 +19,9 @@ import {
   useUploadWorkNoteFile,
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
+import { API } from '@web/lib/api';
 import type { WorkNoteFile } from '@web/types/api';
-import { Download, FileIcon, Trash2, Upload } from 'lucide-react';
+import { Download, Eye, FileIcon, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
 
@@ -32,6 +33,20 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Check if file can be previewed in browser (PDF and images only)
+ */
+function isPreviewable(fileType: string): boolean {
+  const previewableTypes = [
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+  ];
+  return previewableTypes.includes(fileType.toLowerCase());
 }
 
 export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
@@ -82,6 +97,11 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
         description: error instanceof Error ? error.message : '파일을 다운로드할 수 없습니다.',
       });
     }
+  };
+
+  const handlePreview = (file: WorkNoteFile) => {
+    const viewUrl = API.getWorkNoteFileViewUrl(workId, file.fileId);
+    window.open(viewUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleDeleteConfirm = () => {
@@ -167,6 +187,19 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
                   </span>
                 )}
                 <div className="flex items-center gap-1">
+                  {isPreviewable(file.fileType) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handlePreview(file)}
+                      className="h-8 w-8 p-0"
+                      title="바로보기"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span className="sr-only">바로보기</span>
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"

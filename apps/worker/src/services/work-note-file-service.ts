@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-attachments-1, TASK-057, TASK-058
+// Trace: SPEC-worknote-attachments-1, TASK-057, TASK-058, TASK-066
 /**
  * Service for managing work note file uploads and R2 storage
  * Note: No automatic text extraction or embedding (unlike project files)
@@ -180,8 +180,13 @@ export class WorkNoteFileService {
 
   /**
    * Stream file content from R2
+   * @param fileId - File ID to stream
+   * @param inline - If true, set Content-Disposition to inline (for browser preview). Default: false (download).
    */
-  async streamFile(fileId: string): Promise<{ body: ReadableStream; headers: Headers }> {
+  async streamFile(
+    fileId: string,
+    inline = false
+  ): Promise<{ body: ReadableStream; headers: Headers }> {
     const file = await this.getFileById(fileId);
     if (!file) {
       throw new NotFoundError('File', fileId);
@@ -197,7 +202,9 @@ export class WorkNoteFileService {
     headers.set('Content-Length', file.fileSize.toString());
     headers.set(
       'Content-Disposition',
-      `attachment; filename="${encodeURIComponent(file.originalName)}"`
+      inline
+        ? `inline; filename="${encodeURIComponent(file.originalName)}"`
+        : `attachment; filename="${encodeURIComponent(file.originalName)}"`
     );
 
     return {

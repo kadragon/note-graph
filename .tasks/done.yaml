@@ -179,3 +179,20 @@
   actual_effort: ~0.6h
   notes: |
     Root cause: soft delete does not trigger FK cascades; unique constraint on `project_work_notes(work_id)` kept stale links alive.
+
+- task_id: TASK-066
+  title: "Work note file inline preview endpoint"
+  spec_id: SPEC-worknote-attachments-1
+  completed_at: "2025-12-14T07:08:59Z"
+  outcome: |
+    Added browser preview support for work note attachments.
+    - Backend: added `GET /work-notes/:workId/files/:fileId/view` to stream files with `Content-Disposition: inline`.
+    - Frontend: added "바로보기" action for previewable files (PDF, images) opening a new tab to the view URL.
+    - Updated spec and added tests to cover inline streaming behavior.
+  test_results: |
+    ✓ npm test -- tests/unit/work-note-file-service.test.ts tests/integration/work-note-file-view.test.ts
+    ✓ npm run typecheck
+  estimated_effort: 0.5h
+  actual_effort: ~0.4h
+  notes: |
+    Preview button is intentionally limited to PDF/images in UI; non-previewable types still support download.

@@ -171,6 +171,11 @@
 - **Migration**: Added `0018_cleanup_soft_deleted_project_work_note_links.sql` to clean existing stale data.
 - **Verification**: `npm test` passed.
 
+### Session 66: Work Note File Inline Preview (2025-12-14)
+- **TASK-066 (SPEC-worknote-attachments-1)**: Added work note attachment preview via `/work-notes/:workId/files/:fileId/view` with `Content-Disposition: inline`.
+- **Frontend**: Added "바로보기" button for previewable file types (PDF, images) opening a new tab.
+- **Verification**: Added unit + integration tests for inline streaming behavior; `npm run typecheck` passed.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -199,3 +204,4 @@
 <!-- Trace: spec_id=SPEC-governance-1, task_id=TASK-059 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-063 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-064 -->
+<!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-066 -->

@@ -49,6 +49,8 @@ import type {
   WorkNoteStatistics,
 } from '@web/types/api';
 
+// Trace: SPEC-worknote-attachments-1, TASK-066
+
 /**
  * Backend work note response format
  * Maps to D1 database schema
@@ -270,6 +272,13 @@ export class APIClient {
     return this.request<void>(`/work-notes/${workId}/files/${fileId}`, {
       method: 'DELETE',
     });
+  }
+
+  /**
+   * Get URL for viewing a work note file inline (for browser preview)
+   */
+  getWorkNoteFileViewUrl(workId: string, fileId: string): string {
+    return `${this.baseURL}/work-notes/${workId}/files/${fileId}/view`;
   }
 
   private transformWorkNoteFromBackend(backendWorkNote: BackendWorkNote): WorkNote {

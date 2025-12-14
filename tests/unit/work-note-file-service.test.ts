@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-attachments-1, TASK-057, TASK-058
+// Trace: SPEC-worknote-attachments-1, TASK-057, TASK-058, TASK-066
 
 import { env } from 'cloudflare:test';
 import type {
@@ -280,6 +280,21 @@ describe('WorkNoteFileService', () => {
     expect(body).toBeTruthy();
     expect(headers.get('Content-Type')).toBe('application/pdf');
     expect(headers.get('Content-Disposition')).toContain('download.pdf');
+  });
+
+  it('streams file inline when requested (for browser preview)', async () => {
+    await insertWorkNote('WORK-123');
+    const uploaded = await service.uploadFile({
+      workId: 'WORK-123',
+      file: new Blob(['file data'], { type: 'application/pdf' }),
+      originalName: 'preview.pdf',
+      uploadedBy: 'tester@example.com',
+    });
+
+    const { headers } = await service.streamFile(uploaded.fileId, true);
+
+    expect(headers.get('Content-Disposition')).toContain('inline;');
+    expect(headers.get('Content-Disposition')).toContain('preview.pdf');
   });
 
   it('throws NotFoundError when streaming non-existent file', async () => {
