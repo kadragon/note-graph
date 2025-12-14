@@ -478,11 +478,25 @@ export class ProjectRepository {
     `
       )
       .bind(projectId)
-      .all<TodoWithWorkNote>();
+      .all<Record<string, unknown>>();
 
-    return (results.results || []).map((todo) => ({
-      ...todo,
-      skipWeekends: Boolean(todo.skipWeekends),
+    return (results.results || []).map((r) => ({
+      todoId: r.todoId as string,
+      workId: r.workId as string,
+      title: r.title as string,
+      description: (r.description as string) || null,
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+      dueDate: (r.dueDate as string) || null,
+      waitUntil: (r.waitUntil as string) || null,
+      status: r.status as TodoWithWorkNote['status'],
+      repeatRule: r.repeatRule as TodoWithWorkNote['repeatRule'],
+      recurrenceType: (r.recurrenceType as TodoWithWorkNote['recurrenceType']) || null,
+      customInterval: (r.customInterval as number) || null,
+      customUnit: (r.customUnit as TodoWithWorkNote['customUnit']) || null,
+      skipWeekends: Boolean(r.skipWeekends),
+      workTitle: (r.workTitle as string | null) ?? undefined,
+      workCategory: (r.workCategory as string | null) ?? undefined,
     }));
   }
 
