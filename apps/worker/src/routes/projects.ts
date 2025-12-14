@@ -171,6 +171,25 @@ projects.delete('/:projectId/participants/:personId', async (c) => {
 });
 
 /**
+ * GET /projects/:projectId/todos
+ * List todos for all work notes in the project
+ */
+projects.get('/:projectId/todos', async (c) => {
+  const projectId = c.req.param('projectId');
+  const repository = new ProjectRepository(c.env.DB);
+
+  // Verify project exists
+  const project = await repository.findById(projectId);
+  if (!project) {
+    throw new NotFoundError('Project', projectId);
+  }
+
+  const todos = await repository.getTodos(projectId);
+
+  return c.json(todos, 200);
+});
+
+/**
  * GET /projects/:projectId/work-notes
  * List project work notes
  */

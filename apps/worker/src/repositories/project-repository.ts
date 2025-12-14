@@ -16,6 +16,7 @@ import type {
   ProjectWorkNote,
   UpdateProjectData,
 } from '@shared/types/project';
+import type { TodoWithWorkNote } from '@shared/types/todo';
 import { nanoid } from 'nanoid';
 import { ConflictError, NotFoundError } from '../types/errors';
 
@@ -442,6 +443,46 @@ export class ProjectRepository {
       uploadedAt: r.uploaded_at as string,
       embeddedAt: (r.embedded_at as string) || null,
       deletedAt: (r.deleted_at as string) || null,
+    }));
+  }
+
+  /**
+   * Get project todos
+   */
+  async getTodos(projectId: string): Promise<TodoWithWorkNote[]> {
+    const results = await this.db
+      .prepare(
+        `
+      SELECT
+        t.todo_id as todoId,
+        t.work_id as workId,
+        t.title,
+        t.description,
+        t.created_at as createdAt,
+        t.updated_at as updatedAt,
+        t.due_date as dueDate,
+        t.wait_until as waitUntil,
+        t.status,
+        t.repeat_rule as repeatRule,
+        t.recurrence_type as recurrenceType,
+        t.custom_interval as customInterval,
+        t.custom_unit as customUnit,
+        t.skip_weekends as skipWeekends,
+        w.title as workTitle,
+        w.category as workCategory
+      FROM todos t
+      INNER JOIN project_work_notes pwn ON t.work_id = pwn.work_id
+      INNER JOIN work_notes w ON t.work_id = w.work_id
+      WHERE pwn.project_id = ?
+      ORDER BY t.due_date ASC NULLS LAST, t.created_at DESC
+    `
+      )
+      .bind(projectId)
+      .all<TodoWithWorkNote>();
+
+    return (results.results || []).map((todo) => ({
+      ...todo,
+      skipWeekends: Boolean(todo.skipWeekends),
     }));
   }
 
