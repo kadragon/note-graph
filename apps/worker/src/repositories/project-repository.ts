@@ -1,4 +1,4 @@
-// Trace: SPEC-project-1, TASK-036
+// Trace: SPEC-project-1, TASK-036, TASK-065
 /**
  * Repository for Project entity operations
  */
@@ -290,16 +290,25 @@ export class ProjectRepository {
       throw new NotFoundError('Project', projectId);
     }
 
-    await this.db
-      .prepare(
-        `
-      UPDATE projects
-      SET deleted_at = ?
-      WHERE project_id = ? AND deleted_at IS NULL
-    `
-      )
-      .bind(new Date().toISOString(), projectId)
-      .run();
+    const now = new Date().toISOString();
+
+    // Soft delete the project and detach associations so work notes can be re-assigned.
+    // This mirrors the intended behavior of ON DELETE CASCADE / SET NULL for a soft-delete.
+    await this.db.batch([
+      this.db
+        .prepare(
+          `
+        UPDATE projects
+        SET deleted_at = ?
+        WHERE project_id = ? AND deleted_at IS NULL
+      `
+        )
+        .bind(now, projectId),
+      this.db.prepare(`DELETE FROM project_work_notes WHERE project_id = ?`).bind(projectId),
+      this.db
+        .prepare(`UPDATE work_notes SET project_id = NULL WHERE project_id = ?`)
+        .bind(projectId),
+    ]);
   }
 
   /**

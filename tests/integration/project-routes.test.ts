@@ -1,4 +1,4 @@
-// Trace: SPEC-project-1, TASK-037
+// Trace: SPEC-project-1, TASK-037, TASK-065
 // Integration tests for Project API routes
 
 import { env, SELF } from 'cloudflare:test';
@@ -405,6 +405,42 @@ describe('Project API Routes', () => {
         .bind(projectId)
         .first<{ deleted_at: string }>();
       expect(deleted?.deleted_at).toBeDefined();
+    });
+
+    it('should detach work notes when project is soft deleted', async () => {
+      // Arrange
+      const now = new Date().toISOString();
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, project_id, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind('WORK-DEL-001', '프로젝트 삭제 업무', '내용', projectId, now, now),
+        testEnv.DB.prepare(
+          `INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+        ).bind(projectId, 'WORK-DEL-001', now),
+      ]);
+
+      // Act
+      const response = await authFetch(`http://localhost/api/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+
+      // Assert
+      expect(response.status).toBe(204);
+
+      const association = await testEnv.DB.prepare(
+        'SELECT * FROM project_work_notes WHERE project_id = ? AND work_id = ?'
+      )
+        .bind(projectId, 'WORK-DEL-001')
+        .first();
+      expect(association).toBeNull();
+
+      const workNote = await testEnv.DB.prepare(
+        'SELECT project_id FROM work_notes WHERE work_id = ?'
+      )
+        .bind('WORK-DEL-001')
+        .first<{ project_id: string | null }>();
+      expect(workNote?.project_id).toBeNull();
     });
 
     it('should return 404 for non-existent project', async () => {
@@ -836,6 +872,47 @@ describe('Project API Routes', () => {
 
       // Assert
       expect(response.status).toBe(409);
+    });
+
+    it('should allow assignment when existing link points to soft-deleted project', async () => {
+      // Arrange - Create a soft-deleted project and link the work note to it
+      const now = new Date().toISOString();
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO projects (project_id, name, status, created_at, updated_at, deleted_at)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind('PROJECT-DELETED', '삭제된 프로젝트', '진행중', now, now, now),
+        testEnv.DB.prepare(
+          `INSERT INTO project_work_notes (project_id, work_id, assigned_at) VALUES (?, ?, ?)`
+        ).bind('PROJECT-DELETED', 'WORK-001', now),
+        testEnv.DB.prepare(`UPDATE work_notes SET project_id = ? WHERE work_id = ?`).bind(
+          'PROJECT-DELETED',
+          'WORK-001'
+        ),
+      ]);
+
+      // Act
+      const response = await authFetch(`http://localhost/api/projects/${projectId}/work-notes`, {
+        method: 'POST',
+        body: JSON.stringify({ workId: 'WORK-001' }),
+      });
+
+      // Assert
+      expect(response.status).toBe(201);
+
+      const association = await testEnv.DB.prepare(
+        'SELECT project_id FROM project_work_notes WHERE work_id = ?'
+      )
+        .bind('WORK-001')
+        .first<{ project_id: string }>();
+      expect(association?.project_id).toBe(projectId);
+
+      const workNote = await testEnv.DB.prepare(
+        'SELECT project_id FROM work_notes WHERE work_id = ?'
+      )
+        .bind('WORK-001')
+        .first<{ project_id: string | null }>();
+      expect(workNote?.project_id).toBe(projectId);
     });
   });
 

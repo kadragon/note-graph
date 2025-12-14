@@ -163,3 +163,19 @@
   actual_effort: ~0.25h
   notes: |
     Recency detection uses local date (Y/M/D) comparison; tie-breaker unchanged.
+
+- task_id: TASK-065
+  title: "Fix stale project-work-note links after project soft delete"
+  spec_id: SPEC-project-1
+  completed_at: "2025-12-14T05:45:26Z"
+  outcome: |
+    Fixed false CONFLICT errors when assigning a work note that was previously linked to a soft-deleted project.
+    - Project soft delete now detaches work notes (removes `project_work_notes`, clears `work_notes.project_id`).
+    - Work note assignment endpoint self-heals stale links to deleted projects.
+    - Added defensive D1 migration to clean up existing stale links.
+  test_results: |
+    ✓ npm test (587/587 passing)
+  estimated_effort: 0.8h
+  actual_effort: ~0.6h
+  notes: |
+    Root cause: soft delete does not trigger FK cascades; unique constraint on `project_work_notes(work_id)` kept stale links alive.
