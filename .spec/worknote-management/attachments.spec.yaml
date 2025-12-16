@@ -28,6 +28,10 @@ given_when_then:
     when: "User downloads file"
     then: "System streams file content from R2 with proper headers"
 
+  - given: "PDF or image files are attached to work note"
+    when: "User previews file in browser"
+    then: "System opens file in new tab with inline content-disposition for browser viewing"
+
   - given: "Files are attached to work note"
     when: "User deletes file"
     then: "System removes file from R2 and deletes file record"
@@ -98,6 +102,12 @@ acceptance_tests:
     when: "DELETE /work-notes/:workId"
     then: "Work note deleted, all files removed from R2 and DB"
 
+  - id: TEST-worknote-attachments-11
+    desc: "View file inline for browser preview"
+    given: "PDF or image file attached to work note"
+    when: "GET /work-notes/:workId/files/:fileId/view"
+    then: "Returns 200 with file stream and Content-Disposition: inline header for browser viewing"
+
 dependencies:
   - governance: "patterns.md (Repository Pattern, R2 Storage)"
   - governance: "coding-style.md (Naming, API Design, Error Handling)"
@@ -106,6 +116,7 @@ dependencies:
 
 linked_tasks:
   - TASK-056  # To be created
+  - TASK-066  # File preview feature
 
 implementation_notes: |
   ## Database Schema Changes
@@ -148,7 +159,8 @@ implementation_notes: |
   - POST   /work-notes/:workId/files                - Upload file (multipart/form-data)
   - GET    /work-notes/:workId/files                - List work note files
   - GET    /work-notes/:workId/files/:fileId        - Get file metadata
-  - GET    /work-notes/:workId/files/:fileId/download - Download file (stream from R2)
+  - GET    /work-notes/:workId/files/:fileId/download - Download file (stream from R2, attachment)
+  - GET    /work-notes/:workId/files/:fileId/view   - View file inline (stream from R2, inline)
   - DELETE /work-notes/:workId/files/:fileId        - Delete file
 
   ## Service Layer
@@ -157,13 +169,18 @@ implementation_notes: |
   - uploadFile(workId, file, metadata): WorkNoteFile
   - listFiles(workId): WorkNoteFile[]
   - getFile(fileId): WorkNoteFile | null
-  - streamFile(fileId): { body: ReadableStream; headers: Headers }
+  - streamFile(fileId, inline?: boolean): { body: ReadableStream; headers: Headers }
   - deleteFile(fileId): void
   - deleteWorkNoteFiles(workId): void  # Called during work note deletion
 
   ## Size Limits
   - File upload: 50MB per file
   - No automatic text extraction or embedding (unlike project files)
+
+  ## File Preview
+  - Browser-viewable files (PDF, images) show preview button
+  - Preview opens file in new tab with Content-Disposition: inline
+  - Non-viewable files (HWP, Excel) only show download button
 
   ## Error Scenarios
   - Upload file to non-existent work note → 404

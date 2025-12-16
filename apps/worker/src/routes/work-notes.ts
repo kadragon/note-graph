@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-1, SPEC-rag-1, SPEC-worknote-attachments-1, TASK-007, TASK-010, TASK-012, TASK-057
+// Trace: SPEC-worknote-1, SPEC-rag-1, SPEC-worknote-attachments-1, TASK-007, TASK-010, TASK-012, TASK-057, TASK-066
 /**
  * Work note management routes with integrated RAG support and file attachments
  */
@@ -7,6 +7,7 @@ import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { authMiddleware } from '../middleware/auth';
+import { workNoteFileMiddleware } from '../middleware/work-note-file';
 import { TodoRepository } from '../repositories/todo-repository';
 import { createTodoSchema } from '../schemas/todo';
 import {
@@ -270,18 +271,11 @@ workNotes.post('/:workId/files', async (c) => {
 /**
  * GET /work-notes/:workId/files - List work note files
  */
-workNotes.get('/:workId/files', async (c) => {
+workNotes.get('/:workId/files', workNoteFileMiddleware, async (c) => {
   try {
     const { workId } = c.req.param();
-
-    const r2Bucket =
-      c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-    if (!r2Bucket) {
-      throw new Error('R2_BUCKET not configured');
-    }
-
-    const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
-    const files = await fileService.listFiles(workId);
+    const fileService = c.get('fileService');
+    const files = await fileService.listFiles(workId!);
 
     return c.json(files);
   } catch (error) {
@@ -299,28 +293,9 @@ workNotes.get('/:workId/files', async (c) => {
 /**
  * GET /work-notes/:workId/files/:fileId - Get file metadata
  */
-workNotes.get('/:workId/files/:fileId', async (c) => {
+workNotes.get('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
   try {
-    const { workId, fileId } = c.req.param();
-
-    const r2Bucket =
-      c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-    if (!r2Bucket) {
-      throw new Error('R2_BUCKET not configured');
-    }
-
-    const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
-    const file = await fileService.getFileById(fileId);
-
-    if (!file) {
-      return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
-    }
-
-    // Validate file belongs to the specified work note
-    if (file.workId !== workId) {
-      return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
-    }
-
+    const file = c.get('file');
     return c.json(file);
   } catch (error) {
     if (error instanceof DomainError) {
@@ -337,25 +312,12 @@ workNotes.get('/:workId/files/:fileId', async (c) => {
 /**
  * GET /work-notes/:workId/files/:fileId/download - Download file (stream from R2)
  */
-workNotes.get('/:workId/files/:fileId/download', async (c) => {
+workNotes.get('/:workId/files/:fileId/download', workNoteFileMiddleware, async (c) => {
   try {
-    const { workId, fileId } = c.req.param();
+    const { fileId } = c.req.param();
+    const fileService = c.get('fileService');
 
-    const r2Bucket =
-      c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-    if (!r2Bucket) {
-      throw new Error('R2_BUCKET not configured');
-    }
-
-    const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
-
-    // Validate file belongs to the specified work note before streaming
-    const file = await fileService.getFileById(fileId);
-    if (!file || file.workId !== workId) {
-      return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
-    }
-
-    const { body, headers } = await fileService.streamFile(fileId);
+    const { body, headers } = await fileService.streamFile(fileId!);
 
     return new Response(body, { headers });
   } catch (error) {
@@ -371,27 +333,38 @@ workNotes.get('/:workId/files/:fileId/download', async (c) => {
 });
 
 /**
+ * GET /work-notes/:workId/files/:fileId/view - View file inline (for browser preview)
+ */
+workNotes.get('/:workId/files/:fileId/view', workNoteFileMiddleware, async (c) => {
+  try {
+    const { fileId } = c.req.param();
+    const fileService = c.get('fileService');
+
+    // Stream with inline disposition for browser viewing
+    const { body, headers } = await fileService.streamFile(fileId!, true);
+
+    return new Response(body, { headers });
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
+    }
+    console.error('Error viewing file:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  }
+});
+
+/**
  * DELETE /work-notes/:workId/files/:fileId - Delete file
  */
-workNotes.delete('/:workId/files/:fileId', async (c) => {
+workNotes.delete('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
   try {
-    const { workId, fileId } = c.req.param();
+    const { fileId } = c.req.param();
+    const fileService = c.get('fileService');
 
-    const r2Bucket =
-      c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-    if (!r2Bucket) {
-      throw new Error('R2_BUCKET not configured');
-    }
-
-    const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
-
-    // Validate file belongs to the specified work note before deletion
-    const file = await fileService.getFileById(fileId);
-    if (!file || file.workId !== workId) {
-      return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
-    }
-
-    await fileService.deleteFile(fileId);
+    await fileService.deleteFile(fileId!);
 
     return c.body(null, 204);
   } catch (error) {
