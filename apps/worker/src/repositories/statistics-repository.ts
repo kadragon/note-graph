@@ -73,8 +73,20 @@ export class StatisticsRepository {
     const startDateTime = `${startDate}T00:00:00.000Z`;
     const endDateTime = `${endDate}T23:59:59.999Z`;
 
-    // Build base query to find work notes with completed todos
+    // Build optimized query using CTE to avoid correlated subqueries
+    // CTE pre-aggregates todo counts within the date range, improving performance as todos table grows
     let query = `
+      WITH PeriodTodos AS (
+        SELECT
+          work_id,
+          SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END) as completedInPeriod,
+          COUNT(*) as totalInPeriod,
+          MAX(updated_at) as lastUpdated
+        FROM todos
+        WHERE updated_at >= ? AND updated_at <= ?
+        GROUP BY work_id
+        HAVING completedInPeriod > 0
+      )
       SELECT DISTINCT
         wn.work_id as workId,
         wn.title,
@@ -84,23 +96,17 @@ export class StatisticsRepository {
         wn.created_at as createdAt,
         wn.updated_at as updatedAt,
         wn.embedded_at as embeddedAt,
-        (SELECT COUNT(*) FROM todos t WHERE t.work_id = wn.work_id AND t.status = '완료') as completedTodoCount,
-        (SELECT COUNT(*) FROM todos t WHERE t.work_id = wn.work_id) as totalTodoCount
+        pt.completedInPeriod as completedTodoCount,
+        pt.totalInPeriod as totalTodoCount
       FROM work_notes wn
-      INNER JOIN todos td ON wn.work_id = td.work_id
+      INNER JOIN PeriodTodos pt ON wn.work_id = pt.work_id
     `;
 
     const conditions: string[] = [];
     const bindings: (string | number)[] = [];
 
-    // Must have at least one completed todo
-    conditions.push(`td.status = '완료'`);
-
-    // Date range filter on todo completion timestamp (updated_at)
-    conditions.push(`td.updated_at >= ?`);
-    bindings.push(startDateTime);
-    conditions.push(`td.updated_at <= ?`);
-    bindings.push(endDateTime);
+    // Bind date parameters for CTE
+    bindings.push(startDateTime, endDateTime);
 
     // Person filter
     if (personId) {
@@ -131,8 +137,8 @@ export class StatisticsRepository {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    // Order by completion timestamp descending
-    query += ` ORDER BY td.updated_at DESC`;
+    // Order by last completion timestamp descending
+    query += ` ORDER BY pt.lastUpdated DESC`;
 
     const result = await this.db
       .prepare(query)

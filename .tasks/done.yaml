@@ -1,4 +1,37 @@
-- task_id: TASK-055
+- task_id: TASK-067
+    title: "Fix Statistics Date Range Bug & Performance Optimization"
+    spec_id: SPEC-stats-1
+    completed_at: "2025-12-16T09:56:00Z"
+    outcome: |
+      Fixed critical bug where statistics incorrectly counted all historical todo completions instead of only those within the selected date range.
+      Root Cause:
+      - Subqueries in StatisticsRepository.findCompletedWorkNotes counted all completed todos without date filtering
+      - Caused inflated statistics for work notes with recurring todos (e.g., showed 44 instead of 4)
+      Solution:
+      - Refactored to use CTE (Common Table Expression) with conditional aggregation
+      - PeriodTodos CTE pre-filters and aggregates todos by date range
+      - SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END) for conditional counting
+      - HAVING completedInPeriod > 0 ensures only work notes with completed todos
+      - Single table scan with pre-aggregation instead of correlated subqueries
+      Performance:
+      - Eliminated per-row subquery execution overhead (O(n) → O(1) per row)
+      - Based on PR review feedback from gemini-code-assist bot
+      Testing:
+      - Added TEST-stats-7 reproducing the bug (40 historical + 4 current completions)
+      - Verified correct count of 4 for December period
+      - Updated .spec/statistics/spec.yaml with new GWT and acceptance test
+    test_results: |
+      ✓ npm test tests/unit/statistics-repository.test.ts (12/12 tests passing)
+      ✓ npm test (590/590 tests passing, no regressions)
+    estimated_effort: 1h
+    actual_effort: 0.7h
+    notes: |
+      Critical data accuracy bug affecting users with recurring todos.
+      TDD approach successfully caught the bug and verified the fix.
+      PR review suggested CTE optimization for better scalability.
+      Added lessons learned to governance: date filters + CTE performance pattern.
+
+  - task_id: TASK-055
     title: "Standardize Naming Conventions"
     spec_id: SPEC-devx-naming-1
     completed_at: "2025-12-05T03:00:00Z"
