@@ -31,6 +31,23 @@
       PR review suggested CTE optimization for better scalability.
       Added lessons learned to governance: date filters + CTE performance pattern.
 
+- task_id: TASK-068
+    title: "Fix /search unified request loop"
+    spec_id: SPEC-search-ui-1
+    completed_at: "2025-12-16T08:06:17Z"
+    outcome: |
+      Fixed a render/request loop on the /search page that could spam POST /search/unified and eventually crash the UI.
+      - Normalized URL query param and added a per-query guard to ensure only one request per query value
+      - Removed effect dependency on the full mutation object to prevent re-triggering on unrelated renders
+      - Added unit coverage for the query normalization/guard logic
+    test_results: |
+      ✓ npm test -- search-query.test.ts (5/5 tests passing)
+      ✓ npm test (595/595 tests passing, no regressions)
+    estimated_effort: 0.5h
+    actual_effort: 0.3h
+    notes: |
+      This was most visible when opening /search?q=... directly, because the mount effect could re-run and re-trigger mutate().
+
   - task_id: TASK-055
     title: "Standardize Naming Conventions"
     spec_id: SPEC-devx-naming-1
