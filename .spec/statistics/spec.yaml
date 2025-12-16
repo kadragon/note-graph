@@ -29,6 +29,10 @@ given_when_then:
     when: "User selects a year from year selector"
     then: "System shows all work notes with completed todos from January 1 to December 31 of that year"
 
+  - given: "Work note has recurring todos with multiple completion dates"
+    when: "User selects a time period filter"
+    then: "System counts only the todos completed within the selected period, not historical completions"
+
 acceptance_tests:
   - id: TEST-stats-1
     desc: "Work note with at least one completed todo appears in statistics"
@@ -78,6 +82,14 @@ acceptance_tests:
       - "Verify only 2024 work notes with completed todos appear"
       - "Select year 2025 from year selector"
       - "Verify only 2025 work notes with completed todos appear"
+
+  - id: TEST-stats-7
+    desc: "Statistics count only todos completed within selected period"
+    steps:
+      - "Create recurring todo with 40 historical completions (outside period)"
+      - "Complete same recurring todo 4 times in current week"
+      - "Query statistics for current week"
+      - "Verify completedTodoCount is 4, not 44"
 
 data_model:
   completion_criteria: "Work note has at least one todo with status = '완료'"

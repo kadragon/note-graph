@@ -361,6 +361,103 @@ describe('StatisticsRepository', () => {
       expect(results).toHaveLength(1);
       expect(results[0].workId).toBe('WORK-BUG');
     });
+
+    it('should count only todos completed within date range, not all historical completions', async () => {
+      // Trace: SPEC-stats-1, TASK-067, TEST-stats-7
+      // This test reproduces the recurring todo bug where historical completions are incorrectly counted
+
+      // Arrange: Work note with both historical and recent completions
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(`INSERT INTO departments (dept_name, description) VALUES (?, ?)`).bind(
+          '개발팀',
+          'Development'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
+        ).bind('P001', '홍길동', '개발팀'),
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind(
+          'WORK-RECURRING',
+          'Recurring Work',
+          'Content',
+          '2025-01-01T10:00:00Z',
+          '2025-01-01T10:00:00Z'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
+        ).bind('WORK-RECURRING', 'P001', 'OWNER'),
+      ]);
+
+      // Insert 40 todos completed in January (historical)
+      const januaryBatch = [];
+      for (let i = 1; i <= 40; i++) {
+        januaryBatch.push(
+          testEnv.DB.prepare(
+            `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+          ).bind(
+            `TODO-JAN-${i}`,
+            'WORK-RECURRING',
+            `January Task ${i}`,
+            '완료',
+            '2025-01-15T10:00:00Z',
+            '2025-01-15T10:00:00Z'
+          )
+        );
+      }
+      await testEnv.DB.batch(januaryBatch);
+
+      // Insert 4 todos completed in December (current period)
+      const decemberBatch = [];
+      for (let i = 1; i <= 4; i++) {
+        decemberBatch.push(
+          testEnv.DB.prepare(
+            `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+          ).bind(
+            `TODO-DEC-${i}`,
+            'WORK-RECURRING',
+            `December Task ${i}`,
+            '완료',
+            '2025-12-10T10:00:00Z',
+            '2025-12-10T10:00:00Z'
+          )
+        );
+      }
+      await testEnv.DB.batch(decemberBatch);
+
+      // Insert 2 in-progress todos in December
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-DEC-PROG-1',
+          'WORK-RECURRING',
+          'December In Progress 1',
+          '진행중',
+          '2025-12-10T10:00:00Z',
+          '2025-12-10T10:00:00Z'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'TODO-DEC-PROG-2',
+          'WORK-RECURRING',
+          'December In Progress 2',
+          '진행중',
+          '2025-12-10T10:00:00Z',
+          '2025-12-10T10:00:00Z'
+        ),
+      ]);
+
+      // Act: Query only December
+      const results = await repo.findCompletedWorkNotes('2025-12-01', '2025-12-31');
+
+      // Assert: Should count ONLY the 4 December completions, not 40 + 4 = 44
+      expect(results).toHaveLength(1);
+      expect(results[0].workId).toBe('WORK-RECURRING');
+      expect(results[0].completedTodoCount).toBe(4); // NOT 44!
+      expect(results[0].totalTodoCount).toBe(6); // 4 completed + 2 in-progress in December
+    });
   });
 
   describe('calculateStatistics', () => {

@@ -176,6 +176,20 @@
 - **Frontend**: Added "바로보기" button for previewable file types (PDF, images) opening a new tab.
 - **Verification**: Added unit + integration tests for inline streaming behavior; `npm run typecheck` passed.
 
+### Session 67: Statistics Date Range Bug Fix & Performance Optimization (2025-12-16)
+- **TASK-067 (SPEC-stats-1, TEST-stats-7)**: Fixed critical bug in statistics calculation where recurring todos counted all historical completions instead of only those within the selected date range.
+- **Root Cause**: Subqueries in `StatisticsRepository.findCompletedWorkNotes` were counting all completed todos without applying date range filters.
+- **Impact**: Statistics showed inflated numbers (e.g., 44 instead of 4) when work notes had recurring todos with many historical completions.
+- **Solution**: Refactored to use CTE (Common Table Expression) with conditional aggregation instead of correlated subqueries.
+- **Performance Improvement**: CTE approach eliminates per-row subquery execution overhead; single table scan with pre-aggregation.
+- **Implementation**:
+  - `PeriodTodos` CTE filters todos by date range upfront
+  - `SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END)` for conditional counting
+  - `HAVING completedInPeriod > 0` ensures only work notes with completed todos
+  - Join CTE with work_notes for final result set
+- **Testing**: Added comprehensive test case simulating 40 historical + 4 current completions; verified correct count of 4.
+- **Verification**: All 590 tests pass, no regressions.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -201,7 +215,10 @@
 - **Task Tracking**: Must update task tracker immediately after completing implementation
 - **Naming Consistency**: Enforce single naming convention (kebab-case) across all files for better maintainability
 - **Import Path Case Sensitivity**: Always use exact case in imports to ensure Linux/Windows compatibility
+- **Statistics Date Filtering**: Always apply date range filters to aggregate subqueries, not just WHERE clauses, to avoid counting historical data in period-based reports
+- **SQL Performance**: Prefer CTEs over correlated subqueries for aggregations; pre-filter and aggregate in CTE, then join for better scalability
 <!-- Trace: spec_id=SPEC-governance-1, task_id=TASK-059 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-063 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-064 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-066 -->
+<!-- Trace: spec_id=SPEC-stats-1, task_id=TASK-067 -->
