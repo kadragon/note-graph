@@ -1,3 +1,5 @@
+// Trace: SPEC-search-ui-1, TASK-068
+
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
@@ -15,8 +17,9 @@ import type { DepartmentSearchResult, PersonSearchResult, SearchResult } from '@
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Building2, FileText, type LucideIcon, Search as SearchIcon, User } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { normalizeSearchQuery, shouldRunUnifiedSearch } from './search-query';
 
 interface SearchResultsSectionProps {
   icon: LucideIcon;
@@ -187,20 +190,29 @@ function DepartmentsTable({ departments }: DepartmentsTableProps) {
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchMutation = useSearch();
+  const lastSearchedQueryRef = useRef<string | null>(null);
 
   // Get query from URL params (source of truth)
-  const urlQuery = searchParams.get('q') || '';
+  const urlQuery = normalizeSearchQuery(searchParams.get('q'));
 
   // Local state for input field
-  const [query, setQuery] = useState(urlQuery);
+  const [query, setQuery] = useState(urlQuery ?? '');
 
   // Trigger search when URL params change
   useEffect(() => {
-    if (urlQuery) {
-      setQuery(urlQuery);
-      searchMutation.mutate({ query: urlQuery });
+    if (!urlQuery) {
+      lastSearchedQueryRef.current = null;
+      return;
     }
-  }, [urlQuery, searchMutation]);
+
+    if (!shouldRunUnifiedSearch(lastSearchedQueryRef.current, urlQuery)) {
+      return;
+    }
+
+    lastSearchedQueryRef.current = urlQuery;
+    setQuery(urlQuery);
+    searchMutation.mutate({ query: urlQuery });
+  }, [urlQuery, searchMutation.mutate]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

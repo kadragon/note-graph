@@ -101,61 +101,25 @@
 - **Worker Layout**: Reverted to apps/worker/src (kept traditional structure)
 
 ### Session 57: Naming Convention Standardization (2025-12-05)
-- **TASK-055 (SPEC-devx-naming-1)**: Enforced kebab-case naming convention across entire frontend codebase
-- **Renamed Files**:
-  - Components: PascalCase → kebab-case (e.g., `AssigneeSelector.tsx` → `assignee-selector.tsx`)
-  - Hooks: camelCase → kebab-case (e.g., `useWorkNotes.ts` → `use-work-notes.ts`)
-  - Page directories/files: PascalCase → kebab-case (e.g., `pages/Statistics/Statistics.tsx` → `pages/statistics/statistics.tsx`)
-  - Test files: camelCase → kebab-case (e.g., `groupRecurringTodos.test.ts` → `group-recurring-todos.test.ts`)
-- **Updated Imports**: Fixed all absolute/relative imports, index.ts exports, App.tsx lazy imports
-- **Governance**: Updated coding-style.md to explicitly mandate kebab-case for all files
-- **Verification**: npm run lint, typecheck, build all pass
-- **Note**: Worked around macOS case-sensitivity issues; bypassed lint-staged false positives after verifying clean build
+- **TASK-055 (SPEC-devx-naming-1)**: Enforced kebab-case for all frontend files and fixed all imports/exports; verified lint/typecheck/build.
+- **Note**: macOS case-insensitivity can mask casing issues; verify with `tsc` and a clean build.
 
 ### Session 58: Test Import Path Fix (2025-12-06)
-- **Issue**: Linux builds failed due to case-sensitive import path in test file
-- **Fix**: Updated `tests/unit/group-recurring-todos.test.ts` import from `@web/pages/WorkNotes/components/group-recurring-todos` to `@web/pages/work-notes/components/group-recurring-todos`
-- **Verification**: Test suite passes (9/9 tests)
-- **Commit**: `a7e2572` - fix: update test import to kebab-case work-notes path
+- **TASK-056 (SPEC-devx-naming-1)**: Fixed a case-sensitive import path in a test to unblock Linux builds.
 
 ### Session 59: Work Note File Attachments (2025-12-08)
-- **TASK-057 (SPEC-worknote-attachments-1)**: Implemented complete file attachment feature for work notes
-- **Backend Implementation**:
-  - Database migration 0017: `work_note_files` table with R2 key tracking
-  - WorkNoteFile type definition (similar to ProjectFile but without embedding)
-  - WorkNoteFileService: upload, list, stream, delete files + cascade deletion
-  - API routes: POST/GET/DELETE `/work-notes/:workId/files/*`
-  - Updated WorkNoteService.delete() to cascade file deletion
-- **Frontend Implementation**:
-  - WorkNoteFile type exported in api.ts
-  - API client methods: uploadWorkNoteFile, getWorkNoteFiles, downloadWorkNoteFile, deleteWorkNoteFile
-  - React hooks: useWorkNoteFiles, useUploadWorkNoteFile, useDeleteWorkNoteFile, downloadWorkNoteFile utility
-  - WorkNoteFileList component with upload, download, delete UI
-  - Integrated file list into ViewWorkNoteDialog
-- **File Support**:
-  - Max file size: 50MB
-  - Allowed types: PDF, HWP/HWPX, Excel (XLS/XLSX), images (PNG, JPEG, GIF, WebP)
-  - No automatic text extraction or embedding (unlike project files)
-- **Testing**: 13 unit tests for WorkNoteFileService (all passing)
-- **Verification**: TypeScript typecheck and full build successful (backend + frontend)
+- **TASK-057 (SPEC-worknote-attachments-1)**: Added work note attachments (upload/list/stream/delete) backed by R2 and `work_note_files`.
+- No auto-extraction/embedding for work note files (unlike project files); 50MB limit; allowlist of common doc/image types.
+- Verified via unit tests plus typecheck/build.
 
 ### Session 60: HWPX MIME Fallback (2025-12-08)
 - **TASK-058 (SPEC-worknote-attachments-1)**: Enabled extension-based MIME resolution so HWPX files upload even when browsers omit or send generic MIME types; keeps rejection for explicit unsupported MIME values. Added unit test covering empty MIME HWPX upload.
 
 ### Session 61: Todo Wait Until Logic Fix (2025-12-08)
-- **Issue**: Todos with `wait_until` set to "Tomorrow" (KST) were appearing in "Today's Todos" because the KST date start (15:00 UTC previous day) fell within the previous logic's "Today + Tomorrow" window.
-- **Fix**: Updated `TodoRepository.findAll` to compare `wait_until` strictly against `now` instead of `tomorrowMidnight`.
-- **Logic**: "Wait Until" is now treated as a strict "Hidden Until" gate. If `wait_until` > `now`, it is hidden.
-- **Verification**: Added unit test `should exclude todo with wait_until in the near future`. Existing tests passed.
+- Treated `wait_until` as a strict "hidden until" gate (`wait_until` > `now` => hidden); added a unit regression test.
 
 ### Session 62: PDF Auto-Attachment (2025-12-08)
-- **TASK-062 (SPEC-pdf-1)**: PDF로 업무노트 생성 시 원본 PDF를 첨부파일로 자동 저장
-- **Implementation**:
-  - `useSavePDFDraft` 훅: `SavePDFDraftParams` 인터페이스로 draft + pdfFile 파라미터 지원
-  - `pdf-upload.tsx`: `handleSaveDraft`에서 `uploadedFile`을 pdfFile로 전달
-  - 에러 처리: 업무노트 생성 성공 후 첨부 실패 시 경고 토스트 (업무노트는 유지)
-- **Design Decision**: 클라이언트 순차 호출 방식 (업무노트 생성 → 파일 첨부), 기존 API 재사용
-- **Verification**: TypeScript typecheck + build 통과
+- **TASK-062 (SPEC-pdf-1)**: When creating a work note from a PDF draft, automatically attach the original PDF; warn if attachment fails after work note creation.
 
 ### Session 63: Work Note Attachment Ordering (2025-12-10)
 - **TASK-063 (SPEC-worknote-attachments-1)**: Sorted work note attachments by `uploadedAt` (newest first) with `fileId` tie-breaker for deterministic UI ordering.
@@ -177,18 +141,10 @@
 - **Verification**: Added unit + integration tests for inline streaming behavior; `npm run typecheck` passed.
 
 ### Session 67: Statistics Date Range Bug Fix & Performance Optimization (2025-12-16)
-- **TASK-067 (SPEC-stats-1, TEST-stats-7)**: Fixed critical bug in statistics calculation where recurring todos counted all historical completions instead of only those within the selected date range.
-- **Root Cause**: Subqueries in `StatisticsRepository.findCompletedWorkNotes` were counting all completed todos without applying date range filters.
-- **Impact**: Statistics showed inflated numbers (e.g., 44 instead of 4) when work notes had recurring todos with many historical completions.
-- **Solution**: Refactored to use CTE (Common Table Expression) with conditional aggregation instead of correlated subqueries.
-- **Performance Improvement**: CTE approach eliminates per-row subquery execution overhead; single table scan with pre-aggregation.
-- **Implementation**:
-  - `PeriodTodos` CTE filters todos by date range upfront
-  - `SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END)` for conditional counting
-  - `HAVING completedInPeriod > 0` ensures only work notes with completed todos
-  - Join CTE with work_notes for final result set
-- **Testing**: Added comprehensive test case simulating 40 historical + 4 current completions; verified correct count of 4.
-- **Verification**: All 590 tests pass, no regressions.
+- **TASK-067 (SPEC-stats-1, TEST-stats-7)**: Fixed recurring-todo statistics overcount by switching correlated subqueries to a date-filtered CTE aggregation; all tests green.
+
+### Session 68: Search Page Unified Request Loop Fix (2025-12-16)
+- **TASK-068 (SPEC-search-ui-1)**: Fixed /search effect causing repeated unified search requests by normalizing the URL query and guarding per query value; added unit test; all tests green.
 
 ## Known Issues
 
