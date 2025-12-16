@@ -35,18 +35,19 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const PREVIEWABLE_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+]);
+
 /**
  * Check if file can be previewed in browser (PDF and images only)
  */
 function isPreviewable(fileType: string): boolean {
-  const previewableTypes = [
-    'application/pdf',
-    'image/png',
-    'image/jpeg',
-    'image/gif',
-    'image/webp',
-  ];
-  return previewableTypes.includes(fileType.toLowerCase());
+  return PREVIEWABLE_TYPES.has(fileType.toLowerCase());
 }
 
 export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
