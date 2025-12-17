@@ -63,8 +63,8 @@ export function TodoListItem({
           {todo.title}
         </p>
         {todo.description && (
-          <div className="mt-1 text-xs text-muted-foreground leading-snug break-words">
-            <div className="[&>*]:m-0 [&>p]:mb-1">
+          <div className="mt-1 text-xs text-muted-foreground leading-snug break-words overflow-hidden">
+            <div className="[&>*]:m-0 [&>p]:mb-1 [&>pre]:overflow-x-auto [&>pre]:max-w-full [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&_code]:break-all [&_code]:whitespace-pre-wrap">
               <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
                 {descriptionWithBreaks}
               </ReactMarkdown>

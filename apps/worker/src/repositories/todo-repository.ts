@@ -203,25 +203,36 @@ export class TodoRepository {
       case 'today':
       case 'week':
       case 'month': {
-        // Time-based views: show incomplete todos with due_date up to the end of the period
+        // Time-based views: show incomplete todos with due_date and wait_until up to the end of the period
         const endDate = this.getEndDateUTC(query.view);
+        const endDateISO = endDate.toISOString();
 
-        conditions.push(`t.status != ?`, `t.due_date IS NOT NULL`, `t.due_date <= ?`);
-        params.push('완료', endDate.toISOString());
+        conditions.push(
+          `t.status != ?`,
+          `t.due_date IS NOT NULL`,
+          `t.due_date <= ?`,
+          `(t.wait_until IS NULL OR t.wait_until <= ?)`
+        );
+        params.push('완료', endDateISO, endDateISO);
         break;
       }
 
       case 'backlog': {
         // Overdue todos (due_date < now and not completed)
-        conditions.push(`t.status != ?`, `t.due_date IS NOT NULL`, `t.due_date < ?`);
-        params.push('완료', now);
+        conditions.push(
+          `t.status != ?`,
+          `t.due_date IS NOT NULL`,
+          `t.due_date < ?`,
+          `(t.wait_until IS NULL OR t.wait_until <= ?)`
+        );
+        params.push('완료', now, now);
         break;
       }
 
       case 'remaining': {
         // All incomplete todos (no year restriction)
-        conditions.push(`t.status != ?`);
-        params.push('완료');
+        conditions.push(`t.status != ?`, `(t.wait_until IS NULL OR t.wait_until <= ?)`);
+        params.push('완료', now);
         break;
       }
 
@@ -235,13 +246,6 @@ export class TodoRepository {
       default:
         // No date filtering for unknown view
         break;
-    }
-
-    // For all non-completed views, hide future wait_until items
-    // wait_until <= now means: show items whose wait_until time has passed or is exactly now
-    if (query.view && query.view !== 'completed') {
-      conditions.push(`(t.wait_until IS NULL OR t.wait_until <= ?)`);
-      params.push(now);
     }
 
     // Filter by status if provided (overrides view-based status filter)

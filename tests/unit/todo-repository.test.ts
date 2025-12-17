@@ -186,6 +186,8 @@ describe('TodoRepository', () => {
       tomorrow.setDate(tomorrow.getDate() + 1);
       const waitTomorrow = new Date(now);
       waitTomorrow.setDate(waitTomorrow.getDate() + 2);
+      const waitNextWeek = new Date(now);
+      waitNextWeek.setDate(waitNextWeek.getDate() + 8); // Beyond this week's Friday
       const overdueWaitTomorrow = new Date(now);
       overdueWaitTomorrow.setDate(overdueWaitTomorrow.getDate() - 1);
       const nextWeek = new Date(now);
@@ -228,7 +230,7 @@ describe('TodoRepository', () => {
           '진행중',
           'NONE'
         ),
-        // Wait-until in future (should be hidden from remaining view)
+        // Wait-until in future (should be hidden from remaining and week views)
         testEnv.DB.prepare(
           'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         ).bind(
@@ -236,8 +238,8 @@ describe('TodoRepository', () => {
           testWorkId,
           'Waiting',
           now.toISOString(),
-          waitTomorrow.toISOString(),
-          waitTomorrow.toISOString(),
+          waitNextWeek.toISOString(),
+          waitNextWeek.toISOString(),
           '진행중',
           'NONE'
         ),
