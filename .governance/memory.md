@@ -153,7 +153,7 @@
   - Complete hide/show with GPU-accelerated transform animation (translateX)
   - localStorage persistence with key `sidebar-collapsed`
   - Keyboard shortcut: Cmd+B (Mac) / Ctrl+B (Windows/Linux)
-  - Toggle button positioned outside sidebar (-right-10) to remain accessible when collapsed
+  - Toggle button positioned in AppLayout (fixed position) to remain accessible when collapsed
   - Content area margin transitions smoothly (300ms ease-in-out)
   - Accessibility: ARIA labels in Korean, prefers-reduced-motion support
 - **Key Design Decisions**:
@@ -161,8 +161,10 @@
   - React Context for state sharing (cleaner than prop drilling)
   - Custom hook pattern following existing `use-debounced-value` convention
   - 300ms timing across all transitions for coordinated animation
+  - **Toggle button in AppLayout**: Initially placed inside Sidebar (causing it to hide when collapsed), moved to AppLayout to remain visible
 - **Files Created**: `use-sidebar-collapse.ts`, `sidebar-context.tsx`
 - **Files Modified**: `sidebar.tsx`, `app-layout.tsx`, `index.css`
+- **Bug Fix**: Moved toggle button from Sidebar to AppLayout to prevent it from hiding when sidebar collapses
 - **Verification**: Build successful, no TypeScript errors
 
 ## Known Issues
