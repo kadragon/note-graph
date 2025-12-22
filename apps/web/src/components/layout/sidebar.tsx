@@ -1,11 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import { Button } from '@web/components/ui/button';
 import { ScrollArea } from '@web/components/ui/scroll-area';
+import { useSidebar } from '@web/contexts/sidebar-context';
 import { API } from '@web/lib/api';
 import { cn } from '@web/lib/utils';
 import {
   BarChart3,
   BriefcaseBusiness,
   Building2,
+  ChevronLeft,
   ChevronRight,
   Database,
   FileText,
@@ -108,8 +111,34 @@ export default function Sidebar() {
     queryFn: () => API.getMe(),
   });
 
+  const { isCollapsed, toggle } = useSidebar();
+
   return (
-    <aside className="fixed top-0 left-0 h-screen w-sidebar flex flex-col bg-background border-r">
+    <aside
+      data-collapsed={isCollapsed}
+      className={cn(
+        'fixed top-0 left-0 h-screen w-sidebar flex flex-col bg-background border-r',
+        'transition-transform duration-300 ease-in-out',
+        'data-[collapsed=true]:-translate-x-full'
+      )}
+    >
+      {/* Toggle Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggle}
+        aria-label={isCollapsed ? '사이드바 열기' : '사이드바 닫기'}
+        className={cn(
+          'absolute -right-10 top-14 z-50',
+          'h-8 w-8 rounded-r-md rounded-l-none',
+          'border border-l-0 bg-background',
+          'hover:bg-accent',
+          'transition-all duration-300'
+        )}
+      >
+        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+      </Button>
+
       {/* Header */}
       <div className="flex h-14 items-center border-b px-4">
         <NavLink to="/" className="flex items-center gap-2 font-semibold">

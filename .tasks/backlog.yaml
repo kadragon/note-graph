@@ -6,6 +6,10 @@ metadata:
   phases: []
 
   completed_phases:
+    - name: "Collapsible Sidebar"
+      tasks: [TASK-sidebar-001, TASK-sidebar-002, TASK-sidebar-003, TASK-sidebar-004, TASK-sidebar-005]
+      status: "✅ COMPLETE"
+      note: "Fully collapsible left sidebar with localStorage persistence, keyboard shortcuts (Cmd+B/Ctrl+B), and accessibility features"
     - name: "Deployment & Docs"
       tasks: [TASK-019]
       status: "✅ COMPLETE"

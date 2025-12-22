@@ -146,6 +146,25 @@
 ### Session 68: Search Page Unified Request Loop Fix (2025-12-16)
 - **TASK-068 (SPEC-search-ui-1)**: Fixed /search effect causing repeated unified search requests by normalizing the URL query and guarding per query value; added unit test; all tests green.
 
+### Session 69: Collapsible Sidebar (2025-12-22)
+- **TASK-sidebar-001 to TASK-sidebar-005 (SPEC-collapsible-sidebar-1)**: Implemented fully collapsible left sidebar with localStorage persistence and keyboard shortcuts
+- **Architecture**: Custom hook (`useSidebarCollapse`) → React Context (`SidebarProvider`) → Sidebar & AppLayout components
+- **Features**:
+  - Complete hide/show with GPU-accelerated transform animation (translateX)
+  - localStorage persistence with key `sidebar-collapsed`
+  - Keyboard shortcut: Cmd+B (Mac) / Ctrl+B (Windows/Linux)
+  - Toggle button positioned outside sidebar (-right-10) to remain accessible when collapsed
+  - Content area margin transitions smoothly (300ms ease-in-out)
+  - Accessibility: ARIA labels in Korean, prefers-reduced-motion support
+- **Key Design Decisions**:
+  - Transform-based animation instead of width (better performance, no reflow)
+  - React Context for state sharing (cleaner than prop drilling)
+  - Custom hook pattern following existing `use-debounced-value` convention
+  - 300ms timing across all transitions for coordinated animation
+- **Files Created**: `use-sidebar-collapse.ts`, `sidebar-context.tsx`
+- **Files Modified**: `sidebar.tsx`, `app-layout.tsx`, `index.css`
+- **Verification**: Build successful, no TypeScript errors
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

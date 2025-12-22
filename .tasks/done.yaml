@@ -1,3 +1,100 @@
+- task_id: TASK-sidebar-001
+  title: "Create useSidebarCollapse hook"
+  spec_id: SPEC-collapsible-sidebar-1
+  completed_at: "2025-12-22T06:30:00Z"
+  outcome: |
+    Implemented custom React hook for managing sidebar collapse state with localStorage persistence and keyboard shortcuts.
+    - Initialize from localStorage with fallback to false (lazy initialization for SSR compatibility)
+    - Persist state changes to localStorage with error handling for quota exceeded
+    - Global keyboard listener for Cmd+B (Mac) / Ctrl+B (Windows/Linux)
+    - Memoized toggle callback to prevent unnecessary re-renders
+    - Follows existing hook pattern from use-debounced-value.ts
+  test_results: |
+    ✓ npm run typecheck passed
+    ✓ npm run build passed (frontend build successful)
+  estimated_effort: 1h
+  actual_effort: ~0.5h
+  notes: |
+    Hook provides clean API: { isCollapsed, toggle, setIsCollapsed }
+
+- task_id: TASK-sidebar-002
+  title: "Create SidebarContext"
+  spec_id: SPEC-collapsible-sidebar-1
+  completed_at: "2025-12-22T06:35:00Z"
+  outcome: |
+    Created React Context to share sidebar state between Sidebar and AppLayout components.
+    - SidebarProvider component wraps entire app layout
+    - useSidebar consumer hook with error checking (throws if used outside provider)
+    - Type-safe context interface: { isCollapsed: boolean; toggle: () => void }
+    - Prevents prop drilling through layout hierarchy
+  test_results: |
+    ✓ npm run typecheck passed
+    ✓ npm run build passed
+  estimated_effort: 0.5h
+  actual_effort: ~0.3h
+  notes: |
+    Context needed because Sidebar and AppLayout are siblings in component tree
+
+- task_id: TASK-sidebar-003
+  title: "Update Sidebar component with toggle UI"
+  spec_id: SPEC-collapsible-sidebar-1
+  completed_at: "2025-12-22T06:45:00Z"
+  outcome: |
+    Added collapse functionality to Sidebar component with toggle button and animations.
+    - Imported ChevronLeft icon, Button component, useSidebar hook
+    - Added toggle button positioned at -right-10 (40px outside sidebar, remains visible when collapsed)
+    - Added data-collapsed attribute to <aside> element
+    - Implemented GPU-accelerated transform animation: translateX(-100%) on collapse
+    - 300ms ease-in-out transition timing
+    - ARIA labels in Korean: "사이드바 열기" / "사이드바 닫기"
+    - Icon changes based on state: ChevronRight when collapsed, ChevronLeft when expanded
+  test_results: |
+    ✓ npm run typecheck passed
+    ✓ npm run build passed
+  estimated_effort: 1h
+  actual_effort: ~0.5h
+  notes: |
+    Toggle button uses ghost variant and icon size for minimal visual footprint
+
+- task_id: TASK-sidebar-004
+  title: "Update AppLayout component with dynamic margin"
+  spec_id: SPEC-collapsible-sidebar-1
+  completed_at: "2025-12-22T06:50:00Z"
+  outcome: |
+    Updated AppLayout to adjust content area margin based on sidebar collapse state.
+    - Imported SidebarProvider and useSidebar
+    - Created AppLayoutInner component to access sidebar context
+    - Wrapped entire layout with SidebarProvider
+    - Replaced fixed ml-sidebar with dynamic data-based margin classes
+    - Smooth 300ms transition-[margin] animation synchronized with sidebar
+    - Content expands to full width when sidebar collapses
+  test_results: |
+    ✓ npm run typecheck passed
+    ✓ npm run build passed
+  estimated_effort: 0.5h
+  actual_effort: ~0.3h
+  notes: |
+    Two-component pattern (outer provider, inner consumer) ensures context availability
+
+- task_id: TASK-sidebar-005
+  title: "Add accessibility enhancements"
+  spec_id: SPEC-collapsible-sidebar-1
+  completed_at: "2025-12-22T06:55:00Z"
+  outcome: |
+    Added accessibility features for collapsible sidebar.
+    - Added prefers-reduced-motion media query to index.css
+    - Disables transitions (0ms duration) when user has motion reduction preference enabled
+    - Applies to both sidebar (aside[data-collapsed]) and content area (div[data-sidebar-collapsed])
+    - ARIA labels already implemented in TASK-sidebar-003
+    - Keyboard navigation supported via Cmd+B / Ctrl+B
+  test_results: |
+    ✓ npm run typecheck passed
+    ✓ npm run build passed
+  estimated_effort: 0.5h
+  actual_effort: ~0.2h
+  notes: |
+    Respects user accessibility preferences while maintaining full functionality
+
 - task_id: TASK-067
     title: "Fix Statistics Date Range Bug & Performance Optimization"
     spec_id: SPEC-stats-1
