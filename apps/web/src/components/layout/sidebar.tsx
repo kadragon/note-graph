@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { ScrollArea } from '@web/components/ui/scroll-area';
+import { useSidebar } from '@web/contexts/sidebar-context';
 import { API } from '@web/lib/api';
 import { cn } from '@web/lib/utils';
 import {
@@ -108,8 +109,17 @@ export default function Sidebar() {
     queryFn: () => API.getMe(),
   });
 
+  const { isCollapsed } = useSidebar();
+
   return (
-    <aside className="fixed top-0 left-0 h-screen w-sidebar flex flex-col bg-background border-r">
+    <aside
+      data-collapsed={isCollapsed}
+      className={cn(
+        'fixed top-0 left-0 h-screen w-sidebar flex flex-col bg-background border-r',
+        'transition-transform duration-300 ease-in-out',
+        'data-[collapsed=true]:-translate-x-full'
+      )}
+    >
       {/* Header */}
       <div className="flex h-14 items-center border-b px-4">
         <NavLink to="/" className="flex items-center gap-2 font-semibold">

@@ -264,3 +264,13 @@
     background-color: hsl(var(--muted-foreground) / 0.5);
   }
 }
+
+/* Accessibility: Respect reduced motion preference for sidebar collapse
+ * Trace: SPEC-collapsible-sidebar-1 / TASK-sidebar-005
+ */
+@media (prefers-reduced-motion: reduce) {
+  aside[data-collapsed],
+  div[data-sidebar-collapsed] {
+    transition-duration: 0ms !important;
+  }
+}

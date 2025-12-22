@@ -146,6 +146,31 @@
 ### Session 68: Search Page Unified Request Loop Fix (2025-12-16)
 - **TASK-068 (SPEC-search-ui-1)**: Fixed /search effect causing repeated unified search requests by normalizing the URL query and guarding per query value; added unit test; all tests green.
 
+### Session 69: Collapsible Sidebar (2025-12-22)
+- **TASK-sidebar-001 to TASK-sidebar-005 (SPEC-collapsible-sidebar-1)**: Implemented fully collapsible left sidebar with localStorage persistence and keyboard shortcuts
+- **Architecture**: Custom hook (`useSidebarCollapse`) → React Context (`SidebarProvider`) → Sidebar & AppLayout components
+- **Features**:
+  - Complete hide/show with GPU-accelerated transform animation (translateX)
+  - localStorage persistence with key `sidebar-collapsed`
+  - Keyboard shortcut: Cmd+B (Mac) / Ctrl+B (Windows/Linux)
+  - Toggle button positioned in AppLayout (fixed position) to remain accessible when collapsed
+  - Content area margin transitions smoothly (300ms ease-in-out)
+  - Accessibility: ARIA labels in Korean, prefers-reduced-motion support
+  - SSR-safe: No hydration mismatch errors
+- **Key Design Decisions**:
+  - Transform-based animation instead of width (better performance, no reflow)
+  - React Context for state sharing (cleaner than prop drilling)
+  - Custom hook pattern following existing `use-debounced-value` convention
+  - 300ms timing across all transitions for coordinated animation
+  - **Toggle button in AppLayout**: Initially placed inside Sidebar (causing it to hide when collapsed), moved to AppLayout to remain visible
+  - **SSR-safe localStorage**: Read localStorage in useEffect after hydration, not in useState initializer
+- **Files Created**: `use-sidebar-collapse.ts`, `sidebar-context.tsx`
+- **Files Modified**: `sidebar.tsx`, `app-layout.tsx`, `index.css`
+- **Bug Fixes**:
+  - Moved toggle button from Sidebar to AppLayout to prevent it from hiding when sidebar collapses
+  - Fixed SSR hydration mismatch by deferring localStorage read to useEffect with initialization flag
+- **Verification**: Build successful, no TypeScript errors
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -173,6 +198,7 @@
 - **Import Path Case Sensitivity**: Always use exact case in imports to ensure Linux/Windows compatibility
 - **Statistics Date Filtering**: Always apply date range filters to aggregate subqueries, not just WHERE clauses, to avoid counting historical data in period-based reports
 - **SQL Performance**: Prefer CTEs over correlated subqueries for aggregations; pre-filter and aggregate in CTE, then join for better scalability
+- **SSR Hydration**: Never read localStorage synchronously in useState initializer; use useEffect with initialization flag to prevent hydration mismatches between server and client
 <!-- Trace: spec_id=SPEC-governance-1, task_id=TASK-059 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-063 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-064 -->
