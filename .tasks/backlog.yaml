@@ -1,11 +1,140 @@
-tasks: []
+tasks:
+  # Phase 2: Medium Impact, Medium Risk
+  - task_id: TASK-REFACTOR-003
+    spec_id: SPEC-refactor-file-service
+    title: "Extract base file service class"
+    description: |
+      Create BaseFileService abstract class to eliminate duplication between
+      ProjectFileService and WorkNoteFileService. Extract common file validation,
+      R2 operations, and MIME type handling logic.
+    priority: high
+    risk: medium
+    estimated_effort: 4-6 hours
+    acceptance_criteria:
+      - BaseFileService abstract class created with common methods
+      - ProjectFileService extends BaseFileService
+      - WorkNoteFileService extends BaseFileService
+      - All existing file service tests pass
+      - ~400 LOC reduction achieved
+      - MIME type handling consistent across both services
+    files_affected:
+      - apps/worker/src/services/base-file-service.ts (new)
+      - apps/worker/src/services/project-file-service.ts
+      - apps/worker/src/services/work-note-file-service.ts
+    test_refs:
+      - tests/unit/project-file-service.test.ts
+      - tests/unit/work-note-file-service.test.ts (if exists)
+
+  - task_id: TASK-REFACTOR-004
+    spec_id: SPEC-refactor-repository-di
+    title: "Implement repository dependency injection"
+    description: |
+      Add repository instances to Hono context via middleware to eliminate
+      repository instantiation boilerplate in every route handler. Improves
+      testability and follows SOLID principles.
+    priority: medium
+    risk: medium
+    estimated_effort: 4-6 hours
+    acceptance_criteria:
+      - Repository middleware created and tested
+      - All repositories available via c.get('repositories')
+      - All route handlers updated to use injected repositories
+      - No 'new Repository()' calls in route handlers
+      - All 595 tests still passing
+      - Routes 10-15% shorter due to removed boilerplate
+    files_affected:
+      - apps/worker/src/middleware/repositories.ts (new)
+      - apps/worker/src/types/context.ts (extend context type)
+      - apps/worker/src/routes/*.ts (all route files)
+    test_refs:
+      - All existing route integration tests
+
+  # Phase 3: High Impact, High Risk
+  - task_id: TASK-REFACTOR-005
+    spec_id: SPEC-refactor-embedding-service
+    title: "Split embedding service by concern"
+    description: |
+      Separate embedding-service.ts into focused services:
+      - OpenAIEmbeddingService (just OpenAI API calls)
+      - VectorizeService (just Vectorize operations)
+      - EmbeddingProcessor (orchestration + retry logic)
+      This improves testability and separation of concerns.
+    priority: medium
+    risk: high
+    estimated_effort: 6-8 hours
+    acceptance_criteria:
+      - OpenAIEmbeddingService created with embed/embedBatch methods
+      - VectorizeService created with insert/delete/query methods
+      - EmbeddingProcessor orchestrates both services with retry logic
+      - All embedding-related tests pass
+      - Integration tests verify end-to-end embedding flow
+      - Each service can be tested in isolation
+      - RAG functionality unchanged
+    files_affected:
+      - apps/worker/src/services/openai-embedding-service.ts (new)
+      - apps/worker/src/services/vectorize-service.ts (new)
+      - apps/worker/src/services/embedding-processor.ts (refactor)
+      - apps/worker/src/services/embedding-service.ts (refactor or remove)
+      - apps/worker/src/services/rag-service.ts (update dependencies)
+    test_refs:
+      - tests/unit/embedding-service.test.ts
+      - tests/integration/rag.test.ts
+      - tests/search.test.ts
+
+  # Phase 4: Nice to Have
+  - task_id: TASK-REFACTOR-006
+    spec_id: SPEC-refactor-validation-middleware
+    title: "Create validation middleware factory"
+    description: |
+      Extract validation logic into reusable middleware factories (bodyValidator,
+      queryValidator) to eliminate manual validateBody/validateQuery calls in
+      every route handler.
+    priority: low
+    risk: low
+    estimated_effort: 3-4 hours
+    acceptance_criteria:
+      - bodyValidator middleware factory created
+      - queryValidator middleware factory created
+      - Validated data available via c.get('body') and c.get('query')
+      - 50+ manual validation calls replaced with middleware
+      - All validation tests pass
+      - Route handlers 5-10% shorter
+    files_affected:
+      - apps/worker/src/middleware/validation-middleware.ts (new)
+      - apps/worker/src/routes/*.ts (all route files)
+      - apps/worker/src/utils/validation.ts (may simplify)
+    test_refs:
+      - All route integration tests with validation
 
 metadata:
-  total_tasks: 0
-  total_estimated_effort: 0 hours
-  phases: []
+  total_tasks: 4
+  total_estimated_effort: 17-24 hours
+  phases:
+    - name: "Phase 2: File Service & Repository DI"
+      tasks: [TASK-REFACTOR-003, TASK-REFACTOR-004]
+      risk: medium
+      impact: medium
+      estimated_effort: 8-12 hours
+
+    - name: "Phase 3: Embedding Service Split"
+      tasks: [TASK-REFACTOR-005]
+      risk: high
+      impact: high
+      estimated_effort: 6-8 hours
+
+    - name: "Phase 4: Validation Middleware"
+      tasks: [TASK-REFACTOR-006]
+      risk: low
+      impact: low
+      estimated_effort: 3-4 hours
 
   completed_phases:
+    - name: "Phase 1: R2 Utility & Error Handler"
+      tasks: [TASK-REFACTOR-001, TASK-REFACTOR-002]
+      status: "✅ COMPLETE"
+      note: "R2 bucket utility extracted (~35 LOC removed), global error handler middleware applied to all 12 routes (~400 LOC removed). All 595 tests passing."
+      completed_date: "2025-12-23"
+
     - name: "Collapsible Sidebar"
       tasks: [TASK-sidebar-001, TASK-sidebar-002, TASK-sidebar-003, TASK-sidebar-004, TASK-sidebar-005]
       status: "✅ COMPLETE"

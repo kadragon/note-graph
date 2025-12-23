@@ -6,6 +6,7 @@
 import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { errorHandler } from '../middleware/error-handler';
 import { ProjectRepository } from '../repositories/project-repository';
 import {
   addParticipantSchema,
@@ -17,17 +18,14 @@ import {
 import { ProjectFileService } from '../services/project-file-service';
 import type { Env } from '../types/env';
 import { BadRequestError, ConflictError, NotFoundError } from '../types/errors';
+import { getR2Bucket } from '../utils/r2-access';
 import { validateBody, validateQuery } from '../utils/validation';
-
-// Interface for test environment global fallback
-interface GlobalWithTestBucket {
-  __TEST_R2_BUCKET?: R2Bucket;
-}
 
 const projects = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
 // All project routes require authentication
 projects.use('*', authMiddleware);
+projects.use('*', errorHandler);
 
 /**
  * POST /projects
@@ -93,12 +91,8 @@ projects.delete('/:projectId', async (c) => {
   const projectId = c.req.param('projectId');
   const repository = new ProjectRepository(c.env.DB);
 
-  // Get R2 bucket (in tests, env might not have R2_BUCKET at request time, so use test global fallback)
-  const r2Bucket =
-    c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-  if (!r2Bucket) {
-    throw new Error('R2_BUCKET not configured');
-  }
+  // Get R2 bucket
+  const r2Bucket = getR2Bucket(c.env);
 
   const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
@@ -343,12 +337,8 @@ projects.post('/:projectId/files', async (c) => {
   // Get authenticated user email
   const user = c.get('user');
 
-  // Get R2 bucket (in tests, env might not have R2_BUCKET at request time, so use test global fallback)
-  const r2Bucket =
-    c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-  if (!r2Bucket) {
-    throw new Error('R2_BUCKET not configured');
-  }
+  // Get R2 bucket
+  const r2Bucket = getR2Bucket(c.env);
 
   // Upload file using service
   const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
@@ -369,11 +359,7 @@ projects.post('/:projectId/files', async (c) => {
 projects.get('/:projectId/files', async (c) => {
   const projectId = c.req.param('projectId');
 
-  const r2Bucket =
-    c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-  if (!r2Bucket) {
-    throw new Error('R2_BUCKET not configured');
-  }
+  const r2Bucket = getR2Bucket(c.env);
 
   const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
@@ -389,11 +375,7 @@ projects.get('/:projectId/files', async (c) => {
 projects.get('/:projectId/files/:fileId', async (c) => {
   const fileId = c.req.param('fileId');
 
-  const r2Bucket =
-    c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-  if (!r2Bucket) {
-    throw new Error('R2_BUCKET not configured');
-  }
+  const r2Bucket = getR2Bucket(c.env);
 
   const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
@@ -412,11 +394,7 @@ projects.get('/:projectId/files/:fileId', async (c) => {
 projects.get('/:projectId/files/:fileId/download', async (c) => {
   const fileId = c.req.param('fileId');
 
-  const r2Bucket =
-    c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-  if (!r2Bucket) {
-    throw new Error('R2_BUCKET not configured');
-  }
+  const r2Bucket = getR2Bucket(c.env);
 
   const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
@@ -432,11 +410,7 @@ projects.get('/:projectId/files/:fileId/download', async (c) => {
 projects.delete('/:projectId/files/:fileId', async (c) => {
   const fileId = c.req.param('fileId');
 
-  const r2Bucket =
-    c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-  if (!r2Bucket) {
-    throw new Error('R2_BUCKET not configured');
-  }
+  const r2Bucket = getR2Bucket(c.env);
 
   const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 

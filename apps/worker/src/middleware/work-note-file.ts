@@ -11,11 +11,7 @@ import type { WorkNoteFile } from '@shared/types/work-note';
 import type { Context, Next } from 'hono';
 import { WorkNoteFileService } from '../services/work-note-file-service';
 import type { Env } from '../types/env';
-
-// Type for global test R2 bucket (used in tests)
-interface GlobalWithTestBucket {
-  __TEST_R2_BUCKET?: unknown;
-}
+import { getR2Bucket } from '../utils/r2-access';
 
 /**
  * Extended context with file service and file
@@ -38,12 +34,8 @@ export async function workNoteFileMiddleware(
   c: Context<{ Bindings: Env; Variables: FileContext }>,
   next: Next
 ): Promise<Response | void> {
-  // Get R2 bucket (supports test environment)
-  const r2Bucket =
-    c.env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
-  if (!r2Bucket) {
-    throw new Error('R2_BUCKET not configured');
-  }
+  // Get R2 bucket
+  const r2Bucket = getR2Bucket(c.env);
 
   // Create file service and add to context
   const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);

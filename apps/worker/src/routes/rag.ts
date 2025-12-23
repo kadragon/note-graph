@@ -2,10 +2,11 @@
 
 import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
+import { errorHandler } from '../middleware/error-handler';
 import { RagQueryRequestSchema } from '../schemas/rag';
 import { RagService } from '../services/rag-service';
 import type { Env } from '../types/env';
-import { BadRequestError, RateLimitError } from '../types/errors';
+import { BadRequestError } from '../types/errors';
 import { validateBody } from '../utils/validation';
 
 type Variables = {
@@ -13,6 +14,8 @@ type Variables = {
 };
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+app.use('*', errorHandler);
 
 /**
  * POST /rag/query
@@ -39,29 +42,16 @@ app.post('/query', async (c) => {
   // Execute RAG query
   const ragService = new RagService(c.env);
 
-  try {
-    const result = await ragService.query(body.query, {
-      scope: body.scope,
-      personId: body.personId,
-      deptName: body.deptName,
-      workId: body.workId,
-      projectId: body.projectId,
-      topK: body.topK,
-    });
+  const result = await ragService.query(body.query, {
+    scope: body.scope,
+    personId: body.personId,
+    deptName: body.deptName,
+    workId: body.workId,
+    projectId: body.projectId,
+    topK: body.topK,
+  });
 
-    return c.json(result);
-  } catch (error) {
-    if (error instanceof RateLimitError) {
-      return c.json(
-        {
-          code: 'AI_RATE_LIMIT',
-          message: error.message,
-        },
-        429
-      );
-    }
-    throw error;
-  }
+  return c.json(result);
 });
 
 export default app;
