@@ -68,12 +68,32 @@ export class WorkNoteService {
   /**
    * Create work note with automatic chunking and embedding
    * D1 write always succeeds; embedding failures are logged but don't fail the operation
+   *
+   * @param data - Work note creation data
+   * @param options - Options for embedding (skipEmbedding to defer to background)
+   * @returns Work note and optional embedding promise for background processing
    */
-  async create(data: CreateWorkNoteInput): Promise<WorkNote> {
+  async create(
+    data: CreateWorkNoteInput,
+    options?: { skipEmbedding?: boolean }
+  ): Promise<{ workNote: WorkNote; embeddingPromise?: Promise<void> }> {
     // Create work note in D1
     const workNote = await this.repository.create(data);
 
-    // Chunk and embed for RAG (best-effort, non-blocking on failure)
+    // Skip embedding if requested (for background processing via ctx.waitUntil)
+    if (options?.skipEmbedding) {
+      const embeddingPromise = this.chunkAndEmbedWorkNote(workNote, data).catch((error) => {
+        console.error('[WorkNoteService] Failed to embed work note:', {
+          workId: workNote.workId,
+          title: workNote.title,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Note: embedded_at remains NULL and can be retried via /admin/embed-pending
+      });
+      return { workNote, embeddingPromise };
+    }
+
+    // Synchronous embedding (original behavior for backward compatibility)
     try {
       await this.chunkAndEmbedWorkNote(workNote, data);
     } catch (error) {
@@ -85,18 +105,40 @@ export class WorkNoteService {
       // Note: embedded_at remains NULL and can be retried via /admin/embed-pending
     }
 
-    return workNote;
+    return { workNote };
   }
 
   /**
    * Update work note with automatic chunking and embedding
    * D1 write always succeeds; embedding failures are logged but don't fail the operation
+   *
+   * @param workId - Work note ID to update
+   * @param data - Work note update data
+   * @param options - Options for embedding (skipEmbedding to defer to background)
+   * @returns Work note and optional embedding promise for background processing
    */
-  async update(workId: string, data: UpdateWorkNoteInput): Promise<WorkNote> {
+  async update(
+    workId: string,
+    data: UpdateWorkNoteInput,
+    options?: { skipEmbedding?: boolean }
+  ): Promise<{ workNote: WorkNote; embeddingPromise?: Promise<void> }> {
     // Update work note in D1
     const workNote = await this.repository.update(workId, data);
 
-    // Re-chunk and re-embed for RAG (best-effort, non-blocking on failure)
+    // Skip embedding if requested (for background processing via ctx.waitUntil)
+    if (options?.skipEmbedding) {
+      const embeddingPromise = this.rechunkAndEmbedWorkNote(workNote, data).catch((error) => {
+        console.error('[WorkNoteService] Failed to re-embed work note:', {
+          workId: workNote.workId,
+          title: workNote.title,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Note: embedded_at remains NULL and can be retried via /admin/embed-pending
+      });
+      return { workNote, embeddingPromise };
+    }
+
+    // Synchronous embedding (original behavior for backward compatibility)
     try {
       await this.rechunkAndEmbedWorkNote(workNote, data);
     } catch (error) {
@@ -108,7 +150,7 @@ export class WorkNoteService {
       // Note: embedded_at remains NULL and can be retried via /admin/embed-pending
     }
 
-    return workNote;
+    return { workNote };
   }
 
   /**
