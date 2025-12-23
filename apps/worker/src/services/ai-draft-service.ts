@@ -63,11 +63,12 @@ export class AIDraftService {
   /**
    * Transform raw LLM draft to proper WorkNoteDraft format
    */
-  private transformDraft(rawDraft: RawWorkNoteDraft): WorkNoteDraft {
+  private transformDraft(rawDraft: RawWorkNoteDraft, personIds?: string[]): WorkNoteDraft {
     return {
       title: rawDraft.title,
       content: rawDraft.content,
       category: rawDraft.category,
+      relatedPersonIds: personIds && personIds.length > 0 ? personIds : undefined,
       todos: rawDraft.todos.map((todo) => this.transformTodo(todo)),
     };
   }
@@ -100,8 +101,8 @@ export class AIDraftService {
         throw new Error('Invalid draft: missing title or content');
       }
 
-      // Transform to proper format with default due dates
-      return this.transformDraft(rawDraft);
+      // Transform to proper format with default due dates and personIds
+      return this.transformDraft(rawDraft, options?.personIds);
     } catch (error) {
       console.error('Error parsing draft response:', error);
       throw new Error('Failed to parse AI response. Please try again.');
@@ -144,8 +145,8 @@ export class AIDraftService {
         throw new Error('Invalid draft: missing title or content');
       }
 
-      // Transform to proper format with default due dates
-      return this.transformDraft(rawDraft);
+      // Transform to proper format with default due dates and personIds
+      return this.transformDraft(rawDraft, options?.personIds);
     } catch (error) {
       console.error('Error parsing draft response:', error);
       throw new Error('Failed to parse AI response. Please try again.');
@@ -221,7 +222,7 @@ ${inputText}${categoryHint}${deptHint}
 1. 간결한 제목 (한국어)
 2. 잘 정리된 내용 (한국어, 마크다운 포맷 사용)
 ${categoryInstruction}
-4. 3-5개의 관련 할 일 항목과 제안 기한
+4. 내용에 적합한 개수의 관련 할 일 항목과 제안 기한 (필요한 만큼만 생성, 억지로 개수를 맞추지 말 것)
 
 중요: 내용은 핵심만 간결하게 작성하세요. 불필요한 설명이나 반복을 피하고, 실제 업무에 필요한 정보만 포함하세요.
 
@@ -302,7 +303,7 @@ ${inputText}${categoryHint}${deptHint}${contextText}
 1. 간결한 제목 (한국어, 유사 노트의 제목 스타일 참고)
 2. 잘 정리된 내용 (한국어, 마크다운 포맷 사용, 유사 노트의 구조 참고)
 ${categoryInstruction}
-4. 3-5개의 관련 할 일 항목과 제안 기한 (유사 노트의 할 일 패턴 참고)
+4. 내용에 적합한 개수의 관련 할 일 항목과 제안 기한 (유사 노트의 할 일 패턴 참고, 필요한 만큼만 생성)
 
 중요: 내용은 핵심만 간결하게 작성하세요. 불필요한 설명이나 반복을 피하고, 실제 업무에 필요한 정보만 포함하세요.
 
@@ -336,7 +337,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
 내용: ${workNote.contentRaw}
 카테고리: ${workNote.category || '없음'}${context}
 
-이 업무노트를 기반으로 3-5개의 실행 가능한 할 일을 제안해주세요.
+이 업무노트를 기반으로 실행 가능한 할 일을 제안해주세요. (내용에 적합한 개수만큼 생성, 억지로 개수를 맞추지 말 것)
 
 JSON 배열로 반환:
 [

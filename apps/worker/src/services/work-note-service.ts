@@ -68,47 +68,45 @@ export class WorkNoteService {
   /**
    * Create work note with automatic chunking and embedding
    * D1 write always succeeds; embedding failures are logged but don't fail the operation
+   *
+   * @param data - Work note creation data
+   * @param options - Options for embedding (skipEmbedding to defer to background)
+   * @returns Work note and optional embedding promise for background processing
    */
-  async create(data: CreateWorkNoteInput): Promise<WorkNote> {
-    // Create work note in D1
+  async create(
+    data: CreateWorkNoteInput,
+    options?: { skipEmbedding?: boolean }
+  ): Promise<{ workNote: WorkNote; embeddingPromise?: Promise<void> }> {
     const workNote = await this.repository.create(data);
-
-    // Chunk and embed for RAG (best-effort, non-blocking on failure)
-    try {
-      await this.chunkAndEmbedWorkNote(workNote, data);
-    } catch (error) {
-      console.error('[WorkNoteService] Failed to embed work note:', {
-        workId: workNote.workId,
-        title: workNote.title,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      // Note: embedded_at remains NULL and can be retried via /admin/embed-pending
-    }
-
-    return workNote;
+    const embeddingResult = await this.handleEmbedding(
+      this.chunkAndEmbedWorkNote(workNote, data),
+      workNote,
+      options?.skipEmbedding
+    );
+    return { workNote, ...embeddingResult };
   }
 
   /**
    * Update work note with automatic chunking and embedding
    * D1 write always succeeds; embedding failures are logged but don't fail the operation
+   *
+   * @param workId - Work note ID to update
+   * @param data - Work note update data
+   * @param options - Options for embedding (skipEmbedding to defer to background)
+   * @returns Work note and optional embedding promise for background processing
    */
-  async update(workId: string, data: UpdateWorkNoteInput): Promise<WorkNote> {
-    // Update work note in D1
+  async update(
+    workId: string,
+    data: UpdateWorkNoteInput,
+    options?: { skipEmbedding?: boolean }
+  ): Promise<{ workNote: WorkNote; embeddingPromise?: Promise<void> }> {
     const workNote = await this.repository.update(workId, data);
-
-    // Re-chunk and re-embed for RAG (best-effort, non-blocking on failure)
-    try {
-      await this.rechunkAndEmbedWorkNote(workNote, data);
-    } catch (error) {
-      console.error('[WorkNoteService] Failed to re-embed work note:', {
-        workId: workNote.workId,
-        title: workNote.title,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      // Note: embedded_at remains NULL and can be retried via /admin/embed-pending
-    }
-
-    return workNote;
+    const embeddingResult = await this.handleEmbedding(
+      this.rechunkAndEmbedWorkNote(workNote, data),
+      workNote,
+      options?.skipEmbedding
+    );
+    return { workNote, ...embeddingResult };
   }
 
   /**
@@ -196,6 +194,48 @@ export class WorkNoteService {
 
     // Get first person's department via repository
     return this.repository.getDeptNameForPerson(personIds[0]);
+  }
+
+  /**
+   * Handle embedding task with optional background processing
+   * Wraps embedding with error handling and logging
+   *
+   * @param embeddingTask - The embedding promise to execute
+   * @param workNote - Work note being embedded
+   * @param skipEmbedding - If true, returns promise for background execution; if false, awaits synchronously
+   * @returns Object with optional embeddingPromise for background processing
+   */
+  private async handleEmbedding(
+    embeddingTask: Promise<void>,
+    workNote: WorkNote,
+    skipEmbedding?: boolean
+  ): Promise<{ embeddingPromise?: Promise<void> }> {
+    const wrappedTask = embeddingTask.catch((error) => {
+      this.logEmbeddingError(workNote, error);
+    });
+
+    if (skipEmbedding) {
+      return { embeddingPromise: wrappedTask };
+    }
+
+    await wrappedTask;
+    return {};
+  }
+
+  /**
+   * Log embedding error with work note context
+   * Used for both create and update operations
+   *
+   * @param workNote - Work note that failed to embed
+   * @param error - The error that occurred
+   */
+  private logEmbeddingError(workNote: WorkNote, error: unknown): void {
+    console.error('[WorkNoteService] Failed to embed work note:', {
+      workId: workNote.workId,
+      title: workNote.title,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    // Note: embedded_at remains NULL and can be retried via /admin/embed-pending
   }
 
   /**

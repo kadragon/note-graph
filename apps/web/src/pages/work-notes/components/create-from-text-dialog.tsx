@@ -1,5 +1,6 @@
 // Trace: SPEC-ai-draft-refs-1, SPEC-worknote-1, TASK-027, TASK-029, TASK-032
 
+import { AssigneeSelector } from '@web/components/assignee-selector';
 import { DraftEditorForm } from '@web/components/draft-editor-form';
 import { Button } from '@web/components/ui/button';
 import {
@@ -24,6 +25,7 @@ interface CreateFromTextDialogProps {
 
 export function CreateFromTextDialog({ open, onOpenChange }: CreateFromTextDialogProps) {
   const [inputText, setInputText] = useState('');
+  const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [draftGenerated, setDraftGenerated] = useState(false);
 
   const generateMutation = useGenerateDraftWithSimilar();
@@ -46,6 +48,7 @@ export function CreateFromTextDialog({ open, onOpenChange }: CreateFromTextDialo
     try {
       const result = await generateMutation.mutateAsync({
         inputText: inputText.trim(),
+        personIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
       });
 
       actions.populateDraft(result.draft, result.references);
@@ -57,6 +60,7 @@ export function CreateFromTextDialog({ open, onOpenChange }: CreateFromTextDialo
 
   const resetForm = useCallback(() => {
     setInputText('');
+    setSelectedPersonIds([]);
     setDraftGenerated(false);
     actions.resetForm();
   }, [actions]);
@@ -103,6 +107,22 @@ export function CreateFromTextDialog({ open, onOpenChange }: CreateFromTextDialo
                   className="min-h-[200px]"
                   disabled={generateMutation.isPending}
                 />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>담당자 (선택사항)</Label>
+                {data.persons.length === 0 && !data.personsLoading ? (
+                  <p className="text-sm text-muted-foreground">
+                    등록된 사람이 없습니다. 먼저 사람을 추가해주세요.
+                  </p>
+                ) : (
+                  <AssigneeSelector
+                    persons={data.persons}
+                    selectedPersonIds={selectedPersonIds}
+                    onSelectionChange={setSelectedPersonIds}
+                    isLoading={data.personsLoading}
+                  />
+                )}
               </div>
 
               <Button
