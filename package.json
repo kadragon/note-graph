@@ -9,7 +9,7 @@
     "dev:frontend": "vite",
     "dev:backend": "wrangler dev",
     "build": "npm run build:frontend && npm run build:backend",
-    "build:frontend": "vite build",
+    "build:frontend": "npm run generate:pwa-icons && vite build",
     "build:backend": "tsc --project apps/worker/tsconfig.json",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
