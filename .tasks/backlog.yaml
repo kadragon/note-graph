@@ -1,11 +1,37 @@
-tasks: []
+tasks:
+  # Phase 2: Medium Impact, Medium Risk
+  # Phase 3: High Impact, High Risk
+  # Phase 4: Nice to Have
 
 metadata:
-  total_tasks: 0
-  total_estimated_effort: 0 hours
-  phases: []
+  total_tasks: 4
+  total_estimated_effort: 17-24 hours
+  phases:
+    - name: "Phase 2: File Service & Repository DI"
+      tasks: [TASK-REFACTOR-003, TASK-REFACTOR-004]
+      risk: medium
+      impact: medium
+      estimated_effort: 8-12 hours
+
+    - name: "Phase 3: Embedding Service Split"
+      tasks: [TASK-REFACTOR-005]
+      risk: high
+      impact: high
+      estimated_effort: 6-8 hours
+
+    - name: "Phase 4: Validation Middleware"
+      tasks: [TASK-REFACTOR-006]
+      risk: low
+      impact: low
+      estimated_effort: 3-4 hours
 
   completed_phases:
+    - name: "Phase 1: R2 Utility & Error Handler"
+      tasks: [TASK-REFACTOR-001, TASK-REFACTOR-002]
+      status: "✅ COMPLETE"
+      note: "R2 bucket utility extracted (~35 LOC removed), global error handler middleware applied to all 12 routes (~400 LOC removed). All 595 tests passing."
+      completed_date: "2025-12-23"
+
     - name: "Collapsible Sidebar"
       tasks: [TASK-sidebar-001, TASK-sidebar-002, TASK-sidebar-003, TASK-sidebar-004, TASK-sidebar-005]
       status: "✅ COMPLETE"

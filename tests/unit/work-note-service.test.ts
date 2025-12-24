@@ -25,10 +25,13 @@ describe('WorkNoteService.findSimilarNotes', () => {
   it('returns workId and similarity score for matched notes above threshold', async () => {
     const service = new WorkNoteService(dummyEnv);
 
-    const mockSearch = vi.fn().mockResolvedValue([
-      { id: 'WORK-1#chunk0', score: 0.9, metadata: {} },
-      { id: 'WORK-2#chunk1', score: 0.4, metadata: {} },
-    ]);
+    const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
+    const mockQuery = vi.fn().mockResolvedValue({
+      matches: [
+        { id: 'WORK-1#chunk0', score: 0.9, metadata: {} },
+        { id: 'WORK-2#chunk1', score: 0.4, metadata: {} },
+      ],
+    });
 
     const mockFindByIds = vi.fn().mockResolvedValue([
       {
@@ -54,7 +57,8 @@ describe('WorkNoteService.findSimilarNotes', () => {
     const mockFindTodosByWorkIds = vi.fn().mockResolvedValue(new Map());
 
     // Override internal services with mocks
-    (service as unknown as { vectorizeService: unknown }).vectorizeService = { search: mockSearch };
+    (service as unknown as { vectorizeService: unknown }).vectorizeService = { query: mockQuery };
+    (service as unknown as { embeddingService: unknown }).embeddingService = { embed: mockEmbed };
     (service as unknown as { repository: unknown }).repository = {
       findByIds: mockFindByIds,
       findTodosByWorkIds: mockFindTodosByWorkIds,
@@ -79,9 +83,10 @@ describe('WorkNoteService.findSimilarNotes', () => {
   it('includes todos in similar notes results', async () => {
     const service = new WorkNoteService(dummyEnv);
 
-    const mockSearch = vi
-      .fn()
-      .mockResolvedValue([{ id: 'WORK-1#chunk0', score: 0.85, metadata: {} }]);
+    const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
+    const mockQuery = vi.fn().mockResolvedValue({
+      matches: [{ id: 'WORK-1#chunk0', score: 0.85, metadata: {} }],
+    });
 
     const mockFindByIds = vi.fn().mockResolvedValue([
       {
@@ -116,7 +121,8 @@ describe('WorkNoteService.findSimilarNotes', () => {
     const mockFindTodosByWorkIds = vi.fn().mockResolvedValue(todosMap);
 
     // Override internal services with mocks
-    (service as unknown as { vectorizeService: unknown }).vectorizeService = { search: mockSearch };
+    (service as unknown as { vectorizeService: unknown }).vectorizeService = { query: mockQuery };
+    (service as unknown as { embeddingService: unknown }).embeddingService = { embed: mockEmbed };
     (service as unknown as { repository: unknown }).repository = {
       findByIds: mockFindByIds,
       findTodosByWorkIds: mockFindTodosByWorkIds,
@@ -144,9 +150,10 @@ describe('WorkNoteService.findSimilarNotes', () => {
   it('returns empty todos array when work note has no todos', async () => {
     const service = new WorkNoteService(dummyEnv);
 
-    const mockSearch = vi
-      .fn()
-      .mockResolvedValue([{ id: 'WORK-1#chunk0', score: 0.8, metadata: {} }]);
+    const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
+    const mockQuery = vi.fn().mockResolvedValue({
+      matches: [{ id: 'WORK-1#chunk0', score: 0.8, metadata: {} }],
+    });
 
     const mockFindByIds = vi.fn().mockResolvedValue([
       {
@@ -164,7 +171,8 @@ describe('WorkNoteService.findSimilarNotes', () => {
     const mockFindTodosByWorkIds = vi.fn().mockResolvedValue(new Map());
 
     // Override internal services with mocks
-    (service as unknown as { vectorizeService: unknown }).vectorizeService = { search: mockSearch };
+    (service as unknown as { vectorizeService: unknown }).vectorizeService = { query: mockQuery };
+    (service as unknown as { embeddingService: unknown }).embeddingService = { embed: mockEmbed };
     (service as unknown as { repository: unknown }).repository = {
       findByIds: mockFindByIds,
       findTodosByWorkIds: mockFindTodosByWorkIds,

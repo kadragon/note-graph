@@ -1,44 +1,42 @@
-// Trace: SPEC-ai-draft-1, SPEC-ai-draft-refs-1, TASK-013, TASK-029
+// Trace: SPEC-ai-draft-1, SPEC-ai-draft-refs-1, SPEC-refactor-repository-di, TASK-013, TASK-029, TASK-REFACTOR-004
 /**
  * AI-powered work note draft generation routes
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import type { Context, Next } from 'hono';
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
-import { TaskCategoryRepository } from '../repositories/task-category-repository';
+import { errorHandler } from '../middleware/error-handler';
+import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { DraftFromTextRequestSchema, TodoSuggestionsRequestSchema } from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
 import { WorkNoteService } from '../services/work-note-service';
-import type { Env } from '../types/env';
-import { NotFoundError, RateLimitError } from '../types/errors';
-import { validateBody } from '../utils/validation';
+import type { AppContext, AppVariables } from '../types/context';
+import { NotFoundError } from '../types/errors';
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
 const SIMILARITY_SCORE_THRESHOLD = 0.7;
 
 type Variables = {
-  user: AuthUser;
   activeCategoryNames: string[];
-};
+} & AppVariables;
 
-const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+type AiDraftContext = { Bindings: AppContext['Bindings']; Variables: Variables };
+
+const app = new Hono<AiDraftContext>();
 
 // All AI draft routes require authentication
 app.use('*', authMiddleware);
+app.use('*', errorHandler);
 
 /**
  * Middleware to fetch active categories for AI suggestion
  * Attaches activeCategoryNames to context for draft generation routes
  */
-const activeCategoriesMiddleware = async (
-  c: Context<{ Bindings: Env; Variables: Variables }>,
-  next: Next
-) => {
-  const categoryRepo = new TaskCategoryRepository(c.env.DB);
-  const activeCategories = await categoryRepo.findAll(undefined, 100, true);
+const activeCategoriesMiddleware = async (c: Context<AiDraftContext>, next: Next) => {
+  const { taskCategories } = c.get('repositories');
+  const activeCategories = await taskCategories.findAll(undefined, 100, true);
   c.set(
     'activeCategoryNames',
     activeCategories.map((cat) => cat.name)
@@ -50,9 +48,12 @@ const activeCategoriesMiddleware = async (
  * POST /ai/work-notes/draft-from-text
  * Generate work note draft from unstructured text
  */
-app.post('/work-notes/draft-from-text', activeCategoriesMiddleware, async (c) => {
-  try {
-    const body = await validateBody(c, DraftFromTextRequestSchema);
+app.post(
+  '/work-notes/draft-from-text',
+  activeCategoriesMiddleware,
+  bodyValidator(DraftFromTextRequestSchema),
+  async (c) => {
+    const body = getValidatedBody<typeof DraftFromTextRequestSchema>(c);
     const activeCategoryNames = c.get('activeCategoryNames');
 
     const aiDraftService = new AIDraftService(c.env);
@@ -64,27 +65,19 @@ app.post('/work-notes/draft-from-text', activeCategoriesMiddleware, async (c) =>
     });
 
     return c.json({ draft, references: [] });
-  } catch (error) {
-    if (error instanceof RateLimitError) {
-      return c.json(
-        {
-          code: 'AI_RATE_LIMIT',
-          message: error.message,
-        },
-        429
-      );
-    }
-    throw error;
   }
-});
+);
 
 /**
  * POST /ai/work-notes/draft-from-text-with-similar
  * Generate work note draft from unstructured text with similar work notes as context
  */
-app.post('/work-notes/draft-from-text-with-similar', activeCategoriesMiddleware, async (c) => {
-  try {
-    const body = await validateBody(c, DraftFromTextRequestSchema);
+app.post(
+  '/work-notes/draft-from-text-with-similar',
+  activeCategoriesMiddleware,
+  bodyValidator(DraftFromTextRequestSchema),
+  async (c) => {
+    const body = getValidatedBody<typeof DraftFromTextRequestSchema>(c);
     const activeCategoryNames = c.get('activeCategoryNames');
 
     // Search for similar work notes using shared service
@@ -120,28 +113,19 @@ app.post('/work-notes/draft-from-text-with-similar', activeCategoriesMiddleware,
     }));
 
     return c.json({ draft, references });
-  } catch (error) {
-    if (error instanceof RateLimitError) {
-      return c.json(
-        {
-          code: 'AI_RATE_LIMIT',
-          message: error.message,
-        },
-        429
-      );
-    }
-    throw error;
   }
-});
+);
 
 /**
  * POST /ai/work-notes/:workId/todo-suggestions
  * Generate todo suggestions for existing work note
  */
-app.post('/work-notes/:workId/todo-suggestions', async (c) => {
-  try {
-    const { workId } = c.req.param();
-    const body = await validateBody(c, TodoSuggestionsRequestSchema);
+app.post(
+  '/work-notes/:workId/todo-suggestions',
+  bodyValidator(TodoSuggestionsRequestSchema),
+  async (c) => {
+    const workId = c.req.param('workId');
+    const body = getValidatedBody<typeof TodoSuggestionsRequestSchema>(c);
 
     // Fetch work note
     const workNoteService = new WorkNoteService(c.env);
@@ -156,18 +140,7 @@ app.post('/work-notes/:workId/todo-suggestions', async (c) => {
     const todos = await aiDraftService.generateTodoSuggestions(workNote, body.contextText);
 
     return c.json(todos);
-  } catch (error) {
-    if (error instanceof RateLimitError) {
-      return c.json(
-        {
-          code: 'AI_RATE_LIMIT',
-          message: error.message,
-        },
-        429
-      );
-    }
-    throw error;
   }
-});
+);
 
 export default app;

@@ -1,4 +1,4 @@
-// Trace: SPEC-project-1, TASK-044
+// Trace: SPEC-project-1, SPEC-refactor-file-service, TASK-044, TASK-REFACTOR-003
 
 import { env } from 'cloudflare:test';
 import type {
@@ -58,6 +58,7 @@ class MockR2Bucket implements R2Bucket {
 interface TestProjectFileService extends ProjectFileService {
   vectorizeService: typeof mockVectorize;
   textExtractor: typeof mockTextExtractor;
+  embeddingProcessor: { upsertChunks: ReturnType<typeof vi.fn> };
 }
 
 describe('ProjectFileService', () => {
@@ -65,9 +66,11 @@ describe('ProjectFileService', () => {
   let r2: MockR2Bucket;
   let service: ProjectFileService;
   let mockVectorize: {
-    upsertFileChunks: ReturnType<typeof vi.fn>;
-    deleteFileChunks: ReturnType<typeof vi.fn>;
+    insert: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+    query: ReturnType<typeof vi.fn>;
   };
+  let mockEmbeddingProcessor: { upsertChunks: ReturnType<typeof vi.fn> };
   let mockTextExtractor: { extractText: ReturnType<typeof vi.fn> };
 
   const insertProject = async (projectId: string) => {
@@ -89,14 +92,18 @@ describe('ProjectFileService', () => {
     // Fresh mocks
     r2 = new MockR2Bucket();
     mockVectorize = {
-      upsertFileChunks: vi.fn().mockResolvedValue(undefined),
-      deleteFileChunks: vi.fn().mockResolvedValue(undefined),
+      insert: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+      query: vi.fn().mockResolvedValue({ matches: [] }),
+    };
+    mockEmbeddingProcessor = {
+      upsertChunks: vi.fn().mockResolvedValue(undefined),
     };
     mockTextExtractor = {
       extractText: vi.fn().mockResolvedValue({ success: true, text: '파일 내용입니다' }),
     };
 
-    // Stub fetch used by EmbeddingService
+    // Stub fetch used by OpenAIEmbeddingService
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -108,7 +115,7 @@ describe('ProjectFileService', () => {
 
     // Override internals for determinism
     (service as TestProjectFileService).vectorizeService = mockVectorize;
-    (service as TestProjectFileService).textExtractor = mockTextExtractor;
+    (service as TestProjectFileService).embeddingProcessor = mockEmbeddingProcessor;
     (service as TestProjectFileService).textExtractor = mockTextExtractor;
   });
 
@@ -139,9 +146,9 @@ describe('ProjectFileService', () => {
     // Assert - R2 stored at expected key
     expect(r2.storage.has(result.r2Key)).toBe(true);
 
-    // Assert - Vectorize upsert called with project metadata
-    expect(mockVectorize.upsertFileChunks).toHaveBeenCalledTimes(1);
-    const chunksArg = mockVectorize.upsertFileChunks.mock.calls[0][1];
+    // Assert - EmbeddingProcessor.upsertChunks called with project metadata
+    expect(mockEmbeddingProcessor.upsertChunks).toHaveBeenCalledTimes(1);
+    const chunksArg = mockEmbeddingProcessor.upsertChunks.mock.calls[0][0];
     expect(chunksArg[0].metadata.project_id).toBe('PROJECT-123');
   });
 
@@ -171,6 +178,22 @@ describe('ProjectFileService', () => {
     ).rejects.toBeInstanceOf(BadRequestError);
   });
 
+  it('uploads file when browser sends empty mime type using extension fallback', async () => {
+    await insertProject('PROJECT-123');
+    const file = new Blob(['PDF content']); // empty mime type
+
+    const result = await service.uploadFile({
+      projectId: 'PROJECT-123',
+      file,
+      originalName: 'spec.pdf',
+      uploadedBy: 'tester@example.com',
+    });
+
+    expect(result.fileType).toBe('application/pdf');
+    const stored = r2.storage.get(result.r2Key);
+    expect(stored?.httpMetadata?.contentType).toBe('application/pdf');
+  });
+
   it('deletes file, marking DB and removing embeddings', async () => {
     // Arrange - seed DB and R2
     const now = new Date().toISOString();
@@ -192,6 +215,12 @@ describe('ProjectFileService', () => {
       )
       .run();
     r2.storage.set('projects/PROJECT-1/files/FILE-123', { value: new Blob(['pdf']) });
+    mockVectorize.query.mockResolvedValue({
+      matches: [
+        { id: 'FILE-123#chunk0', score: 1 },
+        { id: 'FILE-123#chunk1', score: 1 },
+      ],
+    });
 
     // Act
     await service.deleteFile('FILE-123');
@@ -208,7 +237,8 @@ describe('ProjectFileService', () => {
     expect(r2.storage.has('projects/PROJECT-1/files/FILE-123')).toBe(false);
 
     // Assert - embeddings deletion invoked
-    expect(mockVectorize.deleteFileChunks).toHaveBeenCalledWith('FILE-123');
+    expect(mockVectorize.query).toHaveBeenCalled();
+    expect(mockVectorize.delete).toHaveBeenCalledWith(['FILE-123#chunk0', 'FILE-123#chunk1']);
   });
 
   it('returns download URL and streams file with headers', async () => {

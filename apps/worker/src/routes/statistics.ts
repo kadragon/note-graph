@@ -1,22 +1,21 @@
-// Trace: SPEC-stats-1, TASK-047
+// Trace: SPEC-stats-1, SPEC-refactor-repository-di, TASK-047, TASK-REFACTOR-004
 /**
  * Statistics routes for work note completion metrics
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
-import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { authMiddleware } from '../middleware/auth';
+import { errorHandler } from '../middleware/error-handler';
+import { getValidatedQuery, queryValidator } from '../middleware/validation-middleware';
 import { statisticsQuerySchema } from '../schemas/statistics';
 import { StatisticsService } from '../services/statistics-service';
-import type { Env } from '../types/env';
-import { DomainError } from '../types/errors';
-import { validateQuery } from '../utils/validation';
+import type { AppContext } from '../types/context';
 
-const statistics = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+const statistics = new Hono<AppContext>();
 
 // All statistics routes require authentication
 statistics.use('*', authMiddleware);
+statistics.use('*', errorHandler);
 
 /**
  * GET /statistics - Get work note statistics with period filters
@@ -30,39 +29,20 @@ statistics.use('*', authMiddleware);
  * - deptName: string (optional filter)
  * - category: string (optional filter)
  */
-statistics.get('/', async (c) => {
-  try {
-    const query = validateQuery(c, statisticsQuerySchema);
-    const service = new StatisticsService(c.env);
+statistics.get('/', queryValidator(statisticsQuerySchema), async (c) => {
+  const query = getValidatedQuery<typeof statisticsQuerySchema>(c);
+  const service = new StatisticsService(c.env);
 
-    const stats = await service.getStatistics(query.period, {
-      year: query.year,
-      startDate: query.startDate,
-      endDate: query.endDate,
-      personId: query.personId,
-      deptName: query.deptName,
-      categoryId: query.category,
-    });
+  const stats = await service.getStatistics(query.period, {
+    year: query.year,
+    startDate: query.startDate,
+    endDate: query.endDate,
+    personId: query.personId,
+    deptName: query.deptName,
+    categoryId: query.category,
+  });
 
-    return c.json(stats);
-  } catch (error) {
-    if (error instanceof DomainError) {
-      return c.json(
-        { code: error.code, message: error.message, details: error.details },
-        error.statusCode as ContentfulStatusCode
-      );
-    }
-
-    console.error('[Statistics] Error getting statistics:', error);
-    return c.json(
-      {
-        code: 'INTERNAL_ERROR',
-        message: '통계 조회 중 오류가 발생했습니다',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      500
-    );
-  }
+  return c.json(stats);
 });
 
 export default statistics;

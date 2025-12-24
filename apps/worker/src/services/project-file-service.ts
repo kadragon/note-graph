@@ -1,20 +1,22 @@
-// Trace: SPEC-project-1, TASK-039, TASK-042
+// Trace: SPEC-project-1, SPEC-refactor-file-service, TASK-039, TASK-042, TASK-REFACTOR-003, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 /**
  * Service for managing project file uploads and R2 storage
  * Includes automatic text extraction and embedding for supported file types
  */
 
-import type { D1Database, R2Bucket, R2Object, R2ObjectBody } from '@cloudflare/workers-types';
+import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { ProjectFile } from '@shared/types/project';
+import type { TextChunk } from '@shared/types/search';
 import { nanoid } from 'nanoid';
 import type { Env } from '../types/env';
-import { BadRequestError, NotFoundError } from '../types/errors';
+import { NotFoundError } from '../types/errors';
+import { BaseFileService } from './base-file-service.js';
 import { ChunkingService } from './chunking-service.js';
-import { EmbeddingService, VectorizeService } from './embedding-service.js';
+import { EmbeddingProcessor } from './embedding-processor.js';
 import { FileTextExtractionService } from './file-text-extraction-service.js';
+import { VectorizeService } from './vectorize-service.js';
 
 // Configuration
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const MAX_FILES_PER_BATCH = 100; // Prevent timeout on large projects
 const ALLOWED_MIME_TYPES = [
   // PDFs
@@ -37,6 +39,26 @@ const ALLOWED_MIME_TYPES = [
   'text/markdown',
 ];
 
+const EXTENSION_MIME_MAP: Record<string, string> = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  doc: 'application/msword',
+  xls: 'application/vnd.ms-excel',
+  ppt: 'application/vnd.ms-powerpoint',
+  txt: 'text/plain',
+  md: 'text/markdown',
+};
+
+const UNSUPPORTED_FILE_MESSAGE =
+  '지원하지 않는 파일 형식입니다. 허용된 형식: PDF, 이미지 (PNG, JPEG, GIF, WebP), Office 문서 (DOCX, XLSX, PPTX), 텍스트';
+
 interface UploadFileParams {
   projectId: string;
   file: Blob;
@@ -49,21 +71,38 @@ interface ArchiveResult {
   failed: Array<{ fileId: string; error: string }>;
 }
 
-export class ProjectFileService {
+export class ProjectFileService extends BaseFileService<ProjectFile> {
   private textExtractor: FileTextExtractionService;
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
+  private embeddingProcessor: EmbeddingProcessor;
 
-  constructor(
-    env: Env,
-    private r2: R2Bucket,
-    private db: D1Database
-  ) {
+  constructor(env: Env, r2: R2Bucket, db: D1Database) {
+    super(r2, db);
     this.textExtractor = new FileTextExtractionService();
     this.chunkingService = new ChunkingService();
 
-    const embeddingService = new EmbeddingService(env);
-    this.vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
+    this.embeddingProcessor = new EmbeddingProcessor(env);
+    this.vectorizeService = new VectorizeService(env.VECTORIZE);
+  }
+
+  protected tableName = 'project_files';
+  protected ownerIdColumn = 'project_id';
+
+  protected buildR2Key(projectId: string, fileId: string): string {
+    return `projects/${projectId}/files/${fileId}`;
+  }
+
+  protected getAllowedMimeTypes(): string[] {
+    return ALLOWED_MIME_TYPES;
+  }
+
+  protected getExtensionMimeMap(): Record<string, string> {
+    return EXTENSION_MIME_MAP;
+  }
+
+  protected getUnsupportedFileMessage(): string {
+    return UNSUPPORTED_FILE_MESSAGE;
   }
 
   /**
@@ -73,30 +112,20 @@ export class ProjectFileService {
   async uploadFile(params: UploadFileParams): Promise<ProjectFile> {
     const { projectId, file, originalName, uploadedBy } = params;
 
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
-      throw new BadRequestError(
-        `파일 크기가 제한을 초과했습니다. 최대 ${MAX_FILE_SIZE / 1024 / 1024}MB까지 업로드 가능합니다.`
-      );
-    }
+    this.validateFileSize(file);
 
-    // Validate MIME type
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      throw new BadRequestError(
-        `지원하지 않는 파일 형식입니다. 허용된 형식: PDF, 이미지 (PNG, JPEG, GIF, WebP), Office 문서 (DOCX, XLSX, PPTX), 텍스트`
-      );
-    }
+    const resolvedFileType = this.resolveFileType(originalName, file.type);
 
     // Generate file ID and R2 key
     const fileId = `FILE-${nanoid()}`;
-    const r2Key = `projects/${projectId}/files/${fileId}`;
+    const r2Key = this.buildR2Key(projectId, fileId);
     const now = new Date().toISOString();
 
     // Upload to R2
-    await this.r2.put(r2Key, file, {
-      httpMetadata: {
-        contentType: file.type,
-      },
+    await this.putFileObject({
+      r2Key,
+      file,
+      fileType: resolvedFileType,
       customMetadata: {
         originalName,
         uploadedBy,
@@ -106,24 +135,23 @@ export class ProjectFileService {
     });
 
     // Create DB record
-    await this.db
-      .prepare(
-        `
-      INSERT INTO project_files (
-        file_id, project_id, r2_key, original_name,
-        file_type, file_size, uploaded_by, uploaded_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `
-      )
-      .bind(fileId, projectId, r2Key, originalName, file.type, file.size, uploadedBy, now)
-      .run();
+    await this.insertFileRecord({
+      ownerId: projectId,
+      fileId,
+      r2Key,
+      originalName,
+      fileType: resolvedFileType,
+      fileSize: file.size,
+      uploadedBy,
+      uploadedAt: now,
+    });
 
     const projectFile: ProjectFile = {
       fileId,
       projectId,
       r2Key,
       originalName,
-      fileType: file.type,
+      fileType: resolvedFileType,
       fileSize: file.size,
       uploadedBy,
       uploadedAt: now,
@@ -133,9 +161,9 @@ export class ProjectFileService {
 
     // Extract text and create embeddings for supported file types
     // This is done synchronously to ensure embeddings are available immediately
-    if (FileTextExtractionService.isTextExtractable(file.type)) {
+    if (FileTextExtractionService.isTextExtractable(resolvedFileType)) {
       try {
-        await this.embedFile(fileId, projectId, file, originalName);
+        await this.embedFile(fileId, projectId, file, originalName, resolvedFileType);
         projectFile.embeddedAt = new Date().toISOString();
       } catch (error) {
         // Log error but don't fail the upload
@@ -145,43 +173,6 @@ export class ProjectFileService {
     }
 
     return projectFile;
-  }
-
-  /**
-   * Get file metadata by ID
-   */
-  async getFileById(fileId: string): Promise<ProjectFile | null> {
-    const result = await this.db
-      .prepare(
-        `
-      SELECT * FROM project_files
-      WHERE file_id = ? AND deleted_at IS NULL
-    `
-      )
-      .bind(fileId)
-      .first<Record<string, unknown>>();
-
-    if (!result) return null;
-
-    return this.mapDbToFile(result);
-  }
-
-  /**
-   * List all files for a project
-   */
-  async listFiles(projectId: string): Promise<ProjectFile[]> {
-    const results = await this.db
-      .prepare(
-        `
-      SELECT * FROM project_files
-      WHERE project_id = ? AND deleted_at IS NULL
-      ORDER BY uploaded_at DESC
-    `
-      )
-      .bind(projectId)
-      .all<Record<string, unknown>>();
-
-    return (results.results || []).map((r) => this.mapDbToFile(r));
   }
 
   /**
@@ -205,34 +196,6 @@ export class ProjectFileService {
   }
 
   /**
-   * Stream file content from R2
-   */
-  async streamFile(fileId: string): Promise<{ body: ReadableStream; headers: Headers }> {
-    const file = await this.getFileById(fileId);
-    if (!file) {
-      throw new NotFoundError('File', fileId);
-    }
-
-    const object = await this.r2.get(file.r2Key);
-    if (!object) {
-      throw new NotFoundError('File in R2', file.r2Key);
-    }
-
-    const headers = new Headers();
-    headers.set('Content-Type', file.fileType);
-    headers.set('Content-Length', file.fileSize.toString());
-    headers.set(
-      'Content-Disposition',
-      `attachment; filename="${encodeURIComponent(file.originalName)}"`
-    );
-
-    return {
-      body: object.body,
-      headers,
-    };
-  }
-
-  /**
    * Extract text from file and create embeddings
    *
    * @param fileId - File ID
@@ -244,10 +207,11 @@ export class ProjectFileService {
     fileId: string,
     projectId: string,
     file: Blob,
-    originalName: string
+    originalName: string,
+    fileType: string
   ): Promise<void> {
     // Extract text
-    const extractionResult = await this.textExtractor.extractText(file, file.type);
+    const extractionResult = await this.textExtractor.extractText(file, fileType);
 
     if (!extractionResult.success) {
       console.warn(`Text extraction failed for ${fileId}: ${extractionResult.reason}`);
@@ -267,7 +231,7 @@ export class ProjectFileService {
     }
 
     // Embed chunks into Vectorize
-    await this.vectorizeService.upsertFileChunks(fileId, chunks);
+    await this.upsertFileChunks(fileId, chunks);
 
     // Update embedded_at timestamp
     await this.updateEmbeddedAt(fileId);
@@ -293,35 +257,62 @@ export class ProjectFileService {
   }
 
   /**
+   * Upsert file chunks into Vectorize with embeddings
+   * Uses centralized EmbeddingProcessor for consistency
+   */
+  private async upsertFileChunks(fileId: string, chunks: TextChunk[]): Promise<void> {
+    if (chunks.length === 0) {
+      return;
+    }
+
+    // Convert TextChunk[] to the format expected by EmbeddingProcessor
+    const chunksToEmbed = chunks.map((chunk) => ({
+      id: ChunkingService.generateChunkId(fileId, chunk.metadata.chunk_index),
+      text: chunk.text,
+      metadata: chunk.metadata,
+    }));
+
+    // Use centralized embedding logic
+    await this.embeddingProcessor.upsertChunks(chunksToEmbed);
+  }
+
+  /**
+   * Delete all chunks for a file from Vectorize
+   */
+  private async deleteFileChunks(fileId: string): Promise<void> {
+    try {
+      const results = await this.vectorizeService.query(new Array(1536).fill(0), {
+        topK: 500,
+        filter: { work_id: fileId, scope: 'FILE' },
+        returnMetadata: false,
+      });
+
+      if (results.matches.length > 0) {
+        const chunkIds = results.matches.map((match) => match.id);
+        await this.vectorizeService.delete(chunkIds);
+      }
+    } catch (error) {
+      console.error('Error deleting file chunks:', error);
+      // Non-fatal: log and continue
+    }
+  }
+
+  /**
    * Delete file from R2 and mark as deleted in DB
    * Also removes embeddings from Vectorize if file was embedded
    */
   async deleteFile(fileId: string): Promise<void> {
-    const file = await this.getFileById(fileId);
-    if (!file) {
-      throw new NotFoundError('File', fileId);
-    }
+    const file = await this.requireFile(fileId);
 
-    // Soft delete in DB
-    const now = new Date().toISOString();
-    await this.db
-      .prepare(
-        `
-      UPDATE project_files
-      SET deleted_at = ?
-      WHERE file_id = ?
-    `
-      )
-      .bind(now, fileId)
-      .run();
+    await this.softDeleteFileRecord(fileId);
 
     // Delete from R2 (or move to archive - for now just delete)
-    await this.r2.delete(file.r2Key);
+    await this.deleteR2Object(file.r2Key);
 
     // Delete embeddings from Vectorize if file was embedded
     if (file.embeddedAt) {
       try {
-        await this.vectorizeService.deleteFileChunks(fileId);
+        await this.deleteFileChunks(fileId);
       } catch (error) {
         console.error(`Failed to delete embeddings for file ${fileId}:`, error);
         // Non-fatal: log and continue
@@ -398,7 +389,7 @@ export class ProjectFileService {
         // Clean up embeddings if present
         if (row.embedded_at) {
           try {
-            await this.vectorizeService.deleteFileChunks(fileId);
+            await this.deleteFileChunks(fileId);
           } catch (error) {
             console.error(`Failed to delete embeddings for archived file ${fileId}:`, error);
             // Non-fatal: continue with archival
@@ -442,33 +433,9 @@ export class ProjectFileService {
   }
 
   /**
-   * Extract metadata from R2 object in a type-safe manner
-   */
-  private extractR2Metadata(object: R2ObjectBody): {
-    httpMetadata?: R2Object['httpMetadata'];
-    customMetadata?: R2Object['customMetadata'];
-  } {
-    const metadata: {
-      httpMetadata?: R2Object['httpMetadata'];
-      customMetadata?: R2Object['customMetadata'];
-    } = {};
-
-    // R2ObjectBody should have these properties, but check defensively
-    if ('httpMetadata' in object && object.httpMetadata) {
-      metadata.httpMetadata = object.httpMetadata;
-    }
-
-    if ('customMetadata' in object && object.customMetadata) {
-      metadata.customMetadata = object.customMetadata;
-    }
-
-    return metadata;
-  }
-
-  /**
    * Map database row to ProjectFile type
    */
-  private mapDbToFile(row: Record<string, unknown>): ProjectFile {
+  protected mapDbToFile(row: Record<string, unknown>): ProjectFile {
     return {
       fileId: row.file_id as string,
       projectId: row.project_id as string,

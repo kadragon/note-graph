@@ -1,140 +1,88 @@
-// Trace: SPEC-dept-1, TASK-006
+// Trace: SPEC-dept-1, SPEC-refactor-repository-di, TASK-006, TASK-REFACTOR-004
 /**
  * Department management routes
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
-import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { Env } from '../index';
 import { authMiddleware } from '../middleware/auth';
-import { DepartmentRepository } from '../repositories/department-repository';
+import { errorHandler } from '../middleware/error-handler';
+import {
+  bodyValidator,
+  getValidatedBody,
+  getValidatedQuery,
+  queryValidator,
+} from '../middleware/validation-middleware';
 import {
   createDepartmentSchema,
   listDepartmentsQuerySchema,
   updateDepartmentSchema,
 } from '../schemas/department';
-import { DomainError } from '../types/errors';
-import { validateBody, validateQuery } from '../utils/validation';
+import type { AppContext } from '../types/context';
 
-const departments = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+const departments = new Hono<AppContext>();
 
 // All department routes require authentication
 departments.use('*', authMiddleware);
+departments.use('*', errorHandler);
 
 /**
  * GET /departments - List all departments
  */
-departments.get('/', async (c) => {
-  try {
-    const query = validateQuery(c, listDepartmentsQuerySchema);
-    const repository = new DepartmentRepository(c.env.DB);
-    const results = await repository.findAll(query.q, query.limit);
+departments.get('/', queryValidator(listDepartmentsQuerySchema), async (c) => {
+  const query = getValidatedQuery<typeof listDepartmentsQuerySchema>(c);
+  const { departments: repository } = c.get('repositories');
+  const results = await repository.findAll(query.q, query.limit);
 
-    return c.json(results);
-  } catch (error) {
-    if (error instanceof DomainError) {
-      return c.json(
-        { code: error.code, message: error.message, details: error.details },
-        error.statusCode as ContentfulStatusCode
-      );
-    }
-    console.error('Error listing departments:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
-  }
+  return c.json(results);
 });
 
 /**
  * POST /departments - Create new department
  */
-departments.post('/', async (c) => {
-  try {
-    const data = await validateBody(c, createDepartmentSchema);
-    const repository = new DepartmentRepository(c.env.DB);
-    const department = await repository.create(data);
+departments.post('/', bodyValidator(createDepartmentSchema), async (c) => {
+  const data = getValidatedBody<typeof createDepartmentSchema>(c);
+  const { departments: repository } = c.get('repositories');
+  const department = await repository.create(data);
 
-    return c.json(department, 201);
-  } catch (error) {
-    if (error instanceof DomainError) {
-      return c.json(
-        { code: error.code, message: error.message, details: error.details },
-        error.statusCode as ContentfulStatusCode
-      );
-    }
-    console.error('Error creating department:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
-  }
+  return c.json(department, 201);
 });
 
 /**
  * GET /departments/:deptName - Get department by name
  */
 departments.get('/:deptName', async (c) => {
-  try {
-    const { deptName } = c.req.param();
-    const repository = new DepartmentRepository(c.env.DB);
-    const department = await repository.findByName(deptName);
+  const { deptName } = c.req.param();
+  const { departments: repository } = c.get('repositories');
+  const department = await repository.findByName(deptName);
 
-    if (!department) {
-      return c.json({ code: 'NOT_FOUND', message: `Department not found: ${deptName}` }, 404);
-    }
-
-    return c.json(department);
-  } catch (error) {
-    if (error instanceof DomainError) {
-      return c.json(
-        { code: error.code, message: error.message, details: error.details },
-        error.statusCode as ContentfulStatusCode
-      );
-    }
-    console.error('Error getting department:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
+  if (!department) {
+    return c.json({ code: 'NOT_FOUND', message: `Department not found: ${deptName}` }, 404);
   }
+
+  return c.json(department);
 });
 
 /**
  * PUT /departments/:deptName - Update department
  */
-departments.put('/:deptName', async (c) => {
-  try {
-    const { deptName } = c.req.param();
-    const data = await validateBody(c, updateDepartmentSchema);
-    const repository = new DepartmentRepository(c.env.DB);
-    const department = await repository.update(deptName, data);
+departments.put('/:deptName', bodyValidator(updateDepartmentSchema), async (c) => {
+  const deptName = c.req.param('deptName');
+  const data = getValidatedBody<typeof updateDepartmentSchema>(c);
+  const { departments: repository } = c.get('repositories');
+  const department = await repository.update(deptName, data);
 
-    return c.json(department);
-  } catch (error) {
-    if (error instanceof DomainError) {
-      return c.json(
-        { code: error.code, message: error.message, details: error.details },
-        error.statusCode as ContentfulStatusCode
-      );
-    }
-    console.error('Error updating department:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
-  }
+  return c.json(department);
 });
 
 /**
  * GET /departments/:deptName/work-notes - Get department's work notes
  */
 departments.get('/:deptName/work-notes', async (c) => {
-  try {
-    const { deptName } = c.req.param();
-    const repository = new DepartmentRepository(c.env.DB);
-    const workNotes = await repository.getWorkNotes(deptName);
+  const deptName = c.req.param('deptName');
+  const { departments: repository } = c.get('repositories');
+  const workNotes = await repository.getWorkNotes(deptName);
 
-    return c.json(workNotes);
-  } catch (error) {
-    if (error instanceof DomainError) {
-      return c.json(
-        { code: error.code, message: error.message, details: error.details },
-        error.statusCode as ContentfulStatusCode
-      );
-    }
-    console.error('Error getting department work notes:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' }, 500);
-  }
+  return c.json(workNotes);
 });
 
 export default departments;

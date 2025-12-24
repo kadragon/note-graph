@@ -1,15 +1,17 @@
-// Trace: SPEC-rag-2, TASK-022
+// Trace: SPEC-rag-2, SPEC-refactor-repository-di, TASK-022, TASK-REFACTOR-004
 // Admin routes for embedding management
 
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { errorHandler } from '../middleware/error-handler';
 import { EmbeddingProcessor } from '../services/embedding-processor';
-import type { Env } from '../types/env';
+import type { AppContext } from '../types/context';
 
-const admin = new Hono<{ Bindings: Env }>();
+const admin = new Hono<AppContext>();
 
 // Apply auth middleware to all admin routes
 admin.use('*', authMiddleware);
+admin.use('*', errorHandler);
 
 /**
  * POST /admin/reindex-all
@@ -38,28 +40,12 @@ admin.post('/reindex/:workId', async (c) => {
 
   const processor = new EmbeddingProcessor(c.env);
 
-  try {
-    await processor.reindexOne(workId);
+  await processor.reindexOne(workId);
 
-    return c.json({
-      success: true,
-      message: `업무 노트 ${workId} 재인덱싱 완료`,
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    // Determine appropriate status code based on error type
-    const isNotFound = errorMessage.includes('not found');
-    const statusCode = isNotFound ? 404 : 500;
-
-    return c.json(
-      {
-        success: false,
-        message: errorMessage,
-      },
-      statusCode
-    );
-  }
+  return c.json({
+    success: true,
+    message: `업무 노트 ${workId} 재인덱싱 완료`,
+  });
 });
 
 /**

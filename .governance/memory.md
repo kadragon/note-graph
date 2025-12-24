@@ -171,6 +171,55 @@
   - Fixed SSR hydration mismatch by deferring localStorage read to useEffect with initialization flag
 - **Verification**: Build successful, no TypeScript errors
 
+### Session 70: Backend Refactoring Phase 1 (2025-12-23)
+- **TASK-REFACTOR-001 (SPEC-refactor-r2-init)**: Extracted R2 bucket initialization to single utility
+  - Created `apps/worker/src/utils/r2-access.ts` with `getR2Bucket()` helper
+  - Removed 8 duplicate R2 initialization blocks across routes (projects.ts × 6, work-notes.ts × 1, middleware/work-note-file.ts × 1)
+  - **Impact**: ~35 lines of boilerplate removed, single source of truth for R2 access
+- **TASK-REFACTOR-002 (SPEC-refactor-error-handler)**: Centralized error handling with middleware
+  - Created `apps/worker/src/middleware/error-handler.ts` with global error handler
+  - Applied to all 12 route files (admin, ai-draft, departments, pdf, persons, projects, rag, search, statistics, task-categories, todos, work-notes)
+  - Removed 36+ try-catch blocks (400+ lines of boilerplate)
+  - All DomainError instances now handled consistently with proper status codes
+  - Structured error logging with context (timestamp, path, method, user, stack trace)
+- **Execution Strategy**: Parallel processing with 4 concurrent agents for faster completion
+- **Results**:
+  - All 595 tests passing
+  - ~435 total lines of code removed
+  - Cleaner route handlers focused on business logic
+  - Consistent error responses across the entire API
+- **Files Created**:
+  - `apps/worker/src/utils/r2-access.ts`
+  - `apps/worker/src/middleware/error-handler.ts`
+- **Files Modified**: All 12 route files, 1 middleware file
+- **Verification**: Full test suite passed (595/595 tests)
+
+### Session 71: Base File Service Refactor (2025-12-23)
+- **TASK-REFACTOR-003 (SPEC-refactor-file-service)**: Added BaseFileService with shared validation, R2 operations, and DB helpers.
+- **Services Updated**: ProjectFileService and WorkNoteFileService now extend the base class.
+- **Behavior**: MIME resolution now supports extension fallback for empty/generic MIME types across both services; embedding uses resolved MIME type.
+- **Testing**: Added project-file test for empty MIME fallback; unit tests for both services pass.
+
+### Session 72: Repository DI Middleware (2025-12-23)
+- **TASK-REFACTOR-004 (SPEC-refactor-repository-di)**: Added repository injection middleware and shared AppContext types.
+- **Routes Updated**: All route handlers now use `c.get('repositories')` instead of `new Repository()` calls.
+- **Middleware**: `repositoriesMiddleware` attaches per-request repositories at the `/api` router level.
+- **Auth Usage**: File upload routes now use `getAuthUser` to assert user context.
+- **Testing**: Ran integration routes suite; all tests passed.
+
+### Session 73: Embedding Service Split (2025-12-23)
+- **TASK-REFACTOR-005 (SPEC-refactor-embedding-service)**: Split embedding service by concern.
+- **New Services**: `OpenAIEmbeddingService` (embed/embedBatch) + `VectorizeService` (insert/delete/query + metadata helpers).
+- **Refactors**: Updated EmbeddingProcessor, WorkNoteService, RagService, HybridSearchService, ProjectFileService to use new services.
+- **Cleanup**: Removed legacy `embedding-service.ts`, updated embedding-related unit tests.
+- **Verification**: Targeted vitest run for embedding, work-note, rag, project-file, search tests passed.
+
+### Session 74: Validation Middleware Factory (2025-12-24)
+- **TASK-REFACTOR-006 (SPEC-refactor-validation-middleware)**: Added validation middleware factories and replaced manual validation calls in all routes.
+- **Middleware**: `bodyValidator` + `queryValidator` with typed access helpers; validated data stored on context (`body`, `query`).
+- **Context**: AppContext variables extended for validated body/query storage.
+- **Testing**: Added unit tests for middleware behavior; `npm test -- tests/unit/validation.test.ts` passed.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -199,8 +248,15 @@
 - **Statistics Date Filtering**: Always apply date range filters to aggregate subqueries, not just WHERE clauses, to avoid counting historical data in period-based reports
 - **SQL Performance**: Prefer CTEs over correlated subqueries for aggregations; pre-filter and aggregate in CTE, then join for better scalability
 - **SSR Hydration**: Never read localStorage synchronously in useState initializer; use useEffect with initialization flag to prevent hydration mismatches between server and client
+- **Code Duplication**: Extract repeated patterns (R2 initialization, error handling) to utilities/middleware as soon as duplication is identified; small utilities have high impact
+- **Error Handling**: Centralized error middleware provides consistency, better logging, and cleaner code; apply early in project lifecycle
+- **Parallel Refactoring**: Use multiple concurrent agents for independent file modifications to significantly reduce refactoring time
 <!-- Trace: spec_id=SPEC-governance-1, task_id=TASK-059 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-063 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-064 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-066 -->
 <!-- Trace: spec_id=SPEC-stats-1, task_id=TASK-067 -->
+<!-- Trace: spec_id=SPEC-refactor-file-service, task_id=TASK-REFACTOR-003 -->
+<!-- Trace: spec_id=SPEC-refactor-repository-di, task_id=TASK-REFACTOR-004 -->
+<!-- Trace: spec_id=SPEC-refactor-embedding-service, task_id=TASK-REFACTOR-005 -->
+<!-- Trace: spec_id=SPEC-refactor-validation-middleware, task_id=TASK-REFACTOR-006 -->

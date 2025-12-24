@@ -256,3 +256,87 @@ class ValidationError extends DomainError {
 ```
 
 **Rationale**: Type-safe error handling, automatic HTTP status mapping.
+
+## Centralized Error Handler Middleware Pattern
+
+### Global Error Middleware
+```typescript
+// middleware/error-handler.ts
+export function errorHandler(c: Context, next: Next) {
+  return next().catch((error: unknown) => {
+    // Handle known domain errors
+    if (error instanceof DomainError) {
+      return c.json(
+        { code: error.code, message: error.message, details: error.details },
+        error.statusCode as ContentfulStatusCode
+      );
+    }
+
+    // Log unexpected errors with context
+    console.error('[ERROR]', {
+      timestamp: new Date().toISOString(),
+      path: c.req.path,
+      method: c.req.method,
+      user: c.get('user')?.email,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Return generic 500 error
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' },
+      500
+    );
+  });
+}
+
+// Usage in routes
+const routes = new Hono();
+routes.use('*', authMiddleware);
+routes.use('*', errorHandler);
+
+// Clean route handlers without try-catch
+routes.get('/', async (c) => {
+  const data = await service.findAll();
+  return c.json(data);
+});
+```
+
+**Rationale**:
+- Eliminates 400+ lines of duplicated error handling boilerplate
+- Ensures consistent error response format across all routes
+- Provides structured logging with request context
+- Simplifies route handlers to focus on business logic only
+- Single point of modification for error handling behavior
+
+## Resource Access Utility Pattern
+
+### Single Source of Truth for Resource Access
+```typescript
+// utils/r2-access.ts
+interface GlobalWithTestBucket {
+  __TEST_R2_BUCKET?: R2Bucket;
+}
+
+export function getR2Bucket(env: Env): R2Bucket {
+  const bucket =
+    env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
+
+  if (!bucket) {
+    throw new Error('R2_BUCKET not configured');
+  }
+
+  return bucket;
+}
+
+// Usage in routes and services
+const r2Bucket = getR2Bucket(c.env);
+const fileService = new FileService(r2Bucket, c.env.DB);
+```
+
+**Rationale**:
+- Replaces 8+ duplicate initialization blocks
+- Centralizes test environment fallback logic
+- Consistent error messaging when resource unavailable
+- Easy to extend with additional initialization logic (e.g., logging, metrics)
+- Single location to modify resource access behavior

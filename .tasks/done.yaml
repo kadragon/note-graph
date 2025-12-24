@@ -343,3 +343,131 @@
   actual_effort: ~0.4h
   notes: |
     Preview button is intentionally limited to PDF/images in UI; non-previewable types still support download.
+
+- task_id: TASK-CLARIFY-SPEC-REFRACTOR-FILE-SERVICE
+  title: "Clarify missing spec for file service refactor"
+  spec_id: SPEC-refactor-file-service
+  completed_at: "2025-12-23T00:00:00Z"
+  outcome: |
+    Created missing spec file for SPEC-refactor-file-service to restore traceability.
+    - Added .spec/refactor-file-service/spec.yaml with GWT and acceptance tests
+    - Resumed TASK-REFACTOR-003 after spec creation
+  test_results: |
+    Not applicable (spec authoring only)
+  estimated_effort: 1h
+  actual_effort: ~0.1h
+  notes: |
+    Spec added per user decision to proceed with file service refactor.
+
+- task_id: TASK-REFACTOR-003
+  title: "Extract base file service class"
+  spec_id: SPEC-refactor-file-service
+  completed_at: "2025-12-23T20:48:30Z"
+  outcome: |
+    Introduced BaseFileService to centralize file validation, R2 operations, and DB helpers.
+    - ProjectFileService and WorkNoteFileService now extend BaseFileService
+    - Shared MIME resolution supports extension fallback for empty/generic MIME types
+    - Reduced duplicated logic across upload, fetch, list, stream, and delete paths
+    - Added project file test for empty MIME type fallback
+  test_results: |
+    ✓ npm test -- tests/unit/project-file-service.test.ts tests/unit/work-note-file-service.test.ts
+  estimated_effort: 4-6 hours
+  actual_effort: ~1.5h
+  notes: |
+    Ensured embedding uses resolved MIME type for consistent extraction.
+
+- task_id: TASK-CLARIFY-SPEC-REFRACTOR-REPOSITORY-DI
+  title: "Clarify missing spec for repository DI refactor"
+  spec_id: SPEC-refactor-repository-di
+  completed_at: "2025-12-23T00:00:00Z"
+  outcome: |
+    Created missing spec file for SPEC-refactor-repository-di to restore traceability.
+    - Added .spec/refactor-repository-di/spec.yaml with GWT and acceptance tests
+    - Started TASK-REFACTOR-004 after spec creation
+  test_results: |
+    Not applicable (spec authoring only)
+  estimated_effort: 1h
+  actual_effort: ~0.1h
+  notes: |
+    Spec added per user approval.
+
+- task_id: TASK-REFACTOR-004
+  title: "Implement repository dependency injection"
+  spec_id: SPEC-refactor-repository-di
+  completed_at: "2025-12-23T21:25:30Z"
+  outcome: |
+    Added repository injection middleware and updated routes to use c.get('repositories') instead of instantiating repositories directly.
+    - New AppContext and repository typing in apps/worker/src/types/context.ts
+    - repositoriesMiddleware attaches per-request repository instances for all API routes
+    - All route handlers now consume injected repositories (no new Repository() in routes)
+    - Auth/user access now uses getAuthUser where needed
+  test_results: |
+    ✓ npm test -- tests/integration/project-files.test.ts tests/integration/project-routes.test.ts tests/integration/statistics-routes.test.ts tests/integration/work-note-project-association.test.ts tests/integration/work-note-file-view.test.ts
+  estimated_effort: 4-6 hours
+  actual_effort: ~2h
+  notes: |
+    Repository middleware applied at /api router level for consistent availability.
+
+- task_id: TASK-CLARIFY-SPEC-REFACTOR-EMBEDDING-SERVICE
+  title: "Clarify missing spec for embedding service split"
+  spec_id: SPEC-refactor-embedding-service
+  completed_at: "2025-12-23T12:45:01Z"
+  outcome: |
+    Added missing spec for embedding service split.
+    - Created .spec/refactor-embedding-service/spec.yaml with GWT and acceptance tests
+    - Linked spec to TASK-REFACTOR-005
+  test_results: |
+    Not applicable (spec authoring only)
+  estimated_effort: 0.5-1 hour
+  actual_effort: ~0.1 hour
+  notes: |
+    Spec creation approved by user to proceed with TASK-REFACTOR-005.
+
+- task_id: TASK-REFACTOR-005
+  title: "Split embedding service by concern"
+  spec_id: SPEC-refactor-embedding-service
+  completed_at: "2025-12-23T16:25:16Z"
+  outcome: |
+    Split embedding responsibilities into focused services and updated callers.
+    - Added OpenAIEmbeddingService (embed, embedBatch) and VectorizeService (insert, delete, query)
+    - Refactored EmbeddingProcessor, WorkNoteService, RagService, HybridSearchService, ProjectFileService
+    - Removed legacy embedding-service.ts and updated tests to new APIs
+    - Preserved Vectorize metadata encoding/limits via VectorizeService helpers
+  test_results: |
+    ✓ npm test -- tests/unit/embedding-service.test.ts tests/unit/project-file-service.test.ts tests/unit/work-note-service.test.ts tests/unit/rag-service.project.test.ts tests/search.test.ts
+  estimated_effort: 6-8 hours
+  actual_effort: ~3.5 hours
+  notes: |
+    RAG and search flows now embed query via OpenAIEmbeddingService before Vectorize query.
+
+- task_id: TASK-CLARIFY-SPEC-REFACTOR-VALIDATION-MIDDLEWARE
+  title: "Clarify missing spec for validation middleware refactor"
+  spec_id: SPEC-refactor-validation-middleware
+  completed_at: "2025-12-24T05:04:50Z"
+  outcome: |
+    Created missing spec file for validation middleware refactor.
+    - Added .spec/refactor-validation-middleware/spec.yaml with GWT and acceptance tests
+    - Linked spec to TASK-REFACTOR-006
+  test_results: |
+    Not applicable (spec authoring only)
+  estimated_effort: 0.5-1 hour
+  actual_effort: ~0.1 hour
+  notes: |
+    Spec created after user approval.
+
+- task_id: TASK-REFACTOR-006
+  title: "Create validation middleware factory"
+  spec_id: SPEC-refactor-validation-middleware
+  completed_at: "2025-12-24T05:14:55Z"
+  outcome: |
+    Added reusable validation middleware factories and replaced manual validation calls in all routes.
+    - New middleware: bodyValidator/queryValidator plus typed access helpers
+    - Routes updated to use middleware and c.get('body')/c.get('query') access
+    - AppContext variables extended to include body/query storage
+    - Added unit tests for validation middleware behavior
+  test_results: |
+    ✓ npm test -- tests/unit/validation.test.ts
+  estimated_effort: 3-4 hours
+  actual_effort: ~1.2 hours
+  notes: |
+    Middleware uses existing validateBody/validateQuery utilities to keep error handling consistent.

@@ -1,0 +1,23 @@
+spec_id: SPEC-refactor-file-service
+title: "Extract base file service class"
+given_when_then:
+  - given: "ProjectFileService and WorkNoteFileService share duplicated file validation and R2 operations"
+    when: "a base file service is introduced"
+    then: "both services reuse the shared logic without behavior changes"
+  - given: "file uploads occur with missing or generic MIME types"
+    when: "file extension-based MIME resolution is applied"
+    then: "both services enforce consistent MIME validation and storage behavior"
+acceptance_tests:
+  - id: TEST-refactor-file-service-1
+    desc: "ProjectFileService and WorkNoteFileService extend BaseFileService without functional regressions"
+  - id: TEST-refactor-file-service-2
+    desc: "All existing file service tests pass without modification to test expectations"
+  - id: TEST-refactor-file-service-3
+    desc: "MIME type validation and fallback logic behave identically across both services"
+dependencies:
+  - governance: "coding-style"
+  - governance: "patterns"
+  - governance: "env"
+linked_tasks:
+  - TASK-REFACTOR-003
+# Trace: spec_id=SPEC-refactor-file-service, task_id=TASK-REFACTOR-003

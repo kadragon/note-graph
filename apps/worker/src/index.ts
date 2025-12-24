@@ -1,14 +1,14 @@
-// Trace: SPEC-auth-1, TASK-001, TASK-003, TASK-004, TASK-015, TASK-022
+// Trace: SPEC-auth-1, SPEC-refactor-repository-di, TASK-001, TASK-003, TASK-004, TASK-015, TASK-022, TASK-REFACTOR-004
 /**
  * Note Graph - Main Worker Entry Point
  * Personal work note management system with AI-powered features
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import { AuthenticationError } from '@shared/types/auth';
 import { Hono } from 'hono';
 import { getMeHandler } from './handlers/auth';
 import { authMiddleware } from './middleware/auth';
+import { repositoriesMiddleware } from './middleware/repositories';
 import admin from './routes/admin';
 import aiDraft from './routes/ai-draft';
 import departments from './routes/departments';
@@ -22,6 +22,7 @@ import statistics from './routes/statistics';
 import taskCategories from './routes/task-categories';
 import todos from './routes/todos';
 import workNotes from './routes/work-notes';
+import type { AppContext } from './types/context';
 import type { Env } from './types/env';
 import { DomainError } from './types/errors';
 
@@ -29,7 +30,7 @@ import { DomainError } from './types/errors';
 export type { Env };
 
 // Initialize Hono app with auth context
-const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+const app = new Hono<AppContext>();
 
 // Health check endpoint
 app.get('/health', (c) => {
@@ -46,7 +47,10 @@ app.get('/health', (c) => {
 // ============================================================================
 
 // Create API router with /api base path
-const api = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>().basePath('/api');
+const api = new Hono<AppContext>().basePath('/api');
+
+// Inject repositories for all API routes
+api.use('*', repositoriesMiddleware);
 
 // API info endpoint
 api.get('/', (c) => {

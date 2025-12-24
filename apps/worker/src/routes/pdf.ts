@@ -1,4 +1,4 @@
-// Trace: SPEC-pdf-1, TASK-014
+// Trace: SPEC-pdf-1, SPEC-refactor-repository-di, TASK-014, TASK-REFACTOR-004
 // PDF upload route with synchronous processing
 
 import type {
@@ -10,11 +10,11 @@ import type {
 import type { SimilarWorkNoteReference } from '@shared/types/search';
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
-import { PdfJobRepository } from '../repositories/pdf-job-repository.js';
+import { errorHandler } from '../middleware/error-handler.js';
 import { AIDraftService } from '../services/ai-draft-service.js';
 import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { WorkNoteService } from '../services/work-note-service.js';
-import type { Env } from '../types/env.js';
+import type { AppContext } from '../types/context';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
 
 // Configuration constants
@@ -46,7 +46,9 @@ function parseDraftJson(
   }
 }
 
-const pdf = new Hono<{ Bindings: Env }>();
+const pdf = new Hono<AppContext>();
+
+pdf.use('*', errorHandler);
 
 /**
  * GET /pdf-jobs/:jobId
@@ -54,7 +56,7 @@ const pdf = new Hono<{ Bindings: Env }>();
  */
 pdf.get('/:jobId', async (c) => {
   const jobId = c.req.param('jobId');
-  const repository = new PdfJobRepository(c.env.DB);
+  const { pdfJobs: repository } = c.get('repositories');
 
   const job = await repository.getById(jobId);
   if (!job) {
@@ -139,7 +141,7 @@ pdf.post('/', async (c) => {
   // Initialize services
   const extractionService = new PdfExtractionService();
   const aiDraftService = new AIDraftService(c.env);
-  const repository = new PdfJobRepository(c.env.DB);
+  const { pdfJobs: repository } = c.get('repositories');
 
   // Create job with PENDING status before processing
   await repository.create(jobId, fileName, metadata);
@@ -207,28 +209,15 @@ pdf.post('/', async (c) => {
     const errorMessage =
       error instanceof Error ? error.message : 'PDF 처리 중 알 수 없는 오류가 발생했습니다';
 
-    // Update job status to ERROR
+    // Update job status to ERROR (best effort, don't fail if this fails)
     try {
       await repository.updateStatusToError(jobId, errorMessage);
     } catch (dbError) {
       console.error(`[PDF Processing] Failed to update error state:`, dbError);
     }
 
-    // Fetch job record for accurate error response
-    const job = await repository.getById(jobId);
-
-    // Return error response
-    return c.json(
-      {
-        error: 'PDF_PROCESSING_ERROR',
-        message: errorMessage,
-        jobId,
-        status: job?.status || 'ERROR',
-        createdAt: job?.createdAt || new Date().toISOString(),
-        updatedAt: job?.updatedAt || new Date().toISOString(),
-      },
-      500
-    );
+    // Re-throw error to let middleware handle response
+    throw error;
   }
 });
 
