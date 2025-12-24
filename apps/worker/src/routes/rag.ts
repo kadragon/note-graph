@@ -18,7 +18,7 @@ app.use('*', errorHandler);
  */
 app.post('/query', bodyValidator(RagQueryRequestSchema), async (c) => {
   // Validate request body
-  const body = getValidatedBody(c, RagQueryRequestSchema);
+  const body = getValidatedBody<typeof RagQueryRequestSchema>(c);
 
   // Validate scope-specific requirements
   if (body.scope === 'person' && !body.personId) {

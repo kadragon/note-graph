@@ -53,7 +53,7 @@ app.post(
   activeCategoriesMiddleware,
   bodyValidator(DraftFromTextRequestSchema),
   async (c) => {
-    const body = getValidatedBody(c, DraftFromTextRequestSchema);
+    const body = getValidatedBody<typeof DraftFromTextRequestSchema>(c);
     const activeCategoryNames = c.get('activeCategoryNames');
 
     const aiDraftService = new AIDraftService(c.env);
@@ -77,7 +77,7 @@ app.post(
   activeCategoriesMiddleware,
   bodyValidator(DraftFromTextRequestSchema),
   async (c) => {
-    const body = getValidatedBody(c, DraftFromTextRequestSchema);
+    const body = getValidatedBody<typeof DraftFromTextRequestSchema>(c);
     const activeCategoryNames = c.get('activeCategoryNames');
 
     // Search for similar work notes using shared service
@@ -125,7 +125,7 @@ app.post(
   bodyValidator(TodoSuggestionsRequestSchema),
   async (c) => {
     const workId = c.req.param('workId');
-    const body = getValidatedBody(c, TodoSuggestionsRequestSchema);
+    const body = getValidatedBody<typeof TodoSuggestionsRequestSchema>(c);
 
     // Fetch work note
     const workNoteService = new WorkNoteService(c.env);

@@ -59,7 +59,7 @@ function triggerReembed(
  * GET /work-notes - List work notes with filters
  */
 workNotes.get('/', queryValidator(listWorkNotesQuerySchema), async (c) => {
-  const query = getValidatedQuery(c, listWorkNotesQuerySchema);
+  const query = getValidatedQuery<typeof listWorkNotesQuerySchema>(c);
   const service = new WorkNoteService(c.env);
   const results = await service.findAll(query);
 
@@ -71,7 +71,7 @@ workNotes.get('/', queryValidator(listWorkNotesQuerySchema), async (c) => {
  * Automatically chunks and embeds for RAG
  */
 workNotes.post('/', bodyValidator(createWorkNoteSchema), async (c) => {
-  const data = getValidatedBody(c, createWorkNoteSchema);
+  const data = getValidatedBody<typeof createWorkNoteSchema>(c);
   const service = new WorkNoteService(c.env);
   const workNote = await service.create(data);
 
@@ -99,7 +99,7 @@ workNotes.get('/:workId', async (c) => {
  */
 workNotes.put('/:workId', bodyValidator(updateWorkNoteSchema), async (c) => {
   const workId = c.req.param('workId');
-  const data = getValidatedBody(c, updateWorkNoteSchema);
+  const data = getValidatedBody<typeof updateWorkNoteSchema>(c);
   const service = new WorkNoteService(c.env);
   const workNote = await service.update(workId, data);
 
@@ -135,7 +135,7 @@ workNotes.get('/:workId/todos', async (c) => {
  */
 workNotes.post('/:workId/todos', bodyValidator(createTodoSchema), async (c) => {
   const workId = c.req.param('workId');
-  const data = getValidatedBody(c, createTodoSchema);
+  const data = getValidatedBody<typeof createTodoSchema>(c);
   const { todos: repository } = c.get('repositories');
   const todo = await repository.create(workId, data);
 

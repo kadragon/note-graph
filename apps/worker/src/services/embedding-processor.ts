@@ -434,8 +434,9 @@ export class EmbeddingProcessor {
 
   /**
    * Upsert chunks into Vectorize with embeddings
+   * Public method for reuse across services (WorkNoteService, ProjectFileService)
    */
-  private async upsertChunks(
+  async upsertChunks(
     chunks: Array<{ id: string; text: string; metadata: ChunkMetadata }>
   ): Promise<void> {
     if (chunks.length === 0) {
@@ -462,8 +463,9 @@ export class EmbeddingProcessor {
 
   /**
    * Delete stale chunks for a work note (chunks not in the new chunk ID set)
+   * Public method for reuse across services (WorkNoteService, ProjectFileService)
    */
-  private async deleteStaleChunks(workId: string, newChunkIds: Set<string>): Promise<void> {
+  async deleteStaleChunks(workId: string, newChunkIds: Set<string>): Promise<void> {
     try {
       const results = await this.vectorizeService.query(new Array(1536).fill(0), {
         topK: 500,

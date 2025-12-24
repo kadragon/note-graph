@@ -22,11 +22,18 @@ export interface Repositories {
   todos: TodoRepository;
 }
 
+/**
+ * AppVariables uses a record-based pattern for body/query to maintain type safety
+ * while allowing flexible typed access via helper functions (getValidatedBody, getValidatedQuery).
+ *
+ * The record is keyed by schema symbols, enabling TypeScript to infer the exact
+ * validation type when accessed through getValidated* helpers.
+ */
 export interface AppVariables {
   user?: AuthUser;
   repositories: Repositories;
-  body?: unknown;
-  query?: unknown;
+  body?: Record<string | symbol, unknown>;
+  query?: Record<string | symbol, unknown>;
 }
 
 export type AppContext = {

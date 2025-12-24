@@ -33,7 +33,7 @@ taskCategories.use('*', errorHandler);
  *   - activeOnly: if 'true', only return active categories
  */
 taskCategories.get('/', queryValidator(listTaskCategoriesQuerySchema), async (c) => {
-  const query = getValidatedQuery(c, listTaskCategoriesQuerySchema);
+  const query = getValidatedQuery<typeof listTaskCategoriesQuerySchema>(c);
   const { taskCategories: repository } = c.get('repositories');
   const results = await repository.findAll(query.q, query.limit, query.activeOnly);
 
@@ -44,7 +44,7 @@ taskCategories.get('/', queryValidator(listTaskCategoriesQuerySchema), async (c)
  * POST /task-categories - Create new task category
  */
 taskCategories.post('/', bodyValidator(createTaskCategorySchema), async (c) => {
-  const data = getValidatedBody(c, createTaskCategorySchema);
+  const data = getValidatedBody<typeof createTaskCategorySchema>(c);
   const { taskCategories: repository } = c.get('repositories');
   const category = await repository.create(data);
 
@@ -71,7 +71,7 @@ taskCategories.get('/:categoryId', async (c) => {
  */
 taskCategories.put('/:categoryId', bodyValidator(updateTaskCategorySchema), async (c) => {
   const categoryId = c.req.param('categoryId');
-  const data = getValidatedBody(c, updateTaskCategorySchema);
+  const data = getValidatedBody<typeof updateTaskCategorySchema>(c);
   const { taskCategories: repository } = c.get('repositories');
   const category = await repository.update(categoryId, data);
 

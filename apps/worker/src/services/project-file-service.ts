@@ -12,8 +12,8 @@ import type { Env } from '../types/env';
 import { NotFoundError } from '../types/errors';
 import { BaseFileService } from './base-file-service.js';
 import { ChunkingService } from './chunking-service.js';
+import { EmbeddingProcessor } from './embedding-processor.js';
 import { FileTextExtractionService } from './file-text-extraction-service.js';
-import { OpenAIEmbeddingService } from './openai-embedding-service.js';
 import { VectorizeService } from './vectorize-service.js';
 
 // Configuration
@@ -75,14 +75,14 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
   private textExtractor: FileTextExtractionService;
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
-  private embeddingService: OpenAIEmbeddingService;
+  private embeddingProcessor: EmbeddingProcessor;
 
   constructor(env: Env, r2: R2Bucket, db: D1Database) {
     super(r2, db);
     this.textExtractor = new FileTextExtractionService();
     this.chunkingService = new ChunkingService();
 
-    this.embeddingService = new OpenAIEmbeddingService(env);
+    this.embeddingProcessor = new EmbeddingProcessor(env);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
   }
 
@@ -258,28 +258,22 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
 
   /**
    * Upsert file chunks into Vectorize with embeddings
+   * Uses centralized EmbeddingProcessor for consistency
    */
   private async upsertFileChunks(fileId: string, chunks: TextChunk[]): Promise<void> {
     if (chunks.length === 0) {
       return;
     }
 
-    const texts = chunks.map((chunk) => chunk.text);
-    const embeddings = await this.embeddingService.embedBatch(texts);
+    // Convert TextChunk[] to the format expected by EmbeddingProcessor
+    const chunksToEmbed = chunks.map((chunk) => ({
+      id: ChunkingService.generateChunkId(fileId, chunk.metadata.chunk_index),
+      text: chunk.text,
+      metadata: chunk.metadata,
+    }));
 
-    const vectors = chunks.map((chunk, index) => {
-      const embedding = embeddings[index];
-      if (!embedding) {
-        throw new Error(`No embedding generated for chunk ${index}`);
-      }
-      return {
-        id: ChunkingService.generateChunkId(fileId, chunk.metadata.chunk_index),
-        values: embedding,
-        metadata: VectorizeService.encodeMetadata(chunk.metadata),
-      };
-    });
-
-    await this.vectorizeService.insert(vectors);
+    // Use centralized embedding logic
+    await this.embeddingProcessor.upsertChunks(chunksToEmbed);
   }
 
   /**

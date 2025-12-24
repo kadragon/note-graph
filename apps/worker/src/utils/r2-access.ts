@@ -29,7 +29,25 @@ export function getR2Bucket(env: Env): R2Bucket {
   const bucket = env.R2_BUCKET || (globalThis as unknown as GlobalWithTestBucket).__TEST_R2_BUCKET;
 
   if (!bucket) {
-    throw new Error('R2_BUCKET not configured');
+    const environment = env.ENVIRONMENT || 'unknown';
+    const errorMessage = [
+      'R2_BUCKET is not configured.',
+      '',
+      `Environment: ${environment}`,
+      '',
+      'What to check:',
+      '  • Production: Ensure R2_BUCKET binding is configured in wrangler.toml under [env.production]',
+      '  • Development: Ensure R2_BUCKET binding is configured in wrangler.toml under [env.development]',
+      '  • Testing: Set __TEST_R2_BUCKET on globalThis in test setup or mock before calling getR2Bucket()',
+      '',
+      'Example wrangler.toml configuration:',
+      '  [env.production]',
+      '  r2_buckets = [',
+      '    { binding = "R2_BUCKET", bucket_name = "your-bucket-name" }',
+      '  ]',
+    ].join('\n');
+
+    throw new Error(errorMessage);
   }
 
   return bucket;

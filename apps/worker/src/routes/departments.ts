@@ -29,7 +29,7 @@ departments.use('*', errorHandler);
  * GET /departments - List all departments
  */
 departments.get('/', queryValidator(listDepartmentsQuerySchema), async (c) => {
-  const query = getValidatedQuery(c, listDepartmentsQuerySchema);
+  const query = getValidatedQuery<typeof listDepartmentsQuerySchema>(c);
   const { departments: repository } = c.get('repositories');
   const results = await repository.findAll(query.q, query.limit);
 
@@ -40,7 +40,7 @@ departments.get('/', queryValidator(listDepartmentsQuerySchema), async (c) => {
  * POST /departments - Create new department
  */
 departments.post('/', bodyValidator(createDepartmentSchema), async (c) => {
-  const data = getValidatedBody(c, createDepartmentSchema);
+  const data = getValidatedBody<typeof createDepartmentSchema>(c);
   const { departments: repository } = c.get('repositories');
   const department = await repository.create(data);
 
@@ -67,7 +67,7 @@ departments.get('/:deptName', async (c) => {
  */
 departments.put('/:deptName', bodyValidator(updateDepartmentSchema), async (c) => {
   const deptName = c.req.param('deptName');
-  const data = getValidatedBody(c, updateDepartmentSchema);
+  const data = getValidatedBody<typeof updateDepartmentSchema>(c);
   const { departments: repository } = c.get('repositories');
   const department = await repository.update(deptName, data);
 

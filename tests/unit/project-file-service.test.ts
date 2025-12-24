@@ -58,6 +58,7 @@ class MockR2Bucket implements R2Bucket {
 interface TestProjectFileService extends ProjectFileService {
   vectorizeService: typeof mockVectorize;
   textExtractor: typeof mockTextExtractor;
+  embeddingProcessor: { upsertChunks: ReturnType<typeof vi.fn> };
 }
 
 describe('ProjectFileService', () => {
@@ -69,6 +70,7 @@ describe('ProjectFileService', () => {
     delete: ReturnType<typeof vi.fn>;
     query: ReturnType<typeof vi.fn>;
   };
+  let mockEmbeddingProcessor: { upsertChunks: ReturnType<typeof vi.fn> };
   let mockTextExtractor: { extractText: ReturnType<typeof vi.fn> };
 
   const insertProject = async (projectId: string) => {
@@ -94,6 +96,9 @@ describe('ProjectFileService', () => {
       delete: vi.fn().mockResolvedValue(undefined),
       query: vi.fn().mockResolvedValue({ matches: [] }),
     };
+    mockEmbeddingProcessor = {
+      upsertChunks: vi.fn().mockResolvedValue(undefined),
+    };
     mockTextExtractor = {
       extractText: vi.fn().mockResolvedValue({ success: true, text: '파일 내용입니다' }),
     };
@@ -110,7 +115,7 @@ describe('ProjectFileService', () => {
 
     // Override internals for determinism
     (service as TestProjectFileService).vectorizeService = mockVectorize;
-    (service as TestProjectFileService).textExtractor = mockTextExtractor;
+    (service as TestProjectFileService).embeddingProcessor = mockEmbeddingProcessor;
     (service as TestProjectFileService).textExtractor = mockTextExtractor;
   });
 
@@ -141,10 +146,10 @@ describe('ProjectFileService', () => {
     // Assert - R2 stored at expected key
     expect(r2.storage.has(result.r2Key)).toBe(true);
 
-    // Assert - Vectorize insert called with project metadata
-    expect(mockVectorize.insert).toHaveBeenCalledTimes(1);
-    const vectorsArg = mockVectorize.insert.mock.calls[0][0];
-    expect(vectorsArg[0].metadata.project_id).toBe('PROJECT-123');
+    // Assert - EmbeddingProcessor.upsertChunks called with project metadata
+    expect(mockEmbeddingProcessor.upsertChunks).toHaveBeenCalledTimes(1);
+    const chunksArg = mockEmbeddingProcessor.upsertChunks.mock.calls[0][0];
+    expect(chunksArg[0].metadata.project_id).toBe('PROJECT-123');
   });
 
   it('rejects files exceeding 50MB limit', async () => {

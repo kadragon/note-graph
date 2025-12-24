@@ -32,7 +32,7 @@ persons.use('*', errorHandler);
  * GET /persons - List all persons with optional search
  */
 persons.get('/', queryValidator(listPersonsQuerySchema), async (c) => {
-  const query = getValidatedQuery(c, listPersonsQuerySchema);
+  const query = getValidatedQuery<typeof listPersonsQuerySchema>(c);
   const { persons: repository } = c.get('repositories');
   const results = await repository.findAll(query.q);
 
@@ -44,7 +44,7 @@ persons.get('/', queryValidator(listPersonsQuerySchema), async (c) => {
  * Department must already exist; otherwise returns validation error
  */
 persons.post('/', bodyValidator(createPersonSchema), async (c) => {
-  const data = getValidatedBody(c, createPersonSchema);
+  const data = getValidatedBody<typeof createPersonSchema>(c);
   const { persons: repository } = c.get('repositories');
   const person = await repository.create(data);
 
@@ -72,7 +72,7 @@ persons.get('/:personId', async (c) => {
  */
 persons.put('/:personId', bodyValidator(updatePersonSchema), async (c) => {
   const personId = c.req.param('personId');
-  const data = getValidatedBody(c, updatePersonSchema);
+  const data = getValidatedBody<typeof updatePersonSchema>(c);
   const { persons: repository } = c.get('repositories');
   const person = await repository.update(personId, data);
 
@@ -105,7 +105,7 @@ persons.get('/:personId/work-notes', async (c) => {
  * POST /persons/import-from-text - Parse person data from text using LLM
  */
 persons.post('/import-from-text', bodyValidator(importPersonFromTextSchema), async (c) => {
-  const data = getValidatedBody(c, importPersonFromTextSchema);
+  const data = getValidatedBody<typeof importPersonFromTextSchema>(c);
   const importService = new PersonImportService(c.env);
   const parsed = await importService.parsePersonFromText(data.text);
 
@@ -117,7 +117,7 @@ persons.post('/import-from-text', bodyValidator(importPersonFromTextSchema), asy
  * Department is auto-created atomically in the same transaction
  */
 persons.post('/import', bodyValidator(createPersonSchema), async (c) => {
-  const data = getValidatedBody(c, createPersonSchema);
+  const data = getValidatedBody<typeof createPersonSchema>(c);
   // Use autoCreateDepartment option to create department in the same transaction
   const { personsWithAutoCreateDepartment: personRepository } = c.get('repositories');
 

@@ -30,7 +30,7 @@ statistics.use('*', errorHandler);
  * - category: string (optional filter)
  */
 statistics.get('/', queryValidator(statisticsQuerySchema), async (c) => {
-  const query = getValidatedQuery(c, statisticsQuerySchema);
+  const query = getValidatedQuery<typeof statisticsQuerySchema>(c);
   const service = new StatisticsService(c.env);
 
   const stats = await service.getStatistics(query.period, {

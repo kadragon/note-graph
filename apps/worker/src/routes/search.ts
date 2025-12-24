@@ -28,7 +28,7 @@ search.use('*', errorHandler);
  */
 search.post('/work-notes', bodyValidator(searchWorkNotesSchema), async (c: Context<AppContext>) => {
   // Validate request body
-  const body = getValidatedBody(c, searchWorkNotesSchema);
+  const body = getValidatedBody<typeof searchWorkNotesSchema>(c);
 
   // Create hybrid search service
   const hybridSearchService = new HybridSearchService(c.env.DB, c.env);
@@ -57,7 +57,7 @@ search.post('/work-notes', bodyValidator(searchWorkNotesSchema), async (c: Conte
  */
 search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<AppContext>) => {
   // Validate request body
-  const body = getValidatedBody(c, searchWorkNotesSchema);
+  const body = getValidatedBody<typeof searchWorkNotesSchema>(c);
   const query = body.query.trim();
 
   // Initialize repositories and services

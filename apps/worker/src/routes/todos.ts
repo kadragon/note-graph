@@ -46,7 +46,7 @@ function triggerReembed(
  * GET /todos - List todos with view filters
  */
 todos.get('/', queryValidator(listTodosQuerySchema), async (c) => {
-  const query = getValidatedQuery(c, listTodosQuerySchema);
+  const query = getValidatedQuery<typeof listTodosQuerySchema>(c);
   const { todos: repository } = c.get('repositories');
   const results = await repository.findAll(query);
 
@@ -59,7 +59,7 @@ todos.get('/', queryValidator(listTodosQuerySchema), async (c) => {
  */
 todos.patch('/:todoId', bodyValidator(updateTodoSchema), async (c) => {
   const todoId = c.req.param('todoId');
-  const data = getValidatedBody(c, updateTodoSchema);
+  const data = getValidatedBody<typeof updateTodoSchema>(c);
   const { todos: repository } = c.get('repositories');
   const todo = await repository.update(todoId, data);
 

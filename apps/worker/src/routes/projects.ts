@@ -35,7 +35,7 @@ projects.use('*', errorHandler);
  * Create a new project
  */
 projects.post('/', bodyValidator(createProjectSchema), async (c) => {
-  const data = getValidatedBody(c, createProjectSchema);
+  const data = getValidatedBody<typeof createProjectSchema>(c);
   const { projects: repository } = c.get('repositories');
 
   const project = await repository.create(data);
@@ -48,7 +48,7 @@ projects.post('/', bodyValidator(createProjectSchema), async (c) => {
  * List projects with optional filters
  */
 projects.get('/', queryValidator(listProjectsQuerySchema), async (c) => {
-  const query = getValidatedQuery(c, listProjectsQuerySchema);
+  const query = getValidatedQuery<typeof listProjectsQuerySchema>(c);
   const { projects: repository } = c.get('repositories');
 
   const projects = await repository.findAll(query);
@@ -78,7 +78,7 @@ projects.get('/:projectId', async (c) => {
  */
 projects.put('/:projectId', bodyValidator(updateProjectSchema), async (c) => {
   const projectId = c.req.param('projectId');
-  const data = getValidatedBody(c, updateProjectSchema);
+  const data = getValidatedBody<typeof updateProjectSchema>(c);
   const { projects: repository } = c.get('repositories');
 
   const updated = await repository.update(projectId, data);
@@ -139,7 +139,7 @@ projects.get('/:projectId/stats', async (c) => {
  */
 projects.post('/:projectId/participants', bodyValidator(addParticipantSchema), async (c) => {
   const projectId = c.req.param('projectId');
-  const data = getValidatedBody(c, addParticipantSchema);
+  const data = getValidatedBody<typeof addParticipantSchema>(c);
   const { projects: repository } = c.get('repositories');
 
   // Verify project exists
@@ -205,7 +205,7 @@ projects.get('/:projectId/work-notes', async (c) => {
  */
 projects.post('/:projectId/work-notes', bodyValidator(assignWorkNoteSchema), async (c) => {
   const projectId = c.req.param('projectId');
-  const data = getValidatedBody(c, assignWorkNoteSchema);
+  const data = getValidatedBody<typeof assignWorkNoteSchema>(c);
   const { projects: repository } = c.get('repositories');
 
   // Verify project exists

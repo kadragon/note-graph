@@ -1,7 +1,12 @@
 // Trace: TASK-016
 // Unit tests for validation utilities
 
-import { bodyValidator, queryValidator } from '@worker/middleware/validation-middleware';
+import {
+  bodyValidator,
+  getValidatedBody,
+  getValidatedQuery,
+  queryValidator,
+} from '@worker/middleware/validation-middleware';
 import { ValidationError } from '@worker/types/errors';
 import { validateBody, validateParams, validateQuery } from '@worker/utils/validation';
 import type { Context } from 'hono';
@@ -469,6 +474,54 @@ describe('Validation Utilities', () => {
 
       await expect(bodyValidator(schema)(mockContext, next)).rejects.toThrow(ValidationError);
       expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should throw helpful error when getValidatedBody called without middleware', () => {
+      const mockContext = {
+        get: vi.fn().mockReturnValue(undefined),
+      } as unknown as Context;
+
+      const schema = z.object({ name: z.string() });
+
+      expect(() => getValidatedBody<typeof schema>(mockContext)).toThrow(
+        'Validated body not found in context. Did you forget to apply bodyValidator middleware before this handler?'
+      );
+    });
+
+    it('should throw helpful error when getValidatedQuery called without middleware', () => {
+      const mockContext = {
+        get: vi.fn().mockReturnValue(undefined),
+      } as unknown as Context;
+
+      const schema = z.object({ page: z.string() });
+
+      expect(() => getValidatedQuery<typeof schema>(mockContext)).toThrow(
+        'Validated query not found in context. Did you forget to apply queryValidator middleware before this handler?'
+      );
+    });
+
+    it('should successfully retrieve body from context when middleware was applied', () => {
+      const testData = { title: 'Test', count: 42 };
+      const mockContext = {
+        get: vi.fn().mockReturnValue(testData),
+      } as unknown as Context;
+
+      const schema = z.object({ title: z.string(), count: z.number() });
+
+      const result = getValidatedBody<typeof schema>(mockContext);
+      expect(result).toEqual(testData);
+    });
+
+    it('should successfully retrieve query from context when middleware was applied', () => {
+      const testData = { page: '1', limit: '10' };
+      const mockContext = {
+        get: vi.fn().mockReturnValue(testData),
+      } as unknown as Context;
+
+      const schema = z.object({ page: z.string(), limit: z.string() });
+
+      const result = getValidatedQuery<typeof schema>(mockContext);
+      expect(result).toEqual(testData);
     });
   });
 });

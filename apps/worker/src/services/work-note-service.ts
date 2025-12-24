@@ -4,7 +4,7 @@
  * Uses embedded_at tracking for embedding state management
  */
 
-import type { ChunkMetadata, SimilarWorkNoteReference } from '@shared/types/search';
+import type { SimilarWorkNoteReference } from '@shared/types/search';
 import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { format } from 'date-fns';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
@@ -15,6 +15,7 @@ import type {
 } from '../schemas/work-note';
 import type { Env } from '../types/env';
 import { ChunkingService } from './chunking-service';
+import { EmbeddingProcessor } from './embedding-processor';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
 import { VectorizeService } from './vectorize-service';
 import { WorkNoteFileService } from './work-note-file-service';
@@ -33,6 +34,7 @@ export class WorkNoteService {
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
   private embeddingService: OpenAIEmbeddingService;
+  private embeddingProcessor: EmbeddingProcessor;
   private fileService: WorkNoteFileService | null;
 
   constructor(env: Env) {
@@ -41,6 +43,7 @@ export class WorkNoteService {
 
     this.embeddingService = new OpenAIEmbeddingService(env);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
+    this.embeddingProcessor = new EmbeddingProcessor(env);
 
     // Initialize file service if R2 bucket is available
     this.fileService = env.R2_BUCKET ? new WorkNoteFileService(env.R2_BUCKET, env.DB) : null;
@@ -237,69 +240,17 @@ export class WorkNoteService {
       metadata: chunk.metadata,
     }));
 
-    // Upsert chunks into Vectorize
-    await this.upsertChunks(chunksToEmbed);
+    // Upsert chunks into Vectorize using centralized EmbeddingProcessor
+    await this.embeddingProcessor.upsertChunks(chunksToEmbed);
 
     // Delete stale chunks if requested (for updates)
     if (deleteStaleChunks) {
       const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
-      await this.deleteStaleChunks(workNote.workId, newChunkIds);
+      await this.embeddingProcessor.deleteStaleChunks(workNote.workId, newChunkIds);
     }
 
     // Update embedded_at timestamp on success
     await this.repository.updateEmbeddedAt(workNote.workId);
-  }
-
-  /**
-   * Upsert chunks into Vectorize with embeddings
-   */
-  private async upsertChunks(
-    chunks: Array<{ id: string; text: string; metadata: ChunkMetadata }>
-  ): Promise<void> {
-    if (chunks.length === 0) {
-      return;
-    }
-
-    const texts = chunks.map((chunk) => chunk.text);
-    const embeddings = await this.embeddingService.embedBatch(texts);
-
-    const vectors = chunks.map((chunk, index) => {
-      const embedding = embeddings[index];
-      if (!embedding) {
-        throw new Error(`Missing embedding for chunk ${chunk.id}`);
-      }
-      return {
-        id: chunk.id,
-        values: embedding,
-        metadata: VectorizeService.encodeMetadata(chunk.metadata),
-      };
-    });
-
-    await this.vectorizeService.insert(vectors);
-  }
-
-  /**
-   * Delete stale chunks for a work note (chunks not in the new chunk ID set)
-   */
-  private async deleteStaleChunks(workId: string, newChunkIds: Set<string>): Promise<void> {
-    try {
-      const results = await this.vectorizeService.query(new Array(1536).fill(0), {
-        topK: 500,
-        filter: { work_id: workId },
-        returnMetadata: false,
-      });
-
-      const staleChunkIds = results.matches
-        .map((match) => match.id)
-        .filter((id) => !newChunkIds.has(id));
-
-      if (staleChunkIds.length > 0) {
-        await this.vectorizeService.delete(staleChunkIds);
-      }
-    } catch (error) {
-      console.error('Error deleting stale chunks:', error);
-      // Non-fatal: log and continue
-    }
   }
 
   /**
