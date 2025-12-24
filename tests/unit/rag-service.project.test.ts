@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface TestRagService extends RagService {
   vectorizeService: typeof mockVectorize;
+  embeddingService: typeof mockEmbedding;
   callGPT: ReturnType<typeof vi.fn>;
   fetchWorkNote: ReturnType<typeof vi.fn>;
 }
@@ -14,16 +15,21 @@ interface TestRagService extends RagService {
 describe('RagService - PROJECT scope', () => {
   const baseEnv = env as unknown as Env;
   let service: RagService;
-  let mockVectorize: { search: ReturnType<typeof vi.fn> };
+  let mockVectorize: { query: ReturnType<typeof vi.fn> };
+  let mockEmbedding: { embed: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     mockVectorize = {
-      search: vi.fn().mockResolvedValue([]),
+      query: vi.fn().mockResolvedValue({ matches: [] }),
+    };
+    mockEmbedding = {
+      embed: vi.fn().mockResolvedValue(new Array(1536).fill(0.1)),
     };
 
     service = new RagService(baseEnv);
     // Override vectorizeService to avoid real embeddings/fetch
     (service as TestRagService).vectorizeService = mockVectorize;
+    (service as TestRagService).embeddingService = mockEmbedding;
     // Stub GPT call to avoid network
     (service as TestRagService).callGPT = vi.fn().mockResolvedValue('모의 응답');
   });
@@ -31,9 +37,15 @@ describe('RagService - PROJECT scope', () => {
   it('applies project_id filter when scope is PROJECT', async () => {
     await service.query('프로젝트 질문', { scope: 'project', projectId: 'PROJECT-123', topK: 3 });
 
-    expect(mockVectorize.search).toHaveBeenCalledWith('프로젝트 질문', 3, {
-      project_id: 'PROJECT-123',
-    });
+    expect(mockEmbedding.embed).toHaveBeenCalledWith('프로젝트 질문');
+    expect(mockVectorize.query).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        topK: 3,
+        filter: { project_id: 'PROJECT-123' },
+        returnMetadata: true,
+      })
+    );
   });
 
   it('keeps only chunks above similarity threshold for PROJECT scope', async () => {
@@ -42,7 +54,7 @@ describe('RagService - PROJECT scope', () => {
       { id: 'WORK-1#chunk0', score: 0.82, metadata: { chunk_index: '0' } },
       { id: 'WORK-2#chunk0', score: 0.31, metadata: { chunk_index: '0' } },
     ];
-    mockVectorize.search.mockResolvedValue(vectorResults);
+    mockVectorize.query.mockResolvedValue({ matches: vectorResults });
 
     // Stub work note fetch
     (service as TestRagService).fetchWorkNote = vi.fn().mockResolvedValue({

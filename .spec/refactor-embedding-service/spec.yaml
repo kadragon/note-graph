@@ -1,0 +1,25 @@
+spec_id: SPEC-refactor-embedding-service
+title: "Split embedding service by concern"
+given_when_then:
+  - given: "embedding logic mixes OpenAI API calls, Vectorize operations, and orchestration"
+    when: "services are split by responsibility"
+    then: "OpenAI, Vectorize, and orchestration can be tested independently"
+  - given: "embedding retries and batch processing are needed"
+    when: "orchestration logic uses dedicated services"
+    then: "retry behavior remains consistent without changing outputs"
+acceptance_tests:
+  - id: TEST-refactor-embedding-service-1
+    desc: "OpenAIEmbeddingService exposes embed and embedBatch for AI Gateway calls"
+  - id: TEST-refactor-embedding-service-2
+    desc: "VectorizeService exposes insert, delete, and query operations without OpenAI coupling"
+  - id: TEST-refactor-embedding-service-3
+    desc: "EmbeddingProcessor orchestrates embedding + Vectorize with existing retry behavior"
+  - id: TEST-refactor-embedding-service-4
+    desc: "RAG and search integration tests pass without behavior changes"
+dependencies:
+  - governance: "coding-style"
+  - governance: "patterns"
+  - governance: "env"
+linked_tasks:
+  - TASK-REFACTOR-005
+# Trace: spec_id=SPEC-refactor-embedding-service, task_id=TASK-REFACTOR-005

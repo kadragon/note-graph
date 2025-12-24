@@ -1,4 +1,4 @@
-// Trace: SPEC-refactor-error-handler, TASK-REFACTOR-002
+// Trace: SPEC-refactor-error-handler, SPEC-refactor-repository-di, TASK-REFACTOR-002, TASK-REFACTOR-004
 /**
  * Global Error Handler Middleware
  *
@@ -8,10 +8,9 @@
  * - Returns consistent error responses across the application
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import type { Context, Next } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { Env } from '../types/env';
+import type { AppContext } from '../types/context';
 import { DomainError } from '../types/errors';
 
 /**
@@ -25,10 +24,7 @@ import { DomainError } from '../types/errors';
  * app.use('*', errorHandler);
  * ```
  */
-export function errorHandler(
-  c: Context<{ Bindings: Env; Variables: { user?: AuthUser } }>,
-  next: Next
-) {
+export function errorHandler(c: Context<AppContext>, next: Next) {
   return next().catch((error: unknown) => {
     // Handle known domain errors
     if (error instanceof DomainError) {

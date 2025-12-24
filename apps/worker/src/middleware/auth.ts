@@ -1,4 +1,4 @@
-// Trace: SPEC-auth-1, TASK-003
+// Trace: SPEC-auth-1, SPEC-refactor-repository-di, TASK-003, TASK-REFACTOR-004
 /**
  * Authentication middleware for Cloudflare Access
  *
@@ -10,7 +10,7 @@
 
 import { AuthenticationError, type AuthUser } from '@shared/types/auth';
 import type { Context, Next } from 'hono';
-import type { Env } from '../index';
+import type { AppContext } from '../types/context';
 
 /**
  * Cloudflare Access authentication header
@@ -36,10 +36,7 @@ const DEFAULT_DEV_USER_EMAIL = 'dev@localhost';
  *
  * @throws AuthenticationError if no valid authentication header is found in production
  */
-export async function authMiddleware(
-  c: Context<{ Bindings: Env; Variables: { user: AuthUser } }>,
-  next: Next
-) {
+export async function authMiddleware(c: Context<AppContext>, next: Next) {
   // Try Cloudflare Access header first
   let email = c.req.header(CF_ACCESS_EMAIL_HEADER);
 

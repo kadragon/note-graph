@@ -1,4 +1,4 @@
-// Trace: SPEC-rag-2, TASK-022, TASK-041
+// Trace: SPEC-rag-2, TASK-022, TASK-041, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 // Embedding processor for bulk reindexing operations
 
 import type { D1Result } from '@cloudflare/workers-types';
@@ -8,7 +8,8 @@ import { format } from 'date-fns';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import type { Env } from '../types/env';
 import { ChunkingService } from './chunking-service';
-import { EmbeddingService, VectorizeService } from './embedding-service';
+import { OpenAIEmbeddingService } from './openai-embedding-service';
+import { VectorizeService } from './vectorize-service';
 
 export interface ReindexResult {
   total: number;
@@ -44,13 +45,14 @@ export class EmbeddingProcessor {
   private repository: WorkNoteRepository;
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
+  private embeddingService: OpenAIEmbeddingService;
 
   constructor(private env: Env) {
     this.repository = new WorkNoteRepository(env.DB);
     this.chunkingService = new ChunkingService();
 
-    const embeddingService = new EmbeddingService(env);
-    this.vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
+    this.embeddingService = new OpenAIEmbeddingService(env);
+    this.vectorizeService = new VectorizeService(env.VECTORIZE);
   }
 
   /**
@@ -198,11 +200,11 @@ export class EmbeddingProcessor {
     }));
 
     // Upsert chunks into Vectorize
-    await this.vectorizeService.upsertChunks(chunksToEmbed);
+    await this.upsertChunks(chunksToEmbed);
 
     // Delete stale chunks (if this is a re-embed)
     const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
-    await this.vectorizeService.deleteStaleChunks(workNote.workId, newChunkIds);
+    await this.deleteStaleChunks(workNote.workId, newChunkIds);
 
     // Update embedded_at timestamp
     await this.repository.updateEmbeddedAt(workNote.workId);
@@ -397,14 +399,14 @@ export class EmbeddingProcessor {
         metadata: c.metadata as ChunkMetadata,
       }));
 
-      await this.vectorizeService.upsertChunks(chunksForVectorize);
+      await this.upsertChunks(chunksForVectorize);
 
       // Update embedded_at for all work notes in this batch
       for (const workId of workIds) {
         try {
           // Delete stale chunks
           const newChunkIds = new Set(workNoteChunkMap.get(workId) || []);
-          await this.vectorizeService.deleteStaleChunks(workId, newChunkIds);
+          await this.deleteStaleChunks(workId, newChunkIds);
 
           // Update timestamp
           await this.repository.updateEmbeddedAt(workId);
@@ -428,6 +430,58 @@ export class EmbeddingProcessor {
     }
 
     return batchResult;
+  }
+
+  /**
+   * Upsert chunks into Vectorize with embeddings
+   */
+  private async upsertChunks(
+    chunks: Array<{ id: string; text: string; metadata: ChunkMetadata }>
+  ): Promise<void> {
+    if (chunks.length === 0) {
+      return;
+    }
+
+    const texts = chunks.map((chunk) => chunk.text);
+    const embeddings = await this.embeddingService.embedBatch(texts);
+
+    const vectors = chunks.map((chunk, index) => {
+      const embedding = embeddings[index];
+      if (!embedding) {
+        throw new Error(`Missing embedding for chunk ${chunk.id}`);
+      }
+      return {
+        id: chunk.id,
+        values: embedding,
+        metadata: VectorizeService.encodeMetadata(chunk.metadata),
+      };
+    });
+
+    await this.vectorizeService.insert(vectors);
+  }
+
+  /**
+   * Delete stale chunks for a work note (chunks not in the new chunk ID set)
+   */
+  private async deleteStaleChunks(workId: string, newChunkIds: Set<string>): Promise<void> {
+    try {
+      const results = await this.vectorizeService.query(new Array(1536).fill(0), {
+        topK: 500,
+        filter: { work_id: workId },
+        returnMetadata: false,
+      });
+
+      const staleChunkIds = results.matches
+        .map((match) => match.id)
+        .filter((id) => !newChunkIds.has(id));
+
+      if (staleChunkIds.length > 0) {
+        await this.vectorizeService.delete(staleChunkIds);
+      }
+    } catch (error) {
+      console.error('Error deleting stale chunks:', error);
+      // Non-fatal: log and continue
+    }
   }
 
   /**

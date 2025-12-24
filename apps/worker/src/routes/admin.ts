@@ -1,13 +1,13 @@
-// Trace: SPEC-rag-2, TASK-022
+// Trace: SPEC-rag-2, SPEC-refactor-repository-di, TASK-022, TASK-REFACTOR-004
 // Admin routes for embedding management
 
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
 import { EmbeddingProcessor } from '../services/embedding-processor';
-import type { Env } from '../types/env';
+import type { AppContext } from '../types/context';
 
-const admin = new Hono<{ Bindings: Env }>();
+const admin = new Hono<AppContext>();
 
 // Apply auth middleware to all admin routes
 admin.use('*', authMiddleware);

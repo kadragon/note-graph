@@ -1,4 +1,4 @@
-// Trace: SPEC-worknote-attachments-1, TASK-066
+// Trace: SPEC-worknote-attachments-1, SPEC-refactor-repository-di, TASK-066, TASK-REFACTOR-004
 /**
  * Work note file middleware
  *
@@ -10,7 +10,7 @@
 import type { WorkNoteFile } from '@shared/types/work-note';
 import type { Context, Next } from 'hono';
 import { WorkNoteFileService } from '../services/work-note-file-service';
-import type { Env } from '../types/env';
+import type { AppContext, AppVariables } from '../types/context';
 import { getR2Bucket } from '../utils/r2-access';
 
 /**
@@ -20,6 +20,8 @@ export interface FileContext {
   fileService: WorkNoteFileService;
   file?: WorkNoteFile;
 }
+
+type FileVariables = AppVariables & FileContext;
 
 /**
  * Middleware to set up file service and optionally validate file
@@ -31,7 +33,7 @@ export interface FileContext {
  * @returns 404 if fileId is present but file not found or doesn't belong to workId
  */
 export async function workNoteFileMiddleware(
-  c: Context<{ Bindings: Env; Variables: FileContext }>,
+  c: Context<{ Bindings: AppContext['Bindings']; Variables: FileVariables }>,
   next: Next
 ): Promise<Response | void> {
   // Get R2 bucket

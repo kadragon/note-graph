@@ -1,4 +1,4 @@
-// Trace: SPEC-rag-1, TASK-012, TASK-041
+// Trace: SPEC-rag-1, TASK-012, TASK-041, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 import type { D1Database } from '@cloudflare/workers-types';
 import type { RagContextSnippet, RagQueryFilters, RagQueryResponse } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
@@ -6,7 +6,8 @@ import type { Env } from '../types/env';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { ChunkingService } from './chunking-service';
-import { EmbeddingService, VectorizeService } from './embedding-service';
+import { OpenAIEmbeddingService } from './openai-embedding-service';
+import { VectorizeService } from './vectorize-service';
 
 /**
  * RAG (Retrieval-Augmented Generation) service
@@ -19,7 +20,7 @@ import { EmbeddingService, VectorizeService } from './embedding-service';
 export class RagService {
   private db: D1Database;
   private vectorizeService: VectorizeService;
-  private embeddingService: EmbeddingService;
+  private embeddingService: OpenAIEmbeddingService;
   private env: Env;
 
   /** Minimum similarity score threshold for including chunks */
@@ -37,8 +38,8 @@ export class RagService {
   constructor(env: Env) {
     this.env = env;
     this.db = env.DB;
-    this.embeddingService = new EmbeddingService(env);
-    this.vectorizeService = new VectorizeService(env.VECTORIZE, this.embeddingService);
+    this.embeddingService = new OpenAIEmbeddingService(env);
+    this.vectorizeService = new VectorizeService(env.VECTORIZE);
   }
 
   /**
@@ -58,7 +59,17 @@ export class RagService {
     // Retrieve relevant chunks via vector search
     // For person scope, retrieve more results for post-filtering
     const searchLimit = filters.scope === 'person' ? topK * 3 : topK;
-    const vectorResults = await this.vectorizeService.search(query, searchLimit, vectorFilter);
+    const queryEmbedding = await this.embeddingService.embed(query);
+    const vectorResponse = await this.vectorizeService.query(queryEmbedding, {
+      topK: searchLimit,
+      filter: vectorFilter,
+      returnMetadata: true,
+    });
+    const vectorResults = vectorResponse.matches.map((match) => ({
+      id: match.id,
+      score: match.score,
+      metadata: (match.metadata ?? {}) as Record<string, string>,
+    }));
 
     // Filter chunks by similarity threshold
     const relevantChunks = vectorResults.filter((r) => r.score >= this.SIMILARITY_THRESHOLD);

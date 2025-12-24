@@ -1,0 +1,23 @@
+spec_id: SPEC-refactor-repository-di
+title: "Implement repository dependency injection"
+given_when_then:
+  - given: "route handlers repeatedly instantiate repositories"
+    when: "repositories are injected via middleware"
+    then: "handlers access shared repository instances through context"
+  - given: "routes require multiple repositories"
+    when: "the middleware provides a unified repositories object"
+    then: "handler code avoids direct new Repository() instantiation"
+acceptance_tests:
+  - id: TEST-refactor-repository-di-1
+    desc: "All route handlers access repositories via c.get('repositories')"
+  - id: TEST-refactor-repository-di-2
+    desc: "No repository instantiations remain inside route handlers"
+  - id: TEST-refactor-repository-di-3
+    desc: "Existing integration tests for routes pass without changes to expectations"
+dependencies:
+  - governance: "coding-style"
+  - governance: "patterns"
+  - governance: "env"
+linked_tasks:
+  - TASK-REFACTOR-004
+# Trace: spec_id=SPEC-refactor-repository-di, task_id=TASK-REFACTOR-004

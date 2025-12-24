@@ -1,10 +1,11 @@
-// Trace: SPEC-search-1, TASK-011
+// Trace: SPEC-search-1, TASK-011, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 import type { D1Database } from '@cloudflare/workers-types';
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
-import { EmbeddingService, VectorizeService } from './embedding-service';
 import { FtsSearchService } from './fts-search-service';
+import { OpenAIEmbeddingService } from './openai-embedding-service';
+import { VectorizeService } from './vectorize-service';
 
 /**
  * Hybrid search service combining FTS (lexical) and Vectorize (semantic)
@@ -13,14 +14,15 @@ import { FtsSearchService } from './fts-search-service';
 export class HybridSearchService {
   private ftsService: FtsSearchService;
   private vectorizeService: VectorizeService;
+  private embeddingService: OpenAIEmbeddingService;
 
   constructor(
     private db: D1Database,
     env: Env
   ) {
     this.ftsService = new FtsSearchService(db);
-    const embeddingService = new EmbeddingService(env);
-    this.vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
+    this.embeddingService = new OpenAIEmbeddingService(env);
+    this.vectorizeService = new VectorizeService(env.VECTORIZE);
   }
 
   /**
@@ -80,11 +82,17 @@ export class HybridSearchService {
       const vectorFilter = this.buildVectorizeFilter(filters);
 
       // Search Vectorize
-      const results = await this.vectorizeService.search(
-        query,
-        limit ? limit * 2 : 20,
-        vectorFilter
-      );
+      const queryEmbedding = await this.embeddingService.embed(query);
+      const response = await this.vectorizeService.query(queryEmbedding, {
+        topK: limit ? limit * 2 : 20,
+        filter: vectorFilter,
+        returnMetadata: true,
+      });
+      const results = response.matches.map((match) => ({
+        id: match.id,
+        score: match.score,
+        metadata: (match.metadata ?? {}) as Record<string, string>,
+      }));
 
       // Fetch work notes from D1 for matched IDs with person/dept filters applied
       const workNotes = await this.fetchWorkNotesByIds(

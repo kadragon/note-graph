@@ -1,4 +1,4 @@
-// Trace: SPEC-pdf-1, TASK-014
+// Trace: SPEC-pdf-1, SPEC-refactor-repository-di, TASK-014, TASK-REFACTOR-004
 // PDF upload route with synchronous processing
 
 import type {
@@ -11,11 +11,10 @@ import type { SimilarWorkNoteReference } from '@shared/types/search';
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { errorHandler } from '../middleware/error-handler.js';
-import { PdfJobRepository } from '../repositories/pdf-job-repository.js';
 import { AIDraftService } from '../services/ai-draft-service.js';
 import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { WorkNoteService } from '../services/work-note-service.js';
-import type { Env } from '../types/env.js';
+import type { AppContext } from '../types/context';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
 
 // Configuration constants
@@ -47,7 +46,7 @@ function parseDraftJson(
   }
 }
 
-const pdf = new Hono<{ Bindings: Env }>();
+const pdf = new Hono<AppContext>();
 
 pdf.use('*', errorHandler);
 
@@ -57,7 +56,7 @@ pdf.use('*', errorHandler);
  */
 pdf.get('/:jobId', async (c) => {
   const jobId = c.req.param('jobId');
-  const repository = new PdfJobRepository(c.env.DB);
+  const { pdfJobs: repository } = c.get('repositories');
 
   const job = await repository.getById(jobId);
   if (!job) {
@@ -142,7 +141,7 @@ pdf.post('/', async (c) => {
   // Initialize services
   const extractionService = new PdfExtractionService();
   const aiDraftService = new AIDraftService(c.env);
-  const repository = new PdfJobRepository(c.env.DB);
+  const { pdfJobs: repository } = c.get('repositories');
 
   // Create job with PENDING status before processing
   await repository.create(jobId, fileName, metadata);

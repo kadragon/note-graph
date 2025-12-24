@@ -1,10 +1,10 @@
-// Trace: SPEC-rag-1, SPEC-rag-2, SPEC-ai-draft-refs-1, SPEC-worknote-attachments-1, TASK-012, TASK-022, TASK-029, TASK-057
+// Trace: SPEC-rag-1, SPEC-rag-2, SPEC-ai-draft-refs-1, SPEC-worknote-attachments-1, TASK-012, TASK-022, TASK-029, TASK-057, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 /**
  * Work note service coordinating D1, chunking, embedding, and file operations
  * Uses embedded_at tracking for embedding state management
  */
 
-import type { SimilarWorkNoteReference } from '@shared/types/search';
+import type { ChunkMetadata, SimilarWorkNoteReference } from '@shared/types/search';
 import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { format } from 'date-fns';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
@@ -15,7 +15,8 @@ import type {
 } from '../schemas/work-note';
 import type { Env } from '../types/env';
 import { ChunkingService } from './chunking-service';
-import { EmbeddingService, VectorizeService } from './embedding-service';
+import { OpenAIEmbeddingService } from './openai-embedding-service';
+import { VectorizeService } from './vectorize-service';
 import { WorkNoteFileService } from './work-note-file-service';
 
 /**
@@ -31,14 +32,15 @@ export class WorkNoteService {
   private repository: WorkNoteRepository;
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
+  private embeddingService: OpenAIEmbeddingService;
   private fileService: WorkNoteFileService | null;
 
   constructor(env: Env) {
     this.repository = new WorkNoteRepository(env.DB);
     this.chunkingService = new ChunkingService();
 
-    const embeddingService = new EmbeddingService(env);
-    this.vectorizeService = new VectorizeService(env.VECTORIZE, embeddingService);
+    this.embeddingService = new OpenAIEmbeddingService(env);
+    this.vectorizeService = new VectorizeService(env.VECTORIZE);
 
     // Initialize file service if R2 bucket is available
     this.fileService = env.R2_BUCKET ? new WorkNoteFileService(env.R2_BUCKET, env.DB) : null;
@@ -132,7 +134,7 @@ export class WorkNoteService {
     await this.repository.delete(workId);
 
     // Delete chunks from Vectorize (async, non-blocking)
-    this.vectorizeService.deleteWorkNoteChunks(workId).catch((error) => {
+    this.deleteWorkNoteChunks(workId).catch((error) => {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       console.error('[WorkNoteService] Failed to delete work note chunks:', {
@@ -236,16 +238,89 @@ export class WorkNoteService {
     }));
 
     // Upsert chunks into Vectorize
-    await this.vectorizeService.upsertChunks(chunksToEmbed);
+    await this.upsertChunks(chunksToEmbed);
 
     // Delete stale chunks if requested (for updates)
     if (deleteStaleChunks) {
       const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
-      await this.vectorizeService.deleteStaleChunks(workNote.workId, newChunkIds);
+      await this.deleteStaleChunks(workNote.workId, newChunkIds);
     }
 
     // Update embedded_at timestamp on success
     await this.repository.updateEmbeddedAt(workNote.workId);
+  }
+
+  /**
+   * Upsert chunks into Vectorize with embeddings
+   */
+  private async upsertChunks(
+    chunks: Array<{ id: string; text: string; metadata: ChunkMetadata }>
+  ): Promise<void> {
+    if (chunks.length === 0) {
+      return;
+    }
+
+    const texts = chunks.map((chunk) => chunk.text);
+    const embeddings = await this.embeddingService.embedBatch(texts);
+
+    const vectors = chunks.map((chunk, index) => {
+      const embedding = embeddings[index];
+      if (!embedding) {
+        throw new Error(`Missing embedding for chunk ${chunk.id}`);
+      }
+      return {
+        id: chunk.id,
+        values: embedding,
+        metadata: VectorizeService.encodeMetadata(chunk.metadata),
+      };
+    });
+
+    await this.vectorizeService.insert(vectors);
+  }
+
+  /**
+   * Delete stale chunks for a work note (chunks not in the new chunk ID set)
+   */
+  private async deleteStaleChunks(workId: string, newChunkIds: Set<string>): Promise<void> {
+    try {
+      const results = await this.vectorizeService.query(new Array(1536).fill(0), {
+        topK: 500,
+        filter: { work_id: workId },
+        returnMetadata: false,
+      });
+
+      const staleChunkIds = results.matches
+        .map((match) => match.id)
+        .filter((id) => !newChunkIds.has(id));
+
+      if (staleChunkIds.length > 0) {
+        await this.vectorizeService.delete(staleChunkIds);
+      }
+    } catch (error) {
+      console.error('Error deleting stale chunks:', error);
+      // Non-fatal: log and continue
+    }
+  }
+
+  /**
+   * Delete all chunks for a work note from Vectorize
+   */
+  private async deleteWorkNoteChunks(workId: string): Promise<void> {
+    try {
+      const results = await this.vectorizeService.query(new Array(1536).fill(0), {
+        topK: 500,
+        filter: { work_id: workId },
+        returnMetadata: false,
+      });
+
+      if (results.matches.length > 0) {
+        const chunkIds = results.matches.map((match) => match.id);
+        await this.vectorizeService.delete(chunkIds);
+      }
+    } catch (error) {
+      console.error('Error deleting work note chunks:', error);
+      // Non-fatal: log and continue
+    }
   }
 
   /**
@@ -293,7 +368,16 @@ export class WorkNoteService {
   ): Promise<SimilarWorkNoteReference[]> {
     try {
       // Search for similar work notes
-      const similarResults = await this.vectorizeService.search(inputText, topK);
+      const queryEmbedding = await this.embeddingService.embed(inputText);
+      const searchResults = await this.vectorizeService.query(queryEmbedding, {
+        topK,
+        returnMetadata: true,
+      });
+      const similarResults = searchResults.matches.map((match) => ({
+        id: match.id,
+        score: match.score,
+        metadata: (match.metadata ?? {}) as Record<string, string>,
+      }));
 
       // Filter by similarity threshold and extract work IDs
       const relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);

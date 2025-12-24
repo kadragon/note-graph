@@ -1,13 +1,13 @@
 // Trace: SPEC-search-1, TASK-009, TASK-010, TASK-011
 
 import type { SearchResultItem } from '@shared/types/search';
-import { EmbeddingService } from '@worker/services/embedding-service';
+import { OpenAIEmbeddingService } from '@worker/services/openai-embedding-service';
 import type { Env } from '@worker/types/env';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('Search Functionality', () => {
   describe('TASK-010: Embedding Service (OpenAI Integration)', () => {
-    describe('EmbeddingService', () => {
+    describe('OpenAIEmbeddingService', () => {
       it('should generate embedding for single text', async () => {
         const mockEnv = {
           AI_GATEWAY_ID: 'test-gateway',
@@ -15,7 +15,7 @@ describe('Search Functionality', () => {
           OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
         } as Env;
 
-        const embeddingService = new EmbeddingService(mockEnv);
+        const embeddingService = new OpenAIEmbeddingService(mockEnv);
 
         // Mock fetch to return embedding
         global.fetch = vi.fn().mockResolvedValue({
@@ -25,7 +25,7 @@ describe('Search Functionality', () => {
           }),
         } as Response);
 
-        const embedding = await embeddingService.generateEmbedding('test text');
+        const embedding = await embeddingService.embed('test text');
 
         expect(embedding).toHaveLength(1536);
         expect(embedding[0]).toBe(0.1);
@@ -48,7 +48,7 @@ describe('Search Functionality', () => {
           OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
         } as Env;
 
-        const embeddingService = new EmbeddingService(mockEnv);
+        const embeddingService = new OpenAIEmbeddingService(mockEnv);
 
         global.fetch = vi.fn().mockResolvedValue({
           ok: true,
@@ -60,7 +60,7 @@ describe('Search Functionality', () => {
           }),
         } as Response);
 
-        const embeddings = await embeddingService.generateEmbeddings(['text 1', 'text 2']);
+        const embeddings = await embeddingService.embedBatch(['text 1', 'text 2']);
 
         expect(embeddings).toHaveLength(2);
         expect(embeddings[0]).toHaveLength(1536);
@@ -76,7 +76,7 @@ describe('Search Functionality', () => {
           OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
         } as Env;
 
-        const embeddingService = new EmbeddingService(mockEnv);
+        const embeddingService = new OpenAIEmbeddingService(mockEnv);
 
         global.fetch = vi.fn().mockResolvedValue({
           ok: false,
@@ -84,7 +84,7 @@ describe('Search Functionality', () => {
           text: async () => 'Rate limit exceeded',
         } as Response);
 
-        await expect(embeddingService.generateEmbedding('test')).rejects.toThrow(
+        await expect(embeddingService.embed('test')).rejects.toThrow(
           'AI_RATE_LIMIT: Embedding rate limit exceeded'
         );
       });
@@ -96,8 +96,8 @@ describe('Search Functionality', () => {
           OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
         } as Env;
 
-        const embeddingService = new EmbeddingService(mockEnv);
-        const embeddings = await embeddingService.generateEmbeddings([]);
+        const embeddingService = new OpenAIEmbeddingService(mockEnv);
+        const embeddings = await embeddingService.embedBatch([]);
 
         expect(embeddings).toEqual([]);
       });
@@ -109,7 +109,7 @@ describe('Search Functionality', () => {
           OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
         } as Env;
 
-        const embeddingService = new EmbeddingService(mockEnv);
+        const embeddingService = new OpenAIEmbeddingService(mockEnv);
 
         global.fetch = vi.fn().mockResolvedValue({
           ok: true,
@@ -118,7 +118,7 @@ describe('Search Functionality', () => {
           }),
         } as Response);
 
-        await expect(embeddingService.generateEmbedding('test')).rejects.toThrow(
+        await expect(embeddingService.embed('test')).rejects.toThrow(
           'No embedding returned from OpenAI API'
         );
       });
@@ -130,7 +130,7 @@ describe('Search Functionality', () => {
           OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
         } as Env;
 
-        const embeddingService = new EmbeddingService(mockEnv);
+        const embeddingService = new OpenAIEmbeddingService(mockEnv);
 
         global.fetch = vi.fn().mockResolvedValue({
           ok: false,
@@ -138,7 +138,7 @@ describe('Search Functionality', () => {
           text: async () => 'Internal Server Error',
         } as Response);
 
-        await expect(embeddingService.generateEmbedding('test')).rejects.toThrow(
+        await expect(embeddingService.embed('test')).rejects.toThrow(
           'OpenAI API error (500): Internal Server Error'
         );
       });
@@ -150,7 +150,7 @@ describe('Search Functionality', () => {
           OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
         } as Env;
 
-        const embeddingService = new EmbeddingService(mockEnv);
+        const embeddingService = new OpenAIEmbeddingService(mockEnv);
 
         interface EmbeddingRequestBody {
           model: string;
@@ -168,7 +168,7 @@ describe('Search Functionality', () => {
           } as Response;
         });
 
-        await embeddingService.generateEmbedding('test text');
+        await embeddingService.embed('test text');
 
         expect(requestBody).toEqual({
           model: 'text-embedding-3-small',
