@@ -1,0 +1,25 @@
+spec_id: SPEC-refactor-validation-middleware
+title: "Create validation middleware factory"
+given_when_then:
+  - given: "routes manually call validateBody and validateQuery in each handler"
+    when: "validation middleware factories are introduced"
+    then: "handlers receive validated inputs via context without manual validation calls"
+  - given: "validation schemas vary per route"
+    when: "middleware factories accept a schema and attach validated data"
+    then: "routes stay type-safe and reuse consistent validation behavior"
+acceptance_tests:
+  - id: TEST-refactor-validation-middleware-1
+    desc: "bodyValidator middleware validates request body and stores result in context"
+  - id: TEST-refactor-validation-middleware-2
+    desc: "queryValidator middleware validates request query and stores result in context"
+  - id: TEST-refactor-validation-middleware-3
+    desc: "routes use validation middleware instead of manual validateBody/validateQuery calls"
+  - id: TEST-refactor-validation-middleware-4
+    desc: "validation integration tests pass without behavior changes"
+dependencies:
+  - governance: "coding-style"
+  - governance: "patterns"
+  - governance: "env"
+linked_tasks:
+  - TASK-REFACTOR-006
+# Trace: spec_id=SPEC-refactor-validation-middleware, task_id=TASK-REFACTOR-006

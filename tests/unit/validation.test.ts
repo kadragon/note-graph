@@ -1,6 +1,7 @@
 // Trace: TASK-016
 // Unit tests for validation utilities
 
+import { bodyValidator, queryValidator } from '@worker/middleware/validation-middleware';
 import { ValidationError } from '@worker/types/errors';
 import { validateBody, validateParams, validateQuery } from '@worker/utils/validation';
 import type { Context } from 'hono';
@@ -396,6 +397,78 @@ describe('Validation Utilities', () => {
       await expect(validateBody(mockContext, createWorkNoteSchema)).rejects.toThrow(
         ValidationError
       );
+    });
+  });
+
+  describe('Validation middleware', () => {
+    it('should validate request body and attach to context', async () => {
+      const schema = z.object({
+        title: z.string(),
+        count: z.number(),
+      });
+
+      const stored = new Map<string, unknown>();
+      const mockContext = {
+        req: {
+          json: vi.fn().mockResolvedValue({ title: 'Test', count: 2 }),
+        },
+        set: vi.fn((key: string, value: unknown) => {
+          stored.set(key, value);
+        }),
+        get: vi.fn((key: string) => stored.get(key)),
+      } as unknown as Context;
+
+      const next = vi.fn().mockResolvedValue(undefined);
+
+      await bodyValidator(schema)(mockContext, next);
+
+      expect(mockContext.set).toHaveBeenCalledWith('body', { title: 'Test', count: 2 });
+      expect(mockContext.get('body')).toEqual({ title: 'Test', count: 2 });
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    it('should validate query and attach to context', async () => {
+      const schema = z.object({
+        page: z.string(),
+      });
+
+      const stored = new Map<string, unknown>();
+      const mockContext = {
+        req: {
+          query: vi.fn().mockReturnValue({ page: '1' }),
+        },
+        set: vi.fn((key: string, value: unknown) => {
+          stored.set(key, value);
+        }),
+        get: vi.fn((key: string) => stored.get(key)),
+      } as unknown as Context;
+
+      const next = vi.fn().mockResolvedValue(undefined);
+
+      await queryValidator(schema)(mockContext, next);
+
+      expect(mockContext.set).toHaveBeenCalledWith('query', { page: '1' });
+      expect(mockContext.get('query')).toEqual({ page: '1' });
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw ValidationError for invalid body', async () => {
+      const schema = z.object({
+        title: z.string(),
+        count: z.number(),
+      });
+
+      const mockContext = {
+        req: {
+          json: vi.fn().mockResolvedValue({ title: 'Test', count: 'nope' }),
+        },
+        set: vi.fn(),
+      } as unknown as Context;
+
+      const next = vi.fn().mockResolvedValue(undefined);
+
+      await expect(bodyValidator(schema)(mockContext, next)).rejects.toThrow(ValidationError);
+      expect(next).not.toHaveBeenCalled();
     });
   });
 });

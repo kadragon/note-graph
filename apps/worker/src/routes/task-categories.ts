@@ -1,22 +1,25 @@
-// Trace: SPEC-taskcategory-1, TASK-003
+// Trace: SPEC-taskcategory-1, SPEC-refactor-repository-di, TASK-003, TASK-REFACTOR-004
 /**
  * Task Category management routes
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
-import type { Env } from '../index';
 import { authMiddleware } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
-import { TaskCategoryRepository } from '../repositories/task-category-repository';
+import {
+  bodyValidator,
+  getValidatedBody,
+  getValidatedQuery,
+  queryValidator,
+} from '../middleware/validation-middleware';
 import {
   createTaskCategorySchema,
   listTaskCategoriesQuerySchema,
   updateTaskCategorySchema,
 } from '../schemas/task-category';
-import { validateBody, validateQuery } from '../utils/validation';
+import type { AppContext } from '../types/context';
 
-const taskCategories = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+const taskCategories = new Hono<AppContext>();
 
 // All task category routes require authentication
 taskCategories.use('*', authMiddleware);
@@ -29,9 +32,9 @@ taskCategories.use('*', errorHandler);
  *   - limit: max results
  *   - activeOnly: if 'true', only return active categories
  */
-taskCategories.get('/', async (c) => {
-  const query = validateQuery(c, listTaskCategoriesQuerySchema);
-  const repository = new TaskCategoryRepository(c.env.DB);
+taskCategories.get('/', queryValidator(listTaskCategoriesQuerySchema), async (c) => {
+  const query = getValidatedQuery(c, listTaskCategoriesQuerySchema);
+  const { taskCategories: repository } = c.get('repositories');
   const results = await repository.findAll(query.q, query.limit, query.activeOnly);
 
   return c.json(results);
@@ -40,9 +43,9 @@ taskCategories.get('/', async (c) => {
 /**
  * POST /task-categories - Create new task category
  */
-taskCategories.post('/', async (c) => {
-  const data = await validateBody(c, createTaskCategorySchema);
-  const repository = new TaskCategoryRepository(c.env.DB);
+taskCategories.post('/', bodyValidator(createTaskCategorySchema), async (c) => {
+  const data = getValidatedBody(c, createTaskCategorySchema);
+  const { taskCategories: repository } = c.get('repositories');
   const category = await repository.create(data);
 
   return c.json(category, 201);
@@ -53,7 +56,7 @@ taskCategories.post('/', async (c) => {
  */
 taskCategories.get('/:categoryId', async (c) => {
   const { categoryId } = c.req.param();
-  const repository = new TaskCategoryRepository(c.env.DB);
+  const { taskCategories: repository } = c.get('repositories');
   const category = await repository.findById(categoryId);
 
   if (!category) {
@@ -66,10 +69,10 @@ taskCategories.get('/:categoryId', async (c) => {
 /**
  * PUT /task-categories/:categoryId - Update task category
  */
-taskCategories.put('/:categoryId', async (c) => {
-  const { categoryId } = c.req.param();
-  const data = await validateBody(c, updateTaskCategorySchema);
-  const repository = new TaskCategoryRepository(c.env.DB);
+taskCategories.put('/:categoryId', bodyValidator(updateTaskCategorySchema), async (c) => {
+  const categoryId = c.req.param('categoryId');
+  const data = getValidatedBody(c, updateTaskCategorySchema);
+  const { taskCategories: repository } = c.get('repositories');
   const category = await repository.update(categoryId, data);
 
   return c.json(category);
@@ -79,8 +82,8 @@ taskCategories.put('/:categoryId', async (c) => {
  * DELETE /task-categories/:categoryId - Delete task category
  */
 taskCategories.delete('/:categoryId', async (c) => {
-  const { categoryId } = c.req.param();
-  const repository = new TaskCategoryRepository(c.env.DB);
+  const categoryId = c.req.param('categoryId');
+  const { taskCategories: repository } = c.get('repositories');
   await repository.delete(categoryId);
 
   return c.json({ message: 'Task category deleted successfully' });
@@ -91,7 +94,7 @@ taskCategories.delete('/:categoryId', async (c) => {
  */
 taskCategories.get('/:categoryId/work-notes', async (c) => {
   const { categoryId } = c.req.param();
-  const repository = new TaskCategoryRepository(c.env.DB);
+  const { taskCategories: repository } = c.get('repositories');
   const workNotes = await repository.getWorkNotes(categoryId);
 
   return c.json(workNotes);

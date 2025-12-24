@@ -194,6 +194,32 @@
 - **Files Modified**: All 12 route files, 1 middleware file
 - **Verification**: Full test suite passed (595/595 tests)
 
+### Session 71: Base File Service Refactor (2025-12-23)
+- **TASK-REFACTOR-003 (SPEC-refactor-file-service)**: Added BaseFileService with shared validation, R2 operations, and DB helpers.
+- **Services Updated**: ProjectFileService and WorkNoteFileService now extend the base class.
+- **Behavior**: MIME resolution now supports extension fallback for empty/generic MIME types across both services; embedding uses resolved MIME type.
+- **Testing**: Added project-file test for empty MIME fallback; unit tests for both services pass.
+
+### Session 72: Repository DI Middleware (2025-12-23)
+- **TASK-REFACTOR-004 (SPEC-refactor-repository-di)**: Added repository injection middleware and shared AppContext types.
+- **Routes Updated**: All route handlers now use `c.get('repositories')` instead of `new Repository()` calls.
+- **Middleware**: `repositoriesMiddleware` attaches per-request repositories at the `/api` router level.
+- **Auth Usage**: File upload routes now use `getAuthUser` to assert user context.
+- **Testing**: Ran integration routes suite; all tests passed.
+
+### Session 73: Embedding Service Split (2025-12-23)
+- **TASK-REFACTOR-005 (SPEC-refactor-embedding-service)**: Split embedding service by concern.
+- **New Services**: `OpenAIEmbeddingService` (embed/embedBatch) + `VectorizeService` (insert/delete/query + metadata helpers).
+- **Refactors**: Updated EmbeddingProcessor, WorkNoteService, RagService, HybridSearchService, ProjectFileService to use new services.
+- **Cleanup**: Removed legacy `embedding-service.ts`, updated embedding-related unit tests.
+- **Verification**: Targeted vitest run for embedding, work-note, rag, project-file, search tests passed.
+
+### Session 74: Validation Middleware Factory (2025-12-24)
+- **TASK-REFACTOR-006 (SPEC-refactor-validation-middleware)**: Added validation middleware factories and replaced manual validation calls in all routes.
+- **Middleware**: `bodyValidator` + `queryValidator` with typed access helpers; validated data stored on context (`body`, `query`).
+- **Context**: AppContext variables extended for validated body/query storage.
+- **Testing**: Added unit tests for middleware behavior; `npm test -- tests/unit/validation.test.ts` passed.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -230,3 +256,7 @@
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-064 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-066 -->
 <!-- Trace: spec_id=SPEC-stats-1, task_id=TASK-067 -->
+<!-- Trace: spec_id=SPEC-refactor-file-service, task_id=TASK-REFACTOR-003 -->
+<!-- Trace: spec_id=SPEC-refactor-repository-di, task_id=TASK-REFACTOR-004 -->
+<!-- Trace: spec_id=SPEC-refactor-embedding-service, task_id=TASK-REFACTOR-005 -->
+<!-- Trace: spec_id=SPEC-refactor-validation-middleware, task_id=TASK-REFACTOR-006 -->

@@ -1,18 +1,17 @@
-// Trace: SPEC-stats-1, TASK-047
+// Trace: SPEC-stats-1, SPEC-refactor-repository-di, TASK-047, TASK-REFACTOR-004
 /**
  * Statistics routes for work note completion metrics
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
+import { getValidatedQuery, queryValidator } from '../middleware/validation-middleware';
 import { statisticsQuerySchema } from '../schemas/statistics';
 import { StatisticsService } from '../services/statistics-service';
-import type { Env } from '../types/env';
-import { validateQuery } from '../utils/validation';
+import type { AppContext } from '../types/context';
 
-const statistics = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+const statistics = new Hono<AppContext>();
 
 // All statistics routes require authentication
 statistics.use('*', authMiddleware);
@@ -30,8 +29,8 @@ statistics.use('*', errorHandler);
  * - deptName: string (optional filter)
  * - category: string (optional filter)
  */
-statistics.get('/', async (c) => {
-  const query = validateQuery(c, statisticsQuerySchema);
+statistics.get('/', queryValidator(statisticsQuerySchema), async (c) => {
+  const query = getValidatedQuery(c, statisticsQuerySchema);
   const service = new StatisticsService(c.env);
 
   const stats = await service.getStatistics(query.period, {

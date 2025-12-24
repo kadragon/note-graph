@@ -1,15 +1,18 @@
-// Trace: SPEC-person-1, TASK-005, TASK-LLM-IMPORT, TASK-060
+// Trace: SPEC-person-1, SPEC-refactor-repository-di, TASK-005, TASK-LLM-IMPORT, TASK-060, TASK-REFACTOR-004
 /**
  * Person management routes
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import type { Person } from '@shared/types/person';
 import { Hono } from 'hono';
-import type { Env } from '../index';
 import { authMiddleware } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
-import { PersonRepository } from '../repositories/person-repository';
+import {
+  bodyValidator,
+  getValidatedBody,
+  getValidatedQuery,
+  queryValidator,
+} from '../middleware/validation-middleware';
 import {
   createPersonSchema,
   importPersonFromTextSchema,
@@ -17,9 +20,9 @@ import {
   updatePersonSchema,
 } from '../schemas/person';
 import { PersonImportService } from '../services/person-import-service';
-import { validateBody, validateQuery } from '../utils/validation';
+import type { AppContext } from '../types/context';
 
-const persons = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+const persons = new Hono<AppContext>();
 
 // All person routes require authentication
 persons.use('*', authMiddleware);
@@ -28,9 +31,9 @@ persons.use('*', errorHandler);
 /**
  * GET /persons - List all persons with optional search
  */
-persons.get('/', async (c) => {
-  const query = validateQuery(c, listPersonsQuerySchema);
-  const repository = new PersonRepository(c.env.DB);
+persons.get('/', queryValidator(listPersonsQuerySchema), async (c) => {
+  const query = getValidatedQuery(c, listPersonsQuerySchema);
+  const { persons: repository } = c.get('repositories');
   const results = await repository.findAll(query.q);
 
   return c.json(results);
@@ -40,10 +43,10 @@ persons.get('/', async (c) => {
  * POST /persons - Create new person
  * Department must already exist; otherwise returns validation error
  */
-persons.post('/', async (c) => {
-  const data = await validateBody(c, createPersonSchema);
-  const personRepository = new PersonRepository(c.env.DB);
-  const person = await personRepository.create(data);
+persons.post('/', bodyValidator(createPersonSchema), async (c) => {
+  const data = getValidatedBody(c, createPersonSchema);
+  const { persons: repository } = c.get('repositories');
+  const person = await repository.create(data);
 
   return c.json(person, 201);
 });
@@ -53,7 +56,7 @@ persons.post('/', async (c) => {
  */
 persons.get('/:personId', async (c) => {
   const { personId } = c.req.param();
-  const repository = new PersonRepository(c.env.DB);
+  const { persons: repository } = c.get('repositories');
   const person = await repository.findById(personId);
 
   if (!person) {
@@ -67,11 +70,11 @@ persons.get('/:personId', async (c) => {
  * PUT /persons/:personId - Update person
  * Department must already exist; otherwise returns validation error
  */
-persons.put('/:personId', async (c) => {
-  const { personId } = c.req.param();
-  const data = await validateBody(c, updatePersonSchema);
-  const personRepository = new PersonRepository(c.env.DB);
-  const person = await personRepository.update(personId, data);
+persons.put('/:personId', bodyValidator(updatePersonSchema), async (c) => {
+  const personId = c.req.param('personId');
+  const data = getValidatedBody(c, updatePersonSchema);
+  const { persons: repository } = c.get('repositories');
+  const person = await repository.update(personId, data);
 
   return c.json(person);
 });
@@ -80,8 +83,8 @@ persons.put('/:personId', async (c) => {
  * GET /persons/:personId/history - Get person department history
  */
 persons.get('/:personId/history', async (c) => {
-  const { personId } = c.req.param();
-  const repository = new PersonRepository(c.env.DB);
+  const personId = c.req.param('personId');
+  const { persons: repository } = c.get('repositories');
   const history = await repository.getDepartmentHistory(personId);
 
   return c.json(history);
@@ -91,8 +94,8 @@ persons.get('/:personId/history', async (c) => {
  * GET /persons/:personId/work-notes - Get person's work notes
  */
 persons.get('/:personId/work-notes', async (c) => {
-  const { personId } = c.req.param();
-  const repository = new PersonRepository(c.env.DB);
+  const personId = c.req.param('personId');
+  const { persons: repository } = c.get('repositories');
   const workNotes = await repository.getWorkNotes(personId);
 
   return c.json(workNotes);
@@ -101,8 +104,8 @@ persons.get('/:personId/work-notes', async (c) => {
 /**
  * POST /persons/import-from-text - Parse person data from text using LLM
  */
-persons.post('/import-from-text', async (c) => {
-  const data = await validateBody(c, importPersonFromTextSchema);
+persons.post('/import-from-text', bodyValidator(importPersonFromTextSchema), async (c) => {
+  const data = getValidatedBody(c, importPersonFromTextSchema);
   const importService = new PersonImportService(c.env);
   const parsed = await importService.parsePersonFromText(data.text);
 
@@ -113,10 +116,10 @@ persons.post('/import-from-text', async (c) => {
  * POST /persons/import - Import person from parsed data (create or update)
  * Department is auto-created atomically in the same transaction
  */
-persons.post('/import', async (c) => {
-  const data = await validateBody(c, createPersonSchema);
+persons.post('/import', bodyValidator(createPersonSchema), async (c) => {
+  const data = getValidatedBody(c, createPersonSchema);
   // Use autoCreateDepartment option to create department in the same transaction
-  const personRepository = new PersonRepository(c.env.DB, { autoCreateDepartment: true });
+  const { personsWithAutoCreateDepartment: personRepository } = c.get('repositories');
 
   // Check if person already exists
   const existingPerson = await personRepository.findById(data.personId);

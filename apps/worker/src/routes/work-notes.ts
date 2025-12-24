@@ -1,14 +1,18 @@
-// Trace: SPEC-worknote-1, SPEC-rag-1, SPEC-worknote-attachments-1, TASK-007, TASK-010, TASK-012, TASK-057, TASK-066
+// Trace: SPEC-worknote-1, SPEC-rag-1, SPEC-worknote-attachments-1, SPEC-refactor-repository-di, TASK-007, TASK-010, TASK-012, TASK-057, TASK-066, TASK-REFACTOR-004
 /**
  * Work note management routes with integrated RAG support and file attachments
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, getAuthUser } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
-import { workNoteFileMiddleware } from '../middleware/work-note-file';
-import { TodoRepository } from '../repositories/todo-repository';
+import {
+  bodyValidator,
+  getValidatedBody,
+  getValidatedQuery,
+  queryValidator,
+} from '../middleware/validation-middleware';
+import { type FileContext, workNoteFileMiddleware } from '../middleware/work-note-file';
 import { createTodoSchema } from '../schemas/todo';
 import {
   createWorkNoteSchema,
@@ -17,11 +21,15 @@ import {
 } from '../schemas/work-note';
 import { WorkNoteFileService } from '../services/work-note-file-service';
 import { WorkNoteService } from '../services/work-note-service';
-import type { Env } from '../types/env';
+import type { AppContext, AppVariables } from '../types/context';
 import { getR2Bucket } from '../utils/r2-access';
-import { validateBody, validateQuery } from '../utils/validation';
 
-const workNotes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+type WorkNotesContext = {
+  Bindings: AppContext['Bindings'];
+  Variables: AppVariables & FileContext;
+};
+
+const workNotes = new Hono<WorkNotesContext>();
 
 // All work note routes require authentication
 workNotes.use('*', authMiddleware);
@@ -31,7 +39,12 @@ workNotes.use('*', errorHandler);
  * Trigger re-embedding of a work note (fire-and-forget)
  * Used when todo changes require vector store update
  */
-function triggerReembed(env: Env, workId: string, todoId: string, operation: string): void {
+function triggerReembed(
+  env: AppContext['Bindings'],
+  workId: string,
+  todoId: string,
+  operation: string
+): void {
   const service = new WorkNoteService(env);
   service.reembedOnly(workId).catch((error) => {
     console.error(`[WorkNote] Failed to re-embed after todo ${operation}:`, {
@@ -45,8 +58,8 @@ function triggerReembed(env: Env, workId: string, todoId: string, operation: str
 /**
  * GET /work-notes - List work notes with filters
  */
-workNotes.get('/', async (c) => {
-  const query = validateQuery(c, listWorkNotesQuerySchema);
+workNotes.get('/', queryValidator(listWorkNotesQuerySchema), async (c) => {
+  const query = getValidatedQuery(c, listWorkNotesQuerySchema);
   const service = new WorkNoteService(c.env);
   const results = await service.findAll(query);
 
@@ -57,8 +70,8 @@ workNotes.get('/', async (c) => {
  * POST /work-notes - Create new work note
  * Automatically chunks and embeds for RAG
  */
-workNotes.post('/', async (c) => {
-  const data = await validateBody(c, createWorkNoteSchema);
+workNotes.post('/', bodyValidator(createWorkNoteSchema), async (c) => {
+  const data = getValidatedBody(c, createWorkNoteSchema);
   const service = new WorkNoteService(c.env);
   const workNote = await service.create(data);
 
@@ -84,9 +97,9 @@ workNotes.get('/:workId', async (c) => {
  * PUT /work-notes/:workId - Update work note
  * Automatically re-chunks and re-embeds for RAG
  */
-workNotes.put('/:workId', async (c) => {
-  const { workId } = c.req.param();
-  const data = await validateBody(c, updateWorkNoteSchema);
+workNotes.put('/:workId', bodyValidator(updateWorkNoteSchema), async (c) => {
+  const workId = c.req.param('workId');
+  const data = getValidatedBody(c, updateWorkNoteSchema);
   const service = new WorkNoteService(c.env);
   const workNote = await service.update(workId, data);
 
@@ -98,7 +111,7 @@ workNotes.put('/:workId', async (c) => {
  * Automatically deletes all chunks from Vectorize
  */
 workNotes.delete('/:workId', async (c) => {
-  const { workId } = c.req.param();
+  const workId = c.req.param('workId');
   const service = new WorkNoteService(c.env);
   await service.delete(workId);
 
@@ -109,8 +122,8 @@ workNotes.delete('/:workId', async (c) => {
  * GET /work-notes/:workId/todos - Get todos for work note
  */
 workNotes.get('/:workId/todos', async (c) => {
-  const { workId } = c.req.param();
-  const repository = new TodoRepository(c.env.DB);
+  const workId = c.req.param('workId');
+  const { todos: repository } = c.get('repositories');
   const todos = await repository.findByWorkId(workId);
 
   return c.json(todos);
@@ -120,10 +133,10 @@ workNotes.get('/:workId/todos', async (c) => {
  * POST /work-notes/:workId/todos - Create todo for work note
  * Re-embeds the parent work note to include new todo in vector store
  */
-workNotes.post('/:workId/todos', async (c) => {
-  const { workId } = c.req.param();
-  const data = await validateBody(c, createTodoSchema);
-  const repository = new TodoRepository(c.env.DB);
+workNotes.post('/:workId/todos', bodyValidator(createTodoSchema), async (c) => {
+  const workId = c.req.param('workId');
+  const data = getValidatedBody(c, createTodoSchema);
+  const { todos: repository } = c.get('repositories');
   const todo = await repository.create(workId, data);
 
   // Re-embed work note to include new todo in vector store (async, non-blocking)
@@ -136,8 +149,8 @@ workNotes.post('/:workId/todos', async (c) => {
  * POST /work-notes/:workId/files - Upload file to work note
  */
 workNotes.post('/:workId/files', async (c) => {
-  const { workId } = c.req.param();
-  const user = c.get('user');
+  const workId = c.req.param('workId');
+  const user = getAuthUser(c);
 
   // Verify work note exists before accepting upload
   const workNoteService = new WorkNoteService(c.env);

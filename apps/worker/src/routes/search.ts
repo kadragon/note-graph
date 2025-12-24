@@ -1,6 +1,5 @@
-// Trace: SPEC-search-1, TASK-009, TASK-011
+// Trace: SPEC-search-1, SPEC-refactor-repository-di, TASK-009, TASK-011, TASK-REFACTOR-004
 
-import type { AuthUser } from '@shared/types/auth';
 import type {
   DepartmentSearchItem,
   PersonSearchItem,
@@ -10,14 +9,12 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
-import { DepartmentRepository } from '../repositories/department-repository';
-import { PersonRepository } from '../repositories/person-repository';
+import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { searchWorkNotesSchema } from '../schemas/search';
 import { HybridSearchService } from '../services/hybrid-search-service';
-import type { Env } from '../types/env';
-import { validateBody } from '../utils/validation';
+import type { AppContext } from '../types/context';
 
-const search = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+const search = new Hono<AppContext>();
 
 // Apply authentication to all search routes
 search.use('*', authMiddleware);
@@ -29,9 +26,9 @@ search.use('*', errorHandler);
  * POST /search/work-notes
  * Search work notes using hybrid search (FTS + Vectorize with RRF)
  */
-search.post('/work-notes', async (c: Context<{ Bindings: Env }>) => {
+search.post('/work-notes', bodyValidator(searchWorkNotesSchema), async (c: Context<AppContext>) => {
   // Validate request body
-  const body = await validateBody(c, searchWorkNotesSchema);
+  const body = getValidatedBody(c, searchWorkNotesSchema);
 
   // Create hybrid search service
   const hybridSearchService = new HybridSearchService(c.env.DB, c.env);
@@ -58,15 +55,14 @@ search.post('/work-notes', async (c: Context<{ Bindings: Env }>) => {
  * POST /search/unified
  * Unified search across work notes, persons, and departments
  */
-search.post('/unified', async (c: Context<{ Bindings: Env }>) => {
+search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<AppContext>) => {
   // Validate request body
-  const body = await validateBody(c, searchWorkNotesSchema);
+  const body = getValidatedBody(c, searchWorkNotesSchema);
   const query = body.query.trim();
 
   // Initialize repositories and services
   const hybridSearchService = new HybridSearchService(c.env.DB, c.env);
-  const personRepository = new PersonRepository(c.env.DB);
-  const departmentRepository = new DepartmentRepository(c.env.DB);
+  const { persons: personRepository, departments: departmentRepository } = c.get('repositories');
 
   // Execute searches in parallel
   const [workNoteResults, persons, departments] = await Promise.all([

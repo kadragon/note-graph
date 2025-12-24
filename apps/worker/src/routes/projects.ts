@@ -1,13 +1,17 @@
-// Trace: SPEC-project-1, TASK-037, TASK-065
+// Trace: SPEC-project-1, SPEC-refactor-repository-di, TASK-037, TASK-065, TASK-REFACTOR-004
 /**
  * API routes for Project management
  */
 
-import type { AuthUser } from '@shared/types/auth';
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, getAuthUser } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
-import { ProjectRepository } from '../repositories/project-repository';
+import {
+  bodyValidator,
+  getValidatedBody,
+  getValidatedQuery,
+  queryValidator,
+} from '../middleware/validation-middleware';
 import {
   addParticipantSchema,
   assignWorkNoteSchema,
@@ -16,12 +20,11 @@ import {
   updateProjectSchema,
 } from '../schemas/project';
 import { ProjectFileService } from '../services/project-file-service';
-import type { Env } from '../types/env';
+import type { AppContext } from '../types/context';
 import { BadRequestError, ConflictError, NotFoundError } from '../types/errors';
 import { getR2Bucket } from '../utils/r2-access';
-import { validateBody, validateQuery } from '../utils/validation';
 
-const projects = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+const projects = new Hono<AppContext>();
 
 // All project routes require authentication
 projects.use('*', authMiddleware);
@@ -31,9 +34,9 @@ projects.use('*', errorHandler);
  * POST /projects
  * Create a new project
  */
-projects.post('/', async (c) => {
-  const data = await validateBody(c, createProjectSchema);
-  const repository = new ProjectRepository(c.env.DB);
+projects.post('/', bodyValidator(createProjectSchema), async (c) => {
+  const data = getValidatedBody(c, createProjectSchema);
+  const { projects: repository } = c.get('repositories');
 
   const project = await repository.create(data);
 
@@ -44,9 +47,9 @@ projects.post('/', async (c) => {
  * GET /projects
  * List projects with optional filters
  */
-projects.get('/', async (c) => {
-  const query = validateQuery(c, listProjectsQuerySchema);
-  const repository = new ProjectRepository(c.env.DB);
+projects.get('/', queryValidator(listProjectsQuerySchema), async (c) => {
+  const query = getValidatedQuery(c, listProjectsQuerySchema);
+  const { projects: repository } = c.get('repositories');
 
   const projects = await repository.findAll(query);
 
@@ -59,7 +62,7 @@ projects.get('/', async (c) => {
  */
 projects.get('/:projectId', async (c) => {
   const projectId = c.req.param('projectId');
-  const repository = new ProjectRepository(c.env.DB);
+  const { projects: repository } = c.get('repositories');
 
   const project = await repository.getDetail(projectId);
   if (!project) {
@@ -73,10 +76,10 @@ projects.get('/:projectId', async (c) => {
  * PUT /projects/:projectId
  * Update project
  */
-projects.put('/:projectId', async (c) => {
+projects.put('/:projectId', bodyValidator(updateProjectSchema), async (c) => {
   const projectId = c.req.param('projectId');
-  const data = await validateBody(c, updateProjectSchema);
-  const repository = new ProjectRepository(c.env.DB);
+  const data = getValidatedBody(c, updateProjectSchema);
+  const { projects: repository } = c.get('repositories');
 
   const updated = await repository.update(projectId, data);
 
@@ -89,7 +92,7 @@ projects.put('/:projectId', async (c) => {
  */
 projects.delete('/:projectId', async (c) => {
   const projectId = c.req.param('projectId');
-  const repository = new ProjectRepository(c.env.DB);
+  const { projects: repository } = c.get('repositories');
 
   // Get R2 bucket
   const r2Bucket = getR2Bucket(c.env);
@@ -117,7 +120,7 @@ projects.delete('/:projectId', async (c) => {
  */
 projects.get('/:projectId/stats', async (c) => {
   const projectId = c.req.param('projectId');
-  const repository = new ProjectRepository(c.env.DB);
+  const { projects: repository } = c.get('repositories');
 
   // Verify project exists
   const project = await repository.findById(projectId);
@@ -134,10 +137,10 @@ projects.get('/:projectId/stats', async (c) => {
  * POST /projects/:projectId/participants
  * Add participant to project
  */
-projects.post('/:projectId/participants', async (c) => {
+projects.post('/:projectId/participants', bodyValidator(addParticipantSchema), async (c) => {
   const projectId = c.req.param('projectId');
-  const data = await validateBody(c, addParticipantSchema);
-  const repository = new ProjectRepository(c.env.DB);
+  const data = getValidatedBody(c, addParticipantSchema);
+  const { projects: repository } = c.get('repositories');
 
   // Verify project exists
   const project = await repository.findById(projectId);
@@ -157,7 +160,7 @@ projects.post('/:projectId/participants', async (c) => {
 projects.delete('/:projectId/participants/:personId', async (c) => {
   const projectId = c.req.param('projectId');
   const personId = c.req.param('personId');
-  const repository = new ProjectRepository(c.env.DB);
+  const { projects: repository } = c.get('repositories');
 
   await repository.removeParticipant(projectId, personId);
 
@@ -170,7 +173,7 @@ projects.delete('/:projectId/participants/:personId', async (c) => {
  */
 projects.get('/:projectId/todos', async (c) => {
   const projectId = c.req.param('projectId');
-  const repository = new ProjectRepository(c.env.DB);
+  const { projects: repository } = c.get('repositories');
 
   // Verify project exists
   const project = await repository.findById(projectId);
@@ -189,7 +192,7 @@ projects.get('/:projectId/todos', async (c) => {
  */
 projects.get('/:projectId/work-notes', async (c) => {
   const projectId = c.req.param('projectId');
-  const repository = new ProjectRepository(c.env.DB);
+  const { projects: repository } = c.get('repositories');
 
   const workNotes = await repository.getWorkNotes(projectId);
 
@@ -200,10 +203,10 @@ projects.get('/:projectId/work-notes', async (c) => {
  * POST /projects/:projectId/work-notes
  * Assign work note to project
  */
-projects.post('/:projectId/work-notes', async (c) => {
+projects.post('/:projectId/work-notes', bodyValidator(assignWorkNoteSchema), async (c) => {
   const projectId = c.req.param('projectId');
-  const data = await validateBody(c, assignWorkNoteSchema);
-  const repository = new ProjectRepository(c.env.DB);
+  const data = getValidatedBody(c, assignWorkNoteSchema);
+  const { projects: repository } = c.get('repositories');
 
   // Verify project exists
   const project = await repository.findById(projectId);
@@ -313,7 +316,7 @@ projects.delete('/:projectId/work-notes/:workId', async (c) => {
  */
 projects.post('/:projectId/files', async (c) => {
   const projectId = c.req.param('projectId');
-  const repository = new ProjectRepository(c.env.DB);
+  const { projects: repository } = c.get('repositories');
 
   // Verify project exists
   const project = await repository.findById(projectId);
@@ -335,7 +338,7 @@ projects.post('/:projectId/files', async (c) => {
   const originalName = (file as File).name || 'uploaded-file';
 
   // Get authenticated user email
-  const user = c.get('user');
+  const user = getAuthUser(c);
 
   // Get R2 bucket
   const r2Bucket = getR2Bucket(c.env);
