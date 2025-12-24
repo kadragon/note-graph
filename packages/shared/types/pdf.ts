@@ -36,6 +36,7 @@ export interface WorkNoteDraft {
   title: string;
   content: string;
   category: string;
+  relatedPersonIds?: string[];
   todos: Array<{
     title: string;
     description?: string;

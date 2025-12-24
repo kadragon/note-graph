@@ -106,6 +106,8 @@ export function useAIDraftForm(onSuccess?: () => void) {
     );
     // Store category name for async resolution
     setDraftCategoryName(draft.category || null);
+    // Populate assignees if present in draft
+    setSelectedPersonIds(draft.relatedPersonIds || []);
 
     if (refs) {
       setReferences(refs);

@@ -68,12 +68,17 @@ workNotes.get('/', queryValidator(listWorkNotesQuerySchema), async (c) => {
 
 /**
  * POST /work-notes - Create new work note
- * Automatically chunks and embeds for RAG
+ * Automatically chunks and embeds for RAG (in background)
  */
 workNotes.post('/', bodyValidator(createWorkNoteSchema), async (c) => {
   const data = getValidatedBody<typeof createWorkNoteSchema>(c);
   const service = new WorkNoteService(c.env);
-  const workNote = await service.create(data);
+  const { workNote, embeddingPromise } = await service.create(data, { skipEmbedding: true });
+
+  // Process embedding in background (non-blocking)
+  if (embeddingPromise) {
+    c.executionCtx.waitUntil(embeddingPromise);
+  }
 
   return c.json(workNote, 201);
 });
@@ -95,13 +100,20 @@ workNotes.get('/:workId', async (c) => {
 
 /**
  * PUT /work-notes/:workId - Update work note
- * Automatically re-chunks and re-embeds for RAG
+ * Automatically re-chunks and re-embeds for RAG (in background)
  */
 workNotes.put('/:workId', bodyValidator(updateWorkNoteSchema), async (c) => {
   const workId = c.req.param('workId');
   const data = getValidatedBody<typeof updateWorkNoteSchema>(c);
   const service = new WorkNoteService(c.env);
-  const workNote = await service.update(workId, data);
+  const { workNote, embeddingPromise } = await service.update(workId, data, {
+    skipEmbedding: true,
+  });
+
+  // Process re-embedding in background (non-blocking)
+  if (embeddingPromise) {
+    c.executionCtx.waitUntil(embeddingPromise);
+  }
 
   return c.json(workNote);
 });
