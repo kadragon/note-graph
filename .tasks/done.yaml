@@ -471,3 +471,30 @@
   actual_effort: ~1.2 hours
   notes: |
     Middleware uses existing validateBody/validateQuery utilities to keep error handling consistent.
+
+- task_id: TASK-069
+  title: "Implement admin routes for embedding failure management"
+  spec_id: SPEC-rag-2
+  completed_at: "2025-12-25T06:40:00Z"
+  outcome: |
+    Completed SPEC-rag-2 implementation by adding admin dead-letter queue management routes.
+    Backend:
+    - Created EmbeddingRetryQueueRepository with methods for finding dead-letter items, resetting status, and CRUD operations
+    - Added embedding_retry_queue table to DI context types and middleware
+    - Implemented GET /admin/embedding-failures endpoint to list dead-letter items with work note titles
+    - Implemented POST /admin/embedding-failures/:id/retry endpoint to manually reset dead-letter items to pending
+    - Created migration 0019_readd_embedding_retry_queue.sql (table was previously dropped in migration 0013)
+    Testing:
+    - 11 unit tests for EmbeddingRetryQueueRepository covering all repository methods
+    - 8 integration tests for admin routes covering list, pagination, retry, and error cases
+    - Updated test setup.ts to include embedding_retry_queue table in manual schema fallback
+  test_results: |
+    ✓ npm test -- tests/unit/embedding-retry-queue-repository.test.ts (11/11 tests passing)
+    ✓ npm test -- tests/integration/admin-embedding-failures.test.ts (8/8 tests passing)
+    ✓ npm test (614/614 tests passing, no regressions)
+  estimated_effort: 2-3 hours
+  actual_effort: ~2 hours
+  notes: |
+    Fulfills SPEC-rag-2 acceptance tests TEST-rag-2-5 and TEST-rag-2-6.
+    Admin routes provide visibility into failed embeddings and manual recovery capability.
+    Migration 0019 re-adds the table that was dropped in 0013 when embedded_at tracking was introduced.

@@ -303,6 +303,46 @@ const manualSchemaStatements: string[] = [
   // Migration 0015: Add composite index for person list sorting
   `CREATE INDEX IF NOT EXISTS idx_persons_sort
    ON persons(current_dept, name, current_position, person_id, phone_ext, created_at)`,
+
+  // Migration 0003: Embedding retry queue
+  `CREATE TABLE IF NOT EXISTS embedding_retry_queue (
+     id TEXT PRIMARY KEY,
+     work_id TEXT NOT NULL REFERENCES work_notes(work_id) ON DELETE CASCADE,
+     operation_type TEXT NOT NULL CHECK (operation_type IN ('create', 'update', 'delete')),
+     attempt_count INTEGER DEFAULT 0,
+     max_attempts INTEGER DEFAULT 3,
+     next_retry_at TEXT,
+     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'retrying', 'dead_letter')),
+     error_message TEXT,
+     error_details TEXT,
+     created_at TEXT DEFAULT (datetime('now')),
+     updated_at TEXT DEFAULT (datetime('now')),
+     dead_letter_at TEXT
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_retry_queue_next_retry
+   ON embedding_retry_queue(status, next_retry_at) WHERE status = 'pending'`,
+  `CREATE INDEX IF NOT EXISTS idx_retry_queue_status
+   ON embedding_retry_queue(status)`,
+  `CREATE INDEX IF NOT EXISTS idx_retry_queue_work_id
+   ON embedding_retry_queue(work_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_retry_queue_dead_letter
+   ON embedding_retry_queue(dead_letter_at) WHERE status = 'dead_letter'`,
+
+  // Work note files table
+  `CREATE TABLE IF NOT EXISTS work_note_files (
+     file_id TEXT PRIMARY KEY,
+     work_id TEXT NOT NULL REFERENCES work_notes(work_id) ON DELETE CASCADE,
+     r2_key TEXT NOT NULL,
+     original_name TEXT NOT NULL,
+     file_type TEXT NOT NULL,
+     file_size INTEGER NOT NULL,
+     uploaded_by TEXT NOT NULL,
+     uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
+     deleted_at TEXT
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_work_note_files_work ON work_note_files(work_id) WHERE deleted_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_work_note_files_r2_key ON work_note_files(r2_key)`,
+  `CREATE INDEX IF NOT EXISTS idx_work_note_files_deleted_at ON work_note_files(deleted_at)`,
 ];
 
 async function applyManualSchema(db: D1Database): Promise<void> {

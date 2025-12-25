@@ -1,10 +1,11 @@
-// Trace: SPEC-refactor-repository-di, TASK-REFACTOR-004
+// Trace: SPEC-refactor-repository-di, SPEC-rag-2, TASK-REFACTOR-004, TASK-069
 /**
  * Shared Hono context types for repository injection.
  */
 
 import type { AuthUser } from '@shared/types/auth';
 import type { DepartmentRepository } from '../repositories/department-repository';
+import type { EmbeddingRetryQueueRepository } from '../repositories/embedding-retry-queue-repository';
 import type { PdfJobRepository } from '../repositories/pdf-job-repository';
 import type { PersonRepository } from '../repositories/person-repository';
 import type { ProjectRepository } from '../repositories/project-repository';
@@ -14,6 +15,7 @@ import type { Env } from './env';
 
 export interface Repositories {
   departments: DepartmentRepository;
+  embeddingRetryQueue: EmbeddingRetryQueueRepository;
   pdfJobs: PdfJobRepository;
   persons: PersonRepository;
   personsWithAutoCreateDepartment: PersonRepository;
