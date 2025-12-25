@@ -1,4 +1,4 @@
-// Trace: SPEC-refactor-repository-di, TASK-REFACTOR-004
+// Trace: SPEC-refactor-repository-di, SPEC-rag-2, TASK-REFACTOR-004, TASK-069
 /**
  * Repository injection middleware.
  *
@@ -12,7 +12,7 @@
  *
  * @description
  * **Repository Instantiation:**
- * - Instantiates 7 repositories (departments, pdfJobs, persons, projects, taskCategories, todos)
+ * - Instantiates 8 repositories (departments, embeddingRetryQueue, pdfJobs, persons, projects, taskCategories, todos)
  * - Creates a special PersonRepository variant with autoCreateDepartment option
  * - All repositories require a valid database connection (c.env.DB)
  *
@@ -32,6 +32,7 @@
 
 import type { Context, Next } from 'hono';
 import { DepartmentRepository } from '../repositories/department-repository';
+import { EmbeddingRetryQueueRepository } from '../repositories/embedding-retry-queue-repository';
 import { PdfJobRepository } from '../repositories/pdf-job-repository';
 import { PersonRepository } from '../repositories/person-repository';
 import { ProjectRepository } from '../repositories/project-repository';
@@ -49,6 +50,7 @@ export async function repositoriesMiddleware(
   // handler to determine appropriate error formatting and HTTP status codes.
   const repositories: Repositories = {
     departments: new DepartmentRepository(c.env.DB),
+    embeddingRetryQueue: new EmbeddingRetryQueueRepository(c.env.DB),
     pdfJobs: new PdfJobRepository(c.env.DB),
     persons: new PersonRepository(c.env.DB),
     personsWithAutoCreateDepartment: new PersonRepository(c.env.DB, {

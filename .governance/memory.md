@@ -220,6 +220,20 @@
 - **Context**: AppContext variables extended for validated body/query storage.
 - **Testing**: Added unit tests for middleware behavior; `npm test -- tests/unit/validation.test.ts` passed.
 
+### Session 75: Embedding Failure Admin Routes (2025-12-25)
+- **TASK-069 (SPEC-rag-2)**: Completed admin routes for embedding failure management.
+- **Repository**: Created EmbeddingRetryQueueRepository for dead-letter queue access (find, reset, delete).
+- **Types**: Added embedding retry types to `@shared/types/embedding-retry.ts`.
+- **DI Integration**: Added embeddingRetryQueue to AppContext Repositories interface and middleware.
+- **Admin Routes**:
+  - `GET /admin/embedding-failures` - List dead-letter items with pagination
+  - `POST /admin/embedding-failures/:id/retry` - Manually reset dead-letter item to pending
+- **Migration**: Created 0019_readd_embedding_retry_queue.sql (table was dropped in 0013, now re-added for admin monitoring).
+- **Testing**: 11 unit tests + 8 integration tests covering repository methods and API endpoints.
+- **Test Setup**: Added embedding_retry_queue table to manual schema fallback in tests/setup.ts.
+- **Fixes**: Fixed NotFoundError import (was incorrectly from @shared/types/auth, corrected to ../types/errors).
+- **Verification**: All 614 tests passing.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -260,3 +274,4 @@
 <!-- Trace: spec_id=SPEC-refactor-repository-di, task_id=TASK-REFACTOR-004 -->
 <!-- Trace: spec_id=SPEC-refactor-embedding-service, task_id=TASK-REFACTOR-005 -->
 <!-- Trace: spec_id=SPEC-refactor-validation-middleware, task_id=TASK-REFACTOR-006 -->
+<!-- Trace: spec_id=SPEC-rag-2, task_id=TASK-069 -->
