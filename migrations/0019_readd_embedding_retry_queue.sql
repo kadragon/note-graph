@@ -14,11 +14,11 @@
 CREATE TABLE IF NOT EXISTS embedding_retry_queue (
   id TEXT PRIMARY KEY,                      -- Unique retry job ID (nanoid)
   work_id TEXT NOT NULL,                    -- Foreign key to work_notes
-  operation_type TEXT NOT NULL,             -- 'create', 'update', 'delete'
+  operation_type TEXT NOT NULL CHECK (operation_type IN ('create', 'update', 'delete')),
   attempt_count INTEGER DEFAULT 0,          -- Current retry attempt number
   max_attempts INTEGER DEFAULT 3,           -- Maximum retry attempts before dead-letter
   next_retry_at TEXT,                       -- ISO datetime for next retry (NULL if in dead-letter)
-  status TEXT DEFAULT 'pending',            -- 'pending', 'retrying', 'dead_letter'
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'retrying', 'dead_letter')),
   error_message TEXT,                       -- Last error message
   error_details TEXT,                       -- Last error details (JSON serialized)
   created_at TEXT DEFAULT (datetime('now')),-- When first failure occurred

@@ -128,10 +128,10 @@ admin.post('/embedding-failures/:id/retry', async (c) => {
     return c.json(
       {
         success: false,
-        message: `재시도 초기화 실패`,
+        message: `항목 상태가 변경되었습니다. 다시 시도해주세요.`,
         status: item.status,
       },
-      500
+      409
     );
   }
 
