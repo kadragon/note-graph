@@ -45,95 +45,14 @@
 
 ## Session History Summary
 
-### Initial Implementation (Sessions 1-23, 2025-11-18 to 2025-11-21)
-- **Infrastructure**: Wrangler setup, D1 schema, authentication, API structure
-- **Core Entities**: Person, Department, WorkNote (with versioning), Todo (with recurrence)
-- **AI Features**: RAG pipeline, chunking, AI draft generation, PDF processing
-- **Testing**: Vitest with Workers pool, coverage configuration
-- **Frontend**: Vanilla JS SPA with 7 main pages, Korean localization
-- **UX Improvements**: Department selector, person form validation, debounced search
-- **Retry Mechanism**: Embedding retry queue with exponential backoff
-
-### AI & Collaboration Features (Sessions 24-27, 2025-11-24)
-- **AI Draft References**: Transparency for AI context, reference tracking in drafts
-- **PDF Draft References**: Extended PDF flow with reference selection
-- **Todo Patterns**: AI suggestions include todo patterns from similar notes
-- **Code Refactoring**: Extracted common AI draft editing logic (62% reduction)
-
-### UI/UX Polish (Sessions 28-32, 2025-11-24 to 2025-11-25)
-- **Todo Wait/Due Alignment**: Wait dates as primary UI element
-- **Work Notes List**: Added persons column with department display
-- **Detail View**: Quick-edit triggers, sticky save buttons, improved spacing
-- **Accessibility**: ARIA labels, focus management with user feedback
-
-### Project Management (Sessions 33-38, 2025-11-26)
-- **Database**: 4 new tables (projects, project_participants, project_work_notes, project_files)
-- **Repository & API**: Full CRUD with filtering, soft delete, participant management
-- **File Management**: R2 storage, upload/download, 50MB limit, MIME validation
-- **RAG Extension**: PROJECT scope filtering with projectId metadata
-- **File Embedding**: Synchronous text extraction and embedding for PDF/TXT files
-- **Testing**: 32 unit tests, 23 integration tests for project features
-
-### Statistics & Analytics (Sessions 46-49, 2025-11-30)
-- **Backend**: StatisticsRepository with period filtering, completion tracking
-- **Frontend**: Recharts integration, summary cards, distribution charts, work notes table
-- **Testing**: 38 comprehensive tests (date utils, repository, routes)
-- **Fixes**: Todo completion timestamp filtering, year parameter respect
-
-### Todo UX Improvements (Sessions 42, 49, 2025-11-28 to 2025-12-01)
-- **Dashboard Grouping**: Group todos by work note in remaining tab
-- **Wait Date Filtering**: Consistent wait_until handling across all views
-- **Completion Display**: Show completion date for completed todos
-- **Recurring Grouping**: Group recurring todos in work note detail (expand/collapse)
-- **Tests**: 9 unit tests for recurring todo grouping logic
-
-### Person Management (Sessions 45, 50-51, 2025-11-28 to 2025-12-01)
-- **List Ordering**: Reordered columns (dept → name → position → ID → phone → created)
-- **Searchable Selector**: cmdk-based assignee selector with multi-select
-- **Edit Dialog**: Shared PersonDialog component supporting create/edit modes
-- **Department Search**: Debounced search with loading/error states
-
-### Repository Structure (Sessions 53-56, 2025-12-05)
-- **Apps/Packages Layout**: Backend → apps/worker, Frontend → apps/web, Shared → packages/shared
-- **Path Aliases**: Clear separation (@worker/* for backend, @web/* for frontend)
-- **Build Output**: dist/web for frontend, dist/worker for backend
-- **Tsconfig**: Moved to app roots with shared tsconfig.base.json
-- **Worker Layout**: Reverted to apps/worker/src (kept traditional structure)
-
-### Session 57: Naming Convention Standardization (2025-12-05)
-- **TASK-055 (SPEC-devx-naming-1)**: Enforced kebab-case for all frontend files and fixed all imports/exports; verified lint/typecheck/build.
-- **Note**: macOS case-insensitivity can mask casing issues; verify with `tsc` and a clean build.
-
-### Session 58: Test Import Path Fix (2025-12-06)
-- **TASK-056 (SPEC-devx-naming-1)**: Fixed a case-sensitive import path in a test to unblock Linux builds.
-
-### Session 59: Work Note File Attachments (2025-12-08)
-- **TASK-057 (SPEC-worknote-attachments-1)**: Added work note attachments (upload/list/stream/delete) backed by R2 and `work_note_files`.
-- No auto-extraction/embedding for work note files (unlike project files); 50MB limit; allowlist of common doc/image types.
-- Verified via unit tests plus typecheck/build.
-
-### Session 60: HWPX MIME Fallback (2025-12-08)
-- **TASK-058 (SPEC-worknote-attachments-1)**: Enabled extension-based MIME resolution so HWPX files upload even when browsers omit or send generic MIME types; keeps rejection for explicit unsupported MIME values. Added unit test covering empty MIME HWPX upload.
-
-### Session 61: Todo Wait Until Logic Fix (2025-12-08)
-- Treated `wait_until` as a strict "hidden until" gate (`wait_until` > `now` => hidden); added a unit regression test.
-
-### Session 62: PDF Auto-Attachment (2025-12-08)
-- **TASK-062 (SPEC-pdf-1)**: When creating a work note from a PDF draft, automatically attach the original PDF; warn if attachment fails after work note creation.
-
-### Session 63: Work Note Attachment Ordering (2025-12-10)
-- **TASK-063 (SPEC-worknote-attachments-1)**: Sorted work note attachments by `uploadedAt` (newest first) with `fileId` tie-breaker for deterministic UI ordering.
-- Added shared helper `sortFilesByUploadedAtDesc` plus 2 unit tests to enforce ordering and tie-break behavior.
-
-### Session 64: Work Note Attachment Recency Badge (2025-12-10)
-- **TASK-064 (SPEC-worknote-attachments-1)**: Added "오늘 업로드" badge for attachments uploaded on the current local day; shared `isUploadedToday` helper with unit coverage.
-- Badge sits alongside actions, preserving deterministic ordering and improving recency visibility.
-
-### Session 65: Project soft delete detaches work notes (2025-12-14)
-- **TASK-065 (SPEC-project-1)**: Fixed stale `project_work_notes` links surviving project soft delete, which caused false `CONFLICT` on reassignment.
-- **Implementation**: On project delete, remove `project_work_notes` rows and clear `work_notes.project_id`; on assignment, ignore/clean stale links to deleted projects.
-- **Migration**: Added `0018_cleanup_soft_deleted_project_work_note_links.sql` to clean existing stale data.
-- **Verification**: `npm test` passed.
+### Early Sessions (1-65, 2025-11-18 to 2025-12-14) - Archived
+**Core Implementation**: Infrastructure, entities (Person/Dept/WorkNote/Todo), RAG, PDF processing, versioning, recurrence
+**Key Features**: Project management (4 tables, R2 files, RAG integration), Statistics (Recharts), Todo/Person UX improvements
+**Architecture**: Repository structure (apps/worker, apps/web, packages/shared), naming standardization (kebab-case)
+**Attachments**: Work note file attachments with MIME fallback, ordering, recency badges, inline preview
+**Testing**: 587 tests passing, comprehensive coverage across unit/integration
+**Critical Fixes**: Todo wait_until logic, project soft-delete cleanup, HWPX MIME handling
+_Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 
 ### Session 66: Work Note File Inline Preview (2025-12-14)
 - **TASK-066 (SPEC-worknote-attachments-1)**: Added work note attachment preview via `/work-notes/:workId/files/:fileId/view` with `Content-Disposition: inline`.

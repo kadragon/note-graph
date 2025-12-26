@@ -1,99 +1,12 @@
-- task_id: TASK-sidebar-001
-  title: "Create useSidebarCollapse hook"
-  spec_id: SPEC-collapsible-sidebar-1
-  completed_at: "2025-12-22T06:30:00Z"
-  outcome: |
-    Implemented custom React hook for managing sidebar collapse state with localStorage persistence and keyboard shortcuts.
-    - Initialize from localStorage with fallback to false (lazy initialization for SSR compatibility)
-    - Persist state changes to localStorage with error handling for quota exceeded
-    - Global keyboard listener for Cmd+B (Mac) / Ctrl+B (Windows/Linux)
-    - Memoized toggle callback to prevent unnecessary re-renders
-    - Follows existing hook pattern from use-debounced-value.ts
-  test_results: |
-    ✓ npm run typecheck passed
-    ✓ npm run build passed (frontend build successful)
-  estimated_effort: 1h
-  actual_effort: ~0.5h
-  notes: |
-    Hook provides clean API: { isCollapsed, toggle, setIsCollapsed }
+## Archived Tasks (Summary Only)
+# Tasks TASK-001 through TASK-060: Initial implementation, AI features, project management, statistics, UX improvements
+# For full details, see git history or Session 1-65 in memory.md
 
-- task_id: TASK-sidebar-002
-  title: "Create SidebarContext"
+- task_id: TASK-sidebar-001 to TASK-sidebar-005
+  title: "Collapsible Sidebar Implementation"
   spec_id: SPEC-collapsible-sidebar-1
-  completed_at: "2025-12-22T06:35:00Z"
-  outcome: |
-    Created React Context to share sidebar state between Sidebar and AppLayout components.
-    - SidebarProvider component wraps entire app layout
-    - useSidebar consumer hook with error checking (throws if used outside provider)
-    - Type-safe context interface: { isCollapsed: boolean; toggle: () => void }
-    - Prevents prop drilling through layout hierarchy
-  test_results: |
-    ✓ npm run typecheck passed
-    ✓ npm run build passed
-  estimated_effort: 0.5h
-  actual_effort: ~0.3h
-  notes: |
-    Context needed because Sidebar and AppLayout are siblings in component tree
-
-- task_id: TASK-sidebar-003
-  title: "Update Sidebar component with toggle UI"
-  spec_id: SPEC-collapsible-sidebar-1
-  completed_at: "2025-12-22T06:45:00Z"
-  outcome: |
-    Added collapse functionality to Sidebar component with toggle button and animations.
-    - Imported ChevronLeft icon, Button component, useSidebar hook
-    - Added toggle button positioned at -right-10 (40px outside sidebar, remains visible when collapsed)
-    - Added data-collapsed attribute to <aside> element
-    - Implemented GPU-accelerated transform animation: translateX(-100%) on collapse
-    - 300ms ease-in-out transition timing
-    - ARIA labels in Korean: "사이드바 열기" / "사이드바 닫기"
-    - Icon changes based on state: ChevronRight when collapsed, ChevronLeft when expanded
-  test_results: |
-    ✓ npm run typecheck passed
-    ✓ npm run build passed
-  estimated_effort: 1h
-  actual_effort: ~0.5h
-  notes: |
-    Toggle button uses ghost variant and icon size for minimal visual footprint
-
-- task_id: TASK-sidebar-004
-  title: "Update AppLayout component with dynamic margin"
-  spec_id: SPEC-collapsible-sidebar-1
-  completed_at: "2025-12-22T06:50:00Z"
-  outcome: |
-    Updated AppLayout to adjust content area margin based on sidebar collapse state.
-    - Imported SidebarProvider and useSidebar
-    - Created AppLayoutInner component to access sidebar context
-    - Wrapped entire layout with SidebarProvider
-    - Replaced fixed ml-sidebar with dynamic data-based margin classes
-    - Smooth 300ms transition-[margin] animation synchronized with sidebar
-    - Content expands to full width when sidebar collapses
-  test_results: |
-    ✓ npm run typecheck passed
-    ✓ npm run build passed
-  estimated_effort: 0.5h
-  actual_effort: ~0.3h
-  notes: |
-    Two-component pattern (outer provider, inner consumer) ensures context availability
-
-- task_id: TASK-sidebar-005
-  title: "Add accessibility enhancements"
-  spec_id: SPEC-collapsible-sidebar-1
-  completed_at: "2025-12-22T06:55:00Z"
-  outcome: |
-    Added accessibility features for collapsible sidebar.
-    - Added prefers-reduced-motion media query to index.css
-    - Disables transitions (0ms duration) when user has motion reduction preference enabled
-    - Applies to both sidebar (aside[data-collapsed]) and content area (div[data-sidebar-collapsed])
-    - ARIA labels already implemented in TASK-sidebar-003
-    - Keyboard navigation supported via Cmd+B / Ctrl+B
-  test_results: |
-    ✓ npm run typecheck passed
-    ✓ npm run build passed
-  estimated_effort: 0.5h
-  actual_effort: ~0.2h
-  notes: |
-    Respects user accessibility preferences while maintaining full functionality
+  completed_at: "2025-12-22"
+  outcome: "Full sidebar collapse feature with localStorage, keyboard shortcuts (Cmd+B/Ctrl+B), accessibility"
 
 - task_id: TASK-067
     title: "Fix Statistics Date Range Bug & Performance Optimization"
@@ -145,109 +58,11 @@
     notes: |
       This was most visible when opening /search?q=... directly, because the mount effect could re-run and re-trigger mutate().
 
-  - task_id: TASK-055
-    title: "Standardize Naming Conventions"
-    spec_id: SPEC-devx-naming-1
-    completed_at: "2025-12-05T03:00:00Z"
-    outcome: |
-      Enforced kebab-case naming convention across the entire frontend codebase.
-      - Renamed all PascalCase/camelCase components, hooks, pages, and test files to kebab-case.
-      - Updated imports in all affected files (App.tsx, index.ts exports, relative/absolute imports).
-      - Updated coding-style.md to explicitly mandate kebab-case for React components.
-      - Verified build and typecheck.
-    test_results: |
-      ✓ npm run lint (passed)
-      ✓ npm run typecheck (passed)
-      ✓ npm run build (frontend + backend passed)
-    estimated_effort: 2h
-    actual_effort: ~1.5h
-    notes: |
-      Encountered macOS case-sensitivity caching issues with `git mv` where directories appeared correct in git but retained casing on disk, confusing `tsc` in `lint-staged`. Resolved by bypassing pre-commit hook after verifying `npm run typecheck` passed cleanly.
-
-  - task_id: TASK-056
-    title: "Fix Test Import Path for Linux Compatibility"
-    spec_id: SPEC-devx-naming-1
-    completed_at: "2025-12-06T00:28:00Z"
-    outcome: |
-      Fixed case-sensitive import path issue in test file causing Linux build failures.
-      - Updated tests/unit/group-recurring-todos.test.ts import from WorkNotes to work-notes.
-      - Ensured all import paths match exact kebab-case directory structure.
-    test_results: |
-      ✓ npm test -- group-recurring-todos.test.ts (9/9 tests passing)
-    estimated_effort: 0.2h
-    actual_effort: 0.1h
-    notes: |
-      PR review feedback identified that Linux builds fail on case-mismatched imports.
-      This fix ensures cross-platform compatibility by using exact case matching.
-
-  - task_id: TASK-057
-    title: "Work Note File Attachments"
-    spec_id: SPEC-worknote-attachments-1
-    completed_at: "2025-12-08T08:00:00Z"
-    outcome: |
-      Implemented complete file attachment feature for work notes with backend and frontend.
-      Backend:
-      - Database migration 0017: work_note_files table
-      - WorkNoteFileService with upload, list, stream, delete + cascade deletion
-      - API routes: POST/GET/DELETE /work-notes/:workId/files/*
-      - Updated WorkNoteService.delete() for file cascade
-      Frontend:
-      - API client methods and React hooks
-      - WorkNoteFileList component with upload, download, delete UI
-      - Integrated into ViewWorkNoteDialog
-      File support: 50MB limit, PDF/HWP/HWPX/Excel/images, no auto-embedding
-    test_results: |
-      ✓ 13 unit tests for WorkNoteFileService (all passing)
-      ✓ TypeScript typecheck passed
-      ✓ Full build successful (backend + frontend)
-    estimated_effort: 4h
-    actual_effort: ~3h
-    notes: |
-      Reused patterns from project file management (TASK-039, TASK-042).
-      Simplified implementation: no text extraction or embedding (simple attachment storage).
-
-- task_id: TASK-058
-    title: "Allow HWPX uploads with missing MIME type"
-    spec_id: SPEC-worknote-attachments-1
-    completed_at: "2025-12-08T09:21:30Z"
-    outcome: |
-      Fixed HWPX upload rejection when browsers omit MIME type.
-      - Added extension-based MIME resolution for allowed types (HWP/HWPX, PDF, Excel, images) with generic MIME fallback.
-      - Ensured stored metadata and R2 contentType use canonical MIME from extension.
-      - Added unit test covering HWPX upload with empty MIME type.
-    test_results: |
-      ✓ npm test -- work-note-file-service.test.ts (14/14 tests passing)
-    estimated_effort: 0.5h
-    actual_effort: ~0.2h
-    notes: |
-      Accepts generic/empty MIME types only when extension is in the allowed list to prevent overly permissive uploads.
-
-- task_id: TASK-059
-    title: "Governance file hygiene"
-    spec_id: SPEC-governance-1
-    completed_at: "2025-12-08T12:00:00Z"
-    outcome: |
-      Added SPEC-governance-1 to define governance formatting standards and restored the trailing newline in .governance/memory.md.
-      Included a trace marker to maintain spec/task linkage.
-    test_results: |
-      Manual verification: .governance/memory.md ends with a single trailing newline and contains a single import-path bullet.
-    estimated_effort: 0.1h
-    actual_effort: ~0.1h
-    notes: |
-      Resolves review feedback about the missing final newline in governance memory.
-
-- task_id: TASK-060
-    title: "Ensure markdownlintignore newline"
-    spec_id: SPEC-governance-1
-    completed_at: "2025-12-08T12:24:00Z"
-    outcome: |
-      Added trailing newline to .markdownlintignore and documented trace to satisfy governance formatting spec.
-    test_results: |
-      Manual verification: .markdownlintignore ends with a single trailing newline.
-    estimated_effort: 0.05h
-    actual_effort: ~0.05h
-    notes: |
-      Addresses review feedback about missing final newline in ignore file.
+- task_id: TASK-055 to TASK-060
+  title: "DevX improvements & Work Note Attachments"
+  spec_id: SPEC-devx-naming-1, SPEC-worknote-attachments-1, SPEC-governance-1
+  completed_at: "2025-12-05 to 2025-12-08"
+  outcome: "Naming convention standardization, work note file attachments, MIME fallback, governance formatting"
 
 - task_id: TASK-061
   title: "Fix Todo Wait Until Timezone Leak"
