@@ -330,3 +330,10 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 - **Mocks**: Added R2 mock adjustments, Vectorize/AI stubs, and ProjectFileService Jest module mock; ensured streaming mocks return fresh bodies and 404 uses NotFoundError.
 - **Verification**: `npm run test:jest -- tests/jest/integration` (6 suites, 51 tests) passed; Jest setup still warns about __dirname in ESM and falls back to manual DDL.
 <!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-005 -->
+
+### Session 80: Jest + Miniflare Migration Phase 6 (2025-12-29)
+- **TASK-MIGRATE-006 (SPEC-testing-migration-001)**: Removed Vitest tooling and retired legacy Vitest tests (apps/web + tests/*).
+- **Config & Scripts**: Jest-only `npm test`/`test:watch`/`test:coverage`, removed Vitest lint-staged hook, updated tsconfig.node.json types and includes.
+- **Docs**: Updated SETUP/ARCHITECTURE/tests README to reflect Jest + Miniflare workflow and test layout.
+- **Verification**: `npm test -- tests/jest/setup-verification.test.ts` (3/3 tests) passed; warnings remain for experimental VM modules and Miniflare localstorage-file path.
+<!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-006 -->

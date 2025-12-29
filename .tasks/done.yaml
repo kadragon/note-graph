@@ -574,3 +574,20 @@
   notes: |
     Integration tests are now under tests/jest/integration.
     Jest setup still logs __dirname warnings in ESM and falls back to manual DDL (existing behavior).
+
+- task_id: TASK-MIGRATE-006
+  title: "Phase 6: Cleanup and Vitest Removal"
+  spec_id: SPEC-testing-migration-001
+  completed_at: "2025-12-29"
+  outcome: |
+    Removed Vitest tooling and legacy test files in favor of Jest + Miniflare.
+    - Deleted Vitest config and setup files
+    - Retired legacy Vitest tests (apps/web + tests/unit + tests/integration + tests/legacy)
+    - Updated npm scripts to Jest-only
+    - Removed Vitest dependencies and lint-staged hook
+    - Updated docs to reflect Jest/Miniflare workflow
+  test_results: |
+    ✓ npm test -- tests/jest/setup-verification.test.ts (3 tests)
+  notes: |
+    Remaining warnings: Experimental VM Modules; Miniflare localstorage-file without valid path.
+    Trace exceptions (JSON): package.json, package-lock.json, tsconfig.node.json.

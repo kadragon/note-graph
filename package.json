@@ -14,13 +14,9 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "deploy:with-migrations": "npm run build && wrangler deploy && wrangler d1 migrations apply worknote-db --remote",
-    "test": "vitest --run",
-    "test:vitest": "vitest --run",
-    "test:jest": "NODE_OPTIONS='--experimental-vm-modules' jest --passWithNoTests",
-    "test:jest:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
-    "test:all": "concurrently \"npm:test:vitest\" \"npm:test:jest\"",
-    "test:coverage": "vitest --coverage",
-    "test:jest:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --passWithNoTests",
+    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "db:migrate": "wrangler d1 migrations apply worknote-db",
     "db:migrate:local": "wrangler d1 migrations apply worknote-db --local",
     "db:create-migration": "wrangler d1 migrations create worknote-db",
@@ -68,7 +64,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
-    "@cloudflare/vitest-pool-workers": "^0.11.1",
     "@cloudflare/workers-types": "^4.20251118.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@tailwindcss/typography": "^0.5.19",
@@ -80,7 +75,6 @@
     "@types/react-dom": "^19.2.3",
     "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "^3.2.4",
     "autoprefixer": "^10.4.23",
     "concurrently": "^9.2.1",
     "glob": "^13.0.0",
@@ -97,7 +91,6 @@
     "typescript": "^5.7.2",
     "vite": "^7.2.2",
     "vite-plugin-pwa": "^1.2.0",
-    "vitest": "^3.2.4",
     "wrangler": "^4.53.0"
   },
   "engines": {
@@ -106,8 +99,7 @@
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json}": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
     "apps/worker/src/**/*.{ts,tsx}": [
-      "bash -c 'tsc --noEmit --project apps/worker/tsconfig.json'",
-      "vitest related --run"
+      "bash -c 'tsc --noEmit --project apps/worker/tsconfig.json'"
     ],
     "apps/web/src/**/*.{ts,tsx}": "bash -c 'tsc --noEmit --project apps/web/tsconfig.json'"
   }
