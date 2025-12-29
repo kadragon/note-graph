@@ -12,11 +12,14 @@ const __dirname = dirname(__filename);
 const tsconfig = JSON.parse(readFileSync(resolve(__dirname, './tsconfig.base.json'), 'utf-8'));
 
 const config: Config = {
-  preset: 'ts-jest',
+  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
+  extensionsToTreatAsEsm: ['.ts'],
+  injectGlobals: true,
 
   // Path aliases matching vitest.config.ts
   moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
     ...pathsToModuleNameMapper(tsconfig.compilerOptions?.paths || {}, {
       prefix: '<rootDir>/',
     }),
@@ -56,14 +59,17 @@ const config: Config = {
     '^.+\\.tsx?$': [
       'ts-jest',
       {
+        useESM: true,
         tsconfig: {
           esModuleInterop: true,
           allowSyntheticDefaultImports: true,
           resolveJsonModule: true,
           moduleResolution: 'node',
+          module: 'esnext',
           target: 'ES2022',
           lib: ['ES2022'],
           baseUrl: '.',
+          types: ['node', '@cloudflare/workers-types', 'jest'],
           paths: {
             '@/*': ['./apps/worker/src/*'],
             '@worker/*': ['./apps/worker/src/*'],
@@ -82,6 +88,11 @@ const config: Config = {
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
+
+  // Handle ESM modules like nanoid
+  transformIgnorePatterns: [
+    'node_modules/(?!(nanoid)/)',
+  ],
 };
 
 export default config;

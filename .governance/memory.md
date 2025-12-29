@@ -214,6 +214,8 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 <!-- Trace: spec_id=SPEC-refactor-validation-middleware, task_id=TASK-REFACTOR-006 -->
 <!-- Trace: spec_id=SPEC-rag-2, task_id=TASK-069 -->
 <!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-001 -->
+<!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-002 -->
+<!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-003 -->
 
 ### Session 77: Jest + Miniflare Migration Phase 2 (2025-12-29)
 - **TASK-MIGRATE-002 (SPEC-testing-migration-001)**: Migrated 6 utility test files from Vitest to Jest using parallel agents.
@@ -238,3 +240,37 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
   - Parallel agent execution significantly reduced migration time
   - Path alias configuration is critical for module resolution in Jest
 - **Next**: Ready for Phase 3 (Migrate Repository Tests - 7 files with D1 bindings)
+
+### Session 78: Jest + Miniflare Migration Phase 3 (2025-12-29)
+- **TASK-MIGRATE-003 (SPEC-testing-migration-001)**: Migrated 7 repository test files from Vitest to Jest using parallel agents.
+- **Strategy**: Launched 7 concurrent agents to migrate files in parallel; fixed configuration issues that emerged during migration.
+- **Files Migrated (211 tests total)**:
+  - `department-repository.test.ts` (32 tests) - Fixed is_active number vs boolean type handling
+  - `embedding-retry-queue-repository.test.ts` (11 tests) - Added ESM module support for nanoid
+  - `person-repository.test.ts` (34 tests) - Optimized database initialization with beforeAll
+  - `project-repository.test.ts` (32 tests) - Updated D1 binding access pattern
+  - `statistics-repository.test.ts` (12 tests) - Straightforward D1 binding migration
+  - `todo-repository.test.ts` (42 tests) - Fixed schema validation (skipWeekends, view parameters)
+  - `work-note-repository.test.ts` (48 tests) - Fixed role validation (PARTICIPANT → RELATED)
+- **Key Migration Changes**:
+  - Replaced `import { env } from 'cloudflare:test'` with `getDB()` global helper
+  - Removed Vitest imports (describe, it, expect, beforeEach provided by Jest globals)
+  - Updated D1 database access from `env.DB` to `await getDB()`
+  - Fixed schema validation issues discovered during migration
+- **Configuration Fixes**:
+  - Added `injectGlobals: true` to jest.config.ts for proper ESM global injection
+  - Fixed validation.test.ts by importing `jest` from '@jest/globals'
+  - Updated all `jest.fn()` calls with generic type parameter `<any>` for TypeScript compatibility
+  - Ensured ESM module support preserved with NODE_OPTIONS='--experimental-vm-modules'
+- **Test Results**:
+  - Jest: 341/341 tests passing (14 test suites) - includes Phase 1, 2, and 3 migrations
+  - Vitest: 614/614 tests passing (42 test files) - no regressions, parallel execution working
+  - Both test frameworks operating successfully in parallel
+- **Key Learnings**:
+  - Repository tests with D1 bindings straightforward to migrate once pattern established
+  - ESM mode with experimental-vm-modules requires explicit jest import from '@jest/globals' for some test files
+  - TypeScript strict mode requires generic type parameters for jest.fn() to avoid "never" type errors
+  - Parallel agent execution highly effective for independent file migrations (7 files migrated simultaneously)
+  - Configuration issues easier to identify when running full test suite together
+  - Running tests immediately after migration helps catch type and configuration errors early
+- **Next**: Ready for Phase 4 (Migrate Service Tests - 16 files with complex bindings: R2, Vectorize, AI Gateway)

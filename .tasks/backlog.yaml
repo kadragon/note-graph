@@ -1,45 +1,5 @@
 tasks:
   # Jest + Miniflare Migration (6 phases)
-  - task_id: TASK-MIGRATE-002
-    spec_id: SPEC-testing-migration-001
-    title: "Phase 2: Migrate Unit Tests Batch 1 (Utilities, 6 files)"
-    status: pending
-    priority: P0
-    test_refs:
-      - TEST-testing-migration-002
-    created_at: 2025-12-29
-    updated_at: 2025-12-29
-    notes: |
-      Migrate 6 utility tests with minimal Cloudflare dependencies:
-      - chunking.test.ts
-      - date-utils.test.ts
-      - errors.test.ts
-      - schemas.test.ts
-      - text-format.test.ts
-      - validation.test.ts
-      Replace vitest imports with Jest equivalents.
-      Estimated: 4-6 hours. Risk: Low.
-
-  - task_id: TASK-MIGRATE-003
-    spec_id: SPEC-testing-migration-001
-    title: "Phase 3: Migrate Unit Tests Batch 2 (Repositories, 7 files)"
-    status: pending
-    priority: P0
-    test_refs:
-      - TEST-testing-migration-003
-    created_at: 2025-12-29
-    updated_at: 2025-12-29
-    notes: |
-      Migrate 7 repository tests (D1 binding only):
-      - department-repository.test.ts
-      - embedding-retry-queue-repository.test.ts
-      - person-repository.test.ts
-      - project-repository.test.ts
-      - statistics-repository.test.ts
-      - todo-repository.test.ts
-      - work-note-repository.test.ts
-      Replace 'import { env } from cloudflare:test' with Miniflare D1 bindings.
-      Estimated: 6-8 hours. Risk: Medium.
 
   - task_id: TASK-MIGRATE-004
     spec_id: SPEC-testing-migration-001

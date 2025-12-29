@@ -1,6 +1,7 @@
-// Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-002
+// Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-003
 // Unit tests for validation utilities
 
+import { jest } from '@jest/globals';
 import {
   bodyValidator,
   getValidatedBody,
@@ -22,7 +23,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          json: jest.fn().mockResolvedValue({ name: 'John', age: 30 }),
+          json: jest.fn<() => Promise<any>>().mockResolvedValue({ name: 'John', age: 30 }),
         },
       } as unknown as Context;
 
@@ -40,7 +41,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          json: jest.fn().mockResolvedValue({ name: 'John', age: 'invalid' }),
+          json: jest.fn<any>().mockResolvedValue({ name: 'John', age: 'invalid' }),
         },
       } as unknown as Context;
 
@@ -56,7 +57,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          json: jest.fn().mockResolvedValue({ name: 'John' }),
+          json: jest.fn<any>().mockResolvedValue({ name: 'John' }),
         },
       } as unknown as Context;
 
@@ -86,7 +87,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          json: jest.fn().mockResolvedValue(validData),
+          json: jest.fn<any>().mockResolvedValue(validData),
         },
       } as unknown as Context;
 
@@ -101,7 +102,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          json: jest.fn().mockResolvedValue({ items: ['a', 'b', 'c'] }),
+          json: jest.fn<any>().mockResolvedValue({ items: ['a', 'b', 'c'] }),
         },
       } as unknown as Context;
 
@@ -115,7 +116,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          json: jest.fn().mockRejectedValue(customError),
+          json: jest.fn<any>().mockRejectedValue(customError),
         },
       } as unknown as Context;
 
@@ -132,7 +133,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          query: jest.fn().mockReturnValue({ page: '1', limit: '10' }),
+          query: jest.fn<any>().mockReturnValue({ page: '1', limit: '10' }),
         },
       } as unknown as Context;
 
@@ -150,7 +151,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          query: jest.fn().mockReturnValue({ page: '1', limit: 'invalid' }),
+          query: jest.fn<any>().mockReturnValue({ page: '1', limit: 'invalid' }),
         },
       } as unknown as Context;
 
@@ -166,7 +167,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          query: jest.fn().mockReturnValue({ search: 'test' }),
+          query: jest.fn<any>().mockReturnValue({ search: 'test' }),
         },
       } as unknown as Context;
 
@@ -183,7 +184,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          query: jest.fn().mockReturnValue({}),
+          query: jest.fn<any>().mockReturnValue({}),
         },
       } as unknown as Context;
 
@@ -220,7 +221,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          query: jest.fn().mockImplementation(() => {
+          query: jest.fn<any>().mockImplementation(() => {
             throw customError;
           }),
         },
@@ -238,7 +239,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          param: jest.fn().mockReturnValue({ id: 'WORK-001' }),
+          param: jest.fn<any>().mockReturnValue({ id: 'WORK-001' }),
         },
       } as unknown as Context;
 
@@ -255,7 +256,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          param: jest.fn().mockReturnValue({ id: 'invalid' }),
+          param: jest.fn<any>().mockReturnValue({ id: 'invalid' }),
         },
       } as unknown as Context;
 
@@ -271,7 +272,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          param: jest.fn().mockReturnValue({ workId: 'WORK-001', todoId: 'TODO-001' }),
+          param: jest.fn<any>().mockReturnValue({ workId: 'WORK-001', todoId: 'TODO-001' }),
         },
       } as unknown as Context;
 
@@ -288,7 +289,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          param: jest.fn().mockReturnValue({ id: 'WORK-001' }),
+          param: jest.fn<any>().mockReturnValue({ id: 'WORK-001' }),
         },
       } as unknown as Context;
 
@@ -302,7 +303,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          param: jest.fn().mockReturnValue({ id: 'work-001' }),
+          param: jest.fn<any>().mockReturnValue({ id: 'work-001' }),
         },
       } as unknown as Context;
 
@@ -316,7 +317,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          param: jest.fn().mockImplementation(() => {
+          param: jest.fn<any>().mockImplementation(() => {
             throw customError;
           }),
         },
@@ -344,7 +345,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          json: jest.fn().mockResolvedValue(validData),
+          json: jest.fn<any>().mockResolvedValue(validData),
         },
       } as unknown as Context;
 
@@ -365,7 +366,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          query: jest.fn().mockReturnValue({
+          query: jest.fn<any>().mockReturnValue({
             q: '업무 보고',
             category: '회의',
             limit: '20',
@@ -394,7 +395,7 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          json: jest.fn().mockResolvedValue(invalidData),
+          json: jest.fn<any>().mockResolvedValue(invalidData),
         },
       } as unknown as Context;
 
@@ -414,7 +415,7 @@ describe('Validation Utilities', () => {
       const stored = new Map<string, unknown>();
       const mockContext = {
         req: {
-          json: jest.fn().mockResolvedValue({ title: 'Test', count: 2 }),
+          json: jest.fn<any>().mockResolvedValue({ title: 'Test', count: 2 }),
         },
         set: jest.fn((key: string, value: unknown) => {
           stored.set(key, value);
@@ -422,7 +423,7 @@ describe('Validation Utilities', () => {
         get: jest.fn((key: string) => stored.get(key)),
       } as unknown as Context;
 
-      const next = jest.fn().mockResolvedValue(undefined);
+      const next = jest.fn<any>().mockResolvedValue(undefined);
 
       await bodyValidator(schema)(mockContext, next);
 
@@ -439,7 +440,7 @@ describe('Validation Utilities', () => {
       const stored = new Map<string, unknown>();
       const mockContext = {
         req: {
-          query: jest.fn().mockReturnValue({ page: '1' }),
+          query: jest.fn<any>().mockReturnValue({ page: '1' }),
         },
         set: jest.fn((key: string, value: unknown) => {
           stored.set(key, value);
@@ -447,7 +448,7 @@ describe('Validation Utilities', () => {
         get: jest.fn((key: string) => stored.get(key)),
       } as unknown as Context;
 
-      const next = jest.fn().mockResolvedValue(undefined);
+      const next = jest.fn<any>().mockResolvedValue(undefined);
 
       await queryValidator(schema)(mockContext, next);
 
@@ -464,12 +465,12 @@ describe('Validation Utilities', () => {
 
       const mockContext = {
         req: {
-          json: jest.fn().mockResolvedValue({ title: 'Test', count: 'nope' }),
+          json: jest.fn<any>().mockResolvedValue({ title: 'Test', count: 'nope' }),
         },
-        set: jest.fn(),
+        set: jest.fn<any>(),
       } as unknown as Context;
 
-      const next = jest.fn().mockResolvedValue(undefined);
+      const next = jest.fn<any>().mockResolvedValue(undefined);
 
       await expect(bodyValidator(schema)(mockContext, next)).rejects.toThrow(ValidationError);
       expect(next).not.toHaveBeenCalled();
@@ -477,7 +478,7 @@ describe('Validation Utilities', () => {
 
     it('should throw helpful error when getValidatedBody called without middleware', () => {
       const mockContext = {
-        get: jest.fn().mockReturnValue(undefined),
+        get: jest.fn<any>().mockReturnValue(undefined),
       } as unknown as Context;
 
       const schema = z.object({ name: z.string() });
@@ -489,7 +490,7 @@ describe('Validation Utilities', () => {
 
     it('should throw helpful error when getValidatedQuery called without middleware', () => {
       const mockContext = {
-        get: jest.fn().mockReturnValue(undefined),
+        get: jest.fn<any>().mockReturnValue(undefined),
       } as unknown as Context;
 
       const schema = z.object({ page: z.string() });
@@ -502,7 +503,7 @@ describe('Validation Utilities', () => {
     it('should successfully retrieve body from context when middleware was applied', () => {
       const testData = { title: 'Test', count: 42 };
       const mockContext = {
-        get: jest.fn().mockReturnValue(testData),
+        get: jest.fn<any>().mockReturnValue(testData),
       } as unknown as Context;
 
       const schema = z.object({ title: z.string(), count: z.number() });
@@ -514,7 +515,7 @@ describe('Validation Utilities', () => {
     it('should successfully retrieve query from context when middleware was applied', () => {
       const testData = { page: '1', limit: '10' };
       const mockContext = {
-        get: jest.fn().mockReturnValue(testData),
+        get: jest.fn<any>().mockReturnValue(testData),
       } as unknown as Context;
 
       const schema = z.object({ page: z.string(), limit: z.string() });

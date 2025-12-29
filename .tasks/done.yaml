@@ -19,9 +19,86 @@
     - Added setup verification test (3 tests validating Miniflare and D1)
     - Updated vitest.config.ts to exclude tests/jest/** from Vitest
 
+- task_id: TASK-MIGRATE-002
+  title: "Phase 2: Migrate Unit Tests Batch 1 (Utilities, 6 files)"
+  spec_id: SPEC-testing-migration-001
+  completed_at: "2025-12-29"
+  outcome: |
+    Successfully migrated 6 utility test files from Vitest to Jest using parallel agents.
+    All tests passing in both Jest (130/130) and Vitest (614/614) environments.
+
+    Migrated Files:
+    - chunking.test.ts (22 tests) - Fixed metadata types for ChunkMetadata interface
+    - date-utils.test.ts (20 tests) - Straightforward migration
+    - errors.test.ts (8 tests) - Removed Vitest import only
+    - schemas.test.ts (45 tests) - Zod validation tests
+    - text-format.test.ts (4 tests) - Minimal changes
+    - validation.test.ts (28 tests) - Replaced vi.fn() with jest.fn()
+
+    Configuration Improvements:
+    - Updated jest.config.ts with pathsToModuleNameMapper for TypeScript path resolution
+    - Fixed path mappings from regex to glob patterns
+    - Added @worker/* alias to moduleNameMapper
+
+    Execution Strategy:
+    - Launched 6 concurrent agents for parallel migration
+    - Significantly reduced migration time
+
+    Key Learnings:
+    - Most tests required minimal changes (only import updates)
+    - Only validation.test.ts had Vitest-specific mocking
+    - Path alias configuration critical for Jest module resolution
+
     Configuration:
     - Jest uses ts-jest with modern transform syntax (not deprecated globals)
     - ESM-compatible configuration using fileURLToPath and import.meta.url
+
+- task_id: TASK-MIGRATE-003
+  title: "Phase 3: Migrate Unit Tests Batch 2 (Repositories, 7 files)"
+  spec_id: SPEC-testing-migration-001
+  completed_at: "2025-12-29"
+  outcome: |
+    Successfully migrated 7 repository test files from Vitest to Jest using parallel agents.
+    All tests passing in both Jest (341/341) and Vitest (614/614) environments.
+
+    Migrated Files (211 tests total):
+    - department-repository.test.ts (32 tests)
+    - embedding-retry-queue-repository.test.ts (11 tests)
+    - person-repository.test.ts (34 tests)
+    - project-repository.test.ts (32 tests)
+    - statistics-repository.test.ts (12 tests)
+    - todo-repository.test.ts (42 tests)
+    - work-note-repository.test.ts (48 tests)
+
+    Key Migration Changes:
+    - Replaced 'import { env } from cloudflare:test' with getDB() global helper
+    - Removed Vitest imports (describe, it, expect, beforeEach)
+    - Updated D1 database access from env.DB to await getDB()
+    - Fixed schema validation issues (skipWeekends, view parameters)
+    - Fixed role validation (PARTICIPANT → RELATED)
+
+    Configuration Improvements:
+    - Added injectGlobals: true to jest.config.ts for ESM compatibility
+    - Fixed validation.test.ts by importing jest from '@jest/globals'
+    - Updated jest.fn() calls with generic type parameter <any> for TypeScript compatibility
+    - Ensured ESM module support with NODE_OPTIONS='--experimental-vm-modules'
+
+    Execution Strategy:
+    - Launched 7 concurrent agents for parallel migration
+    - Significantly reduced migration time through parallel execution
+    - Fixed configuration issues that emerged during parallel migration
+
+    Test Results:
+    - Jest: 341 tests passing (14 test suites) - includes Phase 1, 2, and 3
+    - Vitest: 614 tests still passing (42 test files) - no regressions
+    - Both test frameworks operating in parallel successfully
+
+    Key Learnings:
+    - Repository tests required D1 binding changes but were straightforward
+    - ESM mode requires explicit jest import from '@jest/globals' in some cases
+    - TypeScript strict mode requires generic type parameters for jest.fn()
+    - Parallel agent execution highly effective for independent file migrations
+    - Configuration issues easier to spot when running all tests together
     - Path aliases match vitest.config.ts (@worker, @shared, @web)
     - Miniflare initialized in beforeAll, disposed in afterAll
     - D1 migrations applied via glob-loaded SQL files with fallback to manual schema
