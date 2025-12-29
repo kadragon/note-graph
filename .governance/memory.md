@@ -214,3 +214,27 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 <!-- Trace: spec_id=SPEC-refactor-validation-middleware, task_id=TASK-REFACTOR-006 -->
 <!-- Trace: spec_id=SPEC-rag-2, task_id=TASK-069 -->
 <!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-001 -->
+
+### Session 77: Jest + Miniflare Migration Phase 2 (2025-12-29)
+- **TASK-MIGRATE-002 (SPEC-testing-migration-001)**: Migrated 6 utility test files from Vitest to Jest using parallel agents.
+- **Strategy**: Launched 6 concurrent agents to migrate files in parallel for maximum efficiency.
+- **Files Migrated**:
+  - `chunking.test.ts` (22 tests) - Fixed metadata types for current ChunkMetadata interface
+  - `date-utils.test.ts` (20 tests) - Straightforward migration, no Vitest-specific syntax
+  - `errors.test.ts` (8 tests) - Straightforward migration, removed Vitest import only
+  - `schemas.test.ts` (45 tests) - Straightforward migration, tests Zod validation
+  - `text-format.test.ts` (4 tests) - Straightforward migration, minimal changes
+  - `validation.test.ts` (28 tests) - Replaced 28 `vi.fn()` calls with `jest.fn()`
+- **Configuration Fixes**:
+  - Updated `jest.config.ts` to use `pathsToModuleNameMapper` from ts-jest for proper TypeScript path resolution
+  - Fixed path mappings from regex patterns to glob patterns (`@/*` instead of `@/(.*)`)
+  - Added `@worker/*` alias to moduleNameMapper for missing import paths
+- **Test Results**:
+  - Jest: 130/130 tests passing (127 migrated + 3 setup verification)
+  - Vitest: 614/614 tests passing (unchanged, parallel execution working)
+- **Key Learnings**:
+  - Most tests required minimal changes (only removing Vitest imports)
+  - Only validation.test.ts used Vitest-specific mocking (`vi.fn()`)
+  - Parallel agent execution significantly reduced migration time
+  - Path alias configuration is critical for module resolution in Jest
+- **Next**: Ready for Phase 3 (Migrate Repository Tests - 7 files with D1 bindings)

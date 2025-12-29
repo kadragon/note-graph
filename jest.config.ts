@@ -1,10 +1,15 @@
 // Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-001
 import type { Config } from 'jest';
+import { pathsToModuleNameMapper } from 'ts-jest';
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Load tsconfig to get path mappings
+const tsconfig = JSON.parse(readFileSync(resolve(__dirname, './tsconfig.base.json'), 'utf-8'));
 
 const config: Config = {
   preset: 'ts-jest',
@@ -12,10 +17,11 @@ const config: Config = {
 
   // Path aliases matching vitest.config.ts
   moduleNameMapper: {
-    '^@/(.*)$': resolve(__dirname, './apps/worker/src/$1'),
-    '^@worker/(.*)$': resolve(__dirname, './apps/worker/src/$1'),
-    '^@web/(.*)$': resolve(__dirname, './apps/web/src/$1'),
-    '^@shared/(.*)$': resolve(__dirname, './packages/shared/$1'),
+    ...pathsToModuleNameMapper(tsconfig.compilerOptions?.paths || {}, {
+      prefix: '<rootDir>/',
+    }),
+    // Add @worker alias that exists in vitest but not in tsconfig
+    '^@worker/(.*)$': '<rootDir>/apps/worker/src/$1',
   },
 
   // Setup file for Miniflare initialization and D1 migrations
@@ -57,6 +63,13 @@ const config: Config = {
           moduleResolution: 'node',
           target: 'ES2022',
           lib: ['ES2022'],
+          baseUrl: '.',
+          paths: {
+            '@/*': ['./apps/worker/src/*'],
+            '@worker/*': ['./apps/worker/src/*'],
+            '@web/*': ['./apps/web/src/*'],
+            '@shared/*': ['./packages/shared/*'],
+          },
         },
       },
     ],

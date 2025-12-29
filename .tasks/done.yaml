@@ -355,3 +355,43 @@
     Fulfills SPEC-rag-2 acceptance tests TEST-rag-2-5 and TEST-rag-2-6.
     Admin routes provide visibility into failed embeddings and manual recovery capability.
     Migration 0019 re-adds the table that was dropped in 0013 when embedded_at tracking was introduced.
+
+  - task_id: TASK-MIGRATE-002
+    spec_id: SPEC-testing-migration-001
+    title: "Phase 2: Migrate Unit Tests Batch 1 (Utilities, 6 files)"
+    status: done
+    priority: P0
+    test_refs:
+      - TEST-testing-migration-002
+    created_at: 2025-12-29
+    started_at: 2025-12-29
+    completed_at: 2025-12-29
+    notes: |
+      ✅ Successfully migrated 6 utility test files from Vitest to Jest in parallel.
+
+      Files migrated:
+      1. chunking.test.ts (22 tests) - Fixed metadata types (person_ids string, added created_at_bucket)
+      2. date-utils.test.ts (20 tests) - No Vitest-specific syntax, straightforward migration
+      3. errors.test.ts (8 tests) - No Vitest-specific syntax, straightforward migration
+      4. schemas.test.ts (45 tests) - No Vitest-specific syntax, straightforward migration
+      5. text-format.test.ts (4 tests) - No Vitest-specific syntax, straightforward migration
+      6. validation.test.ts (28 tests) - Replaced vi.fn() with jest.fn() (28 occurrences)
+
+      Total: 127 tests migrated (+ 3 setup verification tests = 130 total Jest tests)
+
+      Configuration fixes:
+      - Updated jest.config.ts to use pathsToModuleNameMapper from ts-jest
+      - Fixed TypeScript path mappings to use glob patterns instead of regex
+      - Added @worker/* alias to moduleNameMapper for proper module resolution
+
+      Execution strategy:
+      - Launched 6 parallel agents using Task tool with subagent_type=general-purpose
+      - Each agent independently migrated one test file
+      - All agents completed successfully with tests passing
+
+      Test results:
+      - Jest: 130/130 tests passing
+      - Vitest: 614/614 tests passing (unchanged)
+      - Parallel execution verified working
+
+      Next: TASK-MIGRATE-003 (Phase 3: Repository tests - 7 files)
