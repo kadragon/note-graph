@@ -1,0 +1,136 @@
+spec_id: SPEC-testing-migration-001
+title: "Vitest to Jest + Miniflare Progressive Migration"
+given_when_then:
+  - given: "현재 39개의 vitest 테스트 파일이 Cloudflare Workers 환경에서 실행됨"
+    when: "호환성 문제로 Jest + Miniflare로 점진적 마이그레이션 진행"
+    then: "기존 테스트 동작을 유지하면서 단계적으로 Jest 기반 테스트로 전환"
+  - given: "테스트가 unit, integration 두 카테고리로 나뉨"
+    when: "마이그레이션 우선순위를 설정할 때"
+    then: "unit 테스트를 먼저 마이그레이션하고, integration 테스트는 마지막에 전환"
+  - given: "모든 테스트가 D1, R2, Vectorize 등 Cloudflare 바인딩 사용"
+    when: "Jest 환경에서 실행할 때"
+    then: "Miniflare를 통해 동일한 바인딩 환경 제공"
+
+acceptance_tests:
+  - id: TEST-testing-migration-001
+    desc: "Jest 설정 파일이 Miniflare 통합을 포함함"
+  - id: TEST-testing-migration-002
+    desc: "첫 번째 unit 테스트가 Jest로 마이그레이션되어 통과함"
+  - id: TEST-testing-migration-003
+    desc: "모든 unit 테스트가 Jest로 마이그레이션되어 통과함"
+  - id: TEST-testing-migration-004
+    desc: "모든 integration 테스트가 Jest로 마이그레이션되어 통과함"
+  - id: TEST-testing-migration-005
+    desc: "Vitest 의존성이 제거되고 Jest만 남음"
+
+dependencies:
+  - governance: "coding-style.md (test naming conventions)"
+  - governance: "patterns.md (test setup patterns)"
+
+linked_tasks:
+  - TASK-MIGRATE-001
+  - TASK-MIGRATE-002
+  - TASK-MIGRATE-003
+  - TASK-MIGRATE-004
+  - TASK-MIGRATE-005
+  - TASK-MIGRATE-006
+
+migration_strategy:
+  phases:
+    - phase: 1
+      name: "Environment Setup"
+      description: "Jest + Miniflare 초기 설정 및 병렬 실행 환경 구축"
+
+    - phase: 2
+      name: "Unit Tests Migration (Batch 1)"
+      description: "독립적인 유틸리티 테스트부터 시작 (6개)"
+
+    - phase: 3
+      name: "Unit Tests Migration (Batch 2)"
+      description: "Repository 레이어 테스트 (7개)"
+
+    - phase: 4
+      name: "Unit Tests Migration (Batch 3)"
+      description: "Service 레이어 테스트 (11개)"
+
+    - phase: 5
+      name: "Integration Tests Migration"
+      description: "API 통합 테스트 (7개)"
+
+    - phase: 6
+      name: "Cleanup & Vitest Removal"
+      description: "Vitest 의존성 제거 및 최종 검증"
+
+cloudflare_bindings_mapping:
+  - vitest: "import { env } from 'cloudflare:test'"
+    jest: "Miniflare Bindings object via setupFiles"
+
+  - vitest: "import { SELF } from 'cloudflare:test'"
+    jest: "Miniflare.getWorker() or unstable_dev()"
+
+  - vitest: "env.DB (D1Database)"
+    jest: "miniflare.getD1Database('DB')"
+
+  - vitest: "env.R2_BUCKET (R2Bucket)"
+    jest: "miniflare.getR2Bucket('R2_BUCKET')"
+
+test_file_inventory:
+  unit_tests:
+    batch_1_utilities: # 독립적, Cloudflare 바인딩 의존도 낮음
+      - "tests/unit/chunking.test.ts"
+      - "tests/unit/date-utils.test.ts"
+      - "tests/unit/errors.test.ts"
+      - "tests/unit/schemas.test.ts"
+      - "tests/unit/text-format.test.ts"
+      - "tests/unit/validation.test.ts"
+
+    batch_2_repositories: # D1 바인딩만 필요
+      - "tests/unit/department-repository.test.ts"
+      - "tests/unit/embedding-retry-queue-repository.test.ts"
+      - "tests/unit/person-repository.test.ts"
+      - "tests/unit/project-repository.test.ts"
+      - "tests/unit/statistics-repository.test.ts"
+      - "tests/unit/todo-repository.test.ts"
+      - "tests/unit/work-note-repository.test.ts"
+
+    batch_3_services: # 복수 바인딩 또는 외부 API 모킹 필요
+      - "tests/unit/ai-draft-service.test.ts"
+      - "tests/unit/api-departments.test.ts"
+      - "tests/unit/auth.test.ts"
+      - "tests/unit/embedding-service.test.ts"
+      - "tests/unit/fts-search-service.test.ts"
+      - "tests/unit/group-recurring-todos.test.ts"
+      - "tests/unit/hybrid-search-service.test.ts"
+      - "tests/unit/migration-project-management.test.ts"
+      - "tests/unit/pdf-extraction-service.test.ts"
+      - "tests/unit/pdf-job-repository.test.ts"
+      - "tests/unit/project-file-service.test.ts"
+      - "tests/unit/rag-service.project.test.ts"
+      - "tests/unit/todo-grouping.test.ts"
+      - "tests/unit/work-note-file-service.test.ts"
+      - "tests/unit/work-note-file-utils.test.ts"
+      - "tests/unit/work-note-service.test.ts"
+
+  integration_tests: # HTTP 요청, 전체 스택 필요
+    - "tests/integration/admin-embedding-failures.test.ts"
+    - "tests/integration/project-files.test.ts"
+    - "tests/integration/project-routes.test.ts"
+    - "tests/integration/statistics-routes.test.ts"
+    - "tests/integration/work-note-file-view.test.ts"
+    - "tests/integration/work-note-project-association.test.ts"
+
+  legacy_tests: # apps/web 디렉터리 (프론트엔드 테스트, 낮은 우선순위)
+    - "apps/web/src/lib/api.test.ts"
+    - "apps/web/src/lib/mappers/department.test.ts"
+    - "apps/web/src/pages/search/search-query.test.ts"
+    - "tests/api.test.ts"
+    - "tests/departments.test.ts"
+    - "tests/person.test.ts"
+    - "tests/search.test.ts"
+
+rollback_strategy:
+  description: "각 단계에서 문제 발생 시 이전 단계로 롤백"
+  mechanism:
+    - "Git 브랜치 전략: 각 phase마다 별도 브랜치 생성"
+    - "병렬 실행: Vitest와 Jest를 동시에 실행하여 동작 검증"
+    - "Phase 완료 기준: 해당 phase의 모든 테스트가 Jest에서 통과해야 다음 phase 진행"
