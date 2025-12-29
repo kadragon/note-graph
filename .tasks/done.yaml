@@ -548,3 +548,29 @@
     Phase 4 complete. 15/16 service tests migrated successfully.
     pdf-job-repository needs performance investigation (separate task).
     Ready for Phase 5 (Integration Tests).
+
+- task_id: TASK-MIGRATE-005
+  title: "Phase 5: Migrate Integration Tests (6 files)"
+  spec_id: SPEC-testing-migration-001
+  completed_at: "2025-12-29"
+  outcome: |
+    Migrated 6 integration test files from Vitest to Jest:
+    - admin-embedding-failures.test.ts
+    - project-files.test.ts
+    - project-routes.test.ts
+    - statistics-routes.test.ts
+    - work-note-file-view.test.ts
+    - work-note-project-association.test.ts
+
+    Key changes:
+    - Replaced cloudflare:test SELF.fetch usage with app.request helpers
+    - Added ExecutionContext stubs for work-note routes
+    - Added env builders with Miniflare D1 bindings
+    - Implemented R2 mocks and Vectorize/AI stubs for integration routes
+    - Stabilized stream mocks for download/view routes
+    - Mocked ProjectFileService for route isolation
+  test_results: |
+    ✓ npm run test:jest -- tests/jest/integration (6 suites, 51 tests)
+  notes: |
+    Integration tests are now under tests/jest/integration.
+    Jest setup still logs __dirname warnings in ESM and falls back to manual DDL (existing behavior).

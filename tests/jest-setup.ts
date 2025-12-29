@@ -1,7 +1,9 @@
 // Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-001
 
 import { existsSync, readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import type { Readable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 import type { D1Database } from '@cloudflare/workers-types';
 import { glob } from 'glob';
 import { Miniflare } from 'miniflare';
@@ -9,10 +11,52 @@ import { Miniflare } from 'miniflare';
 // Global Miniflare instance
 let miniflare: Miniflare;
 
+const setupDir = dirname(fileURLToPath(import.meta.url));
+const runtimeWarningPatterns = [/--localstorage-file/];
+const originalEmitWarning: typeof process.emitWarning = process.emitWarning.bind(process);
+
+process.emitWarning = ((warning, ...args) => {
+  const message = typeof warning === 'string' ? warning : warning?.message;
+  if (typeof message === 'string' && message.includes('--localstorage-file')) {
+    return;
+  }
+  return originalEmitWarning(warning, ...args);
+}) as typeof process.emitWarning;
+
+declare global {
+  var getMiniflare: () => Miniflare;
+  var getDB: () => Promise<D1Database>;
+}
+
+function pipeFilteredRuntimeLogs(stream: Readable, target: NodeJS.WritableStream): void {
+  let buffer = '';
+
+  stream.on('data', (chunk) => {
+    buffer += chunk.toString();
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      if (runtimeWarningPatterns.some((pattern) => pattern.test(line))) {
+        continue;
+      }
+      target.write(`${line}\n`);
+    }
+  });
+
+  stream.on('end', () => {
+    if (!buffer) return;
+    if (runtimeWarningPatterns.some((pattern) => pattern.test(buffer))) {
+      return;
+    }
+    target.write(buffer);
+  });
+}
+
 // Load migration files from disk
 async function loadMigrationStatements(): Promise<string[]> {
   const migrationFiles = await glob('../migrations/*.sql', {
-    cwd: __dirname,
+    cwd: setupDir,
     absolute: true,
   });
 
@@ -376,6 +420,10 @@ beforeAll(async () => {
       'enable_nodejs_http_modules',
       'enable_nodejs_perf_hooks_module',
     ],
+    handleRuntimeStdio: (stdout, stderr) => {
+      pipeFilteredRuntimeLogs(stdout, process.stdout);
+      pipeFilteredRuntimeLogs(stderr, process.stderr);
+    },
     d1Databases: { DB: 'worknote-db' },
     d1Persist: false,
     bindings: {
@@ -388,8 +436,8 @@ beforeAll(async () => {
   await applyMigrationsOrFallback(db);
 
   // Make bindings globally available for tests
-  (global as any).getMiniflare = () => miniflare;
-  (global as any).getDB = async () => await miniflare.getD1Database('DB');
+  globalThis.getMiniflare = () => miniflare;
+  globalThis.getDB = async () => await miniflare.getD1Database('DB');
 });
 
 // Clean up Miniflare after all tests

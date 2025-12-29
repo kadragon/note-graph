@@ -1,48 +1,10 @@
 tasks:
   # Jest + Miniflare Migration (6 phases)
 
-  - task_id: TASK-MIGRATE-005
-    spec_id: SPEC-testing-migration-001
-    title: "Phase 5: Migrate Integration Tests (7 files)"
-    status: pending
-    priority: P0
-    test_refs:
-      - TEST-testing-migration-005
-    created_at: 2025-12-29
-    updated_at: 2025-12-29
-    notes: |
-      Migrate 7 HTTP integration tests:
-      - admin-embedding-failures.test.ts
-      - project-files.test.ts
-      - project-routes.test.ts
-      - statistics-routes.test.ts
-      - work-note-file-view.test.ts
-      - work-note-project-association.test.ts
-      Replace 'SELF.fetch()' with miniflare.dispatchFetch().
-      May require worker build step for full stack testing.
-      Estimated: 8-10 hours. Risk: High.
-
-  - task_id: TASK-MIGRATE-006
-    spec_id: SPEC-testing-migration-001
-    title: "Phase 6: Cleanup and Vitest Removal"
-    status: pending
-    priority: P0
-    test_refs:
-      - TEST-testing-migration-006
-    created_at: 2025-12-29
-    updated_at: 2025-12-29
-    notes: |
-      Delete vitest.config.ts and tests/setup.ts (Vitest version).
-      Uninstall vitest, @vitest/coverage-v8, @cloudflare/vitest-pool-workers.
-      Update package.json scripts to use Jest only.
-      Update CI/CD pipelines (if any).
-      Update documentation (README, CONTRIBUTING).
-      Update .governance/memory.md with migration summary.
-      Final validation: all 614+ tests pass in Jest.
-      Estimated: 2-3 hours. Risk: Low.
+  # (moved TASK-MIGRATE-006 to current.yaml)
 
 metadata:
-  total_tasks: 6
+  total_tasks: 1
   total_estimated_effort: 33-45 hours
   phases:
     - name: "Jest + Miniflare Migration"

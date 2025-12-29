@@ -323,3 +323,10 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 - Investigate pdf-job-repository.test.ts timeout issues (separate task)
 
 **Commit**: `28e1025 feat: migrate service tests from Vitest to Jest (Phase 4)`
+
+### Session 79: Jest + Miniflare Migration Phase 5 (2025-12-29)
+- **TASK-MIGRATE-005 (SPEC-testing-migration-001)**: Migrated 6 integration tests to Jest (admin embedding failures, project files/routes, statistics routes, work-note file view, work-note-project association).
+- **Test harness**: Replaced cloudflare:test `SELF.fetch` with `app.request` helpers + ExecutionContext stubs; used Miniflare D1 globals and lightweight Env builders.
+- **Mocks**: Added R2 mock adjustments, Vectorize/AI stubs, and ProjectFileService Jest module mock; ensured streaming mocks return fresh bodies and 404 uses NotFoundError.
+- **Verification**: `npm run test:jest -- tests/jest/integration` (6 suites, 51 tests) passed; Jest setup still warns about __dirname in ESM and falls back to manual DDL.
+<!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-005 -->
