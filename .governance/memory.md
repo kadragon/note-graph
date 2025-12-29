@@ -153,6 +153,23 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 - **Fixes**: Fixed NotFoundError import (was incorrectly from @shared/types/auth, corrected to ../types/errors).
 - **Verification**: All 614 tests passing.
 
+### Session 76: Jest + Miniflare Migration Phase 1 (2025-12-29)
+- **TASK-MIGRATE-001 (SPEC-testing-migration-001)**: Set up Jest + Miniflare testing environment for progressive Vitest-to-Jest migration.
+- **Dependencies**: Installed jest, @types/jest, ts-jest, miniflare, glob.
+- **Configuration Files**:
+  - `jest.config.ts`: ESM-compatible config using fileURLToPath, path aliases matching Vitest, ts-jest transform syntax
+  - `tests/jest-setup.ts`: Miniflare initialization with D1 migration logic (mirrors tests/setup.ts)
+  - Updated `vitest.config.ts` to exclude `tests/jest/**` directory
+- **Package Scripts**: Added test:jest, test:jest:watch, test:jest:coverage, test:all (parallel execution)
+- **Verification**: Created setup-verification.test.ts with 3 tests validating Miniflare instance and D1 database
+- **Results**: Jest (3/3 tests) and Vitest (614/614 tests) both passing, parallel execution verified
+- **Key Decisions**:
+  - ESM mode required fileURLToPath pattern instead of __dirname
+  - ts-jest transform syntax (not deprecated globals)
+  - Global helper functions: getMiniflare() and getDB() for test access to bindings
+  - Manual schema fallback ensures tests run even if migration glob fails
+- **Next**: Ready for Phase 2 (Migrate Unit Tests Batch 1 - 6 utility files)
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests
@@ -184,6 +201,8 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 - **Code Duplication**: Extract repeated patterns (R2 initialization, error handling) to utilities/middleware as soon as duplication is identified; small utilities have high impact
 - **Error Handling**: Centralized error middleware provides consistency, better logging, and cleaner code; apply early in project lifecycle
 - **Parallel Refactoring**: Use multiple concurrent agents for independent file modifications to significantly reduce refactoring time
+- **ESM Configuration**: When project uses `"type": "module"`, use fileURLToPath(import.meta.url) instead of __dirname in config files
+- **Test Framework Migration**: Set up new test framework alongside old one first; verify parallel execution before migration; use directory exclusion to prevent cross-contamination
 <!-- Trace: spec_id=SPEC-governance-1, task_id=TASK-059 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-063 -->
 <!-- Trace: spec_id=SPEC-worknote-attachments-1, task_id=TASK-064 -->
@@ -194,3 +213,4 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 <!-- Trace: spec_id=SPEC-refactor-embedding-service, task_id=TASK-REFACTOR-005 -->
 <!-- Trace: spec_id=SPEC-refactor-validation-middleware, task_id=TASK-REFACTOR-006 -->
 <!-- Trace: spec_id=SPEC-rag-2, task_id=TASK-069 -->
+<!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-001 -->

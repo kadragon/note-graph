@@ -11,6 +11,11 @@ export default defineWorkersConfig({
     },
   },
   test: {
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/tests/jest/**', // Exclude Jest test directory
+    ],
     poolOptions: {
       workers: {
         singleWorker: true,

@@ -2,6 +2,48 @@
 # Tasks TASK-001 through TASK-060: Initial implementation, AI features, project management, statistics, UX improvements
 # For full details, see git history or Session 1-65 in memory.md
 
+- task_id: TASK-MIGRATE-001
+  title: "Phase 1: Jest + Miniflare Environment Setup"
+  spec_id: SPEC-testing-migration-001
+  completed_at: "2025-12-29"
+  outcome: |
+    Successfully set up Jest + Miniflare testing environment alongside existing Vitest setup.
+    Created infrastructure for progressive migration from Vitest to Jest.
+
+    Implemented:
+    - Installed jest, @types/jest, ts-jest, miniflare, glob dependencies
+    - Created jest.config.ts with ESM support, path aliases, and Miniflare integration
+    - Created tests/jest-setup.ts with D1 migration logic (mirrors tests/setup.ts)
+    - Added package.json test scripts: test:jest, test:jest:watch, test:jest:coverage, test:all
+    - Created tests/jest/ directory for migrated tests
+    - Added setup verification test (3 tests validating Miniflare and D1)
+    - Updated vitest.config.ts to exclude tests/jest/** from Vitest
+
+    Configuration:
+    - Jest uses ts-jest with modern transform syntax (not deprecated globals)
+    - ESM-compatible configuration using fileURLToPath and import.meta.url
+    - Path aliases match vitest.config.ts (@worker, @shared, @web)
+    - Miniflare initialized in beforeAll, disposed in afterAll
+    - D1 migrations applied via glob-loaded SQL files with fallback to manual schema
+    - Global helper functions: getMiniflare() and getDB()
+
+    Parallel execution verified:
+    - test:all runs both Jest and Vitest concurrently
+    - Jest: 3 tests passed (setup verification)
+    - Vitest: 614 tests passed (existing tests)
+    - No conflicts between test runners
+  test_results: |
+    ✓ npm run test:jest (3/3 tests passing)
+    ✓ npm run test:vitest (614/614 tests passing)
+    ✓ npm run test:all (both suites run in parallel successfully)
+    ✓ TEST-testing-migration-001: Jest 설정 파일이 Miniflare 통합을 포함함 (verified)
+  estimated_effort: 3-4h
+  actual_effort: ~2h
+  notes: |
+    Phase 1 complete. Ready for Phase 2 (Migrate Unit Tests Batch 1).
+    Foundation is solid: Miniflare + D1 working, path aliases resolved, parallel execution verified.
+    Minor warning from Miniflare about --localstorage-file is cosmetic and doesn't affect functionality.
+
 - task_id: TASK-sidebar-001 to TASK-sidebar-005
   title: "Collapsible Sidebar Implementation"
   spec_id: SPEC-collapsible-sidebar-1
