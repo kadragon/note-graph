@@ -397,4 +397,4 @@ afterAll(async () => {
   if (miniflare) {
     await miniflare.dispose();
   }
-});
+}, 30000); // Increase timeout to 30 seconds for cleanup
