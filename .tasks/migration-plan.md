@@ -34,9 +34,9 @@ This document outlines the progressive migration strategy from Vitest + @cloudfl
 | Unit Tests (Batch 1) | 6 | Utilities, minimal Cloudflare dependencies |
 | Unit Tests (Batch 2) | 7 | Repositories (D1 only) |
 | Unit Tests (Batch 3) | 16 | Services (multiple bindings, API mocking) |
-| Integration Tests | 7 | Full HTTP stack tests |
+| Integration Tests | 6 | Full HTTP stack tests |
 | Legacy/Frontend Tests | 7 | Low priority, apps/web directory |
-| **Total** | **43** | Including legacy tests |
+| **Total** | **42** | Including legacy tests |
 
 ### Current Dependencies
 
@@ -104,7 +104,10 @@ describe('SomeRepository', () => {
 
 **Deliverables**:
 - `jest.config.ts` with Miniflare integration
-- `tests/jest-setup.ts` with D1 migrations
+- `tests/jest-global-setup.ts` for global Miniflare initialization
+- `tests/jest-global-teardown.ts` for cleanup
+- `tests/jest-setup.ts` with D1 migrations (per-suite setup)
+- `tests/jest-helpers.ts` for binding access utilities
 - Updated `package.json` scripts
 - Documentation for running both frameworks
 
@@ -237,11 +240,16 @@ describe('SomeRepository', () => {
 ```typescript
 import { Miniflare } from 'miniflare';
 
-let miniflare: Miniflare;
+// Store Miniflare instance in global scope to avoid singleton state sharing
+declare global {
+  var __miniflare: Miniflare | undefined;
+}
 
 export async function getMiniflareBindings() {
-  if (!miniflare) {
-    miniflare = new Miniflare({
+  // Create new instance per test suite via beforeAll/afterAll
+  // Do NOT use singleton pattern to prevent state leakage between tests
+  if (!global.__miniflare) {
+    global.__miniflare = new Miniflare({
       modules: true,
       script: '',
       d1Databases: { DB: 'worknote-db' },
@@ -250,17 +258,28 @@ export async function getMiniflareBindings() {
   }
 
   return {
-    DB: await miniflare.getD1Database('DB'),
+    DB: await global.__miniflare.getD1Database('DB'),
     // Add other bindings as needed
   };
 }
 
-export async function resetMiniflare() {
-  if (miniflare) {
-    await miniflare.dispose();
-    miniflare = undefined;
+export async function disposeMiniflare() {
+  if (global.__miniflare) {
+    await global.__miniflare.dispose();
+    global.__miniflare = undefined;
   }
 }
+
+// Usage in test files:
+// describe('SomeTest', () => {
+//   beforeAll(async () => {
+//     await getMiniflareBindings();
+//   });
+//
+//   afterAll(async () => {
+//     await disposeMiniflare();
+//   });
+// });
 ```
 
 **Validation**:
@@ -341,7 +360,7 @@ const r2 = new MockR2();
 
 ### Phase 5: Integration Tests Migration (8-10 hours)
 
-**Goal**: Migrate 7 HTTP integration tests
+**Goal**: Migrate 6 HTTP integration tests
 
 **Target Files**:
 1. `tests/integration/admin-embedding-failures.test.ts`
@@ -350,7 +369,6 @@ const r2 = new MockR2();
 4. `tests/integration/statistics-routes.test.ts`
 5. `tests/integration/work-note-file-view.test.ts`
 6. `tests/integration/work-note-project-association.test.ts`
-7. Other integration tests in `/tests/integration/`
 
 **Key Challenge**: Replace `SELF.fetch()` with Miniflare worker invocation
 
@@ -392,6 +410,13 @@ beforeAll(async () => {
       ENVIRONMENT: 'test',
     },
   });
+});
+
+// IMPORTANT: Clean up after each test suite to prevent state leakage
+afterAll(async () => {
+  if (miniflare) {
+    await miniflare.dispose();
+  }
 });
 
 const authFetch = async (path: string, options?: RequestInit) => {
