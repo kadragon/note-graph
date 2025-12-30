@@ -19,12 +19,28 @@ describe('autoAttachPdf', () => {
     expect(uploadWorkNoteFile).not.toHaveBeenCalled();
   });
 
+  it('returns false when PDF file is empty', async () => {
+    const uploadWorkNoteFile = jest.fn() as jest.MockedFunction<
+      (workNoteId: string, file: File) => Promise<unknown>
+    >;
+    const emptyFile = new File([], 'empty.pdf', { type: 'application/pdf' });
+
+    const attached = await autoAttachPdf({
+      workNoteId: 'WORK-1',
+      pdfFile: emptyFile,
+      uploadWorkNoteFile,
+    });
+
+    expect(attached).toBe(false);
+    expect(uploadWorkNoteFile).not.toHaveBeenCalled();
+  });
+
   it('uploads the PDF and returns true when file is provided', async () => {
     const uploadWorkNoteFile = jest.fn() as jest.MockedFunction<
       (workNoteId: string, file: File) => Promise<unknown>
     >;
     uploadWorkNoteFile.mockResolvedValueOnce(undefined);
-    const pdfFile = new Blob(['pdf'], { type: 'application/pdf' }) as File;
+    const pdfFile = new File(['pdf'], 'test.pdf', { type: 'application/pdf' });
 
     const attached = await autoAttachPdf({
       workNoteId: 'WORK-2',
@@ -42,7 +58,7 @@ describe('autoAttachPdf', () => {
       (workNoteId: string, file: File) => Promise<unknown>
     >;
     uploadWorkNoteFile.mockRejectedValueOnce(error);
-    const pdfFile = new Blob(['pdf'], { type: 'application/pdf' }) as File;
+    const pdfFile = new File(['pdf'], 'test.pdf', { type: 'application/pdf' });
 
     await expect(
       autoAttachPdf({
@@ -50,6 +66,6 @@ describe('autoAttachPdf', () => {
         pdfFile,
         uploadWorkNoteFile,
       })
-    ).rejects.toThrow('upload failed');
+    ).rejects.toThrow(error);
   });
 });

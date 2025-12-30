@@ -152,6 +152,9 @@ export function useAIDraftForm(options: UseAIDraftFormOptions = {}) {
           throw new Error('업무노트 생성에 실패했거나, 서버에서 잘못된 데이터를 반환했습니다.');
         }
 
+        // Execute post-creation callback (e.g., PDF attachment)
+        // NOTE: This runs BEFORE todo creation to ensure file uploads happen
+        // as soon as the work note exists, independent of todo creation results
         if (onWorkNoteCreated) {
           try {
             await onWorkNoteCreated(workNote);
@@ -238,6 +241,8 @@ export function useAIDraftForm(options: UseAIDraftFormOptions = {}) {
       toast,
       resetForm,
       onSuccess,
+      onWorkNoteCreated,
+      onWorkNoteCreatedError,
     ]
   );
 

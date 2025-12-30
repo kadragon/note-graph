@@ -11,7 +11,8 @@ export async function autoAttachPdf({
   pdfFile,
   uploadWorkNoteFile,
 }: AutoAttachPdfOptions): Promise<boolean> {
-  if (!pdfFile) {
+  // Return false if no file or empty file
+  if (!pdfFile || pdfFile.size === 0) {
     return false;
   }
 
