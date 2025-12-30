@@ -20,8 +20,8 @@ describe('PdfJobRepository', () => {
     repository = new PdfJobRepository(db);
 
     // Clean up test data
-    await db.prepare('DELETE FROM pdf_jobs').run();
-  }, 30000); // Increase timeout to 30 seconds for database cleanup
+    await db.batch([db.prepare('DELETE FROM pdf_jobs')]);
+  });
 
   describe('create()', () => {
     it('should create a new PDF job with PENDING status', async () => {
