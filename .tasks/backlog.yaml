@@ -1,7 +1,4 @@
 tasks:
-  # Jest + Miniflare Migration (6 phases)
-
-  # (moved TASK-MIGRATE-006 to current.yaml)
 
 metadata:
   total_tasks: 0

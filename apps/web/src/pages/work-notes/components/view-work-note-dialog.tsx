@@ -1,4 +1,4 @@
-// Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2, SPEC-ui-1, TASK-034, SPEC-todo-2, TASK-051, TASK-052
+// Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2, SPEC-ui-1, TASK-034, SPEC-todo-2, TASK-051, TASK-052, SPEC-worknote-email-copy-001, TASK-0071
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AssigneeSelector } from '@web/components/assignee-selector';
@@ -32,6 +32,7 @@ import { useToast } from '@web/hooks/use-toast';
 import { useDeleteTodo, useToggleTodo } from '@web/hooks/use-todos';
 import { useUpdateWorkNote } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
+import { buildAssigneeEmailTemplate } from '@web/lib/assignee-email-template';
 import { formatPersonBadge, toUTCISOString } from '@web/lib/utils';
 import { EditTodoDialog } from '@web/pages/dashboard/components/edit-todo-dialog';
 import type {
@@ -45,7 +46,7 @@ import type {
 } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Edit2, Save, X } from 'lucide-react';
+import { Copy, Edit2, Save, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
@@ -174,6 +175,35 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
       setIsEditing(false);
     }
   }, [open]);
+
+  const handleCopyAssigneeEmail = useCallback(
+    async (assigneeName: string) => {
+      const template = buildAssigneeEmailTemplate(assigneeName);
+      if (!navigator.clipboard?.writeText) {
+        toast({
+          variant: 'destructive',
+          title: '클립보드를 사용할 수 없습니다.',
+          description: '브라우저 권한을 확인해주세요.',
+        });
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(template);
+        toast({
+          title: '이메일 양식을 복사했습니다.',
+          description: `${assigneeName} 담당자용 메일 초안을 클립보드에 저장했어요.`,
+        });
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: '복사에 실패했습니다.',
+          description: '다시 시도해주세요.',
+        });
+      }
+    },
+    [toast]
+  );
 
   // Detect and sync with system theme preference
   useEffect(() => {
@@ -476,14 +506,27 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
                 <div className="flex flex-wrap gap-1">
                   {currentWorkNote.persons && currentWorkNote.persons.length > 0 ? (
                     currentWorkNote.persons.map((person) => (
-                      <Badge key={person.personId} variant="outline">
-                        {formatPersonBadge({
-                          name: person.personName,
-                          currentDept: person.currentDept,
-                          currentPosition: person.currentPosition,
-                        })}
-                        {person.role === 'OWNER' && <span className="ml-1 text-xs">(담당)</span>}
-                      </Badge>
+                      <div key={person.personId} className="inline-flex items-center gap-1">
+                        <Badge variant="outline">
+                          {formatPersonBadge({
+                            name: person.personName,
+                            currentDept: person.currentDept,
+                            currentPosition: person.currentPosition,
+                          })}
+                          {person.role === 'OWNER' && <span className="ml-1 text-xs">(담당)</span>}
+                        </Badge>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          aria-label="담당자 이메일 양식 복사"
+                          title="이메일 양식 복사"
+                          onClick={() => handleCopyAssigneeEmail(person.personName)}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     ))
                   ) : (
                     <button

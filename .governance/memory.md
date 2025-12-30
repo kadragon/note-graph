@@ -343,3 +343,9 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 - **Test Setup**: Added jest-preload.ts for early warning filtering and switched Miniflare import in jest-setup.ts to dynamic import.
 - **Verification**: `npm test -- --runInBand | rg -n "Warning|warning"` produced no warning output.
 <!-- Trace: spec_id=SPEC-devx-3, task_id=TASK-0070 -->
+
+### Session 83: Work Note Assignee Email Copy Button (2025-12-30)
+- **TASK-0071 (SPEC-worknote-email-copy-001)**: Added per-assignee email template copy button next to badges in work note detail view.
+- **Frontend**: New `buildAssigneeEmailTemplate` helper, clipboard copy with success/error toasts, small copy icon button UI.
+- **Testing**: Added Jest unit test for template formatting (not executed).
+<!-- Trace: spec_id=SPEC-worknote-email-copy-001, task_id=TASK-0071 -->
