@@ -85,7 +85,7 @@ export class PdfJobRepository {
       .bind('PROCESSING', now, jobId)
       .run();
 
-    if (result.meta.changes === 0) {
+    if ((result.meta?.changes ?? 0) === 0) {
       throw new NotFoundError('PDF job', jobId);
     }
   }
@@ -109,7 +109,7 @@ export class PdfJobRepository {
       .bind('READY', draftJson, now, jobId)
       .run();
 
-    if (result.meta.changes === 0) {
+    if ((result.meta?.changes ?? 0) === 0) {
       throw new NotFoundError('PDF job', jobId);
     }
   }
@@ -129,7 +129,7 @@ export class PdfJobRepository {
       .bind('ERROR', errorMessage, now, jobId)
       .run();
 
-    if (result.meta.changes === 0) {
+    if ((result.meta?.changes ?? 0) === 0) {
       throw new NotFoundError('PDF job', jobId);
     }
   }
@@ -140,7 +140,7 @@ export class PdfJobRepository {
   async delete(jobId: string): Promise<void> {
     const result = await this.db.prepare('DELETE FROM pdf_jobs WHERE job_id = ?').bind(jobId).run();
 
-    if (result.meta.changes === 0) {
+    if ((result.meta?.changes ?? 0) === 0) {
       throw new NotFoundError('PDF job', jobId);
     }
   }

@@ -4,7 +4,6 @@
  * Note: No automatic text extraction or embedding (unlike project files)
  */
 
-import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { WorkNoteFile } from '@shared/types/work-note';
 import { nanoid } from 'nanoid';
 import { BaseFileService } from './base-file-service.js';
@@ -51,10 +50,6 @@ interface UploadFileParams {
 }
 
 export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
-  constructor(r2: R2Bucket, db: D1Database) {
-    super(r2, db);
-  }
-
   protected tableName = 'work_note_files';
   protected ownerIdColumn = 'work_id';
 

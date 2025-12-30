@@ -35,6 +35,7 @@ const DEFAULT_SERVER_ERROR_MESSAGE = '서버 오류가 발생했습니다';
  * app.use('*', errorHandler);
  * ```
  */
+// biome-ignore lint/suspicious/noConfusingVoidType: Hono middleware can return void
 export function errorHandler(c: Context<AppContext>, next: Next): Promise<Response | void> {
   const requestId = crypto.randomUUID();
 

@@ -1,0 +1,17 @@
+spec_id: SPEC-devx-3
+title: "Silence noisy test warnings"
+given_when_then:
+  - given: "Tests run via Jest with Miniflare"
+    when: "the test suite executes"
+    then: "console output is free of known benign runtime warnings"
+acceptance_tests:
+  - id: TEST-devx-warnings-001
+    desc: "Running npm test does not emit NO_COLOR/FORCE_COLOR warning"
+  - id: TEST-devx-warnings-002
+    desc: "Running npm test does not emit ExperimentalWarning for VM Modules"
+  - id: TEST-devx-warnings-003
+    desc: "Running npm test does not emit --localstorage-file warning"
+dependencies:
+  - governance: "coding-style"
+linked_tasks:
+  - TASK-0070
