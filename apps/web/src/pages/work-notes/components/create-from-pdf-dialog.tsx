@@ -13,6 +13,8 @@ import {
 import { useAIDraftForm } from '@web/hooks/use-ai-draft-form';
 import { usePDFJob, useUploadPDF } from '@web/hooks/use-pdf';
 import { useToast } from '@web/hooks/use-toast';
+import { API } from '@web/lib/api';
+import { autoAttachPdf } from '@web/lib/auto-attach-pdf';
 import { FileDropzone } from '@web/pages/pdf-upload/components/file-dropzone';
 import { FileText, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -31,8 +33,25 @@ export function CreateFromPDFDialog({ open, onOpenChange }: CreateFromPDFDialogP
   const { data: job } = usePDFJob(currentJobId, !!currentJobId && uploadMutation.isSuccess);
   const { toast } = useToast();
 
-  const { state, actions, data } = useAIDraftForm(() => {
-    onOpenChange(false);
+  const { state, actions, data } = useAIDraftForm({
+    onSuccess: () => {
+      onOpenChange(false);
+    },
+    onWorkNoteCreated: async (workNote) => {
+      await autoAttachPdf({
+        workNoteId: workNote.id,
+        pdfFile: uploadedFile,
+        uploadWorkNoteFile: API.uploadWorkNoteFile.bind(API),
+      });
+    },
+    onWorkNoteCreatedError: (error) => {
+      console.error('Failed to attach PDF:', error);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: 'PDF 첨부에 실패했습니다. 업무노트는 생성되었습니다.',
+      });
+    },
   });
 
   // Update form when draft is ready (only once)

@@ -31,8 +31,10 @@ export function CreateFromTextDialog({ open, onOpenChange }: CreateFromTextDialo
   const generateMutation = useGenerateDraftWithSimilar();
   const { toast } = useToast();
 
-  const { state, actions, data } = useAIDraftForm(() => {
-    onOpenChange(false);
+  const { state, actions, data } = useAIDraftForm({
+    onSuccess: () => {
+      onOpenChange(false);
+    },
   });
 
   const handleGenerate = async () => {
