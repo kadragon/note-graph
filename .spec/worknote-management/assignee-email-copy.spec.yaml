@@ -31,7 +31,7 @@ email_template:
   closing: "강동욱 드림."
   format: "Two paragraphs separated by a blank line"
   placeholder_rules:
-    - "{assigneeName} replaces the XXX placeholder in the template"
+    - "The {assigneeName} placeholder is replaced with the assignee name"
 
 dependencies:
   governance:
@@ -43,7 +43,7 @@ linked_tasks:
 
 decisions:
   - "Button is shown next to each assignee badge in the work note detail view"
-  - "XXX placeholder is replaced with the assignee name"
+  - "The {assigneeName} placeholder is replaced with the assignee name"
   - "Each assignee has its own copy button using that assignee's name"
 
 change_log:
