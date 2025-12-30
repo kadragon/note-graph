@@ -35,6 +35,7 @@ type FileVariables = AppVariables & FileContext;
 export async function workNoteFileMiddleware(
   c: Context<{ Bindings: AppContext['Bindings']; Variables: FileVariables }>,
   next: Next
+  // biome-ignore lint/suspicious/noConfusingVoidType: Hono middleware can return void
 ): Promise<Response | void> {
   // Get R2 bucket
   const r2Bucket = getR2Bucket(c.env);
