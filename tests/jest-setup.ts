@@ -1,4 +1,5 @@
 // Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-001
+// Trace: spec_id=SPEC-devx-3 task_id=TASK-0070
 
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -6,22 +7,13 @@ import type { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import type { D1Database } from '@cloudflare/workers-types';
 import { glob } from 'glob';
-import { Miniflare } from 'miniflare';
+import type { Miniflare } from 'miniflare';
 
 // Global Miniflare instance
 let miniflare: Miniflare;
 
 const setupDir = dirname(fileURLToPath(import.meta.url));
 const runtimeWarningPatterns = [/--localstorage-file/];
-const originalEmitWarning: typeof process.emitWarning = process.emitWarning.bind(process);
-
-process.emitWarning = ((warning, ...args) => {
-  const message = typeof warning === 'string' ? warning : warning?.message;
-  if (typeof message === 'string' && message.includes('--localstorage-file')) {
-    return;
-  }
-  return originalEmitWarning(warning, ...args);
-}) as typeof process.emitWarning;
 
 declare global {
   var getMiniflare: () => Miniflare;
@@ -407,6 +399,7 @@ function clearPersistedD1State(): void {
 
 // Initialize Miniflare before all tests
 beforeAll(async () => {
+  const { Miniflare } = await import('miniflare');
   clearPersistedD1State();
 
   miniflare = new Miniflare({

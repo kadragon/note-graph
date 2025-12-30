@@ -337,3 +337,9 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 - **Docs**: Updated SETUP/ARCHITECTURE/tests README to reflect Jest + Miniflare workflow and test layout.
 - **Verification**: `npm test -- tests/jest/setup-verification.test.ts` (3/3 tests) passed; warnings remain for experimental VM modules and Miniflare localstorage-file path.
 <!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-006 -->
+
+### Session 81: Test Warning Cleanup (2025-12-29)
+- **TASK-0070 (SPEC-devx-3)**: Silenced Jest runtime warnings by unsetting NO_COLOR in test scripts, suppressing ExperimentalWarning, and providing a valid --localstorage-file path.
+- **Test Setup**: Added jest-preload.ts for early warning filtering and switched Miniflare import in jest-setup.ts to dynamic import.
+- **Verification**: `npm test -- --runInBand | rg -n "Warning|warning"` produced no warning output.
+<!-- Trace: spec_id=SPEC-devx-3, task_id=TASK-0070 -->

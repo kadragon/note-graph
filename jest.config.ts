@@ -1,4 +1,5 @@
 // Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-001
+// Trace: spec_id=SPEC-devx-3 task_id=TASK-0070
 import type { Config } from 'jest';
 import { pathsToModuleNameMapper } from 'ts-jest';
 import { readFileSync } from 'fs';
@@ -28,6 +29,7 @@ const config: Config = {
   },
 
   // Setup file for Miniflare initialization and D1 migrations
+  setupFiles: ['<rootDir>/tests/jest-preload.ts'],
   setupFilesAfterEnv: ['<rootDir>/tests/jest-setup.ts'],
 
   // Test file patterns (initially empty, will be populated during migration)

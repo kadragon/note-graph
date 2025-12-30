@@ -591,3 +591,20 @@
   notes: |
     Remaining warnings: Experimental VM Modules; Miniflare localstorage-file without valid path.
     Trace exceptions (JSON): package.json, package-lock.json, tsconfig.node.json.
+
+- task_id: TASK-0070
+  title: "Silence noisy test warnings"
+  spec_id: SPEC-devx-3
+  completed_at: "2025-12-29"
+  outcome: |
+    Removed noisy Jest runtime warnings by updating test scripts and setup.
+
+    Changes:
+    - Unset NO_COLOR in npm test scripts to prevent FORCE_COLOR conflict warnings.
+    - Disabled ExperimentalWarning for VM Modules in NODE_OPTIONS.
+    - Provided a valid --localstorage-file path to silence Node webstorage warnings.
+    - Added jest-preload.ts to centralize warning filtering before Jest environment setup.
+    - Switched Miniflare import in jest-setup.ts to dynamic import (type-only at top).
+
+    Trace:
+    - package.json (spec_id=SPEC-devx-3, task_id=TASK-0070)
