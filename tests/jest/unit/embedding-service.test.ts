@@ -1,8 +1,14 @@
 // Unit tests for OpenAIEmbeddingService and VectorizeService
-// Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-004
+// Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-TYPE-SAFE-MOCKS
 
 import { jest } from '@jest/globals';
 import type { ChunkMetadata } from '@shared/types/search';
+import {
+  asVectorizeIndex,
+  createMockFetch,
+  createMockVectorizeIndex,
+  type MockVectorizeIndex,
+} from '@test-helpers/mock-helpers';
 import { OpenAIEmbeddingService } from '@worker/services/openai-embedding-service';
 import { VectorizeService } from '@worker/services/vectorize-service';
 import type { Env } from '@worker/types/env';
@@ -10,17 +16,14 @@ import type { Env } from '@worker/types/env';
 // Mock environment for testing
 const testEnv: Env = {
   OPENAI_API_KEY: 'test-key',
-  AI: {} as any,
-  VECTORIZE: {} as any,
-  DB: {} as any,
 } as unknown as Env;
 
 describe('OpenAIEmbeddingService', () => {
   let service: OpenAIEmbeddingService;
-  let mockFetch: jest.Mock<any>;
+  let mockFetch: ReturnType<typeof createMockFetch>;
 
   beforeEach(() => {
-    mockFetch = jest.fn();
+    mockFetch = createMockFetch();
     global.fetch = mockFetch as any;
     service = new OpenAIEmbeddingService(testEnv);
   });
@@ -36,7 +39,7 @@ describe('OpenAIEmbeddingService', () => {
         json: async () => ({
           data: [{ embedding: mockEmbedding, index: 0 }],
         }),
-      });
+      } as any);
 
       // Act
       const result = await service.embed(text);
@@ -65,7 +68,7 @@ describe('OpenAIEmbeddingService', () => {
         json: async () => ({
           data: [],
         }),
-      });
+      } as any);
 
       // Act & Assert
       await expect(service.embed(text)).rejects.toThrow('No embedding returned from OpenAI API');
@@ -79,7 +82,7 @@ describe('OpenAIEmbeddingService', () => {
         ok: false,
         status: 500,
         text: async () => 'Internal server error',
-      });
+      } as any);
 
       // Act & Assert
       await expect(service.embed(text)).rejects.toThrow('OpenAI API error');
@@ -93,7 +96,7 @@ describe('OpenAIEmbeddingService', () => {
         ok: false,
         status: 429,
         text: async () => 'Rate limit exceeded',
-      });
+      } as any);
 
       // Act & Assert
       await expect(service.embed(text)).rejects.toThrow(
@@ -115,7 +118,7 @@ describe('OpenAIEmbeddingService', () => {
         json: async () => ({
           data: mockEmbeddings.map((embedding, index) => ({ embedding, index })),
         }),
-      });
+      } as any);
 
       // Act
       const result = await service.embedBatch(texts);
@@ -150,7 +153,7 @@ describe('OpenAIEmbeddingService', () => {
         json: async () => ({
           data: mockEmbeddings.map((embedding, index) => ({ embedding, index })),
         }),
-      });
+      } as any);
 
       // Act
       const result = await service.embedBatch(texts);
@@ -161,25 +164,14 @@ describe('OpenAIEmbeddingService', () => {
   });
 });
 
-interface MockVectorizeIndex {
-  upsert: jest.Mock<any>;
-  deleteByIds: jest.Mock<any>;
-  query: jest.Mock<any>;
-}
-
 describe('VectorizeService', () => {
   let service: VectorizeService;
   let mockVectorize: MockVectorizeIndex;
 
   beforeEach(() => {
-    // Mock Vectorize index
-    mockVectorize = {
-      upsert: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-      deleteByIds: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-      query: jest.fn<() => Promise<any>>().mockResolvedValue({ matches: [] }),
-    };
-
-    service = new VectorizeService(mockVectorize as any);
+    // Create type-safe Vectorize index mock
+    mockVectorize = createMockVectorizeIndex();
+    service = new VectorizeService(asVectorizeIndex(mockVectorize));
   });
 
   describe('insert()', () => {

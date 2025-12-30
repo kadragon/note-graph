@@ -1,89 +1,37 @@
-// Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-004
+// Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-TYPE-SAFE-MOCKS
 
-import type {
-  R2Bucket,
-  R2HTTPMetadata,
-  R2Object,
-  R2ObjectBody,
-  R2PutOptions,
-} from '@cloudflare/workers-types';
+import type { R2Bucket } from '@cloudflare/workers-types';
 import { jest } from '@jest/globals';
 import type { ProjectFile } from '@shared/types/project';
+import {
+  asR2Bucket,
+  createMockEmbeddingProcessor,
+  createMockFetch,
+  createMockTextExtractor,
+  createMockVectorizeService,
+  InMemoryR2Bucket,
+  type MockEmbeddingProcessor,
+  type MockTextExtractor,
+  type MockVectorizeService,
+} from '@test-helpers/mock-helpers';
 import { ProjectFileService } from '@worker/services/project-file-service';
 import type { Env } from '@worker/types/env';
 import { BadRequestError, NotFoundError } from '@worker/types/errors';
 
-// Simple in-memory R2 mock
-class MockR2Bucket {
-  storage = new Map<
-    string,
-    { value: Blob; httpMetadata?: Record<string, string>; customMetadata?: Record<string, string> }
-  >();
-
-  async put(key: string, value: Blob, options?: R2PutOptions): Promise<R2Object | null> {
-    this.storage.set(key, {
-      value,
-      httpMetadata: options?.httpMetadata as Record<string, string>,
-      customMetadata: options?.customMetadata,
-    });
-    return null;
-  }
-
-  async get(key: string): Promise<R2ObjectBody | null> {
-    const entry = this.storage.get(key);
-    if (!entry) return null;
-
-    return {
-      body: entry.value.stream(),
-      // Minimal fields used by service
-      size: entry.value.size,
-      writeHttpMetadata: () => {},
-      httpEtag: '',
-      httpMetadata: entry.httpMetadata ?? {},
-      customMetadata: entry.customMetadata ?? {},
-    } as unknown as R2ObjectBody;
-  }
-
-  async delete(key: string): Promise<void> {
-    this.storage.delete(key);
-  }
-
-  // Unused methods for this test suite
-  async head(): Promise<R2Object | null> {
-    return null;
-  }
-
-  async createMultipartUpload(): Promise<any> {
-    return null;
-  }
-
-  async resumeMultipartUpload(): Promise<any> {
-    return null;
-  }
-
-  async list(): Promise<any> {
-    return null;
-  }
-}
-
 interface TestProjectFileService {
-  vectorizeService: any;
-  textExtractor: any;
-  embeddingProcessor: { upsertChunks: jest.Mock<any> };
+  vectorizeService: MockVectorizeService;
+  textExtractor: MockTextExtractor;
+  embeddingProcessor: MockEmbeddingProcessor;
 }
 
 describe('ProjectFileService', () => {
   let db: any;
   let baseEnv: Env;
-  let r2: MockR2Bucket;
+  let r2: InMemoryR2Bucket;
   let service: ProjectFileService;
-  let mockVectorize: {
-    insert: jest.Mock<any>;
-    delete: jest.Mock<any>;
-    query: jest.Mock<any>;
-  };
-  let mockEmbeddingProcessor: { upsertChunks: jest.Mock<any> };
-  let mockTextExtractor: { extractText: jest.Mock<any> };
+  let mockVectorize: MockVectorizeService;
+  let mockEmbeddingProcessor: MockEmbeddingProcessor;
+  let mockTextExtractor: MockTextExtractor;
 
   const insertProject = async (projectId: string) => {
     const now = new Date().toISOString();
@@ -108,29 +56,21 @@ describe('ProjectFileService', () => {
     // Clean DB tables
     await db.batch([db.prepare('DELETE FROM project_files'), db.prepare('DELETE FROM projects')]);
 
-    // Fresh mocks
-    r2 = new MockR2Bucket();
-    mockVectorize = {
-      insert: jest.fn<any>().mockResolvedValue(undefined),
-      delete: jest.fn<any>().mockResolvedValue(undefined),
-      query: jest.fn<any>().mockResolvedValue({ matches: [] }),
-    };
-    mockEmbeddingProcessor = {
-      upsertChunks: jest.fn<any>().mockResolvedValue(undefined),
-    };
-    mockTextExtractor = {
-      extractText: jest.fn<any>().mockResolvedValue({ success: true, text: '파일 내용입니다' }),
-    };
+    // Fresh mocks using type-safe helpers
+    r2 = new InMemoryR2Bucket();
+    mockVectorize = createMockVectorizeService();
+    mockEmbeddingProcessor = createMockEmbeddingProcessor();
+    mockTextExtractor = createMockTextExtractor('파일 내용입니다');
 
     // Stub fetch used by OpenAIEmbeddingService
-    (global as any).fetch = jest.fn<any>().mockResolvedValue({
+    global.fetch = createMockFetch({
       ok: true,
       json: async () => ({
         data: [{ embedding: new Array(1536).fill(0), index: 0 }],
       }),
-    });
+    }) as any;
 
-    service = new ProjectFileService(baseEnv, r2 as unknown as R2Bucket, db);
+    service = new ProjectFileService(baseEnv, asR2Bucket(r2), db);
 
     // Override internals for determinism
     (service as unknown as TestProjectFileService).vectorizeService = mockVectorize;
@@ -237,6 +177,7 @@ describe('ProjectFileService', () => {
       .run();
     r2.storage.set('projects/PROJECT-1/files/FILE-123', { value: new Blob(['pdf']) });
     mockVectorize.query.mockResolvedValue({
+      count: 2,
       matches: [
         { id: 'FILE-123#chunk0', score: 1 },
         { id: 'FILE-123#chunk1', score: 1 },

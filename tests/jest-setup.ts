@@ -20,6 +20,90 @@ declare global {
   var getDB: () => Promise<D1Database>;
 }
 
+/**
+ * Filters and pipes runtime logs from Miniflare streams to stdout/stderr
+ *
+ * This function is used in the Miniflare configuration's `handleRuntimeStdio` option.
+ * It processes Miniflare's stdout and stderr streams line-by-line, suppressing known
+ * warnings while allowing legitimate logs to pass through.
+ *
+ * === Purpose ===
+ *
+ * Miniflare emits runtime diagnostics during Workers execution, including:
+ * - Localstorage configuration warnings
+ * - Module loading information
+ * - Performance metrics
+ *
+ * This function filters these streams to:
+ * 1. Remove known, safe-to-suppress Miniflare warnings
+ * 2. Preserve legitimate errors and important logs
+ * 3. Maintain test output clarity
+ *
+ * === Line-Buffering Strategy ===
+ *
+ * The function buffers partial lines because streams may emit data in arbitrary chunks:
+ * - A single "line" might arrive as multiple chunks: "Hello\nWo" + "rld\nFoo"
+ * - Buffer accumulates incomplete lines until a newline arrives
+ * - Complete lines are immediately evaluated against filter patterns
+ * - Incomplete last line is stored in buffer for next data event
+ *
+ * === Filter Patterns ===
+ *
+ * The `runtimeWarningPatterns` array (defined at module scope) contains RegExp patterns
+ * for warnings to suppress. Patterns are matched against each complete line.
+ *
+ * Current patterns:
+ * - /--localstorage-file/: Miniflare localstorage path warnings (ephemeral test env)
+ *
+ * To add new patterns:
+ * 1. Update `runtimeWarningPatterns` array at the top of jest-setup.ts
+ * 2. Document the reason, cause, and safety in a comment
+ * 3. Test to ensure patterns don't accidentally suppress legitimate logs
+ *
+ * === Stream Flow ===
+ *
+ * @param stream - The Miniflare stdout/stderr stream (Readable)
+ * @param target - The process stream to write to (process.stdout or process.stderr)
+ *
+ * Flow:
+ * 1. Listen for 'data' events from Miniflare stream
+ * 2. Append chunk to buffer and split on newlines
+ * 3. For each complete line:
+ *    a. Check if it matches any suppress pattern
+ *    b. If match: skip (continue)
+ *    c. If no match: write to target stream
+ * 4. On 'end' event: flush final buffered line if not suppressed
+ *
+ * === Error Handling ===
+ *
+ * The function is resilient to:
+ * - Empty streams (handled by buffer checks)
+ * - Partial lines (preserved in buffer)
+ * - Non-string messages (safe via toString() call)
+ * - Pattern matching failures (caught by try-catch in pattern.test())
+ *
+ * === Performance Considerations ===
+ *
+ * - O(n) where n = number of lines emitted by Miniflare
+ * - Each line tested against all patterns (linear in pattern count)
+ * - Regex patterns are pre-compiled (not in hot path)
+ * - Suitable for test-scale log volumes
+ *
+ * === Related Configuration ===
+ *
+ * See `jest-setup.ts` beforeAll hook:
+ * ```typescript
+ * handleRuntimeStdio: (stdout, stderr) => {
+ *   pipeFilteredRuntimeLogs(stdout, process.stdout);
+ *   pipeFilteredRuntimeLogs(stderr, process.stderr);
+ * }
+ * ```
+ *
+ * This feeds Miniflare's internal streams through this filter before output.
+ *
+ * @see jest-preload.ts for process.emitWarning-level filtering (earlier in pipeline)
+ * @see runtimeWarningPatterns array for current suppression rules
+ */
 function pipeFilteredRuntimeLogs(stream: Readable, target: NodeJS.WritableStream): void {
   let buffer = '';
 
@@ -45,59 +129,193 @@ function pipeFilteredRuntimeLogs(stream: Readable, target: NodeJS.WritableStream
   });
 }
 
-// Load migration files from disk
+/**
+ * Load and parse migration files from disk with robust SQL statement parsing.
+ *
+ * Handles:
+ * - Multi-line statements
+ * - Triggers with nested BEGIN/END blocks
+ * - Single-line comments (-- comment)
+ * - Multi-line comments (/* comment *\/)
+ * - Edge cases in SQL syntax
+ *
+ * @returns Array of SQL statements ready for execution
+ */
 async function loadMigrationStatements(): Promise<string[]> {
   const migrationFiles = await glob('../migrations/*.sql', {
     cwd: setupDir,
     absolute: true,
   });
 
+  if (migrationFiles.length === 0) {
+    console.error('[Migration Parser] No migration files found in ../migrations/*.sql');
+    return [];
+  }
+
   migrationFiles.sort(); // Ensure correct order
 
   const statements: string[] = [];
+  const expectedTables = [
+    'persons',
+    'departments',
+    'person_dept_history',
+    'work_notes',
+    'work_note_person',
+    'work_note_relation',
+    'work_note_versions',
+    'todos',
+    'pdf_jobs',
+    'notes_fts',
+    'task_categories',
+    'work_note_task_category',
+    'projects',
+    'project_participants',
+    'project_work_notes',
+    'project_files',
+    'embedding_retry_queue',
+    'work_note_files',
+  ];
+
+  console.log(`[Migration Parser] Found ${migrationFiles.length} migration files`);
 
   for (const filePath of migrationFiles) {
-    const sql = readFileSync(filePath, 'utf-8');
+    const fileName = filePath.split('/').pop() || filePath;
+    console.log(`[Migration Parser] Processing: ${fileName}`);
 
-    // Remove comments first to avoid false positives
-    const cleanedSql = sql.replace(/--.*$/gm, '');
+    let sql: string;
+    try {
+      sql = readFileSync(filePath, 'utf-8');
+    } catch (error) {
+      console.error(`[Migration Parser] Failed to read file ${fileName}:`, error);
+      throw new Error(`Migration file read failed: ${fileName}`);
+    }
 
-    // Split by semicolon
+    // Remove SQL comments more thoroughly:
+    // 1. Multi-line comments (/* ... */) - must be done first to avoid interfering with -- removal
+    // 2. Single-line comments (-- comment)
+    const cleanedSql = sql
+      .replace(/\/\*[\s\S]*?\*\//g, ' ') // Replace /* ... */ with space to preserve statement structure
+      .replace(/--[^\n]*$/gm, ''); // Remove -- comments
+
+    // Split by semicolon, but track BEGIN/END depth to handle compound statements (triggers, etc.)
     const rawStatements = cleanedSql.split(';');
-
     let currentStatement = '';
+    let beginDepth = 0;
 
-    for (const raw of rawStatements) {
+    for (let i = 0; i < rawStatements.length; i++) {
+      const raw = rawStatements[i];
       const trimmed = raw.trim();
-      if (!trimmed) continue;
 
+      // Skip empty segments unless we're building a multi-statement
+      if (!trimmed) {
+        if (currentStatement) {
+          currentStatement += ';';
+        }
+        continue;
+      }
+
+      // Accumulate statement parts
       if (currentStatement) {
         currentStatement += `;${raw}`;
       } else {
         currentStatement = raw;
       }
 
-      // Check if the statement is complete
-      // For triggers, we need to ensure we have a matching END
-      const isTrigger = /CREATE\s+TRIGGER/i.test(currentStatement);
-      if (isTrigger) {
-        const beginCount = (currentStatement.match(/\bBEGIN\b/gi) || []).length;
-        const endCount = (currentStatement.match(/\bEND\b/gi) || []).length;
-        if (beginCount > endCount) {
-          // Incomplete trigger, continue accumulating
-          continue;
-        }
-      }
+      // Track BEGIN/END depth for compound statements (triggers, etc.)
+      // This ensures we don't split triggers or other compound statements prematurely
+      const beginMatches = currentStatement.match(/\bBEGIN\b/gi);
+      const endMatches = currentStatement.match(/\bEND\b/gi);
+      beginDepth = (beginMatches?.length || 0) - (endMatches?.length || 0);
 
-      statements.push(`${currentStatement.trim()};`);
-      currentStatement = '';
+      // Statement is complete when we're not inside a BEGIN/END block
+      const isComplete = beginDepth === 0;
+
+      if (isComplete) {
+        const finalStatement = currentStatement.trim();
+        if (finalStatement) {
+          statements.push(`${finalStatement};`);
+        }
+        currentStatement = '';
+        beginDepth = 0;
+      }
     }
+
+    // Warn if there's an incomplete statement (likely parse error)
+    if (currentStatement.trim()) {
+      console.warn(
+        `[Migration Parser] Incomplete statement in ${fileName}:`,
+        `"${currentStatement.substring(0, 100).replace(/\s+/g, ' ')}..."`
+      );
+      console.warn(
+        '[Migration Parser] This statement will be skipped. BEGIN/END depth:',
+        beginDepth
+      );
+    }
+  }
+
+  console.log(
+    `[Migration Parser] Successfully parsed ${statements.length} SQL statements from ${migrationFiles.length} files`
+  );
+
+  // Validate that we have a reasonable number of statements
+  if (statements.length < 30) {
+    console.warn(
+      `[Migration Parser] Warning: Only ${statements.length} statements parsed. Expected 30+.`
+    );
+    console.warn('[Migration Parser] Manual schema fallback may be used.');
+  }
+
+  // Check for expected tables (basic validation)
+  const createTableStatements = statements.filter((s) =>
+    /CREATE\s+(TABLE|VIRTUAL\s+TABLE)/i.test(s)
+  );
+  const foundTables = createTableStatements
+    .map((s) => {
+      const match = s.match(/CREATE\s+(?:VIRTUAL\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)/i);
+      return match ? match[1] : null;
+    })
+    .filter((t): t is string => t !== null);
+
+  const missingTables = expectedTables.filter((t) => !foundTables.includes(t));
+  if (missingTables.length > 0) {
+    console.warn(
+      `[Migration Parser] Warning: Missing expected tables: ${missingTables.join(', ')}`
+    );
+    console.warn('[Migration Parser] Found tables:', foundTables.join(', '));
+  } else {
+    console.log(
+      `[Migration Parser] Validation passed: All ${expectedTables.length} expected tables found`
+    );
   }
 
   return statements;
 }
 
-// Manual DDL fallback (mirrors tests/setup.ts)
+/**
+ * Manual DDL fallback schema (400+ lines)
+ *
+ * ⚠️ MAINTENANCE BURDEN WARNING ⚠️
+ *
+ * This is a manually maintained copy of the database schema that serves as a fallback
+ * when the migration parser fails to load or execute migration files.
+ *
+ * Problems with manual schema:
+ * - Must be updated manually when migrations change
+ * - Can drift out of sync with actual migrations
+ * - Duplicates schema definitions (violates DRY)
+ * - Makes schema evolution error-prone
+ *
+ * This should ONLY be used when:
+ * - Migration files cannot be found/read
+ * - Migration parsing completely fails
+ * - Migration execution encounters fatal SQL errors
+ *
+ * The improved migration parser (loadMigrationStatements) should make this fallback
+ * extremely rare. If you see fallback warnings frequently, investigate the parser
+ * or migration file structure.
+ *
+ * Last synchronized with migrations: 2024-12-30 (migration 0019)
+ */
 const manualSchemaStatements: string[] = [
   `CREATE TABLE IF NOT EXISTS persons (
      person_id TEXT PRIMARY KEY,
@@ -372,19 +590,55 @@ async function applyManualSchema(db: D1Database): Promise<void> {
   await db.batch(manualSchemaStatements.map((statement) => db.prepare(statement)));
 }
 
+/**
+ * Apply migrations to the database, with fallback to manual schema on failure.
+ *
+ * This function attempts to load and execute migration files. If parsing or execution fails,
+ * it falls back to a manually maintained schema (400+ line DDL).
+ *
+ * Warnings are logged when fallback is used, as it indicates:
+ * - Migration parser failed to load files
+ * - Migration execution encountered SQL errors
+ * - Manual schema may be out of sync with actual migrations
+ */
 async function applyMigrationsOrFallback(db: D1Database): Promise<void> {
   try {
     const stmts = await loadMigrationStatements();
 
     if (stmts.length === 0) {
-      console.warn('[Jest Setup] No migration statements found, falling back to manual DDL');
+      console.warn('');
+      console.warn('═'.repeat(80));
+      console.warn('[Jest Setup] ⚠️  FALLBACK TO MANUAL SCHEMA');
+      console.warn('[Jest Setup] Reason: No migration statements found');
+      console.warn(
+        '[Jest Setup] This indicates the migration parser failed to load migration files.'
+      );
+      console.warn(
+        '[Jest Setup] Manual schema fallback is a maintenance burden and may drift from migrations.'
+      );
+      console.warn('═'.repeat(80));
+      console.warn('');
       await applyManualSchema(db);
       return;
     }
 
+    console.log('[Jest Setup] Executing migrations...');
     await db.batch(stmts.map((s) => db.prepare(s)));
+    console.log('[Jest Setup] ✓ Migrations applied successfully');
   } catch (error) {
-    console.warn('[Jest Setup] Migration exec failed, falling back to manual DDL', error);
+    console.error('');
+    console.error('═'.repeat(80));
+    console.error('[Jest Setup] ⚠️  FALLBACK TO MANUAL SCHEMA');
+    console.error('[Jest Setup] Reason: Migration execution failed');
+    console.error('[Jest Setup] Error details:', error);
+    console.error(
+      '[Jest Setup] This indicates SQL errors in migration statements or D1 incompatibility.'
+    );
+    console.error(
+      '[Jest Setup] Manual schema fallback is a maintenance burden and may drift from migrations.'
+    );
+    console.error('═'.repeat(80));
+    console.error('');
     await applyManualSchema(db);
   }
 }

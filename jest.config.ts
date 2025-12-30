@@ -26,6 +26,8 @@ const config: Config = {
     }),
     // Add @worker alias that exists in runtime but not in tsconfig
     '^@worker/(.*)$': '<rootDir>/apps/worker/src/$1',
+    // Add test helpers alias
+    '^@test-helpers/(.*)$': '<rootDir>/tests/jest/helpers/$1',
   },
 
   // Setup file for Miniflare initialization and D1 migrations
@@ -77,6 +79,7 @@ const config: Config = {
             '@worker/*': ['./apps/worker/src/*'],
             '@web/*': ['./apps/web/src/*'],
             '@shared/*': ['./packages/shared/*'],
+            '@test-helpers/*': ['./tests/jest/helpers/*'],
           },
         },
       },

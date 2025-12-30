@@ -1,14 +1,19 @@
-// Trace: SPEC-search-1, TASK-011, TASK-016, spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-004
+// Trace: SPEC-search-1, TASK-011, TASK-016, spec_id=SPEC-testing-migration-001, task_id=TASK-TYPE-SAFE-MOCKS
 // Unit tests for Hybrid Search Service - Public API Testing (Jest version)
 
-import type { D1Database, D1PreparedStatement, D1Result } from '@cloudflare/workers-types';
+import type { D1Database } from '@cloudflare/workers-types';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import {
+  asD1Database,
+  asVectorizeIndex,
+  createMockD1Database,
+  createMockFetch,
+  createMockVectorizeIndex,
+  type MockD1Database,
+  type MockVectorizeIndex,
+} from '@test-helpers/mock-helpers';
 import { HybridSearchService } from '@worker/services/hybrid-search-service';
 import type { Env } from '@worker/types/env';
-
-interface MockVectorizeIndex {
-  query: jest.Mock;
-}
 
 /**
  * These tests focus on the public API of HybridSearchService.
@@ -16,51 +21,43 @@ interface MockVectorizeIndex {
  * treating the service as a black box and verifying outputs and side effects.
  */
 describe('HybridSearchService - Public API', () => {
-  let mockDb: D1Database;
+  let mockDb: MockD1Database;
   let mockEnv: Env;
-  let mockStmt: D1PreparedStatement;
+  let mockVectorize: MockVectorizeIndex;
 
   beforeEach(() => {
-    // Setup mock database and statement
-    mockStmt = {
-      bind: jest.fn<any>().mockReturnThis(),
-      all: jest.fn<any>().mockResolvedValue({
-        success: true,
-        results: [],
-      } as D1Result),
-      first: jest.fn<any>().mockResolvedValue(null),
-    } as any as D1PreparedStatement;
+    // Setup type-safe mock database
+    mockDb = createMockD1Database();
 
-    mockDb = {
-      prepare: jest.fn<any>().mockReturnValue(mockStmt),
-    } as any as D1Database;
+    // Setup type-safe mock Vectorize
+    mockVectorize = createMockVectorizeIndex({
+      query: jest.fn<(vector: number[], options?: any) => Promise<any>>().mockResolvedValue({
+        matches: [],
+        count: 0,
+      }),
+    });
 
     // Setup mock environment
     mockEnv = {
       AI_GATEWAY_ID: 'test-gateway',
       OPENAI_API_KEY: 'test-key',
       OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
-      VECTORIZE: {
-        query: jest.fn<any>().mockResolvedValue({
-          matches: [],
-          count: 0,
-        }),
-      } as any as MockVectorizeIndex, // Cast to our mock interface
+      VECTORIZE: asVectorizeIndex(mockVectorize),
     } as any as Env;
 
     // Mock global fetch for OpenAI embedding calls
-    global.fetch = jest.fn<any>().mockResolvedValue({
+    global.fetch = createMockFetch({
       ok: true,
       json: async () => ({
         data: [{ embedding: new Array(1536).fill(0.1), index: 0 }],
       }),
-    } as Response);
+    }) as any;
   });
 
   describe('search() method', () => {
     it('should accept query string and return array of results', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
       // Act
       const results = await service.search('test query');
@@ -72,12 +69,12 @@ describe('HybridSearchService - Public API', () => {
 
     it('should handle empty query results gracefully', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-      (mockStmt.all as any).mockResolvedValue({
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
+      mockDb.prepare('').all.mockResolvedValue({
         success: true,
         results: [],
-      });
-      (mockEnv.VECTORIZE.query as any).mockResolvedValue({
+      } as any);
+      mockVectorize.query.mockResolvedValue({
         matches: [],
         count: 0,
       });
@@ -91,7 +88,7 @@ describe('HybridSearchService - Public API', () => {
 
     it('should accept and apply filter parameters', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
       const filters = {
         category: '회의',
         personId: '123456',
@@ -111,7 +108,7 @@ describe('HybridSearchService - Public API', () => {
 
     it('should respect limit parameter and not exceed it', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
       // Mock FTS results with more items than limit
       const manyResults = Array.from({ length: 30 }, (_, i) => ({
@@ -124,10 +121,10 @@ describe('HybridSearchService - Public API', () => {
         fts_rank: -1,
       }));
 
-      (mockStmt.all as any).mockResolvedValue({
+      mockDb.prepare('').all.mockResolvedValue({
         success: true,
         results: manyResults,
-      });
+      } as any);
 
       // Act
       const results = await service.search('test', { limit: 10 });
@@ -138,7 +135,7 @@ describe('HybridSearchService - Public API', () => {
 
     it('should handle Korean text in queries', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
       // Act
       const results = await service.search('한글 검색 테스트');
@@ -150,10 +147,10 @@ describe('HybridSearchService - Public API', () => {
 
     it('should return results with required fields', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
       // Mock at least one result from FTS
-      (mockStmt.all as any).mockResolvedValue({
+      mockDb.prepare('').all.mockResolvedValue({
         success: true,
         results: [
           {
@@ -166,7 +163,7 @@ describe('HybridSearchService - Public API', () => {
             fts_rank: -1.5,
           },
         ],
-      });
+      } as any);
 
       // Act
       const results = await service.search('test');
@@ -187,8 +184,8 @@ describe('HybridSearchService - Public API', () => {
 
     it('should handle database errors without crashing', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-      (mockStmt.all as any).mockRejectedValue(new Error('Database connection failed'));
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
+      mockDb.prepare('').all.mockRejectedValue(new Error('Database connection failed'));
 
       // Act & Assert - should not throw, should return empty or handle gracefully
       await expect(service.search('test')).resolves.toBeDefined();
@@ -196,11 +193,11 @@ describe('HybridSearchService - Public API', () => {
 
     it('should handle Vectorize errors without crashing', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-      (mockEnv.VECTORIZE.query as any).mockRejectedValue(new Error('Vectorize service down'));
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
+      mockVectorize.query.mockRejectedValue(new Error('Vectorize service down'));
 
       // Mock FTS to return results
-      (mockStmt.all as any).mockResolvedValue({
+      mockDb.prepare('').all.mockResolvedValue({
         success: true,
         results: [
           {
@@ -213,7 +210,7 @@ describe('HybridSearchService - Public API', () => {
             fts_rank: -1,
           },
         ],
-      });
+      } as any);
 
       // Act
       const results = await service.search('test');
@@ -225,7 +222,7 @@ describe('HybridSearchService - Public API', () => {
 
     it('should call both FTS and Vectorize for search', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
       // Act
       await service.search('test query');
@@ -239,10 +236,10 @@ describe('HybridSearchService - Public API', () => {
   describe('Result Quality', () => {
     it('should return results sorted by score in descending order', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
       // Mock multiple FTS results with different ranks
-      (mockStmt.all as any).mockResolvedValue({
+      mockDb.prepare('').all.mockResolvedValue({
         success: true,
         results: [
           {
@@ -273,7 +270,7 @@ describe('HybridSearchService - Public API', () => {
             fts_rank: -3,
           },
         ],
-      });
+      } as any);
 
       // Act
       const results = await service.search('test');
@@ -288,9 +285,9 @@ describe('HybridSearchService - Public API', () => {
 
     it('should normalize scores to reasonable range', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
-      (mockStmt.all as any).mockResolvedValue({
+      mockDb.prepare('').all.mockResolvedValue({
         success: true,
         results: [
           {
@@ -303,7 +300,7 @@ describe('HybridSearchService - Public API', () => {
             fts_rank: -2,
           },
         ],
-      });
+      } as any);
 
       // Act
       const results = await service.search('test');
@@ -319,7 +316,7 @@ describe('HybridSearchService - Public API', () => {
   describe('Filter Application', () => {
     it('should construct appropriate SQL for category filter', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
       // Act
       await service.search('test', { category: '회의' });
@@ -333,7 +330,7 @@ describe('HybridSearchService - Public API', () => {
 
     it('should construct appropriate SQL for person filter', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
       // Act
       await service.search('test', { personId: '123456' });
@@ -347,7 +344,7 @@ describe('HybridSearchService - Public API', () => {
 
     it('should construct appropriate SQL for department filter', async () => {
       // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(asD1Database(mockDb), mockEnv);
 
       // Act
       await service.search('test', { deptName: '개발팀' });
