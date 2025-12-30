@@ -3,15 +3,16 @@
  * Unit tests for StatisticsRepository
  */
 
+import type { D1Database } from '@cloudflare/workers-types';
 import { StatisticsRepository } from '@worker/repositories/statistics-repository';
 import type { Env } from '@worker/types/env';
 
 describe('StatisticsRepository', () => {
   let repo: StatisticsRepository;
-  let db: any;
+  let db: D1Database;
 
   beforeEach(async () => {
-    db = await (global as any).getDB();
+    db = await globalThis.getDB();
     repo = new StatisticsRepository(db);
 
     // Clean up before each test

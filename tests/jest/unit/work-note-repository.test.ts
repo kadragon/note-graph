@@ -12,7 +12,7 @@ describe('WorkNoteRepository', () => {
   let repository: WorkNoteRepository;
 
   beforeEach(async () => {
-    db = await (global as any).getDB();
+    db = await globalThis.getDB();
     repository = new WorkNoteRepository(db);
 
     // Clean up test data

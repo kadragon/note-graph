@@ -13,6 +13,10 @@ import { OpenAIEmbeddingService } from '@worker/services/openai-embedding-servic
 import { VectorizeService } from '@worker/services/vectorize-service';
 import type { Env } from '@worker/types/env';
 
+type OpenAIEmbeddingResponse = {
+  data: Array<{ embedding: number[]; index: number }>;
+};
+
 // Mock environment for testing
 const testEnv: Env = {
   OPENAI_API_KEY: 'test-key',
@@ -24,7 +28,7 @@ describe('OpenAIEmbeddingService', () => {
 
   beforeEach(() => {
     mockFetch = createMockFetch();
-    global.fetch = mockFetch as any;
+    global.fetch = mockFetch as unknown as typeof fetch;
     service = new OpenAIEmbeddingService(testEnv);
   });
 
@@ -36,10 +40,10 @@ describe('OpenAIEmbeddingService', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({
+        json: async (): Promise<OpenAIEmbeddingResponse> => ({
           data: [{ embedding: mockEmbedding, index: 0 }],
         }),
-      } as any);
+      } as unknown as Response);
 
       // Act
       const result = await service.embed(text);
@@ -65,10 +69,10 @@ describe('OpenAIEmbeddingService', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({
+        json: async (): Promise<OpenAIEmbeddingResponse> => ({
           data: [],
         }),
-      } as any);
+      } as unknown as Response);
 
       // Act & Assert
       await expect(service.embed(text)).rejects.toThrow('No embedding returned from OpenAI API');
@@ -82,7 +86,7 @@ describe('OpenAIEmbeddingService', () => {
         ok: false,
         status: 500,
         text: async () => 'Internal server error',
-      } as any);
+      } as unknown as Response);
 
       // Act & Assert
       await expect(service.embed(text)).rejects.toThrow('OpenAI API error');
@@ -96,7 +100,7 @@ describe('OpenAIEmbeddingService', () => {
         ok: false,
         status: 429,
         text: async () => 'Rate limit exceeded',
-      } as any);
+      } as unknown as Response);
 
       // Act & Assert
       await expect(service.embed(text)).rejects.toThrow(
@@ -115,10 +119,10 @@ describe('OpenAIEmbeddingService', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({
+        json: async (): Promise<OpenAIEmbeddingResponse> => ({
           data: mockEmbeddings.map((embedding, index) => ({ embedding, index })),
         }),
-      } as any);
+      } as unknown as Response);
 
       // Act
       const result = await service.embedBatch(texts);
@@ -150,10 +154,10 @@ describe('OpenAIEmbeddingService', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({
+        json: async (): Promise<OpenAIEmbeddingResponse> => ({
           data: mockEmbeddings.map((embedding, index) => ({ embedding, index })),
         }),
-      } as any);
+      } as unknown as Response);
 
       // Act
       const result = await service.embedBatch(texts);

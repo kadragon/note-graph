@@ -337,7 +337,7 @@ describe('DepartmentRepository', () => {
       expect(member?.position).toBe('선임');
       expect(member?.roleDesc).toBe('백엔드 개발');
       // D1 returns is_active as 0 or 1 (number), not boolean
-      expect((member?.isActive as any) === 1 || member?.isActive === true).toBe(true);
+      expect((member?.isActive as unknown as number) === 1 || member?.isActive === true).toBe(true);
     });
 
     it('should return only active members when onlyActive is true', async () => {
@@ -353,7 +353,9 @@ describe('DepartmentRepository', () => {
 
       // Assert
       // D1 returns is_active as 0 or 1 (number), not boolean
-      expect(result.every((m) => (m.isActive as any) === 1 || m.isActive === true)).toBe(true);
+      expect(
+        result.every((m) => (m.isActive as unknown as number) === 1 || m.isActive === true)
+      ).toBe(true);
       expect(result.some((m) => m.personId === '234567')).toBe(false);
     });
 

@@ -1,6 +1,6 @@
 // Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-TYPE-SAFE-MOCKS
 
-import type { R2Bucket } from '@cloudflare/workers-types';
+import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import { jest } from '@jest/globals';
 import type { ProjectFile } from '@shared/types/project';
 import {
@@ -25,7 +25,7 @@ interface TestProjectFileService {
 }
 
 describe('ProjectFileService', () => {
-  let db: any;
+  let db: D1Database;
   let baseEnv: Env;
   let r2: InMemoryR2Bucket;
   let service: ProjectFileService;
@@ -45,7 +45,7 @@ describe('ProjectFileService', () => {
 
   beforeEach(async () => {
     // Get database from Jest/Miniflare global
-    const getDB = (global as any).getDB;
+    const getDB = globalThis.getDB;
     db = await getDB();
 
     // Create baseEnv with the database
@@ -68,7 +68,7 @@ describe('ProjectFileService', () => {
       json: async () => ({
         data: [{ embedding: new Array(1536).fill(0), index: 0 }],
       }),
-    }) as any;
+    }) as unknown as typeof fetch;
 
     service = new ProjectFileService(baseEnv, asR2Bucket(r2), db);
 

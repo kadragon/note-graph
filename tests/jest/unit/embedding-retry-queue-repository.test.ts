@@ -11,7 +11,7 @@ describe('EmbeddingRetryQueueRepository', () => {
   let repository: EmbeddingRetryQueueRepository;
 
   beforeEach(async () => {
-    db = await (global as any).getDB();
+    db = await globalThis.getDB();
     repository = new EmbeddingRetryQueueRepository(db);
 
     // Clean up test data

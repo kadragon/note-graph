@@ -1,7 +1,7 @@
 // Trace: SPEC-search-1, TASK-011, TASK-016, spec_id=SPEC-testing-migration-001, task_id=TASK-TYPE-SAFE-MOCKS
 // Unit tests for Hybrid Search Service - Public API Testing (Jest version)
 
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, D1Result } from '@cloudflare/workers-types';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
   asD1Database,
@@ -14,6 +14,8 @@ import {
 } from '@test-helpers/mock-helpers';
 import { HybridSearchService } from '@worker/services/hybrid-search-service';
 import type { Env } from '@worker/types/env';
+
+type D1ResultType<T> = D1Result<T>;
 
 /**
  * These tests focus on the public API of HybridSearchService.
@@ -43,7 +45,7 @@ describe('HybridSearchService - Public API', () => {
       OPENAI_API_KEY: 'test-key',
       OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
       VECTORIZE: asVectorizeIndex(mockVectorize),
-    } as any as Env;
+    } as unknown as Env;
 
     // Mock global fetch for OpenAI embedding calls
     global.fetch = createMockFetch({
@@ -51,7 +53,7 @@ describe('HybridSearchService - Public API', () => {
       json: async () => ({
         data: [{ embedding: new Array(1536).fill(0.1), index: 0 }],
       }),
-    }) as any;
+    }) as unknown as typeof fetch;
   });
 
   describe('search() method', () => {
@@ -73,7 +75,7 @@ describe('HybridSearchService - Public API', () => {
       mockDb.prepare('').all.mockResolvedValue({
         success: true,
         results: [],
-      } as any);
+      } as unknown as D1Result);
       mockVectorize.query.mockResolvedValue({
         matches: [],
         count: 0,
@@ -101,8 +103,8 @@ describe('HybridSearchService - Public API', () => {
       // Assert - verify DB was called (FTS search happens)
       expect(mockDb.prepare).toHaveBeenCalled();
       // Verify filters were used in SQL query
-      const sqlCalls = (mockDb.prepare as any).mock.calls;
-      const sqlQuery = sqlCalls[0][0];
+      const sqlCalls = (mockDb.prepare as jest.Mock).mock.calls;
+      const sqlQuery = sqlCalls[0][0] as string;
       expect(sqlQuery).toContain('WHERE');
     });
 
@@ -124,7 +126,7 @@ describe('HybridSearchService - Public API', () => {
       mockDb.prepare('').all.mockResolvedValue({
         success: true,
         results: manyResults,
-      } as any);
+      } as unknown as D1Result);
 
       // Act
       const results = await service.search('test', { limit: 10 });
@@ -163,7 +165,7 @@ describe('HybridSearchService - Public API', () => {
             fts_rank: -1.5,
           },
         ],
-      } as any);
+      } as unknown as D1Result);
 
       // Act
       const results = await service.search('test');
@@ -210,7 +212,7 @@ describe('HybridSearchService - Public API', () => {
             fts_rank: -1,
           },
         ],
-      } as any);
+      } as unknown as D1Result);
 
       // Act
       const results = await service.search('test');
@@ -270,7 +272,7 @@ describe('HybridSearchService - Public API', () => {
             fts_rank: -3,
           },
         ],
-      } as any);
+      } as unknown as D1Result);
 
       // Act
       const results = await service.search('test');
@@ -300,7 +302,7 @@ describe('HybridSearchService - Public API', () => {
             fts_rank: -2,
           },
         ],
-      } as any);
+      } as unknown as D1Result);
 
       // Act
       const results = await service.search('test');
@@ -323,8 +325,8 @@ describe('HybridSearchService - Public API', () => {
 
       // Assert
       expect(mockDb.prepare).toHaveBeenCalled();
-      const sqlCalls = (mockDb.prepare as any).mock.calls;
-      const sqlQuery = sqlCalls[0][0];
+      const sqlCalls = (mockDb.prepare as jest.Mock).mock.calls;
+      const sqlQuery = sqlCalls[0][0] as string;
       expect(sqlQuery).toContain('category');
     });
 
@@ -337,8 +339,8 @@ describe('HybridSearchService - Public API', () => {
 
       // Assert
       expect(mockDb.prepare).toHaveBeenCalled();
-      const sqlCalls = (mockDb.prepare as any).mock.calls;
-      const sqlQuery = sqlCalls[0][0];
+      const sqlCalls = (mockDb.prepare as jest.Mock).mock.calls;
+      const sqlQuery = sqlCalls[0][0] as string;
       expect(sqlQuery).toContain('person');
     });
 
@@ -351,8 +353,8 @@ describe('HybridSearchService - Public API', () => {
 
       // Assert
       expect(mockDb.prepare).toHaveBeenCalled();
-      const sqlCalls = (mockDb.prepare as any).mock.calls;
-      const sqlQuery = sqlCalls[0][0];
+      const sqlCalls = (mockDb.prepare as jest.Mock).mock.calls;
+      const sqlQuery = sqlCalls[0][0] as string;
       expect(sqlQuery).toContain('dept');
     });
   });

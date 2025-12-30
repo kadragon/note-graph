@@ -79,7 +79,7 @@ describe('WorkNoteFileService', () => {
   };
 
   beforeEach(async () => {
-    db = await (global as any).getDB();
+    db = await globalThis.getDB();
 
     // Clean DB tables
     await db.batch([
@@ -88,7 +88,7 @@ describe('WorkNoteFileService', () => {
     ]);
 
     r2 = new MockR2Bucket();
-    service = new WorkNoteFileService(r2 as any, db);
+    service = new WorkNoteFileService(r2 as unknown as R2Bucket, db);
   });
 
   it('uploads PDF and stores record', async () => {

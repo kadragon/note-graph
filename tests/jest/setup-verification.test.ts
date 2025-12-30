@@ -3,7 +3,7 @@
 
 describe('Jest + Miniflare Setup Verification', () => {
   it('should have Miniflare instance available', async () => {
-    const getMiniflare = (global as any).getMiniflare;
+    const getMiniflare = globalThis.getMiniflare;
     expect(getMiniflare).toBeDefined();
 
     const miniflare = getMiniflare();
@@ -11,7 +11,7 @@ describe('Jest + Miniflare Setup Verification', () => {
   });
 
   it('should have D1 database with migrations applied', async () => {
-    const getDB = (global as any).getDB;
+    const getDB = globalThis.getDB;
     expect(getDB).toBeDefined();
 
     const db = await getDB();
@@ -27,7 +27,7 @@ describe('Jest + Miniflare Setup Verification', () => {
   });
 
   it('should be able to query D1 database', async () => {
-    const getDB = (global as any).getDB;
+    const getDB = globalThis.getDB;
     const db = await getDB();
 
     // Simple query to verify database is functional

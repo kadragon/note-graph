@@ -10,7 +10,7 @@ describe('ProjectRepository', () => {
   let repository: ProjectRepository;
 
   beforeEach(async () => {
-    const getDB = (global as any).getDB;
+    const getDB = globalThis.getDB;
     const db = await getDB();
     repository = new ProjectRepository(db);
 
@@ -32,7 +32,7 @@ describe('ProjectRepository', () => {
   describe('findById()', () => {
     it('should find project by ID', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db
@@ -65,7 +65,7 @@ describe('ProjectRepository', () => {
 
     it('should return null for soft-deleted project', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db
@@ -86,7 +86,7 @@ describe('ProjectRepository', () => {
 
     it('should include all project fields including dates and foreign keys', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db.batch([
@@ -138,7 +138,7 @@ describe('ProjectRepository', () => {
 
   describe('findAll()', () => {
     beforeEach(async () => {
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db.batch([
@@ -252,7 +252,7 @@ describe('ProjectRepository', () => {
 
     it('should filter by participant person ID', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db
@@ -284,7 +284,7 @@ describe('ProjectRepository', () => {
 
     it('should exclude deleted projects by default', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       await db
         .prepare(`UPDATE projects SET deleted_at = ? WHERE project_id = ?`)
@@ -301,7 +301,7 @@ describe('ProjectRepository', () => {
 
     it('should include deleted projects when requested', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       await db
         .prepare(`UPDATE projects SET deleted_at = ? WHERE project_id = ?`)
@@ -338,7 +338,7 @@ describe('ProjectRepository', () => {
 
     it('should create project with all fields', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db.batch([
@@ -379,7 +379,7 @@ describe('ProjectRepository', () => {
 
     it('should create project with participants', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db.batch([
@@ -415,7 +415,7 @@ describe('ProjectRepository', () => {
     let projectId: string;
 
     beforeEach(async () => {
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       projectId = 'PROJECT-UPDATE-001';
@@ -502,7 +502,7 @@ describe('ProjectRepository', () => {
     let projectId: string;
 
     beforeEach(async () => {
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       projectId = 'PROJECT-DELETE-001';
@@ -525,7 +525,7 @@ describe('ProjectRepository', () => {
       expect(result).toBeNull(); // findById excludes deleted
 
       // Verify deleted_at is set
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const deleted = await db
         .prepare(`SELECT deleted_at FROM projects WHERE project_id = ?`)
@@ -543,7 +543,7 @@ describe('ProjectRepository', () => {
   describe('getParticipants()', () => {
     it('should return participants with person details', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db.batch([
@@ -587,7 +587,7 @@ describe('ProjectRepository', () => {
 
     it('should return empty array for project with no participants', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db
@@ -609,7 +609,7 @@ describe('ProjectRepository', () => {
     let projectId: string;
 
     beforeEach(async () => {
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       projectId = 'PROJECT-ADD-PART';
@@ -661,7 +661,7 @@ describe('ProjectRepository', () => {
   describe('removeParticipant()', () => {
     it('should remove participant from project', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db.batch([
@@ -694,7 +694,7 @@ describe('ProjectRepository', () => {
   describe('getStatistics()', () => {
     it('should return statistics for project with work notes and todos', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db.batch([
@@ -798,7 +798,7 @@ describe('ProjectRepository', () => {
 
     it('should return zero statistics for empty project', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db
@@ -826,7 +826,7 @@ describe('ProjectRepository', () => {
   describe('getDetail()', () => {
     it('should return project detail with all associations', async () => {
       // Arrange
-      const getDB = (global as any).getDB;
+      const getDB = globalThis.getDB;
       const db = await getDB();
       const now = new Date().toISOString();
       await db.batch([

@@ -12,7 +12,7 @@ import { Hono } from 'hono';
 
 // Create a test environment object compatible with the middleware
 async function createTestEnv(): Promise<Env> {
-  const db = await (global as any).getDB();
+  const db = await globalThis.getDB();
   return {
     DB: db,
     ENVIRONMENT: 'production',

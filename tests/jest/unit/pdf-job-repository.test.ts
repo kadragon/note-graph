@@ -17,7 +17,7 @@ describe('PdfJobRepository', () => {
   let repository: PdfJobRepository;
 
   beforeEach(async () => {
-    db = await (global as any).getDB();
+    db = await globalThis.getDB();
     repository = new PdfJobRepository(db);
 
     // Clean up test data
@@ -29,11 +29,9 @@ describe('PdfJobRepository', () => {
       // Arrange
       const jobId = 'test-job-001';
       const r2Key = 'uploads/test.pdf';
-      const metadata = {
-        fileName: 'test.pdf',
-        fileSize: 1024,
-        mimeType: 'application/pdf',
-      } as any;
+      const metadata: PdfUploadMetadata = {
+        category: '업무',
+      };
 
       // Act
       const job = await repository.create(jobId, r2Key, metadata);
@@ -56,7 +54,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test2.pdf',
         fileSize: 2048,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
 
       // Act
       const job = await repository.create(jobId, r2Key, metadata);
@@ -72,11 +70,9 @@ describe('PdfJobRepository', () => {
       // Arrange - Use the same jobId twice to trigger unique constraint violation
       const jobId = 'test-job-duplicate';
       const r2Key = 'uploads/test.pdf';
-      const metadata = {
-        fileName: 'test.pdf',
-        fileSize: 1024,
-        mimeType: 'application/pdf',
-      } as any;
+      const metadata: PdfUploadMetadata = {
+        category: '업무',
+      };
 
       // Act & Assert
       await repository.create(jobId, r2Key, metadata);
@@ -93,7 +89,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test3.pdf',
         fileSize: 3072,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
       await repository.create(jobId, r2Key, metadata);
 
       // Act
@@ -121,7 +117,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test4.pdf',
         fileSize: 4096,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
       await repository.create(jobId, r2Key, metadata);
 
       // Act
@@ -151,7 +147,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test5.pdf',
         fileSize: 5120,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
       await repository.create(jobId, r2Key, metadata);
 
       // Act
@@ -177,7 +173,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test6.pdf',
         fileSize: 6144,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
       const job1 = await repository.create(jobId, r2Key, metadata);
 
       // Ensure timestamp changes without fake timers (Miniflare/D1 uses real timers)
@@ -201,7 +197,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test7.pdf',
         fileSize: 7168,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
       await repository.create(jobId, r2Key, metadata);
 
       const draft: WorkNoteDraft = {
@@ -234,7 +230,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test8.pdf',
         fileSize: 8192,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
       await repository.create(jobId, r2Key, metadata);
 
       const draft: WorkNoteDraft = {
@@ -269,7 +265,9 @@ describe('PdfJobRepository', () => {
 
     it('should persist references when provided', async () => {
       const jobId = 'test-job-011';
-      await repository.create(jobId, 'uploads/ref.pdf', { fileName: 'ref.pdf' } as any);
+      await repository.create(jobId, 'uploads/ref.pdf', {
+        fileName: 'ref.pdf',
+      } as unknown as PdfUploadMetadata);
 
       const draftWithRefs: WorkNoteDraftWithReferences = {
         draft: {
@@ -306,7 +304,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test9.pdf',
         fileSize: 9216,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
       await repository.create(jobId, r2Key, metadata);
 
       const errorMessage = 'PDF extraction failed: corrupt file';
@@ -338,7 +336,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test10.pdf',
         fileSize: 10240,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
       await repository.create(jobId, r2Key, metadata);
 
       // Act
@@ -404,7 +402,7 @@ describe('PdfJobRepository', () => {
         fileName: 'test12.pdf',
         fileSize: 11264,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
       await repository.create(jobId, r2Key, metadata);
 
       // Act
@@ -447,7 +445,7 @@ describe('PdfJobRepository', () => {
         fileName: 'lifecycle.pdf',
         fileSize: 12288,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
 
       // Act & Assert - Create
       const job1 = await repository.create(jobId, r2Key, metadata);
@@ -481,7 +479,7 @@ describe('PdfJobRepository', () => {
         fileName: 'error.pdf',
         fileSize: 13312,
         mimeType: 'application/pdf',
-      } as any;
+      } as unknown as PdfUploadMetadata;
 
       // Act & Assert - Create
       const job1 = await repository.create(jobId, r2Key, metadata);

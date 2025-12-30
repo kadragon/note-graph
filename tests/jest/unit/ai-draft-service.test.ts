@@ -22,7 +22,7 @@ describe('AIDraftService', () => {
     jest.setSystemTime(FIXED_DATE);
 
     // Create test environment with minimal config
-    const db = await (global as any).getDB();
+    const db = await globalThis.getDB();
     testEnv = {
       DB: db,
       ENVIRONMENT: 'production',
@@ -286,7 +286,7 @@ describe('AIDraftService', () => {
       await service.generateDraftFromText(inputText);
 
       // Assert
-      const callBody = (mockFetch.mock.calls[0][1] as any).body;
+      const callBody = (mockFetch.mock.calls[0][1] as RequestInit).body as string;
       expect(callBody).toContain('"max_completion_tokens":3000');
       expect(callBody).not.toContain('"max_tokens"');
     });
@@ -626,7 +626,7 @@ describe('AIDraftService', () => {
       await service.generateTodoSuggestions(workNote);
 
       // Assert
-      const callBody = (mockFetch.mock.calls[0][1] as any).body;
+      const callBody = (mockFetch.mock.calls[0][1] as RequestInit).body as string;
       expect(callBody).toContain('테스트 제목');
       expect(callBody).toContain('테스트 내용');
     });

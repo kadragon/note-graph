@@ -9,7 +9,7 @@ import { ConflictError, NotFoundError, ValidationError } from '@worker/types/err
 let db: D1Database;
 
 beforeAll(async () => {
-  db = await (global as any).getDB();
+  db = await globalThis.getDB();
 });
 
 beforeEach(async () => {

@@ -11,7 +11,7 @@ describe('RagService - PROJECT scope', () => {
   let baseEnv: Env;
 
   beforeEach(async () => {
-    const db = await (global as any).getDB();
+    const db = await globalThis.getDB();
     baseEnv = {
       DB: db,
     } as unknown as Env;
@@ -25,9 +25,12 @@ describe('RagService - PROJECT scope', () => {
 
     service = new RagService(baseEnv);
     // Override vectorizeService to avoid real embeddings/fetch
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).vectorizeService = mockVectorize;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).embeddingService = mockEmbedding;
     // Stub GPT call to avoid network
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).callGPT = jest.fn<any>().mockResolvedValue('모의 응답');
   });
 
@@ -54,6 +57,7 @@ describe('RagService - PROJECT scope', () => {
     mockVectorize.query.mockResolvedValue({ matches: vectorResults });
 
     // Stub work note fetch
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).fetchWorkNote = jest.fn<any>().mockResolvedValue({
       workId: 'WORK-1',
       title: '프로젝트 노트',
@@ -71,6 +75,7 @@ describe('RagService - PROJECT scope', () => {
     expect(response.contexts).toHaveLength(1);
     expect(response.contexts[0].workId).toBe('WORK-1');
     expect(response.contexts[0].score).toBeCloseTo(0.82);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((service as any).callGPT).toHaveBeenCalledTimes(1);
   });
 });

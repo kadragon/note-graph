@@ -37,7 +37,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       const results = await ftsService.search('업무');
 
@@ -78,7 +78,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       const results = await ftsService.search('test');
 
@@ -100,7 +100,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('업무', { category: '회의' });
 
@@ -119,7 +119,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('업무', {
         from: '2024-01-01',
@@ -144,7 +144,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('업무', { personId: 'P-001' });
 
@@ -163,7 +163,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('업무', { deptName: '개발팀' });
 
@@ -182,7 +182,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('업무', { limit: 20 });
 
@@ -201,7 +201,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('업무');
 
@@ -218,7 +218,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('업무', {
         personId: 'P-001',
@@ -240,7 +240,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       const results = await ftsService.search('nonexistent');
 
@@ -256,7 +256,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await expect(ftsService.search('업무')).rejects.toThrow('FTS search query failed');
     });
@@ -270,7 +270,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('한글 검색어');
 
@@ -287,7 +287,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('  업무 보고  ');
 
@@ -304,7 +304,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.search('test');
 
@@ -333,7 +333,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       const results = await ftsService.search('test');
 
@@ -352,7 +352,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       const result = await ftsService.verifyFtsSync();
 
@@ -367,7 +367,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       const result = await ftsService.verifyFtsSync();
 
@@ -379,7 +379,7 @@ describe('FtsSearchService', () => {
         first: jest.fn<any>().mockResolvedValue(null),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       const result = await ftsService.verifyFtsSync();
 
@@ -394,7 +394,7 @@ describe('FtsSearchService', () => {
         }),
       } as unknown as D1PreparedStatement;
 
-      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as any;
+      mockDb.prepare = jest.fn<any>().mockReturnValue(mockStmt) as unknown as D1Database['prepare'];
 
       await ftsService.verifyFtsSync();
 

@@ -33,7 +33,7 @@ interface ForeignKeyInfoRow {
 let db: D1Database;
 
 beforeAll(async () => {
-  db = await (global as any).getDB();
+  db = await globalThis.getDB();
 });
 
 async function getTableColumns(table: string): Promise<string[]> {

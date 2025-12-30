@@ -275,7 +275,7 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
   - Running tests immediately after migration helps catch type and configuration errors early
 - **Next**: Ready for Phase 4 (Migrate Service Tests - 16 files with complex bindings: R2, Vectorize, AI Gateway)
 
-## Session 73: Jest Migration Phase 4 - Service Tests (2025-12-29)
+### Session 79: Jest Migration Phase 4 - Service Tests (2025-12-29)
 
 **Context**: Progressive migration from Vitest to Jest + Miniflare (Phase 4 of 6)
 
@@ -324,21 +324,21 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
 
 **Commit**: `28e1025 feat: migrate service tests from Vitest to Jest (Phase 4)`
 
-### Session 79: Jest + Miniflare Migration Phase 5 (2025-12-29)
+### Session 80: Jest + Miniflare Migration Phase 5 (2025-12-29)
 - **TASK-MIGRATE-005 (SPEC-testing-migration-001)**: Migrated 6 integration tests to Jest (admin embedding failures, project files/routes, statistics routes, work-note file view, work-note-project association).
 - **Test harness**: Replaced cloudflare:test `SELF.fetch` with `app.request` helpers + ExecutionContext stubs; used Miniflare D1 globals and lightweight Env builders.
 - **Mocks**: Added R2 mock adjustments, Vectorize/AI stubs, and ProjectFileService Jest module mock; ensured streaming mocks return fresh bodies and 404 uses NotFoundError.
 - **Verification**: `npm run test:jest -- tests/jest/integration` (6 suites, 51 tests) passed; Jest setup still warns about __dirname in ESM and falls back to manual DDL.
 <!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-005 -->
 
-### Session 80: Jest + Miniflare Migration Phase 6 (2025-12-29)
+### Session 81: Jest + Miniflare Migration Phase 6 (2025-12-29)
 - **TASK-MIGRATE-006 (SPEC-testing-migration-001)**: Removed Vitest tooling and retired legacy Vitest tests (apps/web + tests/*).
 - **Config & Scripts**: Jest-only `npm test`/`test:watch`/`test:coverage`, removed Vitest lint-staged hook, updated tsconfig.node.json types and includes.
 - **Docs**: Updated SETUP/ARCHITECTURE/tests README to reflect Jest + Miniflare workflow and test layout.
 - **Verification**: `npm test -- tests/jest/setup-verification.test.ts` (3/3 tests) passed; warnings remain for experimental VM modules and Miniflare localstorage-file path.
 <!-- Trace: spec_id=SPEC-testing-migration-001, task_id=TASK-MIGRATE-006 -->
 
-### Session 81: Test Warning Cleanup (2025-12-29)
+### Session 82: Test Warning Cleanup (2025-12-29)
 - **TASK-0070 (SPEC-devx-3)**: Silenced Jest runtime warnings by unsetting NO_COLOR in test scripts, suppressing ExperimentalWarning, and providing a valid --localstorage-file path.
 - **Test Setup**: Added jest-preload.ts for early warning filtering and switched Miniflare import in jest-setup.ts to dynamic import.
 - **Verification**: `npm test -- --runInBand | rg -n "Warning|warning"` produced no warning output.
