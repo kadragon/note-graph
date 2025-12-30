@@ -608,3 +608,30 @@
 
     Trace:
     - package.json (spec_id=SPEC-devx-3, task_id=TASK-0070)
+
+- task_id: TASK-0072
+  title: "Clarify email copy button requirements"
+  spec_id: SPEC-worknote-email-copy-001
+  completed_at: "2025-12-30"
+  outcome: |
+    Clarified requirements for assignee email copy button.
+    - Button placement: next to each assignee badge in work note detail view
+    - Template: replace XXX with assignee name
+    - Multiple assignees: each badge has its own copy button
+
+- task_id: TASK-0071
+  title: "Add email template copy button next to assignee in work note"
+  spec_id: SPEC-worknote-email-copy-001
+  completed_at: "2025-12-30"
+  outcome: |
+    Added per-assignee email template copy button in work note detail view.
+    - Introduced buildAssigneeEmailTemplate utility and unit test
+    - Added small copy icon button next to each assignee badge
+    - Clipboard success/failure handled with toasts
+  test_results: |
+    Not run (user did not request tests).
+  notes: |
+    Trace:
+    - apps/web/src/lib/assignee-email-template.ts
+    - apps/web/src/pages/work-notes/components/view-work-note-dialog.tsx
+    - tests/jest/unit/assignee-email-template.test.ts

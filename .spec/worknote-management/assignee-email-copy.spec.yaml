@@ -1,0 +1,51 @@
+# Trace: spec_id=SPEC-worknote-email-copy-001 task_id=TASK-0071
+spec_id: SPEC-worknote-email-copy-001
+title: "Assignee Email Template Copy Button"
+description: >
+  Provide a small copy button next to each assignee in work note detail UI
+  that copies a prefilled email template to the clipboard.
+
+given_when_then:
+  - given: "Work note detail displays assignees"
+    when: "User clicks the email copy button next to an assignee"
+    then: "The email template with the assignee's name is copied to the clipboard"
+
+  - given: "Multiple assignees are shown"
+    when: "User clicks the email copy button for a specific assignee"
+    then: "The clipboard template uses that assignee's name"
+
+  - given: "Clipboard copy succeeds"
+    when: "User clicks the button"
+    then: "Show a small confirmation toast to the user"
+
+acceptance_tests:
+  - id: TEST-worknote-email-copy-001
+    desc: "Clicking the assignee email copy button copies the template with the assignee name"
+    steps:
+      - "Open a work note with assignee '홍길동'"
+      - "Click the email copy button next to the assignee badge"
+      - "Verify clipboard contains the email template with '홍길동' injected"
+
+email_template:
+  greeting: "안녕하세요. {assigneeName} 선생님, 교육정보원 강동욱입니다."
+  closing: "강동욱 드림."
+  format: "Two paragraphs separated by a blank line"
+  placeholder_rules:
+    - "The {assigneeName} placeholder is replaced with the assignee name"
+
+dependencies:
+  governance:
+    - "Clipboard copy utility or browser Clipboard API"
+    - "Toast/notification system used in UI"
+
+linked_tasks:
+  - TASK-0071
+
+decisions:
+  - "Button is shown next to each assignee badge in the work note detail view"
+  - "The {assigneeName} placeholder is replaced with the assignee name"
+  - "Each assignee has its own copy button using that assignee's name"
+
+change_log:
+  - date: 2025-12-30
+    note: "Confirmed button placement and placeholder replacement after user clarification."
