@@ -1,7 +1,6 @@
 // Trace: SPEC-search-1, TASK-011, TASK-016, spec_id=SPEC-testing-migration-001, task_id=TASK-TYPE-SAFE-MOCKS
 // Unit tests for Hybrid Search Service - Public API Testing (Jest version)
 
-import type { D1Database, D1Result } from '@cloudflare/workers-types';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
   asD1Database,
@@ -14,8 +13,6 @@ import {
 } from '@test-helpers/mock-helpers';
 import { HybridSearchService } from '@worker/services/hybrid-search-service';
 import type { Env } from '@worker/types/env';
-
-type D1ResultType<T> = D1Result<T>;
 
 /**
  * These tests focus on the public API of HybridSearchService.

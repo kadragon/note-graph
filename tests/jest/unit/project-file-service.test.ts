@@ -1,7 +1,6 @@
 // Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-TYPE-SAFE-MOCKS
 
-import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
-import { jest } from '@jest/globals';
+import type { D1Database } from '@cloudflare/workers-types';
 import type { ProjectFile } from '@shared/types/project';
 import {
   asR2Bucket,

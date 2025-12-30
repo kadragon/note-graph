@@ -9,7 +9,6 @@
 
 import type {
   D1Database,
-  D1PreparedStatement,
   D1Result,
   R2Bucket,
   R2Object,

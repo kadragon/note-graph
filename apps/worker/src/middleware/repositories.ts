@@ -40,10 +40,7 @@ import { TaskCategoryRepository } from '../repositories/task-category-repository
 import { TodoRepository } from '../repositories/todo-repository';
 import type { AppContext, Repositories } from '../types/context';
 
-export async function repositoriesMiddleware(
-  c: Context<AppContext>,
-  next: Next
-): Promise<Response | void> {
+export async function repositoriesMiddleware(c: Context<AppContext>, next: Next): Promise<void> {
   // Errors during repository instantiation (e.g., invalid DB connection) will propagate
   // to the global error handler middleware, ensuring centralized error handling and
   // consistent error responses across the application. This approach allows the global

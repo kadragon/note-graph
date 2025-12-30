@@ -2,7 +2,6 @@
 // Unit tests for PdfJobRepository (Jest version)
 
 import type { D1Database } from '@cloudflare/workers-types';
-import { jest } from '@jest/globals';
 import type {
   PdfUploadMetadata,
   WorkNoteDraft,

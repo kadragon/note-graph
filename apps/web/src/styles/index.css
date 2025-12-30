@@ -271,6 +271,6 @@
 @media (prefers-reduced-motion: reduce) {
   aside[data-collapsed],
   div[data-sidebar-collapsed] {
-    transition-duration: 0ms !important;
+    transition-duration: 0ms;
   }
 }

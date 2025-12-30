@@ -3,7 +3,6 @@
 
 import type { CreateProjectData, UpdateProjectData } from '@shared/types/project';
 import { ProjectRepository } from '@worker/repositories/project-repository';
-import type { Env } from '@worker/types/env';
 import { ConflictError, NotFoundError } from '@worker/types/errors';
 
 describe('ProjectRepository', () => {

@@ -1,13 +1,6 @@
 // Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-004
 
-import type {
-  D1Database,
-  R2HTTPMetadata,
-  R2Object,
-  R2ObjectBody,
-  R2PutOptions,
-} from '@cloudflare/workers-types';
-import type { WorkNoteFile } from '@shared/types/work-note';
+import type { D1Database, R2Object, R2ObjectBody, R2PutOptions } from '@cloudflare/workers-types';
 import { WorkNoteFileService } from '@worker/services/work-note-file-service';
 import { BadRequestError, NotFoundError } from '@worker/types/errors';
 

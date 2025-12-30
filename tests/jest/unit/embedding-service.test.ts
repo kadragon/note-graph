@@ -1,7 +1,6 @@
 // Unit tests for OpenAIEmbeddingService and VectorizeService
 // Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-TYPE-SAFE-MOCKS
 
-import { jest } from '@jest/globals';
 import type { ChunkMetadata } from '@shared/types/search';
 import {
   asVectorizeIndex,

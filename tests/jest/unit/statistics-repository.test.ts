@@ -5,7 +5,6 @@
 
 import type { D1Database } from '@cloudflare/workers-types';
 import { StatisticsRepository } from '@worker/repositories/statistics-repository';
-import type { Env } from '@worker/types/env';
 
 describe('StatisticsRepository', () => {
   let repo: StatisticsRepository;

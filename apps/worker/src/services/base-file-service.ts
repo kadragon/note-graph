@@ -36,7 +36,7 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
   protected abstract tableName: string;
   protected abstract ownerIdColumn: string;
 
-  protected constructor(
+  constructor(
     protected r2: R2Bucket,
     protected db: D1Database
   ) {}

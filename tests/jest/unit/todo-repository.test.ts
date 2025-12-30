@@ -3,7 +3,6 @@
 
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { CreateTodoInput, UpdateTodoInput } from '@worker/schemas/todo';
-import type { Env } from '@worker/types/env';
 import { NotFoundError } from '@worker/types/errors';
 
 // Global getDB is defined in jest-setup.ts

@@ -5,16 +5,12 @@ import { DepartmentRepository } from '@worker/repositories/department-repository
 import type { CreateDepartmentInput, UpdateDepartmentInput } from '@worker/schemas/department';
 import { ConflictError, NotFoundError } from '@worker/types/errors';
 
-// Global helper to get D1 database from Jest setup
-declare global {
-  function getDB(): Promise<D1Database>;
-}
-
 describe('DepartmentRepository', () => {
   let repository: DepartmentRepository;
   let db: D1Database;
 
   beforeEach(async () => {
+    const getDB = globalThis.getDB;
     db = await getDB();
     repository = new DepartmentRepository(db);
 

@@ -202,8 +202,11 @@ workNotes.post('/:workId/files', async (c) => {
  */
 workNotes.get('/:workId/files', workNoteFileMiddleware, async (c) => {
   const { workId } = c.req.param();
+  if (!workId) {
+    return c.json({ error: 'workId is required' }, 400);
+  }
   const fileService = c.get('fileService');
-  const files = await fileService.listFiles(workId!);
+  const files = await fileService.listFiles(workId);
 
   return c.json(files);
 });
@@ -221,9 +224,12 @@ workNotes.get('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
  */
 workNotes.get('/:workId/files/:fileId/download', workNoteFileMiddleware, async (c) => {
   const { fileId } = c.req.param();
+  if (!fileId) {
+    return c.json({ error: 'fileId is required' }, 400);
+  }
   const fileService = c.get('fileService');
 
-  const { body, headers } = await fileService.streamFile(fileId!);
+  const { body, headers } = await fileService.streamFile(fileId);
 
   return new Response(body, { headers });
 });
@@ -233,10 +239,13 @@ workNotes.get('/:workId/files/:fileId/download', workNoteFileMiddleware, async (
  */
 workNotes.get('/:workId/files/:fileId/view', workNoteFileMiddleware, async (c) => {
   const { fileId } = c.req.param();
+  if (!fileId) {
+    return c.json({ error: 'fileId is required' }, 400);
+  }
   const fileService = c.get('fileService');
 
   // Stream with inline disposition for browser viewing
-  const { body, headers } = await fileService.streamFile(fileId!, true);
+  const { body, headers } = await fileService.streamFile(fileId, true);
 
   return new Response(body, { headers });
 });
@@ -246,9 +255,12 @@ workNotes.get('/:workId/files/:fileId/view', workNoteFileMiddleware, async (c) =
  */
 workNotes.delete('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
   const { fileId } = c.req.param();
+  if (!fileId) {
+    return c.json({ error: 'fileId is required' }, 400);
+  }
   const fileService = c.get('fileService');
 
-  await fileService.deleteFile(fileId!);
+  await fileService.deleteFile(fileId);
 
   return c.body(null, 204);
 });
