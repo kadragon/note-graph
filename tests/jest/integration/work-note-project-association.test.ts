@@ -54,7 +54,7 @@ const authFetch = (env: Env, url: string, options?: RequestInit) => {
 const originalFetch = globalThis.fetch;
 
 function mockEmbeddingFetch(): void {
-  globalThis.fetch = jest.fn().mockImplementation(async (_input, init) => {
+  const fetchMock = jest.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
     const bodyText = typeof init?.body === 'string' ? init.body : '{}';
     const parsed = JSON.parse(bodyText);
     const inputs = Array.isArray(parsed.input) ? parsed.input : [];
@@ -69,6 +69,7 @@ function mockEmbeddingFetch(): void {
       headers: { 'Content-Type': 'application/json' },
     });
   });
+  globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 }
 
 describe('Work Note Project Association', () => {

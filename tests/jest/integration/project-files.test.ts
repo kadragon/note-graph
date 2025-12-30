@@ -13,11 +13,11 @@ import type { ProjectFile } from '@shared/types/project';
 import type { Env } from '@worker/types/env';
 import { BadRequestError, NotFoundError } from '@worker/types/errors';
 
-const uploadFile = jest.fn();
-const listFiles = jest.fn();
-const streamFile = jest.fn();
-const deleteFile = jest.fn();
-const getFileById = jest.fn();
+const uploadFile = jest.fn<any>();
+const listFiles = jest.fn<any>();
+const streamFile = jest.fn<any>();
+const deleteFile = jest.fn<any>();
+const getFileById = jest.fn<any>();
 
 class MockService {
   uploadFile = uploadFile;

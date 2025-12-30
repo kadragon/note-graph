@@ -171,10 +171,6 @@ describe('PdfJobRepository', () => {
 
     it('should update the updatedAt timestamp', async () => {
       // Arrange
-      jest.useFakeTimers();
-      const initialTime = new Date('2024-01-01T00:00:00Z');
-      jest.setSystemTime(initialTime);
-
       const jobId = 'test-job-006';
       const r2Key = 'uploads/test6.pdf';
       const metadata = {
@@ -184,8 +180,8 @@ describe('PdfJobRepository', () => {
       } as any;
       const job1 = await repository.create(jobId, r2Key, metadata);
 
-      // Advance time by 1 second
-      jest.advanceTimersByTime(1000);
+      // Ensure timestamp changes without fake timers (Miniflare/D1 uses real timers)
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Act
       await repository.updateStatusToProcessing(jobId);
@@ -193,9 +189,6 @@ describe('PdfJobRepository', () => {
       // Assert
       const job2 = await repository.getById(jobId);
       expect(job2?.updatedAt).not.toBe(job1.updatedAt);
-
-      // Cleanup
-      jest.useRealTimers();
     });
   });
 

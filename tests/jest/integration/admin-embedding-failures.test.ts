@@ -86,7 +86,7 @@ describe('Admin Embedding Failure Routes', () => {
 
       // Assert
       expect(response.status).toBe(200);
-      const data = (await response.json()) as EmbeddingFailureListResponse;
+      const data = (await response.json()) as any;
       expect(data.items).toEqual([]);
       expect(data.total).toBe(0);
     });
@@ -129,7 +129,7 @@ describe('Admin Embedding Failure Routes', () => {
 
       // Assert
       expect(response.status).toBe(200);
-      const data = (await response.json()) as EmbeddingFailureListResponse;
+      const data = (await response.json()) as any;
       expect(data.total).toBe(1);
       expect(data.items).toHaveLength(1);
       expect(data.items[0].id).toBe(retryId);
@@ -175,7 +175,7 @@ describe('Admin Embedding Failure Routes', () => {
 
       // Assert
       expect(response.status).toBe(200);
-      const data = (await response.json()) as EmbeddingFailureListResponse;
+      const data = (await response.json()) as any;
       expect(data.total).toBe(0);
       expect(data.items).toHaveLength(0);
     });
@@ -250,7 +250,7 @@ describe('Admin Embedding Failure Routes', () => {
 
       // Assert
       expect(response.status).toBe(200);
-      const data = (await response.json()) as EmbeddingFailureListResponse;
+      const data = (await response.json()) as any;
       expect(data.success).toBe(true);
       expect(data.message).toBe('재시도 대기 상태로 초기화됨');
       expect(data.status).toBe('pending');
@@ -278,7 +278,7 @@ describe('Admin Embedding Failure Routes', () => {
 
       // Assert
       expect(response.status).toBe(404);
-      const data = (await response.json()) as EmbeddingFailureListResponse;
+      const data = (await response.json()) as any;
       expect(data.code).toBe('NOT_FOUND');
     });
 
@@ -309,7 +309,7 @@ describe('Admin Embedding Failure Routes', () => {
 
       // Assert
       expect(response.status).toBe(400);
-      const data = (await response.json()) as EmbeddingFailureListResponse;
+      const data = (await response.json()) as any;
       expect(data.success).toBe(false);
       expect(data.message).toContain('dead_letter 상태가 아닙니다');
       expect(data.status).toBe('pending');

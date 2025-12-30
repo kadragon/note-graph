@@ -3,18 +3,11 @@
  * Integration tests for statistics API routes (Jest)
  */
 
+import type { WorkNoteStatistics } from '@shared/types/statistics';
 import app from '@worker/index';
 import type { Env } from '@worker/types/env';
 
-type StatisticsResponse = {
-  summary: {
-    totalWorkNotes: number;
-    totalTodos: number;
-    completedTodos: number;
-    overdueTodos: number;
-  };
-  workNotes: Array<{ workId: string }>;
-};
+type StatisticsResponse = WorkNoteStatistics;
 
 const createExecutionContext = () => ({
   waitUntil: () => {},

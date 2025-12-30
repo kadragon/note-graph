@@ -516,9 +516,9 @@ describe('Project API Routes', () => {
 
       // Inject VECTORIZE mock
       testEnv.VECTORIZE = {
-        query: jest.fn().mockResolvedValue({ matches: [] }),
-        deleteByIds: jest.fn().mockResolvedValue(undefined),
-        upsert: jest.fn().mockResolvedValue(undefined),
+        query: jest.fn<any>().mockResolvedValue({ matches: [] }),
+        deleteByIds: jest.fn<any>().mockResolvedValue(undefined),
+        upsert: jest.fn<any>().mockResolvedValue(undefined),
       } as unknown as VectorizeIndex;
 
       await testEnv.DB.batch([
