@@ -1,6 +1,5 @@
 // Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-001
 // Trace: spec_id=SPEC-devx-3 task_id=TASK-0070
-import type { Config } from 'jest';
 import { pathsToModuleNameMapper } from 'ts-jest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -12,7 +11,8 @@ const __dirname = dirname(__filename);
 // Load tsconfig to get path mappings
 const tsconfig = JSON.parse(readFileSync(resolve(__dirname, './tsconfig.base.json'), 'utf-8'));
 
-const config: Config = {
+/** @type {import('jest').Config} */
+const config = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   extensionsToTreatAsEsm: ['.ts'],
