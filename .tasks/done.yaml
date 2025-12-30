@@ -2,6 +2,22 @@
 # Tasks TASK-001 through TASK-060: Initial implementation, AI features, project management, statistics, UX improvements
 # For full details, see git history or Session 1-65 in memory.md
 
+- task_id: TASK-0071
+  title: "Clarify PDF draft save auto-attach flow"
+  spec_id: SPEC-pdf-1
+  completed_at: "2025-12-30"
+  outcome: |
+    Confirmed that the "PDF로 만들기" dialog should auto-attach the original PDF when saving.
+
+- task_id: TASK-0070
+  title: "Fix PDF draft save to auto-attach original PDF"
+  spec_id: SPEC-pdf-1
+  completed_at: "2025-12-30"
+  outcome: |
+    Added auto-attach helper and wired PDF dialog submit to upload the original PDF
+    after work note creation, with non-blocking error handling.
+    Added unit tests for auto-attach behavior.
+
 - task_id: TASK-MIGRATE-001
   title: "Phase 1: Jest + Miniflare Environment Setup"
   spec_id: SPEC-testing-migration-001

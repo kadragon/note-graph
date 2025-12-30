@@ -44,7 +44,14 @@ export interface AIDraftFormData {
   personsLoading: boolean;
 }
 
-export function useAIDraftForm(onSuccess?: () => void) {
+export interface UseAIDraftFormOptions {
+  onSuccess?: () => void;
+  onWorkNoteCreated?: (workNote: { id: string }) => Promise<void> | void;
+  onWorkNoteCreatedError?: (error: unknown) => void;
+}
+
+export function useAIDraftForm(options: UseAIDraftFormOptions = {}) {
+  const { onSuccess, onWorkNoteCreated, onWorkNoteCreatedError } = options;
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -145,6 +152,25 @@ export function useAIDraftForm(onSuccess?: () => void) {
           throw new Error('업무노트 생성에 실패했거나, 서버에서 잘못된 데이터를 반환했습니다.');
         }
 
+        // Execute post-creation callback (e.g., PDF attachment)
+        // NOTE: This runs BEFORE todo creation to ensure file uploads happen
+        // as soon as the work note exists, independent of todo creation results
+        if (onWorkNoteCreated) {
+          try {
+            await onWorkNoteCreated(workNote);
+          } catch (error) {
+            if (onWorkNoteCreatedError) {
+              onWorkNoteCreatedError(error);
+            } else {
+              toast({
+                variant: 'destructive',
+                title: '오류',
+                description: '후속 작업 중 오류가 발생했습니다. 업무노트는 생성되었습니다.',
+              });
+            }
+          }
+        }
+
         // Create todos if any suggested todos exist
         if (suggestedTodos.length > 0) {
           // Use Promise.allSettled for resilience to partial failures
@@ -215,6 +241,8 @@ export function useAIDraftForm(onSuccess?: () => void) {
       toast,
       resetForm,
       onSuccess,
+      onWorkNoteCreated,
+      onWorkNoteCreatedError,
     ]
   );
 
