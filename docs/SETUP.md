@@ -28,13 +28,12 @@
      # v20.x.x
      ```
 
-2. **npm**
-   - 버전: ≥ 9.0.0
-   - Node.js 설치 시 자동 포함
+2. **Bun**
+   - 버전: ≥ 1.2.20
    - 설치 확인:
      ```bash
-     npm --version
-     # 10.x.x
+     bun --version
+     # 1.2.x
      ```
 
 3. **Git**
@@ -53,9 +52,9 @@
 
 2. **Wrangler CLI 설치**
    ```bash
-   npm install -g wrangler
-   # 또는
-   npm install --save-dev wrangler
+   bun add -g wrangler
+   # 또는 (프로젝트 로컬 설치)
+   bun add -d wrangler
    ```
 
 3. **Wrangler 로그인**
@@ -88,7 +87,7 @@ cd note-graph
 ### 2. 의존성 설치
 
 ```bash
-npm install
+bun install
 ```
 
 설치되는 주요 패키지:
@@ -103,7 +102,7 @@ npm install
 ### 3. TypeScript 빌드 확인
 
 ```bash
-npm run typecheck
+bun run typecheck
 ```
 
 ---
@@ -280,7 +279,7 @@ wrangler secret put CF_AIG_AUTHORIZATION
 로컬 D1 데이터베이스에 마이그레이션을 적용합니다:
 
 ```bash
-npm run db:migrate:local
+bun run db:migrate:local
 ```
 
 출력 예시:
@@ -296,7 +295,7 @@ npm run db:migrate:local
 **주의**: 프로덕션 데이터베이스는 신중하게 마이그레이션하세요.
 
 ```bash
-npm run db:migrate
+bun run db:migrate
 ```
 
 또는:
@@ -332,7 +331,7 @@ migrations/
 백엔드(Workers)와 프론트엔드(Vite)를 동시에 실행합니다:
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 실행 결과:
@@ -342,7 +341,7 @@ npm run dev
 ### 백엔드만 실행
 
 ```bash
-npm run dev:backend
+bun run dev:backend
 # 또는
 wrangler dev
 ```
@@ -354,9 +353,9 @@ wrangler dev
 ### 프론트엔드만 실행
 
 ```bash
-npm run dev:frontend
+bun run dev:frontend
 # 또는
-cd apps/web && npm run dev
+cd apps/web && bun run dev
 ```
 
 - **URL**: http://localhost:5173
@@ -384,19 +383,19 @@ curl -H "X-Test-User-Email: test@example.com" \
 ### 모든 테스트 실행
 
 ```bash
-npm test
+bun run test
 ```
 
 ### 특정 테스트 파일 실행
 
 ```bash
-npm test -- tests/unit/chunking.test.ts
+bun run test -- tests/unit/chunking.test.ts
 ```
 
 ### 특정 테스트 패턴 실행
 
 ```bash
-npm test -- --grep "WorkNote"
+bun run test -- --grep "WorkNote"
 ```
 
 ### 커버리지 포함 테스트
@@ -404,13 +403,13 @@ npm test -- --grep "WorkNote"
 **주의**: @cloudflare/vitest-pool-workers 환경에서는 커버리지가 제한적입니다.
 
 ```bash
-npm run test:coverage
+bun run test:coverage
 ```
 
 ### 테스트 디버깅
 
 ```bash
-npm test -- --reporter=verbose
+bun run test -- --reporter=verbose
 ```
 
 ### 테스트 파일 구조
@@ -436,7 +435,7 @@ tests/
 ### 프론트엔드 빌드
 
 ```bash
-npm run build:frontend
+bun run build:frontend
 ```
 
 빌드 결과:
@@ -447,13 +446,13 @@ npm run build:frontend
 ### 프론트엔드 타입 체크
 
 ```bash
-cd apps/web && npm run typecheck
+cd apps/web && bun run typecheck
 ```
 
 ### 프론트엔드 린트
 
 ```bash
-cd apps/web && npm run lint
+cd apps/web && bun run lint
 ```
 
 ### 프론트엔드 구조
@@ -481,12 +480,12 @@ apps/web/
 ESLint로 코드 스타일 검사:
 
 ```bash
-npm run lint
+bun run lint
 ```
 
 자동 수정:
 ```bash
-npm run lint:fix
+bun run lint:fix
 ```
 
 ### Type Checking
@@ -494,12 +493,12 @@ npm run lint:fix
 TypeScript 타입 체크:
 
 ```bash
-npm run typecheck
+bun run typecheck
 ```
 
 백엔드와 프론트엔드 모두 포함:
 ```bash
-npm run typecheck:all
+bun run typecheck:all
 ```
 
 ### 코드 포맷팅
@@ -507,7 +506,7 @@ npm run typecheck:all
 Prettier로 코드 포맷팅 (lint-staged로 자동 실행):
 
 ```bash
-npm run format
+bun run format
 ```
 
 ---
@@ -540,10 +539,10 @@ wrangler queues list
 
 ```bash
 # 로컬 D1 쿼리
-npm run db:query:local "SELECT COUNT(*) FROM work_notes"
+bun run db:query:local "SELECT COUNT(*) FROM work_notes"
 
 # 프로덕션 D1 쿼리
-npm run db:query "SELECT COUNT(*) FROM work_notes"
+bun run db:query "SELECT COUNT(*) FROM work_notes"
 
 # 마이그레이션 상태 확인
 wrangler d1 migrations list worknote-db --local
@@ -572,7 +571,7 @@ wrangler login
 # 로컬 D1 상태 초기화
 rm -rf .wrangler/state/v3/d1
 # 마이그레이션 재실행
-npm run db:migrate:local
+bun run db:migrate:local
 ```
 
 ### 3. 포트 충돌
@@ -595,15 +594,15 @@ port = 8788
 
 ### 4. 의존성 설치 오류
 
-**문제**: `npm install` 실패
+**문제**: `bun install` 실패
 **해결**:
 ```bash
 # node_modules 및 lock 파일 삭제
 rm -rf node_modules package-lock.json
 # 캐시 정리
-npm cache clean --force
+bun pm cache rm
 # 재설치
-npm install
+bun install
 ```
 
 ### 5. TypeScript 오류
@@ -613,9 +612,9 @@ npm install
 ```bash
 # node_modules/@types 재설치
 rm -rf node_modules/@types
-npm install
+bun install
 # 전체 빌드
-npm run build
+bun run build
 ```
 
 ### 6. Vectorize 연결 실패
@@ -662,7 +661,7 @@ npm run build
 1. **아키텍처 문서 읽기**: `docs/ARCHITECTURE.md`
 2. **API 문서 확인**: `docs/API.md`
 3. **배포 가이드 확인**: `docs/DEPLOYMENT.md`
-4. **코딩 스타일 가이드 확인**: `.governance/coding-style.md`
+4. **코딩 스타일 가이드 확인**: `AGENTS.md`
 
 ---
 

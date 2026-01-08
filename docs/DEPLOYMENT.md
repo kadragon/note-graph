@@ -14,7 +14,7 @@
 
 ```bash
 # Wrangler 설치
-npm install -g wrangler
+bun add -g wrangler
 
 # 로그인
 wrangler login
@@ -84,13 +84,13 @@ wrangler secret put OPENAI_API_KEY
 ### 4. 데이터베이스 마이그레이션
 
 ```bash
-npm run db:migrate
+bun run db:migrate
 ```
 
 ### 5. 프론트엔드 빌드
 
 ```bash
-npm run build:frontend
+bun run build:frontend
 ```
 
 빌드 산출물은 `dist/web/`에 생성되며 Wrangler 자산 바인딩으로 배포됩니다.
@@ -98,7 +98,7 @@ npm run build:frontend
 ### 6. Workers 배포
 
 ```bash
-npm run deploy
+bun run deploy
 ```
 
 ---
@@ -247,7 +247,7 @@ wrangler deploy --verbose
 
 # 빌드 정리 후 재시도
 rm -rf dist
-npm run build
+bun run build
 wrangler deploy
 ```
 
