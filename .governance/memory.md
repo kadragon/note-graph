@@ -170,6 +170,9 @@ _Full details: see git history or TASK-001 to TASK-065 in done.yaml_
   - Manual schema fallback ensures tests run even if migration glob fails
 - **Next**: Ready for Phase 2 (Migrate Unit Tests Batch 1 - 6 utility files)
 
+### Session 60: HWPX MIME Fallback (2025-12-08)
+- **TASK-058 (SPEC-worknote-attachments-1)**: Enabled extension-based MIME resolution so HWPX files upload even when browsers omit or send generic MIME types; keeps rejection for explicit unsupported MIME values. Added unit test covering empty MIME HWPX upload.
+
 ## Known Issues
 
 ### AI Gateway Binding in Tests

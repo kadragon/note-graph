@@ -1,7 +1,7 @@
 tasks:
 
 metadata:
-  total_tasks: 0
+  total_tasks: 1
   total_estimated_effort: 33-45 hours
   phases:
     - name: "Jest + Miniflare Migration"

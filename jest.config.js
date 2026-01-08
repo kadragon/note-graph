@@ -18,13 +18,13 @@ const config = {
   extensionsToTreatAsEsm: ['.ts'],
   injectGlobals: true,
 
-  // Path aliases matching tsconfig paths
+  // Path aliases matching vitest.config.ts
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
     ...pathsToModuleNameMapper(tsconfig.compilerOptions?.paths || {}, {
       prefix: '<rootDir>/',
     }),
-    // Add @worker alias that exists in runtime but not in tsconfig
+    // Add @worker alias that exists in vitest but not in tsconfig
     '^@worker/(.*)$': '<rootDir>/apps/worker/src/$1',
     // Add test helpers alias
     '^@test-helpers/(.*)$': '<rootDir>/tests/jest/helpers/$1',
@@ -39,7 +39,7 @@ const config = {
     '<rootDir>/tests/jest/**/*.test.ts',
   ],
 
-  // Coverage configuration
+  // Coverage configuration matching vitest
   collectCoverageFrom: [
     'apps/worker/src/**/*.ts',
     'packages/shared/**/*.ts',

@@ -3,13 +3,13 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node", "jest", "@cloudflare/workers-types"],
+    "types": ["node", "vitest/globals", "@cloudflare/workers-types"],
     "allowJs": true,
     "noEmit": true
   },
   "include": [
     "vite.config.ts",
-    "jest.config.js",
+    "vitest.config.ts",
     "tailwind.config.js",
     "postcss.config.js",
     "tests/**/*.ts"

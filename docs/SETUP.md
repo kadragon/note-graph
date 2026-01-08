@@ -1,5 +1,4 @@
 # 개발 환경 설정 가이드
-<!-- Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-006 -->
 
 > Worknote Management System 로컬 개발 환경을 설정하는 방법을 안내합니다.
 
@@ -98,8 +97,8 @@ npm install
 - **nanoid**: ID 생성
 - **date-fns**: 날짜 유틸리티
 - **unpdf**: PDF 텍스트 추출
-- **Jest**: 테스팅 프레임워크
-- **Miniflare**: Workers 테스트 런타임
+- **Vitest**: 테스팅 프레임워크
+- **@cloudflare/vitest-pool-workers**: Workers 테스트 풀
 
 ### 3. TypeScript 빌드 확인
 
@@ -391,36 +390,42 @@ npm test
 ### 특정 테스트 파일 실행
 
 ```bash
-npm test -- tests/jest/unit/chunking.test.ts
+npm test -- tests/unit/chunking.test.ts
 ```
 
 ### 특정 테스트 패턴 실행
 
 ```bash
-npm test -- --testNamePattern "WorkNote"
+npm test -- --grep "WorkNote"
 ```
 
 ### 커버리지 포함 테스트
+
+**주의**: @cloudflare/vitest-pool-workers 환경에서는 커버리지가 제한적입니다.
 
 ```bash
 npm run test:coverage
 ```
 
-### 테스트 디버깅 (상세 출력)
+### 테스트 디버깅
 
 ```bash
-npm test -- --verbose
+npm test -- --reporter=verbose
 ```
 
 ### 테스트 파일 구조
 
 ```
 tests/
-├── jest/                  # Jest 테스트
-│   ├── unit/              # 단위 테스트
-│   ├── integration/       # 통합 테스트
-│   └── setup-verification.test.ts
-├── jest-setup.ts          # Miniflare 설정 + 마이그레이션
+├── unit/                  # 단위 테스트
+│   ├── chunking.test.ts
+│   ├── errors.test.ts
+│   └── ...
+├── integration/           # 통합 테스트
+│   ├── api.test.ts
+│   ├── person.test.ts
+│   └── ...
+├── setup.ts               # 테스트 설정
 └── README.md
 ```
 
@@ -669,7 +674,7 @@ npm run build
 - [R2 스토리지 문서](https://developers.cloudflare.com/r2/)
 - [Cloudflare Queues 문서](https://developers.cloudflare.com/queues/)
 - [Hono 프레임워크 문서](https://hono.dev/)
-- [Jest 문서](https://jestjs.io/)
+- [Vitest 문서](https://vitest.dev/)
 
 ---
 

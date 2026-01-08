@@ -1,27 +1,24 @@
 # Note Graph Test Suite
 
 **Trace**: TASK-016 - Write comprehensive test suite
-<!-- Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-006 -->
 
 ## Overview
 
-This test suite uses **Jest** with **Miniflare** to test the Cloudflare Workers application in an environment that closely mimics production.
+This test suite uses **Vitest** with **@cloudflare/vitest-pool-workers** to test the Cloudflare Workers application in an environment that closely mimics production.
 
 ## Test Infrastructure
 
-- **Test Runner**: Jest
-- **Test Runtime**: Miniflare (Cloudflare Workers simulator)
-- **Coverage**: Jest coverage with 80% threshold
+- **Test Runner**: Vitest 2.1.8
+- **Test Pool**: @cloudflare/vitest-pool-workers
+- **Coverage**: @vitest/coverage-v8 with 80% threshold
 - **Environment**: Miniflare (local Cloudflare Workers simulator)
 
 ## Test Structure
 
 ```
 tests/
-├── jest/              # Jest test suites (unit + integration)
-│   ├── unit/
-│   └── integration/
-├── jest-setup.ts      # Miniflare setup + D1 migrations
+├── setup.ts           # Global test setup
+├── api.test.ts        # Basic API integration tests
 └── README.md          # This file
 ```
 
@@ -35,7 +32,7 @@ npm test
 npm run test:coverage
 
 # Run tests in watch mode
-npm run test:watch
+npm test -- --watch
 ```
 
 ## Coverage Thresholds
@@ -50,17 +47,18 @@ The project requires minimum 80% coverage:
 
 The Cloudflare Workers test environment provides access to bindings:
 
-- `getDB()` / `getMiniflare()` helpers (see `tests/jest-setup.ts`)
+- `env` - Environment bindings (DB, VECTORIZE, etc.)
+- `SELF` - Worker fetch interface for making requests
 
 ## Current Test Coverage
 
 ### ✅ Implemented
 
-- **Integration Tests** (`tests/jest/integration/*.test.ts`)
-  - Admin embedding failures
-  - Project routes/files
-  - Work-note file view and project association
-  - Statistics routes
+- **API Integration Tests** (`api.test.ts`)
+  - Health check endpoint
+  - Root endpoint with API information
+  - Authentication middleware
+  - 404 handler
 
 ### 🚧 Planned (Future Iterations)
 

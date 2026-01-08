@@ -1,5 +1,4 @@
 # 시스템 아키텍처 문서
-<!-- Trace: spec_id=SPEC-testing-migration-001 task_id=TASK-MIGRATE-006 -->
 
 > Worknote Management System의 전체 아키텍처, 설계 결정, 기술 스택을 설명합니다.
 
@@ -222,9 +221,9 @@ Answer + Sources → User
 
 | 컴포넌트 | 기술 | 용도 |
 |---------|------|------|
-| **Test Framework** | Jest | 단위/통합 테스트 |
-| **Test Runtime** | Miniflare | Workers 환경 테스트 |
-| **Coverage** | Jest coverage | 코드 커버리지 |
+| **Test Framework** | Vitest | 단위/통합 테스트 |
+| **Test Pool** | @cloudflare/vitest-pool-workers | Workers 환경 테스트 |
+| **Coverage** | @vitest/coverage-v8 | 코드 커버리지 (제한적) |
 
 ---
 
