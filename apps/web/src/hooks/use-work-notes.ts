@@ -6,6 +6,7 @@ import type {
   UpdateWorkNoteRequest,
   WorkNoteWithStats,
 } from '@web/types/api';
+import { getLatestTodoDate } from './get-latest-todo-date';
 import { useToast } from './use-toast';
 
 export function useWorkNotes() {
@@ -54,9 +55,12 @@ export function useWorkNotesWithStats() {
               { completed: 0, pending: 0, remaining: 0 }
             );
 
+            const latestTodoDate = getLatestTodoDate(todos);
+
             return {
               ...workNote,
               todoStats: { total, completed, remaining, pending },
+              latestTodoDate,
             } as WorkNoteWithStats;
           } catch (error) {
             // Log error for debugging
@@ -66,6 +70,7 @@ export function useWorkNotesWithStats() {
             return {
               ...workNote,
               todoStats: { total: 0, completed: 0, remaining: 0, pending: 0 },
+              latestTodoDate: null,
             } as WorkNoteWithStats;
           }
         })

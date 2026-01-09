@@ -25,6 +25,7 @@ export function WorkNotesTable({ workNotes, onView, onDelete }: WorkNotesTablePr
           <TableHead>업무 구분</TableHead>
           <TableHead>담당자</TableHead>
           <TableHead>할일</TableHead>
+          <TableHead>마감일</TableHead>
           <TableHead>생성일</TableHead>
           <TableHead className="text-right">작업</TableHead>
         </TableRow>

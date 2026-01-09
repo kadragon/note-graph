@@ -77,6 +77,11 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
         )}
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">
+        {workNote.latestTodoDate
+          ? format(parseISO(workNote.latestTodoDate), 'yyyy-MM-dd', { locale: ko })
+          : '-'}
+      </TableCell>
+      <TableCell className="text-muted-foreground text-xs">
         {format(parseISO(workNote.createdAt), 'yyyy-MM-dd HH:mm', { locale: ko })}
       </TableCell>
       <TableCell className="text-right">
