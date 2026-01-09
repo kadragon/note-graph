@@ -96,3 +96,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Document CSS magic numbers and accessibility labels.
 - Centralize integration test helpers (authFetch, MockR2, setTestR2Bucket) to keep R2 bindings consistent and avoid duplicated setup; avoid forcing Content-Type for FormData.
 - When Workers coverage cannot run due to node:inspector limitations, align Vitest global thresholds with the latest reliable baseline.
+- For work note due-date sorting, treat missing dates as always last regardless of sort direction to match user expectations.
