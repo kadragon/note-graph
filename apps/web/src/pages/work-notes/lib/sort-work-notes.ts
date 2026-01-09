@@ -8,8 +8,6 @@ export const createWorkNotesComparator = (sortKey: SortKey, sortDirection: SortD
     switch (sortKey) {
       case 'category':
         return wn.categories?.[0]?.name ?? '';
-      case 'dueDate':
-        return wn.latestTodoDate ? new Date(wn.latestTodoDate).getTime() : Number.MAX_VALUE;
       case 'title':
         return wn.title;
       case 'assignee':
@@ -24,6 +22,25 @@ export const createWorkNotesComparator = (sortKey: SortKey, sortDirection: SortD
   };
 
   return (a: WorkNoteWithStats, b: WorkNoteWithStats) => {
+    if (sortKey === 'dueDate') {
+      const hasDateA = Boolean(a.latestTodoDate);
+      const hasDateB = Boolean(b.latestTodoDate);
+
+      if (!hasDateA && !hasDateB) {
+        return 0;
+      }
+      if (!hasDateA) {
+        return 1;
+      }
+      if (!hasDateB) {
+        return -1;
+      }
+
+      const timeA = new Date(a.latestTodoDate as string).getTime();
+      const timeB = new Date(b.latestTodoDate as string).getTime();
+      return (timeA - timeB) * direction;
+    }
+
     const valueA = getValue(a);
     const valueB = getValue(b);
 
