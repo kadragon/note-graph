@@ -11,7 +11,11 @@ export const createWorkNotesComparator = (sortKey: SortKey, sortDirection: SortD
       case 'title':
         return wn.title;
       case 'assignee':
-        return wn.persons?.[0]?.personName ?? '';
+        return (
+          wn.persons?.find((p) => p.role === 'OWNER')?.personName ??
+          wn.persons?.[0]?.personName ??
+          ''
+        );
       case 'todo':
         return wn.todoStats.remaining;
       case 'createdAt':

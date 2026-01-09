@@ -24,7 +24,7 @@ function getDdayInfo(dateString: string | null): {
   const diff = differenceInDays(targetDate, today);
 
   if (diff < 0) {
-    // 지남
+    // Overdue
     return {
       text: `D+${Math.abs(diff)}`,
       colorClass: 'text-red-600',
@@ -32,7 +32,7 @@ function getDdayInfo(dateString: string | null): {
     };
   }
   if (diff === 0) {
-    // 오늘
+    // Today
     return {
       text: '오늘',
       colorClass: 'text-orange-600',
@@ -40,7 +40,7 @@ function getDdayInfo(dateString: string | null): {
     };
   }
   if (diff <= 3) {
-    // 임박 (3일 이내)
+    // Due within 3 days
     return {
       text: `D-${diff}`,
       colorClass: 'text-orange-500',
@@ -48,14 +48,14 @@ function getDdayInfo(dateString: string | null): {
     };
   }
   if (diff <= 7) {
-    // 여유 (7일 이내)
+    // Due within 7 days
     return {
       text: `D-${diff}`,
       colorClass: 'text-blue-500',
       bgClass: 'bg-blue-50',
     };
   }
-  // 충분 (7일 초과)
+  // More than 7 days
   return {
     text: `D-${diff}`,
     colorClass: 'text-gray-500',
