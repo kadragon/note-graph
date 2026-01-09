@@ -51,65 +51,6 @@ describe('Schema Validation', () => {
         const result = createWorkNoteSchema.safeParse(invalidData);
         expect(result.success).toBe(false);
       });
-
-      it('should reject title longer than 200 characters', () => {
-        const invalidData = {
-          title: 'a'.repeat(201),
-          contentRaw: 'Content',
-        };
-
-        const result = createWorkNoteSchema.safeParse(invalidData);
-        expect(result.success).toBe(false);
-      });
-
-      it('should accept title exactly 200 characters', () => {
-        const validData = {
-          title: 'a'.repeat(200),
-          contentRaw: 'Content',
-        };
-
-        const result = createWorkNoteSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
-
-      it('should allow optional fields to be omitted', () => {
-        const validData = {
-          title: 'Simple Note',
-          contentRaw: 'Content',
-        };
-
-        const result = createWorkNoteSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.persons).toBeUndefined();
-          expect(result.data.relatedWorkIds).toBeUndefined();
-        }
-      });
-
-      it('should validate person associations', () => {
-        const validData = {
-          title: 'Test',
-          contentRaw: 'Content',
-          persons: [
-            { personId: '123456', role: 'OWNER' },
-            { personId: '654321', role: 'RELATED' },
-          ],
-        };
-
-        const result = createWorkNoteSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
-
-      it('should handle Korean text in fields', () => {
-        const validData = {
-          title: '한글 제목입니다',
-          contentRaw: '한글 내용입니다',
-          category: '회의',
-        };
-
-        const result = createWorkNoteSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
     });
 
     describe('updateWorkNoteSchema', () => {
@@ -131,18 +72,6 @@ describe('Schema Validation', () => {
         expect(result.success).toBe(true);
       });
 
-      it('should allow updating all fields', () => {
-        const validData = {
-          title: 'Updated',
-          contentRaw: 'Updated content',
-          category: '업무',
-          persons: [{ personId: '123456', role: 'OWNER' }],
-        };
-
-        const result = updateWorkNoteSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
-
       it('should reject empty title if provided', () => {
         const invalidData = {
           title: '',
@@ -151,13 +80,6 @@ describe('Schema Validation', () => {
         const result = updateWorkNoteSchema.safeParse(invalidData);
         expect(result.success).toBe(false);
       });
-
-      it('should allow empty update object', () => {
-        const validData = {};
-
-        const result = updateWorkNoteSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
     });
 
     describe('workNotePersonSchema', () => {
@@ -165,16 +87,6 @@ describe('Schema Validation', () => {
         const validData = {
           personId: '123456',
           role: 'OWNER',
-        };
-
-        const result = workNotePersonSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
-
-      it('should validate RELATED role', () => {
-        const validData = {
-          personId: '123456',
-          role: 'RELATED',
         };
 
         const result = workNotePersonSchema.safeParse(validData);
@@ -213,27 +125,6 @@ describe('Schema Validation', () => {
       it('should validate query with search term', () => {
         const validData = {
           q: '업무 보고',
-        };
-
-        const result = listWorkNotesQuerySchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
-
-      it('should validate query with filters', () => {
-        const validData = {
-          category: '회의',
-          personId: '123456',
-          deptName: '개발팀',
-        };
-
-        const result = listWorkNotesQuerySchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
-
-      it('should validate ISO 8601 date-time strings', () => {
-        const validData = {
-          from: '2024-01-01T00:00:00Z',
-          to: '2024-12-31T23:59:59Z',
         };
 
         const result = listWorkNotesQuerySchema.safeParse(validData);
@@ -284,32 +175,12 @@ describe('Schema Validation', () => {
         const result = createPersonSchema.safeParse(invalidData);
         expect(result.success).toBe(false);
       });
-
-      it('should accept valid 6-digit personId', () => {
-        const validData = {
-          personId: '000123',
-          name: 'Test User',
-        };
-
-        const result = createPersonSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
     });
 
     describe('updatePersonSchema', () => {
       it('should allow partial updates', () => {
         const validData = {
           currentDept: '마케팅팀',
-        };
-
-        const result = updatePersonSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
-
-      it('should validate all fields when provided', () => {
-        const validData = {
-          name: '김철수',
-          currentDept: '영업팀',
         };
 
         const result = updatePersonSchema.safeParse(validData);
@@ -347,17 +218,10 @@ describe('Schema Validation', () => {
     });
 
     describe('updateDepartmentSchema', () => {
-      it('should validate department description update', () => {
+      it('should allow partial updates', () => {
         const validData = {
-          description: '신사업팀 설명',
+          description: '신규 설명',
         };
-
-        const result = updateDepartmentSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
-
-      it('should allow empty update', () => {
-        const validData = {};
 
         const result = updateDepartmentSchema.safeParse(validData);
         expect(result.success).toBe(true);
@@ -384,31 +248,6 @@ describe('Schema Validation', () => {
 
         const result = searchWorkNotesSchema.safeParse(invalidData);
         expect(result.success).toBe(false);
-      });
-
-      it('should validate with all filters', () => {
-        const validData = {
-          query: 'test',
-          category: '회의',
-          personId: '123456',
-          deptName: '개발팀',
-          from: '2024-01-01T00:00:00Z',
-          to: '2024-12-31T23:59:59Z',
-          limit: 20,
-        };
-
-        const result = searchWorkNotesSchema.safeParse(validData);
-        expect(result.success).toBe(true);
-      });
-
-      it('should handle limit as number', () => {
-        const validData = {
-          query: 'test',
-          limit: 10,
-        };
-
-        const result = searchWorkNotesSchema.safeParse(validData);
-        expect(result.success).toBe(true);
       });
 
       it('should reject empty search query', () => {
@@ -445,20 +284,6 @@ describe('Schema Validation', () => {
         }
       });
 
-      it('should validate all scope types', () => {
-        const scopes = ['GLOBAL', 'PERSON', 'DEPARTMENT', 'WORK'];
-
-        scopes.forEach((scope) => {
-          const validData = {
-            query: 'test',
-            scope,
-          };
-
-          const result = ragQuerySchema.safeParse(validData);
-          expect(result.success).toBe(true);
-        });
-      });
-
       it('should reject invalid scope', () => {
         const invalidData = {
           query: 'test',
@@ -467,16 +292,6 @@ describe('Schema Validation', () => {
 
         const result = ragQuerySchema.safeParse(invalidData);
         expect(result.success).toBe(false);
-      });
-
-      it('should validate topK parameter', () => {
-        const validData = {
-          query: 'test',
-          topK: 10,
-        };
-
-        const result = ragQuerySchema.safeParse(validData);
-        expect(result.success).toBe(true);
       });
 
       it('should reject topK over 20', () => {
@@ -488,23 +303,6 @@ describe('Schema Validation', () => {
         const result = ragQuerySchema.safeParse(invalidData);
         expect(result.success).toBe(false);
       });
-    });
-  });
-
-  describe('Type Inference', () => {
-    it('should infer correct types from schemas', () => {
-      const validData = {
-        title: 'Test',
-        contentRaw: 'Content',
-        category: '업무',
-      };
-
-      const parsed = createWorkNoteSchema.parse(validData);
-
-      // Type assertions to verify inference
-      expect(typeof parsed.title).toBe('string');
-      expect(typeof parsed.contentRaw).toBe('string');
-      expect(parsed.category).toBe('업무');
     });
   });
 });

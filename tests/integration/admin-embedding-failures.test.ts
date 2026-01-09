@@ -3,24 +3,19 @@
  * Integration tests for admin embedding failure management routes
  */
 
-import { env, SELF } from 'cloudflare:test';
-import type { Env } from '@worker/types/env';
 import { nanoid } from 'nanoid';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-const testEnv = env as unknown as Env;
+import { authFetch, testEnv } from '../test-setup';
 
-// Helper to create authenticated admin fetch request
-const authFetch = (path: string, options?: RequestInit) => {
-  return SELF.fetch(`http://localhost${path}`, {
+const adminFetch = (path: string, options?: RequestInit) =>
+  authFetch(path, {
     ...options,
     headers: {
       'Cf-Access-Authenticated-User-Email': 'admin@example.com',
-      'Content-Type': 'application/json',
       ...options?.headers,
     },
   });
-};
 
 describe('Admin Embedding Failure Routes', () => {
   beforeEach(async () => {
@@ -34,7 +29,7 @@ describe('Admin Embedding Failure Routes', () => {
   describe('GET /api/admin/embedding-failures', () => {
     it('should return empty list when no dead-letter items exist', async () => {
       // Act
-      const response = await authFetch('/api/admin/embedding-failures');
+      const response = await adminFetch('/api/admin/embedding-failures');
 
       // Assert
       expect(response.status).toBe(200);
@@ -77,7 +72,7 @@ describe('Admin Embedding Failure Routes', () => {
         .run();
 
       // Act
-      const response = await authFetch('/api/admin/embedding-failures');
+      const response = await adminFetch('/api/admin/embedding-failures');
 
       // Assert
       expect(response.status).toBe(200);
@@ -123,7 +118,7 @@ describe('Admin Embedding Failure Routes', () => {
         .run();
 
       // Act
-      const response = await authFetch('/api/admin/embedding-failures');
+      const response = await adminFetch('/api/admin/embedding-failures');
 
       // Assert
       expect(response.status).toBe(200);
@@ -155,8 +150,8 @@ describe('Admin Embedding Failure Routes', () => {
       }
 
       // Act
-      const page1 = await authFetch('/api/admin/embedding-failures?limit=2&offset=0');
-      const page2 = await authFetch('/api/admin/embedding-failures?limit=2&offset=2');
+      const page1 = await adminFetch('/api/admin/embedding-failures?limit=2&offset=0');
+      const page2 = await adminFetch('/api/admin/embedding-failures?limit=2&offset=2');
 
       // Assert
       expect(page1.status).toBe(200);
@@ -196,7 +191,7 @@ describe('Admin Embedding Failure Routes', () => {
         .run();
 
       // Act
-      const response = await authFetch(`/api/admin/embedding-failures/${retryId}/retry`, {
+      const response = await adminFetch(`/api/admin/embedding-failures/${retryId}/retry`, {
         method: 'POST',
       });
 
@@ -220,7 +215,7 @@ describe('Admin Embedding Failure Routes', () => {
 
     it('should return 404 when retry item does not exist', async () => {
       // Act
-      const response = await authFetch('/api/admin/embedding-failures/nonexistent-id/retry', {
+      const response = await adminFetch('/api/admin/embedding-failures/nonexistent-id/retry', {
         method: 'POST',
       });
 
@@ -251,7 +246,7 @@ describe('Admin Embedding Failure Routes', () => {
         .run();
 
       // Act
-      const response = await authFetch(`/api/admin/embedding-failures/${retryId}/retry`, {
+      const response = await adminFetch(`/api/admin/embedding-failures/${retryId}/retry`, {
         method: 'POST',
       });
 
@@ -288,7 +283,7 @@ describe('Admin Embedding Failure Routes', () => {
       }
 
       // Act - Retry only the second item
-      const response = await authFetch(`/api/admin/embedding-failures/${retryIds[1]}/retry`, {
+      const response = await adminFetch(`/api/admin/embedding-failures/${retryIds[1]}/retry`, {
         method: 'POST',
       });
 

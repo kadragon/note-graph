@@ -1,24 +1,10 @@
 // Trace: SPEC-project-1, TASK-038
 // Integration tests for work note to project association
 
-import { env, SELF } from 'cloudflare:test';
 import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
-import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-const testEnv = env as unknown as Env;
-
-// Helper to create authenticated fetch request
-const authFetch = (url: string, options?: RequestInit) => {
-  return SELF.fetch(url, {
-    ...options,
-    headers: {
-      'Cf-Access-Authenticated-User-Email': 'test@example.com',
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-};
+import { authFetch, testEnv } from '../test-setup';
 
 describe('Work Note Project Association', () => {
   beforeEach(async () => {
