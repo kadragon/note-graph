@@ -11,11 +11,7 @@ export default defineWorkersConfig({
     },
   },
   test: {
-    exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/tests/jest/**', // Exclude Jest test directory
-    ],
+    exclude: ["**/node_modules/**", "**/dist/**"],
     poolOptions: {
       workers: {
         singleWorker: true,
@@ -23,7 +19,13 @@ export default defineWorkersConfig({
         miniflare: {
           // Miniflare options for local testing
           compatibilityDate: "2024-01-01",
-          compatibilityFlags: ["nodejs_compat", "enable_nodejs_tty_module", "enable_nodejs_fs_module", "enable_nodejs_http_modules", "enable_nodejs_perf_hooks_module"],
+          compatibilityFlags: [
+            "nodejs_compat",
+            "enable_nodejs_tty_module",
+            "enable_nodejs_fs_module",
+            "enable_nodejs_http_modules",
+            "enable_nodejs_perf_hooks_module",
+          ],
           d1Databases: { DB: "worknote-db" },
           d1Persist: false,
           bindings: {
