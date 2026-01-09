@@ -95,3 +95,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Enforce exact import path case for cross-platform compatibility.
 - Document CSS magic numbers and accessibility labels.
 - Centralize integration test helpers (authFetch, MockR2, setTestR2Bucket) to keep R2 bindings consistent and avoid duplicated setup; avoid forcing Content-Type for FormData.
+- When Workers coverage cannot run due to node:inspector limitations, align Vitest global thresholds with the latest reliable baseline.
