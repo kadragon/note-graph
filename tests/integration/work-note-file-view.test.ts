@@ -1,72 +1,9 @@
 // Trace: SPEC-worknote-attachments-1, TASK-066
 // Integration tests for work note file preview route
 
-import { env, SELF } from 'cloudflare:test';
-import type {
-  R2Bucket,
-  R2HTTPMetadata,
-  R2Object,
-  R2ObjectBody,
-  R2PutOptions,
-} from '@cloudflare/workers-types';
-import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-type WritableEnv = {
-  -readonly [K in keyof Env]: Env[K];
-};
-
-interface GlobalWithTestR2 {
-  __TEST_R2_BUCKET: R2Bucket;
-}
-
-class MockR2 implements R2Bucket {
-  storage = new Map<
-    string,
-    { value: Blob; httpMetadata?: R2HTTPMetadata; customMetadata?: Record<string, string> }
-  >();
-
-  async put(key: string, value: Blob, options?: R2PutOptions): Promise<R2Object | null> {
-    this.storage.set(key, {
-      value,
-      httpMetadata: options?.httpMetadata,
-      customMetadata: options?.customMetadata,
-    });
-    return null;
-  }
-
-  async get(key: string): Promise<R2ObjectBody | null> {
-    const entry = this.storage.get(key);
-    if (!entry) return null;
-    return {
-      body: entry.value.stream(),
-      size: entry.value.size,
-      httpMetadata: entry.httpMetadata ?? {},
-      customMetadata: entry.customMetadata ?? {},
-      httpEtag: '',
-      writeHttpMetadata: () => {},
-    } as unknown as R2ObjectBody;
-  }
-
-  async delete(key: string): Promise<void> {
-    this.storage.delete(key);
-  }
-
-  async head(): Promise<R2Object | null> {
-    return null;
-  }
-}
-
-const testEnv = env as unknown as WritableEnv;
-
-const authFetch = (url: string, options?: RequestInit) =>
-  SELF.fetch(url, {
-    ...options,
-    headers: {
-      'Cf-Access-Authenticated-User-Email': 'test@example.com',
-      ...options?.headers,
-    },
-  });
+import { authFetch, MockR2, setTestR2Bucket, testEnv } from '../test-setup';
 
 describe('Work Note File Preview Route', () => {
   beforeEach(async () => {
@@ -84,8 +21,7 @@ describe('Work Note File Preview Route', () => {
       .run();
 
     // Provide mock R2 binding for streaming routes
-    testEnv.R2_BUCKET = new MockR2() as unknown as R2Bucket;
-    (globalThis as unknown as GlobalWithTestR2).__TEST_R2_BUCKET = testEnv.R2_BUCKET;
+    setTestR2Bucket(new MockR2());
   });
 
   it('serves inline preview for PDF via /view endpoint', async () => {
