@@ -30,28 +30,7 @@ Personal work note management system with AI-powered features, built on Cloudfla
 
 ```
 note-graph/
-├── .governance/          # Project knowledge base
-│   ├── memory.md         # Project history and decisions
-│   ├── coding-style.md   # Coding conventions
-│   ├── patterns.md       # Design patterns
-│   └── env.yaml          # Environment config
-│
-├── .spec/                # Feature specifications (GWT format)
-│   ├── auth/
-│   ├── person-management/
-│   ├── department-management/
-│   ├── worknote-management/
-│   ├── todo-management/
-│   ├── search/
-│   ├── rag/
-│   ├── ai-draft/
-│   └── pdf-processing/
-│
-├── .tasks/               # Task management
-│   ├── backlog.yaml      # Pending tasks
-│   ├── current.yaml      # Active task
-│   └── done.yaml         # Completed tasks
-│
+├── AGENTS.md             # Consolidated governance, specs, task history
 ├── apps/
 │   ├── worker/           # Cloudflare Worker backend (Hono API, services, utils)
 │   └── web/              # React SPA (Vite, Tailwind, shadcn/ui)
@@ -65,18 +44,16 @@ note-graph/
 └── wrangler.toml         # Cloudflare Workers config
 ```
 
-## Development Workflow (SDD × TDD)
+## Development Workflow (TDD)
 
-이 프로젝트는 **Spec-Driven Development (SDD)** 와 **Test-Driven Development (TDD)** 를 결합하여 개발합니다.
+이 프로젝트는 **Test-Driven Development (TDD)** 를 기준으로 개발합니다.
 
 ### Workflow
 
-1. **Read SPEC** (.spec/ 디렉토리)
-2. **Create/Update Tests** (RED)
-3. **Implement Code** (GREEN)
-4. **Refactor** (유지)
-5. **Record Progress** (.tasks/ 업데이트)
-6. **Update Governance** (.governance/memory.md 갱신)
+1. **Create/Update Tests** (RED)
+2. **Implement Code** (GREEN)
+3. **Refactor** (유지)
+4. **Record Progress** (`AGENTS.md` 업데이트)
 
 ### Development Phases
 
@@ -120,6 +97,7 @@ note-graph/
 ### Prerequisites
 
 - Node.js >= 18.0.0
+- Bun >= 1.2.20
 - Cloudflare account
 - Wrangler CLI
 
@@ -127,7 +105,7 @@ note-graph/
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Create D1 database
 wrangler d1 create worknote-db
@@ -142,10 +120,10 @@ wrangler r2 bucket create worknote-pdf-temp
 wrangler queues create pdf-processing-queue
 
 # Run migrations
-npm run db:migrate:local
+bun run db:migrate:local
 
 # Start development server
-npm run dev
+bun run dev
 ```
 
 ### Configuration
@@ -183,17 +161,17 @@ wrangler secret put CF_AIG_AUTHORIZATION  # Optional, if AI Gateway requires aut
 
 ```bash
 # Run tests
-npm test
+bun run test
 
 # Run with coverage
-npm run test:coverage
+bun run test:coverage
 ```
 
 ## Deployment
 
 ```bash
 # Deploy to Cloudflare Workers
-npm run deploy
+bun run deploy
 ```
 
 ## 문서
@@ -225,13 +203,7 @@ npm run deploy
 
 ## Task Management
 
-개발 작업은 `.tasks/` 디렉토리로 관리됩니다:
-
-- **backlog.yaml**: 대기 중인 작업 (우선순위 정렬)
-- **current.yaml**: 현재 진행 중인 작업 (한 번에 하나만)
-- **done.yaml**: 완료된 작업 및 결과
-
-새 작업을 시작하려면 `backlog.yaml`에서 `current.yaml`로 이동하세요.
+작업 이력과 운영 지식은 `AGENTS.md`에 요약합니다.
 
 ## Contributing
 
@@ -254,4 +226,4 @@ export class WorkNoteRepository {
 
 ---
 
-**Generated with Autonomous Coding Agent (SDD × TDD)**
+**Generated with Autonomous Coding Agent (TDD)**

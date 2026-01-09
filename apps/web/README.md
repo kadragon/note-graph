@@ -40,10 +40,10 @@ Modern React frontend for the Note Graph application, built with Vite, TypeScrip
 
 ```bash
 # Start both frontend and backend
-npm run dev
+bun run dev
 
 # Or start frontend only
-npm run dev:frontend
+bun run dev:frontend
 ```
 
 The Vite dev server will start on `http://localhost:5173` and automatically proxy API requests to the backend.
@@ -52,10 +52,10 @@ The Vite dev server will start on `http://localhost:5173` and automatically prox
 
 ```bash
 # Build frontend only
-npm run build:frontend
+bun run build:frontend
 
 # Build frontend + backend
-npm run build
+bun run build
 ```
 
 Build output is emitted to `dist/web/` (served by Wrangler assets binding).
@@ -219,7 +219,7 @@ function Example() {
 
 ### Manual Testing
 
-1. Start the dev server: `npm run dev`
+1. Start the dev server: `bun run dev`
 2. Navigate to `http://localhost:5173`
 3. Test Dashboard functionality:
    - Switch between todo views (Today, Week, Month, Backlog, All)
