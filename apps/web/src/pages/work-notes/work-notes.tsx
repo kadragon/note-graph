@@ -12,7 +12,7 @@ import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
 import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-notes';
-import type { WorkNote, WorkNoteWithStats } from '@web/types/api';
+import type { WorkNote } from '@web/types/api';
 import { FileEdit, FileText, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CreateFromPDFDialog } from './components/create-from-pdf-dialog';
@@ -20,6 +20,7 @@ import { CreateFromTextDialog } from './components/create-from-text-dialog';
 import { CreateWorkNoteDialog } from './components/create-work-note-dialog';
 import { ViewWorkNoteDialog } from './components/view-work-note-dialog';
 import { type SortDirection, type SortKey, WorkNotesTable } from './components/work-notes-table';
+import { createWorkNotesComparator } from './lib/sort-work-notes';
 
 export default function WorkNotes() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -47,39 +48,7 @@ export default function WorkNotes() {
 
   // Filter work notes by completion status
   const { activeWorkNotes, pendingWorkNotes, completedWorkNotes } = useMemo(() => {
-    const sortWorkNotes = (a: WorkNoteWithStats, b: WorkNoteWithStats) => {
-      const direction = sortDirection === 'asc' ? 1 : -1;
-
-      const getValue = (wn: WorkNoteWithStats) => {
-        switch (sortKey) {
-          case 'category':
-            return wn.categories?.[0]?.name ?? '';
-          case 'dueDate':
-            return wn.latestTodoDate ? new Date(wn.latestTodoDate).getTime() : Number.MAX_VALUE;
-          case 'title':
-            return wn.title;
-          case 'assignee':
-            return wn.persons?.[0]?.personName ?? '';
-          case 'todo':
-            return wn.todoStats.remaining;
-          case 'createdAt':
-            return new Date(wn.createdAt).getTime();
-          default:
-            return '';
-        }
-      };
-
-      const valueA = getValue(a);
-      const valueB = getValue(b);
-
-      if (typeof valueA === 'string' && typeof valueB === 'string') {
-        return valueA.localeCompare(valueB, 'ko') * direction;
-      }
-      if (typeof valueA === 'number' && typeof valueB === 'number') {
-        return (valueA - valueB) * direction;
-      }
-      return 0;
-    };
+    const sortWorkNotes = createWorkNotesComparator(sortKey, sortDirection);
 
     // 진행 중: 할일이 없거나 현재 활성화된 할일이 있는 업무노트
     const active = workNotes
