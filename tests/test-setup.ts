@@ -66,9 +66,7 @@ if (!testEnv.R2_BUCKET) {
 }
 
 const authFetch = (input: string, options: RequestInit = {}) => {
-  const url = input.startsWith('http')
-    ? input
-    : `http://localhost${input.startsWith('/') ? '' : '/'}${input}`;
+  const url = new URL(input, 'http://localhost').href;
 
   const headers = new Headers(options.headers);
   if (!headers.has('Cf-Access-Authenticated-User-Email')) {
