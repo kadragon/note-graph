@@ -106,3 +106,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For debounced hooks, use fake timers to assert initial value, delayed update, and cancellation on rapid changes.
 - For page tests using Radix Dialog/AlertDialog/Select, mock UI components to simple DOM elements and assert open state via data attributes to avoid portal complexity.
 - For table rows with icon-only actions, scope to the row and select buttons by order to drive edit/delete flows deterministically.
+- For mocked React Query hooks, cast stubbed return values via `as unknown as ReturnType<typeof useQuery>` (or mutation hooks) to satisfy strict observer typings.

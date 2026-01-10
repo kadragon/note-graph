@@ -99,16 +99,16 @@ Goal: Branches 62% → 68%, Functions 62% → 68%
 Goal: Branches 68% → 70%, Functions 68% → 70%
 
 #### Task 4.1: Layout Components
-- [ ] Test app-layout.tsx (sidebar/header rendering, responsive)
-- [ ] Test sidebar.tsx (navigation, collapsible sections, active state)
-- [ ] Test header.tsx (title, search, navigation)
+- [x] Test app-layout.tsx (sidebar/header rendering, responsive)
+- [x] Test sidebar.tsx (navigation, collapsible sections, active state)
+- [x] Test header.tsx (title, search, navigation)
 - **Files to create**: apps/web/src/components/__tests__/*.test.tsx
 - **Expected impact**: +5 functions, +12 branches
 
 #### Task 4.2: Utility Functions
 - [ ] Test api.ts (all endpoint functions, error handling)
-- [ ] Test date-utils.ts (formatting, parsing, edge cases)
-- [ ] Test utils.ts (cn utility, object merging)
+- [x] Test date-utils.ts (formatting, parsing, edge cases)
+- [x] Test utils.ts (cn utility, object merging)
 - [ ] Test mappers/department.ts (data transformation)
 - **Note**: Some tests already exist - extend coverage
 - **Expected impact**: +4 functions, +8 branches
