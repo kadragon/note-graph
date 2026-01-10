@@ -92,6 +92,6 @@ describe('search page', () => {
     expect(screen.getByText('총 3개의 결과를 찾았습니다.')).toBeInTheDocument();
     expect(screen.getByText('업무노트 결과')).toBeInTheDocument();
     expect(screen.getByText('홍길동')).toBeInTheDocument();
-    expect(screen.getByText('개발')).toBeInTheDocument();
+    expect(screen.getAllByText('개발')[0]).toBeInTheDocument();
   });
 });
