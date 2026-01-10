@@ -99,3 +99,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For work note due-date sorting, treat missing dates as always last regardless of sort direction to match user expectations.
 - For React Query hook tests, use `apps/web/src/test/setup.tsx` helpers (e.g., `createTestQueryClient`, `renderHookWithClient`) to avoid retries/cache side effects and duplicate provider wiring.
 - For mutation hooks (useMutation), assert both success data wiring and onError toast behavior to cover user-facing feedback paths.
+- For query hooks with optional enable flags, include a disabled-state test to ensure no API calls and avoid accidental background fetches.

@@ -65,7 +65,7 @@ Goal: Branches 54% → 62%, Functions 54% → 62%
 - **Expected impact**: +6 functions, +15 branches
 
 #### Task 2.3: Utility Hooks
-- [ ] Test use-departments.ts (fetch, tree structure)
+- [x] Test use-departments.ts (fetch, tree structure)
 - [ ] Test use-task-categories.ts (CRUD operations)
 - [ ] Test use-sidebar-collapse.ts (state persistence)
 - [ ] Test use-toast.ts (show/hide, variants)
