@@ -69,7 +69,7 @@ Goal: Branches 54% → 62%, Functions 54% → 62%
 - [x] Test use-task-categories.ts (CRUD operations)
 - [x] Test use-sidebar-collapse.ts (state persistence)
 - [x] Test use-toast.ts (show/hide, variants)
-- [ ] Test use-debounced-value.ts (debounce behavior)
+- [x] Test use-debounced-value.ts (debounce behavior)
 - **Expected impact**: +6 functions, +10 branches
 
 ### Phase 3: Page Component Testing

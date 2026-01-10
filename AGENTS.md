@@ -103,3 +103,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For CRUD hook suites, cover create/update/delete success flows plus at least one failure toast path to keep user feedback verified.
 - For localStorage-backed hooks, use a storage polyfill in tests when needed and assert persistence plus keyboard shortcuts without relying on initial synchronous state.
 - For useToast tests, prefer direct state assertions after `act()` and timer flushing instead of `waitFor` when using fake timers.
+- For debounced hooks, use fake timers to assert initial value, delayed update, and cancellation on rapid changes.
