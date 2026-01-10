@@ -101,3 +101,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For mutation hooks (useMutation), assert both success data wiring and onError toast behavior to cover user-facing feedback paths.
 - For query hooks with optional enable flags, include a disabled-state test to ensure no API calls and avoid accidental background fetches.
 - For CRUD hook suites, cover create/update/delete success flows plus at least one failure toast path to keep user feedback verified.
+- For localStorage-backed hooks, use a storage polyfill in tests when needed and assert persistence plus keyboard shortcuts without relying on initial synchronous state.
