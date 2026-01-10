@@ -66,7 +66,7 @@ Goal: Branches 54% → 62%, Functions 54% → 62%
 
 #### Task 2.3: Utility Hooks
 - [x] Test use-departments.ts (fetch, tree structure)
-- [ ] Test use-task-categories.ts (CRUD operations)
+- [x] Test use-task-categories.ts (CRUD operations)
 - [ ] Test use-sidebar-collapse.ts (state persistence)
 - [ ] Test use-toast.ts (show/hide, variants)
 - [ ] Test use-debounced-value.ts (debounce behavior)
