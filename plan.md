@@ -109,7 +109,7 @@ Goal: Branches 68% → 70%, Functions 68% → 70%
 - [x] Test api.ts (all endpoint functions, error handling)
 - [x] Test date-utils.ts (formatting, parsing, edge cases)
 - [x] Test utils.ts (cn utility, object merging)
-- [ ] Test mappers/department.ts (data transformation)
+- [x] Test mappers/department.ts (data transformation)
 - **Note**: Some tests already exist - extend coverage
 - **Expected impact**: +4 functions, +8 branches
 
