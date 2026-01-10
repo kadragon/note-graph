@@ -104,3 +104,5 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For localStorage-backed hooks, use a storage polyfill in tests when needed and assert persistence plus keyboard shortcuts without relying on initial synchronous state.
 - For useToast tests, prefer direct state assertions after `act()` and timer flushing instead of `waitFor` when using fake timers.
 - For debounced hooks, use fake timers to assert initial value, delayed update, and cancellation on rapid changes.
+- For page tests using Radix Dialog/AlertDialog/Select, mock UI components to simple DOM elements and assert open state via data attributes to avoid portal complexity.
+- For table rows with icon-only actions, scope to the row and select buttons by order to drive edit/delete flows deterministically.

@@ -76,23 +76,23 @@ Goal: Branches 54% → 62%, Functions 54% → 62%
 Goal: Branches 62% → 68%, Functions 62% → 68%
 
 #### Task 3.1: Core Pages
-- [ ] Test work-notes.tsx (list display, filtering, CRUD actions)
-- [ ] Test dashboard.tsx (rendering, data fetching, layout)
-- [ ] Test projects.tsx (project management, participants)
-- [ ] Test persons.tsx (CRUD operations, search, department filter)
+- [x] Test work-notes.tsx (list display, filtering, CRUD actions)
+- [x] Test dashboard.tsx (rendering, data fetching, layout)
+- [x] Test projects.tsx (project management, participants)
+- [x] Test persons.tsx (CRUD operations, search, department filter)
 - **Files to create**: apps/web/src/pages/__tests__/*.test.tsx
 - **Expected impact**: +10 functions, +25 branches
 
 #### Task 3.2: Feature Pages
-- [ ] Test pdf-upload.tsx (file selection, upload progress, success/error)
-- [ ] Test search.tsx (search query, results display, pagination)
-- [ ] Test rag.tsx (chat interface, message display, streaming)
-- [ ] Test statistics.tsx (chart rendering, date filtering)
+- [x] Test pdf-upload.tsx (file selection, upload progress, success/error)
+- [x] Test search.tsx (search query, results display, pagination)
+- [x] Test rag.tsx (chat interface, message display, streaming)
+- [x] Test statistics.tsx (chart rendering, date filtering)
 - **Expected impact**: +8 functions, +20 branches
 
 #### Task 3.3: Management Pages
-- [ ] Test task-categories.tsx (CRUD operations)
-- [ ] Test departments.tsx (tree view, CRUD)
+- [x] Test task-categories.tsx (CRUD operations)
+- [x] Test departments.tsx (tree view, CRUD)
 - **Expected impact**: +4 functions, +10 branches
 
 ### Phase 4: Layout & Utility Testing
