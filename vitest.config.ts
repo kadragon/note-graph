@@ -11,7 +11,7 @@ export default defineWorkersConfig({
     },
   },
   test: {
-    exclude: ["**/node_modules/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", "apps/web/**"],
     poolOptions: {
       workers: {
         singleWorker: true,
