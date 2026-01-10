@@ -122,7 +122,12 @@ Goal: Branches 68% → 70%, Functions 68% → 70%
   - Branches: 54 (increase from 53, matching actual 54.22%)
   - Functions: 54 (increase from 53, matching actual 54.22%)
   - Lines: 70 (maintain)
-- [ ] Document coverage exclusions (CSS-only, type exports)
+- [x] Document coverage exclusions in vitest.config.ts:
+  - packages/shared/types/** (type-only definitions, no runtime code)
+  - apps/web/src/components/ui/** (third-party shadcn/ui components)
+  - apps/web/src/styles/** (CSS-only files)
+  - tests/ and apps/web/src/test/** (test utilities and setup)
+  - Final coverage with exclusions: 71.41% stmts, 58.18% branches/functions
 
 ## Success Criteria
 - Final coverage: 70+ statements, 65+ branches, 65+ functions, 70+ lines
