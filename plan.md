@@ -61,7 +61,7 @@ Goal: Branches 54% → 62%, Functions 54% → 62%
 - [x] Test use-pdf.ts (upload, progress tracking, error handling)
 - [x] Test use-search.ts (query, results, pagination)
 - [x] Test use-rag.ts (chat interactions, streaming, error handling)
-- [ ] Test use-ai-draft.ts (draft generation, form integration)
+- [x] Test use-ai-draft.ts (draft generation, form integration)
 - **Expected impact**: +6 functions, +15 branches
 
 #### Task 2.3: Utility Hooks
