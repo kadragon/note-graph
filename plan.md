@@ -50,17 +50,17 @@ Goal: Enable React component testing
 Goal: Branches 54% → 62%, Functions 54% → 62%
 
 #### Task 2.1: Core Data Hooks
-- [ ] Test use-todos.ts (fetch, create, update, delete, toggle)
-- [ ] Test use-work-notes.ts (CRUD, filtering, sorting, stats)
-- [ ] Test use-projects.ts (CRUD, participants, work note association)
-- [ ] Test use-persons.ts (fetch, search, filtering)
+- [x] Test use-todos.ts (fetch, create, update, delete, toggle)
+- [x] Test use-work-notes.ts (CRUD, filtering, sorting, stats)
+- [x] Test use-projects.ts (CRUD, participants, work note association)
+- [x] Test use-persons.ts (fetch, search, filtering)
 - **Files to create**: apps/web/src/hooks/__tests__/*.test.ts
 - **Expected impact**: +8 functions, +20 branches
 
 #### Task 2.2: Feature Hooks
-- [ ] Test use-pdf.ts (upload, progress tracking, error handling)
-- [ ] Test use-search.ts (query, results, pagination)
-- [ ] Test use-rag.ts (chat interactions, streaming, error handling)
+- [x] Test use-pdf.ts (upload, progress tracking, error handling)
+- [x] Test use-search.ts (query, results, pagination)
+- [x] Test use-rag.ts (chat interactions, streaming, error handling)
 - [ ] Test use-ai-draft.ts (draft generation, form integration)
 - **Expected impact**: +6 functions, +15 branches
 
