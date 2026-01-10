@@ -11,7 +11,7 @@ export default defineWorkersConfig({
     },
   },
   test: {
-    exclude: ["**/node_modules/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", "apps/web/**"],
     poolOptions: {
       workers: {
         singleWorker: true,
@@ -39,17 +39,27 @@ export default defineWorkersConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
       exclude: [
+        // Standard exclusions
         "node_modules/",
         "dist/",
         "**/*.test.ts",
         "**/*.spec.ts",
         "**/*.config.ts",
+        // Type-only definitions (no runtime code to test)
+        "packages/shared/types/**",
+        // Third-party UI components (shadcn/ui)
+        "apps/web/src/components/ui/**",
+        // CSS-only files
+        "apps/web/src/styles/**",
+        // Test utilities and setup files
+        "tests/",
+        "apps/web/src/test/**",
       ],
       thresholds: {
-        statements: 70,
-        branches: 53,
-        functions: 53,
-        lines: 70,
+        statements: 71,
+        branches: 58,
+        functions: 58,
+        lines: 71,
       },
     },
     globals: true,

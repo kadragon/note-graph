@@ -97,3 +97,13 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Centralize integration test helpers (authFetch, MockR2, setTestR2Bucket) to keep R2 bindings consistent and avoid duplicated setup; avoid forcing Content-Type for FormData.
 - When Workers coverage cannot run due to node:inspector limitations, align Vitest global thresholds with the latest reliable baseline.
 - For work note due-date sorting, treat missing dates as always last regardless of sort direction to match user expectations.
+- For React Query hook tests, use `apps/web/src/test/setup.tsx` helpers (e.g., `createTestQueryClient`, `renderHookWithClient`) to avoid retries/cache side effects and duplicate provider wiring.
+- For mutation hooks (useMutation), assert both success data wiring and onError toast behavior to cover user-facing feedback paths.
+- For query hooks with optional enable flags, include a disabled-state test to ensure no API calls and avoid accidental background fetches.
+- For CRUD hook suites, cover create/update/delete success flows plus at least one failure toast path to keep user feedback verified.
+- For localStorage-backed hooks, use a storage polyfill in tests when needed and assert persistence plus keyboard shortcuts without relying on initial synchronous state.
+- For useToast tests, prefer direct state assertions after `act()` and timer flushing instead of `waitFor` when using fake timers.
+- For debounced hooks, use fake timers to assert initial value, delayed update, and cancellation on rapid changes.
+- For page tests using Radix Dialog/AlertDialog/Select, mock UI components to simple DOM elements and assert open state via data attributes to avoid portal complexity.
+- For table rows with icon-only actions, scope to the row and select buttons by order to drive edit/delete flows deterministically.
+- For mocked React Query hooks, cast stubbed return values via `as unknown as ReturnType<typeof useQuery>` (or mutation hooks) to satisfy strict observer typings.

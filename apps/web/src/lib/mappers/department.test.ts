@@ -21,4 +21,12 @@ describe('toCreateDepartmentRequest', () => {
       deptName: '행정지원실',
     });
   });
+
+  it('trims name and ignores whitespace-only description', () => {
+    const payload = toCreateDepartmentRequest('  연구개발부  ', '   ');
+
+    expect(payload).toEqual({
+      deptName: '연구개발부',
+    });
+  });
 });
