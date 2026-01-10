@@ -8,12 +8,14 @@ import type {
   Person,
   Project,
   ProjectDetail,
+  ProjectFile,
   ProjectParticipant,
   ProjectStats,
   SearchResult,
   TaskCategory,
   Todo,
   WorkNote,
+  WorkNoteFile,
   WorkNoteWithStats,
 } from '@web/types/api';
 
@@ -208,6 +210,47 @@ export function createSearchResult(overrides: Partial<SearchResult> = {}): Searc
     score: 0.95,
     source: 'hybrid',
     createdAt: generateTimestamp(),
+    ...overrides,
+  };
+}
+
+/**
+ * Create a mock WorkNoteFile
+ */
+export function createWorkNoteFile(overrides: Partial<WorkNoteFile> = {}): WorkNoteFile {
+  const fileId = generateId('FILE');
+  const workId = overrides.workId ?? 'work-1';
+  return {
+    fileId,
+    workId,
+    r2Key: `work-notes/${workId}/files/${fileId}`,
+    originalName: 'test-file.pdf',
+    fileType: 'application/pdf',
+    fileSize: 1024,
+    uploadedBy: 'test@example.com',
+    uploadedAt: generateTimestamp(),
+    deletedAt: null,
+    ...overrides,
+  };
+}
+
+/**
+ * Create a mock ProjectFile
+ */
+export function createProjectFile(overrides: Partial<ProjectFile> = {}): ProjectFile {
+  const fileId = generateId('FILE');
+  const projectId = overrides.projectId ?? 'PROJECT-1';
+  return {
+    fileId,
+    projectId,
+    r2Key: `projects/${projectId}/files/${fileId}`,
+    originalName: 'test-file.pdf',
+    fileType: 'application/pdf',
+    fileSize: 1024,
+    uploadedBy: 'test@example.com',
+    uploadedAt: generateTimestamp(),
+    embeddedAt: null,
+    deletedAt: null,
     ...overrides,
   };
 }

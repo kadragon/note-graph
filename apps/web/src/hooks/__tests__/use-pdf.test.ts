@@ -1,8 +1,7 @@
 import { act, waitFor } from '@testing-library/react';
 import { API } from '@web/lib/api';
-import { createWorkNote, resetFactoryCounter } from '@web/test/factories';
+import { createWorkNote, createWorkNoteFile, resetFactoryCounter } from '@web/test/factories';
 import { createTestQueryClient, renderHookWithClient } from '@web/test/setup';
-import type { WorkNoteFile } from '@web/types/api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { usePDFJob, useSavePDFDraft, useUploadPDF } from '../use-pdf';
@@ -32,21 +31,6 @@ function getRefetchInterval(query: unknown): RefetchIntervalOption | undefined {
   return typeof options.refetchInterval === 'function'
     ? options.refetchInterval(query)
     : options.refetchInterval;
-}
-
-function createWorkNoteFile(overrides: Partial<WorkNoteFile> = {}): WorkNoteFile {
-  return {
-    fileId: `file-${Math.random().toString(36).substring(7)}`,
-    workId: 'work-1',
-    r2Key: 'work-notes/work-1/files/file-1',
-    originalName: 'draft.pdf',
-    fileType: 'application/pdf',
-    fileSize: 1024,
-    uploadedBy: 'test@example.com',
-    uploadedAt: new Date().toISOString(),
-    deletedAt: null,
-    ...overrides,
-  };
 }
 
 describe('useUploadPDF', () => {

@@ -3,6 +3,7 @@ import { API } from '@web/lib/api';
 import {
   createProject,
   createProjectDetail,
+  createProjectFile,
   createProjectStats,
   createTodo,
   createWorkNote,
@@ -51,26 +52,6 @@ const mockToast = vi.fn();
 vi.mock('../use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
-
-/**
- * Factory for creating ProjectFile mock data
- */
-function createProjectFile(overrides: Partial<ProjectFile> = {}): ProjectFile {
-  const now = new Date().toISOString();
-  return {
-    fileId: `FILE-${Math.random().toString(36).substring(7)}`,
-    projectId: 'PROJECT-1',
-    r2Key: 'projects/PROJECT-1/files/test-file.pdf',
-    originalName: 'test-file.pdf',
-    fileType: 'application/pdf',
-    fileSize: 1024,
-    uploadedBy: 'test@example.com',
-    uploadedAt: now,
-    embeddedAt: null,
-    deletedAt: null,
-    ...overrides,
-  };
-}
 
 describe('useProjects', () => {
   beforeEach(() => {

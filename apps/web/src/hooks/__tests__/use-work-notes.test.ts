@@ -1,9 +1,13 @@
 import { act, waitFor } from '@testing-library/react';
 import { TODO_STATUS } from '@web/constants/todo-status';
 import { API } from '@web/lib/api';
-import { createTodo, createWorkNote, resetFactoryCounter } from '@web/test/factories';
+import {
+  createTodo,
+  createWorkNote,
+  createWorkNoteFile,
+  resetFactoryCounter,
+} from '@web/test/factories';
 import { createTestQueryClient, renderHookWithClient } from '@web/test/setup';
-import type { WorkNoteFile } from '@web/types/api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -34,22 +38,6 @@ const mockToast = vi.fn();
 vi.mock('../use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
-
-// Factory for WorkNoteFile
-function createWorkNoteFile(overrides: Partial<WorkNoteFile> = {}): WorkNoteFile {
-  return {
-    fileId: `file-${Math.random().toString(36).substring(7)}`,
-    workId: 'work-1',
-    r2Key: 'work-notes/work-1/files/file-1',
-    originalName: 'test-file.pdf',
-    fileType: 'application/pdf',
-    fileSize: 1024,
-    uploadedBy: 'test@example.com',
-    uploadedAt: new Date().toISOString(),
-    deletedAt: null,
-    ...overrides,
-  };
-}
 
 describe('useWorkNotes', () => {
   beforeEach(() => {
