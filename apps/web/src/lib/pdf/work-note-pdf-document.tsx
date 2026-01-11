@@ -1,5 +1,17 @@
 import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import type { Todo, WorkNoteWithStats } from '@web/types/api';
+import { format, parseISO } from 'date-fns';
+
+/**
+ * Format a date string to a human-readable format
+ */
+function formatDate(dateString: string): string {
+  try {
+    return format(parseISO(dateString), 'yyyy-MM-dd HH:mm');
+  } catch {
+    return dateString;
+  }
+}
 
 // Register Korean font
 Font.register({
@@ -141,11 +153,11 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
         <View style={styles.section}>
           <View style={styles.row}>
             <Text style={styles.label}>생성일:</Text>
-            <Text style={styles.dateText}>{workNote.createdAt}</Text>
+            <Text style={styles.dateText}>{formatDate(workNote.createdAt)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>수정일:</Text>
-            <Text style={styles.dateText}>{workNote.updatedAt}</Text>
+            <Text style={styles.dateText}>{formatDate(workNote.updatedAt)}</Text>
           </View>
         </View>
 
@@ -179,7 +191,7 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
                   >
                     {todo.title}
                   </Text>
-                  {todo.dueDate && <Text style={styles.dateText}>{todo.dueDate}</Text>}
+                  {todo.dueDate && <Text style={styles.dateText}>{formatDate(todo.dueDate)}</Text>}
                 </View>
               );
             })}
