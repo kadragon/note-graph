@@ -117,9 +117,6 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
   const categorySectionRef = useRef<HTMLDivElement | null>(null);
   const assigneeSectionRef = useRef<HTMLDivElement | null>(null);
 
-  // Detect system theme preference
-  const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
-
   // Edit todo dialog state
   const [editTodo, setEditTodo] = useState<Todo | null>(null);
   const [editTodoDialogOpen, setEditTodoDialogOpen] = useState(false);
@@ -204,24 +201,6 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
     },
     [toast]
   );
-
-  // Detect and sync with system theme preference
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const updateColorMode = (e: MediaQueryListEvent | MediaQueryList) => {
-      setColorMode(e.matches ? 'dark' : 'light');
-    };
-
-    // Set initial value
-    updateColorMode(mediaQuery);
-
-    // Listen for changes
-    mediaQuery.addEventListener('change', updateColorMode);
-
-    return () => {
-      mediaQuery.removeEventListener('change', updateColorMode);
-    };
-  }, []);
 
   // Create todo mutation
   const createTodoMutation = useMutation({
@@ -575,10 +554,7 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
                   </p>
                 </div>
               ) : (
-                <div
-                  className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800"
-                  data-color-mode={colorMode}
-                >
+                <div className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50">
                   <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
                     {currentWorkNote.content}
                   </ReactMarkdown>
