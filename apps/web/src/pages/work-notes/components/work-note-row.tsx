@@ -1,10 +1,11 @@
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { TableCell, TableRow } from '@web/components/ui/table';
+import { useDownloadWorkNote } from '@web/hooks/use-download-work-note';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Trash2 } from 'lucide-react';
+import { Download, Loader2, Trash2 } from 'lucide-react';
 
 interface WorkNoteRowProps {
   workNote: WorkNoteWithStats;
@@ -67,6 +68,7 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
   const { total, completed } = workNote.todoStats;
   const ddayInfo = getDdayInfo(workNote.latestTodoDate);
   const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const { downloadWorkNote, isDownloading } = useDownloadWorkNote();
 
   return (
     <TableRow>
@@ -158,6 +160,20 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
         {format(parseISO(workNote.createdAt), 'yyyy-MM-dd HH:mm', { locale: ko })}
       </TableCell>
       <TableCell className="text-right">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => downloadWorkNote(workNote)}
+          disabled={isDownloading}
+          className="h-8 w-8 p-0"
+        >
+          {isDownloading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          <span className="sr-only">다운로드</span>
+        </Button>
         <Button
           variant="ghost"
           size="sm"
