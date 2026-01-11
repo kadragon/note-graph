@@ -6,7 +6,7 @@ import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
 import type { AIDraftPayload, AIDraftReference, AIDraftTodo, Person } from '@web/types/api';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 // Extended todo type with stable UI identifier
 export interface SuggestedTodo extends AIDraftTodo {
@@ -64,9 +64,14 @@ export function useAIDraftForm(options: UseAIDraftFormOptions = {}) {
   const [draftCategoryName, setDraftCategoryName] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
-  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
+  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
   const { toast } = useToast();
+
+  const activeTaskCategories = useMemo(
+    () => taskCategories.filter((category) => category.isActive),
+    [taskCategories]
+  );
 
   // Sync category ID when categories load or draft category name changes
   useEffect(() => {
@@ -271,7 +276,7 @@ export function useAIDraftForm(options: UseAIDraftFormOptions = {}) {
   };
 
   const data: AIDraftFormData = {
-    taskCategories,
+    taskCategories: activeTaskCategories,
     persons,
     categoriesLoading,
     personsLoading,

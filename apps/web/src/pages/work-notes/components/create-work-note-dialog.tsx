@@ -31,7 +31,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
   const [content, setContent] = useState('');
 
   const createMutation = useCreateWorkNote();
-  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
+  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
   const handleCategoryToggle = (categoryId: string) => {

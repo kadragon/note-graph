@@ -47,7 +47,7 @@ import type {
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Copy, Edit2, Save, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize from 'rehype-sanitize';
@@ -129,7 +129,7 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
   const updateMutation = useUpdateWorkNote();
   const toggleTodoMutation = useToggleTodo(workNote?.id);
   const deleteTodoMutation = useDeleteTodo(workNote?.id);
-  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
+  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
   // Fetch todos for this work note
@@ -148,6 +148,27 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
   });
 
   const currentWorkNote = detailedWorkNote || workNote;
+
+  // For editing: show active categories + already selected inactive categories
+  const editableCategories = useMemo(() => {
+    if (!currentWorkNote) {
+      return taskCategories;
+    }
+
+    const activeCategoryIds = new Set(taskCategories.map((category) => category.categoryId));
+    const inactiveSelectedCategories = (currentWorkNote.categories || [])
+      .filter(
+        (category) =>
+          editCategoryIds.includes(category.categoryId) &&
+          !activeCategoryIds.has(category.categoryId)
+      )
+      .map((category) => ({
+        ...category,
+        isActive: false,
+      }));
+
+    return [...taskCategories, ...inactiveSelectedCategories];
+  }, [currentWorkNote, editCategoryIds, taskCategories]);
 
   // Reset form with current work note data
   const resetForm = useCallback(() => {
@@ -418,28 +439,41 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
               {isEditing ? (
                 categoriesLoading ? (
                   <p className="text-sm text-muted-foreground">로딩 중...</p>
-                ) : taskCategories.length === 0 ? (
+                ) : editableCategories.length === 0 ? (
                   <p className="text-sm text-muted-foreground">등록된 업무 구분이 없습니다.</p>
                 ) : (
                   <div
                     ref={categorySectionRef}
                     className="grid grid-cols-2 gap-3 max-h-[150px] overflow-y-auto border rounded-md p-3"
                   >
-                    {taskCategories.map((category) => (
-                      <div key={category.categoryId} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`edit-category-${category.categoryId}`}
-                          checked={editCategoryIds.includes(category.categoryId)}
-                          onCheckedChange={() => handleCategoryToggle(category.categoryId)}
-                        />
-                        <label
-                          htmlFor={`edit-category-${category.categoryId}`}
-                          className="text-sm font-medium leading-none cursor-pointer"
+                    {editableCategories.map((category) => {
+                      const isInactive = !category.isActive;
+                      const isSelected = editCategoryIds.includes(category.categoryId);
+                      return (
+                        <div
+                          key={category.categoryId}
+                          className={`flex items-center space-x-2 ${isInactive ? 'opacity-60' : ''}`}
                         >
-                          {category.name}
-                        </label>
-                      </div>
-                    ))}
+                          <Checkbox
+                            id={`edit-category-${category.categoryId}`}
+                            checked={isSelected}
+                            onCheckedChange={() => handleCategoryToggle(category.categoryId)}
+                            disabled={isInactive && !isSelected}
+                          />
+                          <label
+                            htmlFor={`edit-category-${category.categoryId}`}
+                            className={`text-sm font-medium leading-none ${
+                              isInactive && !isSelected ? 'cursor-not-allowed' : 'cursor-pointer'
+                            }`}
+                          >
+                            {category.name}
+                            {isInactive && (
+                              <span className="ml-1 text-xs text-muted-foreground">(비활성)</span>
+                            )}
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
                 )
               ) : (

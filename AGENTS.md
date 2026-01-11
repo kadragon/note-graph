@@ -107,3 +107,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For page tests using Radix Dialog/AlertDialog/Select, mock UI components to simple DOM elements and assert open state via data attributes to avoid portal complexity.
 - For table rows with icon-only actions, scope to the row and select buttons by order to drive edit/delete flows deterministically.
 - For mocked React Query hooks, cast stubbed return values via `as unknown as ReturnType<typeof useQuery>` (or mutation hooks) to satisfy strict observer typings.
+- When limiting task categories to active-only in UI, preserve already-selected inactive categories in edit flows and filter AI draft forms to active categories only.
