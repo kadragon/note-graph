@@ -1,5 +1,9 @@
 import userEvent from '@testing-library/user-event';
-import { useDeleteTaskCategory, useTaskCategories } from '@web/hooks/use-task-categories';
+import {
+  useDeleteTaskCategory,
+  useTaskCategories,
+  useToggleTaskCategoryActive,
+} from '@web/hooks/use-task-categories';
 import { render, screen } from '@web/test/setup';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +13,7 @@ import TaskCategories from '../task-categories/task-categories';
 vi.mock('@web/hooks/use-task-categories', () => ({
   useTaskCategories: vi.fn(),
   useDeleteTaskCategory: vi.fn(),
+  useToggleTaskCategoryActive: vi.fn(),
 }));
 
 vi.mock('@web/components/ui/alert-dialog', () => ({
@@ -51,6 +56,10 @@ vi.mock('../task-categories/components/edit-task-category-dialog', () => ({
 describe('task-categories page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    vi.mocked(useToggleTaskCategoryActive).mockReturnValue({
+      mutate: vi.fn(),
+    } as unknown as ReturnType<typeof useToggleTaskCategoryActive>);
   });
 
   it('shows empty state when there are no categories', () => {

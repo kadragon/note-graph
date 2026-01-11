@@ -64,7 +64,7 @@ export function useAIDraftForm(options: UseAIDraftFormOptions = {}) {
   const [draftCategoryName, setDraftCategoryName] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
-  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories();
+  const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
   const { toast } = useToast();
 

@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@web/components/ui/alert-dialog';
+import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import {
@@ -18,7 +19,11 @@ import {
   TableHeader,
   TableRow,
 } from '@web/components/ui/table';
-import { useDeleteTaskCategory, useTaskCategories } from '@web/hooks/use-task-categories';
+import {
+  useDeleteTaskCategory,
+  useTaskCategories,
+  useToggleTaskCategoryActive,
+} from '@web/hooks/use-task-categories';
 import type { TaskCategory } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -35,6 +40,14 @@ export default function TaskCategories() {
 
   const { data: categories = [], isLoading } = useTaskCategories();
   const deleteMutation = useDeleteTaskCategory();
+  const toggleActiveMutation = useToggleTaskCategoryActive();
+
+  const handleToggleActive = (category: TaskCategory) => {
+    toggleActiveMutation.mutate({
+      categoryId: category.categoryId,
+      isActive: !category.isActive,
+    });
+  };
 
   const handleEdit = (category: TaskCategory) => {
     setSelectedCategory(category);
@@ -87,14 +100,27 @@ export default function TaskCategories() {
               <TableHeader>
                 <TableRow>
                   <TableHead>업무 구분</TableHead>
+                  <TableHead>상태</TableHead>
                   <TableHead>생성일</TableHead>
                   <TableHead className="text-right">작업</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {categories.map((category) => (
-                  <TableRow key={category.categoryId}>
+                  <TableRow
+                    key={category.categoryId}
+                    className={!category.isActive ? 'opacity-60' : ''}
+                  >
                     <TableCell className="font-medium">{category.name}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={category.isActive ? 'default' : 'secondary'}
+                        className="cursor-pointer"
+                        onClick={() => handleToggleActive(category)}
+                      >
+                        {category.isActive ? '활성' : '비활성'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {format(parseISO(category.createdAt), 'yyyy-MM-dd HH:mm', {
                         locale: ko,

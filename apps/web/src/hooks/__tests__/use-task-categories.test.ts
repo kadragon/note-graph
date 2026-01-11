@@ -41,7 +41,7 @@ describe('useTaskCategories', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(API.getTaskCategories).toHaveBeenCalledWith();
+    expect(API.getTaskCategories).toHaveBeenCalledWith(false);
     expect(result.current.data).toEqual(categories);
   });
 
