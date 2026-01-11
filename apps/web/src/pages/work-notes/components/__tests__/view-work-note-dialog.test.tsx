@@ -116,6 +116,15 @@ vi.mock('@web/lib/api', () => ({
 describe('ViewWorkNoteDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
 
     vi.mocked(useUpdateWorkNote).mockReturnValue({
       mutateAsync: vi.fn(),
@@ -170,5 +179,56 @@ describe('ViewWorkNoteDialog', () => {
     expect(screen.getByRole('checkbox', { name: /기본/ })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /레거시/ })).toBeInTheDocument();
     expect(screen.getByText('(비활성)')).toBeInTheDocument();
+  });
+
+  it('keeps inactive categories visible after unchecking', async () => {
+    const activeCategory = createTaskCategory({
+      categoryId: 'cat-active',
+      name: '기본',
+      isActive: true,
+    });
+    const inactiveCategory = createTaskCategory({
+      categoryId: 'cat-inactive',
+      name: '레거시',
+      isActive: false,
+    });
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [activeCategory],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    const workNote = createWorkNote({
+      title: '업무노트',
+      content: '내용',
+      categories: [inactiveCategory],
+    });
+
+    const user = userEvent.setup();
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: '수정' }));
+
+    const inactiveCheckbox = screen.getByRole('checkbox', { name: /레거시/ });
+
+    await user.click(inactiveCheckbox);
+
+    expect(screen.getByRole('checkbox', { name: /레거시/ })).toBeDisabled();
+    expect(screen.getByText('(비활성)')).toBeInTheDocument();
+  });
+
+  it('sets markdown color mode from system preference', () => {
+    const workNote = createWorkNote({
+      title: '업무노트',
+      content: '마크다운 내용',
+    });
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    const markdownText = screen.getByText('마크다운 내용');
+    const markdownContainer = markdownText.closest('div');
+
+    expect(markdownContainer).toHaveAttribute('data-color-mode', 'light');
   });
 });

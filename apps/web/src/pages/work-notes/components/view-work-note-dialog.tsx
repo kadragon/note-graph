@@ -100,6 +100,7 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
   const [editContent, setEditContent] = useState('');
   const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
   const [editPersonIds, setEditPersonIds] = useState<string[]>([]);
+  const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
 
   const [showAddTodo, setShowAddTodo] = useState(false);
   const [todoTitle, setTodoTitle] = useState('');
@@ -157,18 +158,14 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
 
     const activeCategoryIds = new Set(taskCategories.map((category) => category.categoryId));
     const inactiveSelectedCategories = (currentWorkNote.categories || [])
-      .filter(
-        (category) =>
-          editCategoryIds.includes(category.categoryId) &&
-          !activeCategoryIds.has(category.categoryId)
-      )
+      .filter((category) => !activeCategoryIds.has(category.categoryId))
       .map((category) => ({
         ...category,
         isActive: false,
       }));
 
     return [...taskCategories, ...inactiveSelectedCategories];
-  }, [currentWorkNote, editCategoryIds, taskCategories]);
+  }, [currentWorkNote, taskCategories]);
 
   // Reset form with current work note data
   const resetForm = useCallback(() => {
@@ -222,6 +219,24 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
     },
     [toast]
   );
+
+  // Detect and sync with system theme preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateColorMode = (e: MediaQueryListEvent | MediaQueryList) => {
+      setColorMode(e.matches ? 'dark' : 'light');
+    };
+
+    // Set initial value
+    updateColorMode(mediaQuery);
+
+    // Listen for changes
+    mediaQuery.addEventListener('change', updateColorMode);
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateColorMode);
+    };
+  }, []);
 
   // Create todo mutation
   const createTodoMutation = useMutation({
@@ -588,7 +603,10 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
                   </p>
                 </div>
               ) : (
-                <div className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50">
+                <div
+                  className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800"
+                  data-color-mode={colorMode}
+                >
                   <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
                     {currentWorkNote.content}
                   </ReactMarkdown>

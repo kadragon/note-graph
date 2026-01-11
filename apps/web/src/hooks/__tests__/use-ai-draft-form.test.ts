@@ -46,20 +46,15 @@ describe('useAIDraftForm', () => {
     expect(useTaskCategories).toHaveBeenCalledWith(true);
   });
 
-  it('filters inactive categories from the draft form data', () => {
+  it('exposes categories returned by the active-only query', () => {
     const activeCategory = createTaskCategory({
       categoryId: 'cat-active',
       name: '활성',
       isActive: true,
     });
-    const inactiveCategory = createTaskCategory({
-      categoryId: 'cat-inactive',
-      name: '비활성',
-      isActive: false,
-    });
 
     vi.mocked(useTaskCategories).mockReturnValue({
-      data: [activeCategory, inactiveCategory],
+      data: [activeCategory],
       isLoading: false,
     } as unknown as ReturnType<typeof useTaskCategories>);
 
