@@ -62,6 +62,8 @@ class CFAccessTokenRefresher {
   private refreshPromise: Promise<void> | null = null;
   private lastRefreshTime = 0;
   private static readonly REFRESH_COOLDOWN_MS = 5000; // 5 seconds cooldown
+  private static readonly COOKIE_SET_DELAY_MS = 1000; // Time for CF Access to set cookie
+  private static readonly REFRESH_TIMEOUT_MS = 5000; // Fallback timeout
 
   /**
    * Check if an error is likely a CF Access CORS error
@@ -104,7 +106,7 @@ class CFAccessTokenRefresher {
       iframe.style.display = 'none';
       iframe.src = window.location.origin + '/';
 
-      const cleanup = () => {
+      const finalCleanup = () => {
         if (iframe.parentNode) {
           iframe.parentNode.removeChild(iframe);
         }
@@ -113,15 +115,18 @@ class CFAccessTokenRefresher {
         resolve();
       };
 
+      const fallbackTimeoutId = setTimeout(finalCleanup, CFAccessTokenRefresher.REFRESH_TIMEOUT_MS);
+
       iframe.onload = () => {
+        clearTimeout(fallbackTimeoutId);
         // Give CF Access time to set the cookie
-        setTimeout(cleanup, 1000);
+        setTimeout(finalCleanup, CFAccessTokenRefresher.COOKIE_SET_DELAY_MS);
       };
 
-      iframe.onerror = cleanup;
-
-      // Timeout fallback
-      setTimeout(cleanup, 5000);
+      iframe.onerror = () => {
+        clearTimeout(fallbackTimeoutId);
+        finalCleanup();
+      };
 
       document.body.appendChild(iframe);
     });
@@ -284,6 +289,32 @@ export class APIClient {
     }
   }
 
+  private async _downloadFile(endpoint: string, isRetry = false): Promise<Blob> {
+    const headers: Record<string, string> = {};
+
+    // In development, use test auth header
+    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
+      headers['X-Test-User-Email'] = 'test@example.com';
+    }
+
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, { headers });
+
+      if (!response.ok) {
+        throw new Error(`파일 다운로드 실패: ${response.status}`);
+      }
+
+      return response.blob();
+    } catch (error) {
+      // Handle CF Access CORS errors by refreshing token and retrying once
+      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
+        await cfTokenRefresher.refreshToken();
+        return this._downloadFile(endpoint, true);
+      }
+      throw error;
+    }
+  }
+
   // Auth
   getMe() {
     return this.request<User>('/me');
@@ -353,33 +384,8 @@ export class APIClient {
     return this.uploadFile<WorkNoteFile>(`/work-notes/${workId}/files`, file);
   }
 
-  async downloadWorkNoteFile(workId: string, fileId: string, isRetry = false): Promise<Blob> {
-    const headers: Record<string, string> = {};
-
-    // In development, use test auth header
-    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
-      headers['X-Test-User-Email'] = 'test@example.com';
-    }
-
-    try {
-      const response = await fetch(
-        `${this.baseURL}/work-notes/${workId}/files/${fileId}/download`,
-        { headers }
-      );
-
-      if (!response.ok) {
-        throw new Error('파일 다운로드에 실패했습니다');
-      }
-
-      return response.blob();
-    } catch (error) {
-      // Handle CF Access CORS errors by refreshing token and retrying once
-      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
-        await cfTokenRefresher.refreshToken();
-        return this.downloadWorkNoteFile(workId, fileId, true);
-      }
-      throw error;
-    }
+  downloadWorkNoteFile(workId: string, fileId: string): Promise<Blob> {
+    return this._downloadFile(`/work-notes/${workId}/files/${fileId}/download`);
   }
 
   async deleteWorkNoteFile(workId: string, fileId: string) {
@@ -784,33 +790,8 @@ export class APIClient {
     return this.request<ProjectFile>(`/projects/${projectId}/files/${fileId}`);
   }
 
-  async downloadProjectFile(projectId: string, fileId: string, isRetry = false): Promise<Blob> {
-    const headers: Record<string, string> = {};
-
-    // In development, use test auth header
-    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
-      headers['X-Test-User-Email'] = 'test@example.com';
-    }
-
-    try {
-      const response = await fetch(
-        `${this.baseURL}/projects/${projectId}/files/${fileId}/download`,
-        { headers }
-      );
-
-      if (!response.ok) {
-        throw new Error(`파일 다운로드 실패: ${response.status}`);
-      }
-
-      return response.blob();
-    } catch (error) {
-      // Handle CF Access CORS errors by refreshing token and retrying once
-      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
-        await cfTokenRefresher.refreshToken();
-        return this.downloadProjectFile(projectId, fileId, true);
-      }
-      throw error;
-    }
+  downloadProjectFile(projectId: string, fileId: string): Promise<Blob> {
+    return this._downloadFile(`/projects/${projectId}/files/${fileId}/download`);
   }
 
   deleteProjectFile(projectId: string, fileId: string) {
