@@ -52,6 +52,87 @@ import type {
 // Trace: SPEC-worknote-attachments-1, TASK-066
 
 /**
+ * Cloudflare Access token refresh utility
+ * When CF Access token expires, API calls fail with CORS errors
+ * because CF returns a redirect without CORS headers.
+ * This utility refreshes the token via a hidden iframe.
+ */
+class CFAccessTokenRefresher {
+  private isRefreshing = false;
+  private refreshPromise: Promise<void> | null = null;
+  private lastRefreshTime = 0;
+  private static readonly REFRESH_COOLDOWN_MS = 5000; // 5 seconds cooldown
+
+  /**
+   * Check if an error is likely a CF Access CORS error
+   */
+  isCFAccessError(error: unknown): boolean {
+    if (error instanceof TypeError) {
+      // Network errors from CORS failures are TypeError
+      const message = error.message.toLowerCase();
+      return (
+        message.includes('failed to fetch') ||
+        message.includes('network') ||
+        message.includes('cors')
+      );
+    }
+    return false;
+  }
+
+  /**
+   * Refresh CF Access token using hidden iframe
+   * Returns a promise that resolves when refresh is complete
+   */
+  async refreshToken(): Promise<void> {
+    const now = Date.now();
+
+    // Prevent rapid refresh attempts
+    if (now - this.lastRefreshTime < CFAccessTokenRefresher.REFRESH_COOLDOWN_MS) {
+      return;
+    }
+
+    // If already refreshing, return the existing promise
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.isRefreshing = true;
+    this.lastRefreshTime = now;
+
+    this.refreshPromise = new Promise<void>((resolve) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = window.location.origin + '/';
+
+      const cleanup = () => {
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+        resolve();
+      };
+
+      iframe.onload = () => {
+        // Give CF Access time to set the cookie
+        setTimeout(cleanup, 1000);
+      };
+
+      iframe.onerror = cleanup;
+
+      // Timeout fallback
+      setTimeout(cleanup, 5000);
+
+      document.body.appendChild(iframe);
+    });
+
+    return this.refreshPromise;
+  }
+}
+
+export const cfTokenRefresher = new CFAccessTokenRefresher();
+
+/**
  * Backend work note response format
  * Maps to D1 database schema
  */
@@ -113,7 +194,11 @@ interface BackendTodo {
 export class APIClient {
   private baseURL = '/api';
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    isRetry = false
+  ): Promise<T> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -124,29 +209,39 @@ export class APIClient {
       (headers as Record<string, string>)['X-Test-User-Email'] = 'test@example.com';
     }
 
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        ...options,
+        headers,
+      });
 
-    if (!response.ok) {
-      const error = (await response.json().catch(() => ({
-        message: '알 수 없는 오류가 발생했습니다',
-      }))) as { message?: string };
-      throw new Error(error.message || `HTTP ${response.status}`);
+      if (!response.ok) {
+        const error = (await response.json().catch(() => ({
+          message: '알 수 없는 오류가 발생했습니다',
+        }))) as { message?: string };
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+
+      if (response.status === 204) {
+        return null as T;
+      }
+
+      return response.json() as Promise<T>;
+    } catch (error) {
+      // Handle CF Access CORS errors by refreshing token and retrying once
+      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
+        await cfTokenRefresher.refreshToken();
+        return this.request<T>(endpoint, options, true);
+      }
+      throw error;
     }
-
-    if (response.status === 204) {
-      return null as T;
-    }
-
-    return response.json() as Promise<T>;
   }
 
   async uploadFile<T>(
     endpoint: string,
     file: File,
-    metadata: Record<string, string | undefined> = {}
+    metadata: Record<string, string | undefined> = {},
+    isRetry = false
   ): Promise<T> {
     const formData = new FormData();
     formData.append('file', file);
@@ -164,20 +259,29 @@ export class APIClient {
       headers['X-Test-User-Email'] = 'test@example.com';
     }
 
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
 
-    if (!response.ok) {
-      const error = (await response.json().catch(() => ({
-        message: '업로드 실패',
-      }))) as { message?: string };
-      throw new Error(error.message || `HTTP ${response.status}`);
+      if (!response.ok) {
+        const error = (await response.json().catch(() => ({
+          message: '업로드 실패',
+        }))) as { message?: string };
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+
+      return response.json() as Promise<T>;
+    } catch (error) {
+      // Handle CF Access CORS errors by refreshing token and retrying once
+      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
+        await cfTokenRefresher.refreshToken();
+        return this.uploadFile<T>(endpoint, file, metadata, true);
+      }
+      throw error;
     }
-
-    return response.json() as Promise<T>;
   }
 
   // Auth
@@ -249,7 +353,7 @@ export class APIClient {
     return this.uploadFile<WorkNoteFile>(`/work-notes/${workId}/files`, file);
   }
 
-  async downloadWorkNoteFile(workId: string, fileId: string) {
+  async downloadWorkNoteFile(workId: string, fileId: string, isRetry = false): Promise<Blob> {
     const headers: Record<string, string> = {};
 
     // In development, use test auth header
@@ -257,15 +361,25 @@ export class APIClient {
       headers['X-Test-User-Email'] = 'test@example.com';
     }
 
-    const response = await fetch(`${this.baseURL}/work-notes/${workId}/files/${fileId}/download`, {
-      headers,
-    });
+    try {
+      const response = await fetch(
+        `${this.baseURL}/work-notes/${workId}/files/${fileId}/download`,
+        { headers }
+      );
 
-    if (!response.ok) {
-      throw new Error('파일 다운로드에 실패했습니다');
+      if (!response.ok) {
+        throw new Error('파일 다운로드에 실패했습니다');
+      }
+
+      return response.blob();
+    } catch (error) {
+      // Handle CF Access CORS errors by refreshing token and retrying once
+      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
+        await cfTokenRefresher.refreshToken();
+        return this.downloadWorkNoteFile(workId, fileId, true);
+      }
+      throw error;
     }
-
-    return response.blob();
   }
 
   async deleteWorkNoteFile(workId: string, fileId: string) {
@@ -670,7 +784,7 @@ export class APIClient {
     return this.request<ProjectFile>(`/projects/${projectId}/files/${fileId}`);
   }
 
-  async downloadProjectFile(projectId: string, fileId: string): Promise<Blob> {
+  async downloadProjectFile(projectId: string, fileId: string, isRetry = false): Promise<Blob> {
     const headers: Record<string, string> = {};
 
     // In development, use test auth header
@@ -678,15 +792,25 @@ export class APIClient {
       headers['X-Test-User-Email'] = 'test@example.com';
     }
 
-    const response = await fetch(`${this.baseURL}/projects/${projectId}/files/${fileId}/download`, {
-      headers,
-    });
+    try {
+      const response = await fetch(
+        `${this.baseURL}/projects/${projectId}/files/${fileId}/download`,
+        { headers }
+      );
 
-    if (!response.ok) {
-      throw new Error(`파일 다운로드 실패: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`파일 다운로드 실패: ${response.status}`);
+      }
+
+      return response.blob();
+    } catch (error) {
+      // Handle CF Access CORS errors by refreshing token and retrying once
+      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
+        await cfTokenRefresher.refreshToken();
+        return this.downloadProjectFile(projectId, fileId, true);
+      }
+      throw error;
     }
-
-    return response.blob();
   }
 
   deleteProjectFile(projectId: string, fileId: string) {
