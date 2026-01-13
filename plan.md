@@ -282,11 +282,11 @@ export interface WorkNoteFile {
 
 ## Phase 5: 프론트엔드 수정
 
-- [ ] `apps/web/src/pages/work-notes/components/work-note-file-list.tsx` 수정
+- [x] `apps/web/src/pages/work-notes/components/work-note-file-list.tsx` 수정
   - 파일 클릭 시 `gdriveWebViewLink`로 새 탭 열기
   - "Google Drive에서 열기" 버튼 추가
   - Drive 아이콘 표시
-- [ ] `apps/web/src/hooks/use-work-notes.ts` 수정
+- [x] `apps/web/src/hooks/use-work-notes.ts` 수정
   - `downloadWorkNoteFile` 수정: Drive 링크 반환
 
 ---

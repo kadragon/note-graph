@@ -21,7 +21,7 @@ import {
 } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
 import type { WorkNoteFile } from '@web/types/api';
-import { Download, Eye, FileIcon, Trash2, Upload } from 'lucide-react';
+import { Cloud, Download, ExternalLink, Eye, FileIcon, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
 
@@ -48,6 +48,11 @@ const PREVIEWABLE_TYPES = new Set([
  */
 function isPreviewable(fileType: string): boolean {
   return PREVIEWABLE_TYPES.has(fileType.toLowerCase());
+}
+
+function getDriveLink(file: WorkNoteFile): string | null {
+  if (file.storageType !== 'GDRIVE') return null;
+  return file.gdriveWebViewLink ?? null;
 }
 
 export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
@@ -89,7 +94,10 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
 
   const handleDownload = async (file: WorkNoteFile) => {
     try {
-      await downloadWorkNoteFile(workId, file.fileId, file.originalName);
+      const driveLink = await downloadWorkNoteFile(workId, file);
+      if (driveLink) {
+        window.open(driveLink, '_blank', 'noopener,noreferrer');
+      }
     } catch (error) {
       console.error('Download failed:', error);
       toast({
@@ -164,70 +172,98 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
         <p className="text-sm text-muted-foreground">첨부된 파일이 없습니다.</p>
       ) : (
         <div className="space-y-2">
-          {sortFilesByUploadedAtDesc(files).map((file) => (
-            <div
-              key={file.fileId}
-              className="flex items-center gap-2 rounded-md border border-border p-3 hover:bg-accent/50 transition-colors"
-            >
-              <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{file.originalName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(file.fileSize)} •{' '}
-                  {new Date(file.uploadedAt).toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {isUploadedToday(file.uploadedAt) && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                    오늘 업로드
-                  </span>
-                )}
-                <div className="flex items-center gap-1">
-                  {isPreviewable(file.fileType) && (
+          {sortFilesByUploadedAtDesc(files).map((file) => {
+            const driveLink = getDriveLink(file);
+            return (
+              <div
+                key={file.fileId}
+                className="flex items-center gap-2 rounded-md border border-border p-3 hover:bg-accent/50 transition-colors"
+              >
+                <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  {driveLink ? (
+                    <a
+                      href={driveLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium truncate hover:underline"
+                    >
+                      {file.originalName}
+                    </a>
+                  ) : (
+                    <p className="text-sm font-medium truncate">{file.originalName}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {formatFileSize(file.fileSize)} •{' '}
+                    {new Date(file.uploadedAt).toLocaleDateString('ko-KR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {driveLink && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                      <Cloud data-testid="drive-icon" className="h-3 w-3" />
+                      Google Drive
+                    </span>
+                  )}
+                  {isUploadedToday(file.uploadedAt) && (
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      오늘 업로드
+                    </span>
+                  )}
+                  {driveLink && (
+                    <Button asChild type="button" variant="outline" size="sm" className="h-8 px-2">
+                      <a href={driveLink} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-3 w-3" />
+                        Google Drive에서 열기
+                      </a>
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-1">
+                    {isPreviewable(file.fileType) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePreview(file)}
+                        className="h-8 w-8 p-0"
+                        title="바로보기"
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">바로보기</span>
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handlePreview(file)}
+                      onClick={() => handleDownload(file)}
                       className="h-8 w-8 p-0"
-                      title="바로보기"
+                      title="다운로드"
                     >
-                      <Eye className="h-4 w-4" />
-                      <span className="sr-only">바로보기</span>
+                      <Download className="h-4 w-4" />
+                      <span className="sr-only">다운로드</span>
                     </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownload(file)}
-                    className="h-8 w-8 p-0"
-                    title="다운로드"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span className="sr-only">다운로드</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setFileToDelete(file)}
-                    disabled={deleteMutation.isPending}
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                    title="삭제"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">삭제</span>
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFileToDelete(file)}
+                      disabled={deleteMutation.isPending}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      title="삭제"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">삭제</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
