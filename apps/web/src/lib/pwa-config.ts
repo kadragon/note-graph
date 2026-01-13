@@ -37,6 +37,7 @@ export const pwaOptions: Partial<VitePWAOptions> = {
   },
   workbox: {
     globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+    navigateFallbackDenylist: [/^\/api\//, /^\/health$/],
     runtimeCaching: [
       {
         urlPattern: ({ url }) => url.pathname.startsWith('/api'),
