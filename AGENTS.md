@@ -109,3 +109,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For mocked React Query hooks, cast stubbed return values via `as unknown as ReturnType<typeof useQuery>` (or mutation hooks) to satisfy strict observer typings.
 - When limiting task categories to active-only in UI, preserve already-selected inactive categories in edit flows and filter AI draft forms to active categories only.
 - For dialog markdown previews, keep system color mode sync via `matchMedia` and stub it in tests to avoid jsdom errors.
+- For PWA navigation fallback, denylist `/api` and `/health` to avoid serving the SPA shell for file preview endpoints (e.g., `/api/work-notes/.../view`).
