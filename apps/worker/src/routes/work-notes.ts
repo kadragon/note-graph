@@ -185,8 +185,8 @@ workNotes.post('/:workId/files', async (c) => {
   // Get R2 bucket
   const r2Bucket = getR2Bucket(c.env);
 
-  // Upload file using service
-  const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
+  // Upload file using service (now uses Google Drive)
+  const fileService = new WorkNoteFileService(r2Bucket, c.env.DB, c.env);
   const uploadedFile = await fileService.uploadFile({
     workId,
     file: fileData,
@@ -215,37 +215,56 @@ workNotes.get('/:workId/files', workNoteFileMiddleware, async (c) => {
  * GET /work-notes/:workId/files/:fileId - Get file metadata
  */
 workNotes.get('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
+  const { fileId } = c.req.param();
   const file = c.get('file');
+  if (!file) {
+    return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
+  }
   return c.json(file);
 });
 
 /**
- * GET /work-notes/:workId/files/:fileId/download - Download file (stream from R2)
+ * GET /work-notes/:workId/files/:fileId/download - Download file
+ * For Google Drive files, redirects to the Drive view link
  */
 workNotes.get('/:workId/files/:fileId/download', workNoteFileMiddleware, async (c) => {
   const { fileId } = c.req.param();
-  if (!fileId) {
-    return c.json({ error: 'fileId is required' }, 400);
+  const file = c.get('file');
+  if (!file) {
+    return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
   }
-  const fileService = c.get('fileService');
 
-  const { body, headers } = await fileService.streamFile(fileId);
+  // For Google Drive files, redirect to the Drive link
+  if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
+    return c.redirect(file.gdriveWebViewLink);
+  }
+
+  // For legacy R2 files, stream from R2
+  const fileService = c.get('fileService');
+  const { body, headers } = await fileService.streamFile(file.fileId);
 
   return new Response(body, { headers });
 });
 
 /**
  * GET /work-notes/:workId/files/:fileId/view - View file inline (for browser preview)
+ * For Google Drive files, redirects to the Drive view link
  */
 workNotes.get('/:workId/files/:fileId/view', workNoteFileMiddleware, async (c) => {
   const { fileId } = c.req.param();
-  if (!fileId) {
-    return c.json({ error: 'fileId is required' }, 400);
+  const file = c.get('file');
+  if (!file) {
+    return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
   }
-  const fileService = c.get('fileService');
 
-  // Stream with inline disposition for browser viewing
-  const { body, headers } = await fileService.streamFile(fileId, true);
+  // For Google Drive files, redirect to the Drive link
+  if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
+    return c.redirect(file.gdriveWebViewLink);
+  }
+
+  // For legacy R2 files, stream with inline disposition for browser viewing
+  const fileService = c.get('fileService');
+  const { body, headers } = await fileService.streamFile(file.fileId, true);
 
   return new Response(body, { headers });
 });
@@ -258,9 +277,10 @@ workNotes.delete('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => 
   if (!fileId) {
     return c.json({ error: 'fileId is required' }, 400);
   }
+  const user = getAuthUser(c);
   const fileService = c.get('fileService');
 
-  await fileService.deleteFile(fileId);
+  await fileService.deleteFile(fileId, user.email);
 
   return c.body(null, 204);
 });

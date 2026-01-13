@@ -56,12 +56,21 @@ export interface WorkNoteRelation {
 }
 
 /**
+ * Storage type for work note files
+ */
+export type WorkNoteFileStorageType = 'R2' | 'GDRIVE';
+
+/**
  * Work note file attachment
  */
 export interface WorkNoteFile {
   fileId: string; // FILE-{nanoid}
   workId: string;
-  r2Key: string; // work-notes/{workId}/files/{fileId}
+  r2Key?: string; // work-notes/{workId}/files/{fileId} - deprecated, for R2 storage
+  gdriveFileId?: string; // Google Drive file ID
+  gdriveFolderId?: string; // Google Drive folder ID
+  gdriveWebViewLink?: string; // Google Drive web view link
+  storageType: WorkNoteFileStorageType; // 'R2' or 'GDRIVE'
   originalName: string;
   fileType: string; // MIME type
   fileSize: number; // bytes

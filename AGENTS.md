@@ -18,7 +18,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 ## Project Overview
 - Product: Worknote Management System (single-user knowledge base).
 - Platform: Cloudflare Workers.
-- Data: D1 (SQLite), Vectorize for embeddings, R2 for files.
+- Data: D1 (SQLite), Vectorize for embeddings, R2 for files, Google Drive for work note attachments.
 - Async: Cloudflare Queues.
 - Auth: Cloudflare Access (Google OAuth).
 - AI: OpenAI via AI Gateway (chat: gpt-4.5-turbo, embedding: text-embedding-3-small).
@@ -27,6 +27,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Hybrid search: FTS5 (trigram tokenizer for Korean) + Vectorize; merge via RRF (k=60).
 - RAG chunking: 512 tokens with 20% overlap; metadata limited to filter keys (Vectorize 64-byte field cap).
 - PDF pipeline: upload -> queue -> R2 (temporary) -> extraction -> AI draft -> cleanup; delete temp files after processing.
+- Google Drive integration: OAuth 2.0 with refresh token handling; work note files stored in Drive folders (WORK-xxx); R2 fallback when OAuth not configured; view/download redirects to Drive web viewer.
 - Todo recurrence: due-date or completion-date recurrence; new instance created on completion.
 - Versioning: keep latest 5 versions; auto-purge oldest on insert.
 - Single-user system; no multi-tenant constraints.
@@ -61,6 +62,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - SPEC-dept-1: Department management.
 - SPEC-worknote-1/2: Work note management, assignee badge format.
 - SPEC-worknote-attachments-1: Work note file attachments.
+- SPEC-worknote-gdrive-1: Google Drive integration for work note files (OAuth flow, folder management, file upload/download).
 - SPEC-worknote-email-copy-001: Assignee email copy button.
 - SPEC-todo-1/2: Todo management and UX improvements.
 - SPEC-project-1: Project management (1:N project -> work notes, R2 permanent files, PROJECT RAG scope).
@@ -76,9 +78,10 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Archive specs (implemented): collapsible sidebar, embedding service split, repository DI, validation middleware, base file service.
 
 ## Task Tracking Summary
-- Current tasks: none.
+- Current tasks: Google Drive integration (frontend pending).
 - Backlog: empty (metadata retained in history; prior effort estimates 33-45 hours for migration plan).
 - Recent completions include:
+  - Google Drive integration backend: OAuth service, Drive service, repository, routes, file service updates (Phase 2-4).
   - TASK-MIGRATE-001/002/003: Jest + Miniflare migration phases 1-3 (parallel run with Vitest).
   - TASK-0070/0071: PDF draft auto-attach flow clarifications and fix.
 - Full historical details are in git history and prior session notes.
@@ -110,3 +113,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - When limiting task categories to active-only in UI, preserve already-selected inactive categories in edit flows and filter AI draft forms to active categories only.
 - For dialog markdown previews, keep system color mode sync via `matchMedia` and stub it in tests to avoid jsdom errors.
 - For PWA navigation fallback, denylist `/api` and `/health` to avoid serving the SPA shell for file preview endpoints (e.g., `/api/work-notes/.../view`).
+- For dual-storage services (R2 + Google Drive), make the external service optional via environment variable check (e.g., `GOOGLE_CLIENT_ID`) to maintain testability without mocking complex OAuth flows. Tests run in R2-only mode when OAuth credentials are absent.

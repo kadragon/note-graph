@@ -11,6 +11,7 @@ import { authMiddleware } from './middleware/auth';
 import { repositoriesMiddleware } from './middleware/repositories';
 import admin from './routes/admin';
 import aiDraft from './routes/ai-draft';
+import { authGoogle } from './routes/auth-google';
 import departments from './routes/departments';
 import pdf from './routes/pdf';
 // Route imports
@@ -74,6 +75,7 @@ api.get('/', (c) => {
       pdfJobs: '/api/pdf-jobs',
       admin: '/api/admin',
       statistics: '/api/statistics',
+      authGoogle: '/api/auth/google',
     },
   });
 });
@@ -94,6 +96,7 @@ api.route('/ai', aiDraft);
 api.route('/pdf-jobs', pdf);
 api.route('/admin', admin);
 api.route('/statistics', statistics);
+api.route('/auth/google', authGoogle);
 
 // Mount API router to main app
 app.route('/', api);
