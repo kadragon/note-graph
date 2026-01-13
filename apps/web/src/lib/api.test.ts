@@ -720,7 +720,7 @@ describe('API.downloadWorkNoteFile', () => {
     (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
 
     await expect(API.downloadWorkNoteFile('work-1', 'file-1')).rejects.toThrow(
-      '파일 다운로드에 실패했습니다'
+      '파일 다운로드 실패: 404'
     );
   });
 });
