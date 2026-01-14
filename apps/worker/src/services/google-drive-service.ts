@@ -107,7 +107,7 @@ export class GoogleDriveService {
     // Store in DB
     await this.db
       .prepare(
-        `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
+        `INSERT OR IGNORE INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
          VALUES (?, ?, ?, ?)`
       )
       .bind(workId, folder.id, folder.webViewLink, now)

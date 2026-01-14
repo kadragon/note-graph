@@ -49,11 +49,20 @@ describe('migrateR2WorkNoteFiles', () => {
     });
 
     const drive = {
-      getOrCreateWorkNoteFolder: vi.fn().mockResolvedValue({
-        workId,
-        gdriveFolderId: 'FOLDER-1',
-        gdriveFolderLink: 'https://drive.example/folder',
-        createdAt: now,
+      getOrCreateWorkNoteFolder: vi.fn(async (email: string, targetWorkId: string) => {
+        await baseEnv.DB.prepare(
+          `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
+           VALUES (?, ?, ?, ?)`
+        )
+          .bind(targetWorkId, 'FOLDER-1', 'https://drive.example/folder', now)
+          .run();
+
+        return {
+          workId: targetWorkId,
+          gdriveFolderId: 'FOLDER-1',
+          gdriveFolderLink: 'https://drive.example/folder',
+          createdAt: now,
+        };
       }),
       uploadFile: vi.fn().mockResolvedValue({
         id: 'GFILE-1',
@@ -130,11 +139,28 @@ describe('migrateR2WorkNoteFiles', () => {
     });
 
     const drive = {
-      getOrCreateWorkNoteFolder: vi.fn().mockResolvedValue({
-        workId,
-        gdriveFolderId: 'FOLDER-SHOULD-NOT-USE',
-        gdriveFolderLink: 'https://drive.example/new',
-        createdAt: now,
+      getOrCreateWorkNoteFolder: vi.fn(async (email: string, targetWorkId: string) => {
+        const existing = await baseEnv.DB.prepare(
+          'SELECT gdrive_folder_id, gdrive_folder_link FROM work_note_gdrive_folders WHERE work_id = ?'
+        )
+          .bind(targetWorkId)
+          .first<Record<string, string>>();
+
+        if (existing) {
+          return {
+            workId: targetWorkId,
+            gdriveFolderId: existing.gdrive_folder_id,
+            gdriveFolderLink: existing.gdrive_folder_link,
+            createdAt: now,
+          };
+        }
+
+        return {
+          workId: targetWorkId,
+          gdriveFolderId: 'FOLDER-SHOULD-NOT-USE',
+          gdriveFolderLink: 'https://drive.example/new',
+          createdAt: now,
+        };
       }),
       uploadFile: vi.fn().mockResolvedValue({
         id: 'GFILE-2',
@@ -153,7 +179,7 @@ describe('migrateR2WorkNoteFiles', () => {
     });
 
     expect(migrated).toBe(1);
-    expect(drive.getOrCreateWorkNoteFolder).not.toHaveBeenCalled();
+    expect(drive.getOrCreateWorkNoteFolder).toHaveBeenCalledWith(uploadedBy, workId);
     expect(drive.uploadFile).toHaveBeenCalledWith(
       uploadedBy,
       'FOLDER-EXISTING',

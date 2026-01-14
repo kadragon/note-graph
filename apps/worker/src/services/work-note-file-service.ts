@@ -267,6 +267,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
               .first<{ gdrive_folder_id: string }>()
           )?.gdrive_folder_id ?? null)
         : null;
+    const shouldDeleteDriveFiles = !!(this.driveService && userEmail && !folderId);
 
     const files = await this.db
       .prepare(
@@ -291,14 +292,14 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     await Promise.all(
       files.results.map(async (row) => {
         try {
-          if (
-            row.storage_type === 'GDRIVE' &&
-            row.gdrive_file_id &&
-            this.driveService &&
-            userEmail
-          ) {
-            await this.driveService.deleteFile(userEmail, row.gdrive_file_id);
-          } else if (row.r2_key) {
+          if (row.storage_type === 'GDRIVE') {
+            if (shouldDeleteDriveFiles && row.gdrive_file_id) {
+              await this.driveService!.deleteFile(userEmail!, row.gdrive_file_id);
+            }
+            return;
+          }
+
+          if (row.r2_key) {
             await this.r2.delete(row.r2_key);
           }
         } catch (error) {

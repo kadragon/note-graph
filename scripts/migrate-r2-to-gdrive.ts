@@ -48,11 +48,6 @@ interface WorkNoteFileRow {
   uploaded_by: string;
 }
 
-interface GDriveFolderRow {
-  gdrive_folder_id: string;
-  gdrive_folder_link: string;
-}
-
 const DEFAULT_LOGGER: Logger = console;
 
 interface CliBindings {
@@ -104,7 +99,7 @@ export async function migrateR2WorkNoteFiles(options: MigrationOptions): Promise
   let migratedCount = 0;
 
   for (const [workId, group] of grouped) {
-    const folder = await ensureWorkNoteFolder({ db, drive, userEmail, workId });
+    const folder = await drive.getOrCreateWorkNoteFolder(userEmail, workId);
 
     for (const file of group) {
       if (!file.r2_key) {
@@ -273,49 +268,6 @@ function buildEnvBindings(): Record<string, string> {
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? '',
     GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI ?? '',
     GDRIVE_ROOT_FOLDER_ID: process.env.GDRIVE_ROOT_FOLDER_ID ?? '',
-  };
-}
-
-async function ensureWorkNoteFolder(params: {
-  db: D1Database;
-  drive: DriveClient;
-  userEmail: string;
-  workId: string;
-}): Promise<DriveFolderRecord> {
-  const { db, drive, userEmail, workId } = params;
-
-  const existing = await db
-    .prepare(
-      `SELECT gdrive_folder_id, gdrive_folder_link
-       FROM work_note_gdrive_folders
-       WHERE work_id = ?`
-    )
-    .bind(workId)
-    .first<GDriveFolderRow>();
-
-  if (existing) {
-    return {
-      workId,
-      gdriveFolderId: existing.gdrive_folder_id,
-      gdriveFolderLink: existing.gdrive_folder_link,
-      createdAt: new Date().toISOString(),
-    };
-  }
-
-  const folder = await drive.getOrCreateWorkNoteFolder(userEmail, workId);
-  const now = new Date().toISOString();
-
-  await db
-    .prepare(
-      `INSERT OR IGNORE INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
-       VALUES (?, ?, ?, ?)`
-    )
-    .bind(workId, folder.gdriveFolderId, folder.gdriveFolderLink, now)
-    .run();
-
-  return {
-    ...folder,
-    createdAt: folder.createdAt ?? now,
   };
 }
 

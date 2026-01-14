@@ -158,11 +158,6 @@ describe('Work Note Google Drive Integration', () => {
       })
       .map(([url]) => (typeof url === 'string' ? url : url.toString()));
 
-    expect(deleteUrls).toEqual(
-      expect.arrayContaining([
-        `${DRIVE_API_BASE}/files/GFILE-1`,
-        `${DRIVE_API_BASE}/files/FOLDER-1`,
-      ])
-    );
+    expect(deleteUrls).toEqual([`${DRIVE_API_BASE}/files/FOLDER-1`]);
   });
 });

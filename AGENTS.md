@@ -116,5 +116,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For dual-storage services (R2 + Google Drive), make the external service optional via environment variable check (e.g., `GOOGLE_CLIENT_ID`) to maintain testability without mocking complex OAuth flows. Tests run in R2-only mode when OAuth credentials are absent.
 - For Google Drive work note attachments, prefer opening `gdriveWebViewLink` in a new tab from UI actions and have download helpers return the Drive link when available.
 - For Drive cleanup on work note deletion, read `work_note_gdrive_folders` before deleting file rows so folder IDs remain available, then delete files and finally the folder.
+- For Drive-backed work notes with a stored folder ID, delete the folder directly and skip per-file Drive deletions to reduce API calls and avoid redundant deletes.
+- When persisting `work_note_gdrive_folders`, use `INSERT OR IGNORE` to make inserts idempotent under concurrent folder creation.
 - For R2→Drive migrations, reuse existing `work_note_gdrive_folders` records before calling Drive APIs and skip files with missing R2 objects to keep the migration idempotent.
 - For CLI scripts in this repo, keep worker-only dependencies (like Miniflare/Drive services) behind dynamic imports so worker-based tests can import the module without bundling errors.
