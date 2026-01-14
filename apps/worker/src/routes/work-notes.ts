@@ -124,8 +124,9 @@ workNotes.put('/:workId', bodyValidator(updateWorkNoteSchema), async (c) => {
  */
 workNotes.delete('/:workId', async (c) => {
   const workId = c.req.param('workId');
+  const user = getAuthUser(c);
   const service = new WorkNoteService(c.env);
-  await service.delete(workId);
+  await service.delete(workId, user.email);
 
   return c.body(null, 204);
 });

@@ -35,12 +35,17 @@ vi.mock('../use-toast', () => ({
 const originalCreateObjectURL = URL.createObjectURL;
 const originalRevokeObjectURL = URL.revokeObjectURL;
 const originalCreateElement = document.createElement.bind(document);
+const originalWindowOpen = window.open;
 
 // Mock click tracking
 const mockClick = vi.fn();
 let createdAnchor: HTMLAnchorElement | null = null;
+let mockOpen: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  mockOpen = vi.fn();
+  window.open = mockOpen as unknown as typeof window.open;
+
   // Mock URL methods
   URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url');
   URL.revokeObjectURL = vi.fn();
@@ -59,6 +64,7 @@ beforeEach(() => {
 afterEach(() => {
   URL.createObjectURL = originalCreateObjectURL;
   URL.revokeObjectURL = originalRevokeObjectURL;
+  window.open = originalWindowOpen;
   vi.restoreAllMocks();
   createdAnchor = null;
 });
@@ -135,6 +141,31 @@ describe('useDownloadWorkNote', () => {
     expect(API.downloadWorkNoteFile).toHaveBeenCalledWith('work-1', 'file-2');
   });
 
+  it('opens Google Drive attachments in a new tab', async () => {
+    vi.mocked(API.getWorkNoteTodos).mockResolvedValue([]);
+
+    const files = [
+      createWorkNoteFile({
+        fileId: 'file-1',
+        originalName: 'drive.pdf',
+        workId: 'work-1',
+        storageType: 'GDRIVE',
+        gdriveWebViewLink: 'https://drive.example/file-1',
+        r2Key: undefined,
+      }),
+    ];
+    const workNote = createWorkNoteWithStats({ id: 'work-1', title: 'Test', files });
+
+    const { result } = renderHookWithClient(() => useDownloadWorkNote());
+
+    await act(async () => {
+      await result.current.downloadWorkNote(workNote);
+    });
+
+    expect(mockOpen).toHaveBeenCalledWith('https://drive.example/file-1', '_blank');
+    expect(API.downloadWorkNoteFile).not.toHaveBeenCalled();
+  });
+
   it('shows success toast after download completes', async () => {
     vi.mocked(API.getWorkNoteTodos).mockResolvedValue([]);
     const workNote = createWorkNoteWithStats({ id: 'work-1', title: 'Test' });
@@ -169,6 +200,33 @@ describe('useDownloadWorkNote', () => {
     expect(mockToast).toHaveBeenCalledWith({
       title: '다운로드 완료',
       description: 'PDF와 첨부파일 1개가 다운로드되었습니다.',
+    });
+  });
+
+  it('shows open message when Google Drive attachments exist', async () => {
+    vi.mocked(API.getWorkNoteTodos).mockResolvedValue([]);
+
+    const files = [
+      createWorkNoteFile({
+        fileId: 'file-1',
+        originalName: 'drive.pdf',
+        workId: 'work-1',
+        storageType: 'GDRIVE',
+        gdriveWebViewLink: 'https://drive.example/file-1',
+        r2Key: undefined,
+      }),
+    ];
+    const workNote = createWorkNoteWithStats({ id: 'work-1', title: 'Test', files });
+
+    const { result } = renderHookWithClient(() => useDownloadWorkNote());
+
+    await act(async () => {
+      await result.current.downloadWorkNote(workNote);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: '다운로드 완료',
+      description: 'PDF가 다운로드되고 첨부파일 1개가 열렸습니다.',
     });
   });
 

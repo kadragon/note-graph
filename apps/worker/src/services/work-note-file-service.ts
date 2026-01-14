@@ -258,6 +258,16 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
    * This method deletes storage objects (R2 or Google Drive).
    */
   async deleteWorkNoteFiles(workId: string, userEmail?: string): Promise<void> {
+    const folderId =
+      this.driveService && userEmail
+        ? ((
+            await this.db
+              .prepare(`SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?`)
+              .bind(workId)
+              .first<{ gdrive_folder_id: string }>()
+          )?.gdrive_folder_id ?? null)
+        : null;
+
     const files = await this.db
       .prepare(
         `
@@ -299,16 +309,9 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     );
 
     // Also delete the Google Drive folder if it exists
-    if (this.driveService && userEmail) {
+    if (this.driveService && userEmail && folderId) {
       try {
-        const folder = await this.db
-          .prepare(`SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?`)
-          .bind(workId)
-          .first<{ gdrive_folder_id: string }>();
-
-        if (folder) {
-          await this.driveService.deleteFolder(userEmail, folder.gdrive_folder_id);
-        }
+        await this.driveService.deleteFolder(userEmail, folderId);
       } catch (error) {
         console.error(`Failed to delete Google Drive folder for work note ${workId}:`, error);
         // Non-fatal
