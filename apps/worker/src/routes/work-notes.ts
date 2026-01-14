@@ -216,11 +216,7 @@ workNotes.get('/:workId/files', workNoteFileMiddleware, async (c) => {
  * GET /work-notes/:workId/files/:fileId - Get file metadata
  */
 workNotes.get('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
-  const { fileId } = c.req.param();
-  const file = c.get('file');
-  if (!file) {
-    return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
-  }
+  const file = c.get('file')!;
   return c.json(file);
 });
 
@@ -229,11 +225,7 @@ workNotes.get('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
  * For Google Drive files, redirects to the Drive view link
  */
 workNotes.get('/:workId/files/:fileId/download', workNoteFileMiddleware, async (c) => {
-  const { fileId } = c.req.param();
-  const file = c.get('file');
-  if (!file) {
-    return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
-  }
+  const file = c.get('file')!;
 
   // For Google Drive files, redirect to the Drive link
   if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
@@ -252,11 +244,7 @@ workNotes.get('/:workId/files/:fileId/download', workNoteFileMiddleware, async (
  * For Google Drive files, redirects to the Drive view link
  */
 workNotes.get('/:workId/files/:fileId/view', workNoteFileMiddleware, async (c) => {
-  const { fileId } = c.req.param();
-  const file = c.get('file');
-  if (!file) {
-    return c.json({ code: 'NOT_FOUND', message: `File not found: ${fileId}` }, 404);
-  }
+  const file = c.get('file')!;
 
   // For Google Drive files, redirect to the Drive link
   if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
