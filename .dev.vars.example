@@ -5,3 +5,15 @@
 # Cloudflare Account ID
 # Find at: https://dash.cloudflare.com/?to=/:account/workers
 CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+
+# Cloudflare Access (자동 제공, 설정 불필요)
+# ENVIRONMENT: 자동 감지
+
+# Google Drive (필수)
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_REDIRECT_URI=https://example.test/oauth/callback
+GDRIVE_ROOT_FOLDER_ID=your-folder-id
+
+# 기타 (선택)
+# OPENAI_API_KEY=your-openai-api-key

@@ -7,6 +7,7 @@
 import type { WorkNoteFile, WorkNoteFileStorageType } from '@shared/types/work-note';
 import { nanoid } from 'nanoid';
 import type { Env } from '../types/env';
+import { DomainError } from '../types/errors';
 import { BaseFileService } from './base-file-service.js';
 import { GoogleDriveService } from './google-drive-service.js';
 
@@ -54,14 +55,18 @@ interface UploadFileParams {
 export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   protected tableName = 'work_note_files';
   protected ownerIdColumn = 'work_id';
-  private driveService: GoogleDriveService | null;
-  private useGoogleDrive: boolean;
+  private driveService: GoogleDriveService;
 
   constructor(r2: R2Bucket, db: D1Database, env?: Env) {
     super(r2, db);
-    // Only use Google Drive if OAuth credentials are configured
-    this.useGoogleDrive = !!(env?.GOOGLE_CLIENT_ID && env?.GOOGLE_CLIENT_SECRET);
-    this.driveService = this.useGoogleDrive && env ? new GoogleDriveService(env, db) : null;
+    if (!env || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+      throw new DomainError(
+        'Google OAuth 환경 변수가 설정되어 있지 않습니다.',
+        'CONFIGURATION_ERROR',
+        500
+      );
+    }
+    this.driveService = new GoogleDriveService(env, db);
   }
 
   protected buildR2Key(workId: string, fileId: string): string {
@@ -95,21 +100,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     const fileId = `FILE-${nanoid()}`;
     const now = new Date().toISOString();
 
-    // Use Google Drive if available, otherwise fallback to R2
-    if (this.useGoogleDrive && this.driveService) {
-      return this.uploadToGoogleDrive({
-        workId,
-        fileId,
-        file,
-        originalName,
-        resolvedFileType,
-        uploadedBy,
-        now,
-      });
-    }
-
-    // Fallback to R2 storage
-    return this.uploadToR2({
+    return this.uploadToGoogleDrive({
       workId,
       fileId,
       file,
@@ -132,10 +123,10 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     const { workId, fileId, file, originalName, resolvedFileType, uploadedBy, now } = params;
 
     // Get or create Google Drive folder for this work note
-    const folder = await this.driveService!.getOrCreateWorkNoteFolder(uploadedBy, workId);
+    const folder = await this.driveService.getOrCreateWorkNoteFolder(uploadedBy, workId);
 
     // Upload to Google Drive
-    const driveFile = await this.driveService!.uploadFile(
+    const driveFile = await this.driveService.uploadFile(
       uploadedBy,
       folder.gdriveFolderId,
       file,
@@ -185,57 +176,6 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     };
   }
 
-  private async uploadToR2(params: {
-    workId: string;
-    fileId: string;
-    file: Blob;
-    originalName: string;
-    resolvedFileType: string;
-    uploadedBy: string;
-    now: string;
-  }): Promise<WorkNoteFile> {
-    const { workId, fileId, file, originalName, resolvedFileType, uploadedBy, now } = params;
-    const r2Key = this.buildR2Key(workId, fileId);
-
-    // Upload to R2
-    await this.putFileObject({
-      r2Key,
-      file,
-      fileType: resolvedFileType,
-      customMetadata: {
-        originalName,
-        uploadedBy,
-        workId,
-        fileId,
-      },
-    });
-
-    // Create DB record
-    await this.insertFileRecord({
-      ownerId: workId,
-      fileId,
-      r2Key,
-      originalName,
-      fileType: resolvedFileType,
-      fileSize: file.size,
-      uploadedBy,
-      uploadedAt: now,
-    });
-
-    return {
-      fileId,
-      workId,
-      r2Key,
-      storageType: 'R2',
-      originalName,
-      fileType: resolvedFileType,
-      fileSize: file.size,
-      uploadedBy,
-      uploadedAt: now,
-      deletedAt: null,
-    };
-  }
-
   /**
    * Delete file from storage (R2 or Google Drive) and mark as deleted in DB
    */
@@ -245,7 +185,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     await this.softDeleteFileRecord(fileId);
 
     // Delete from appropriate storage
-    if (file.storageType === 'GDRIVE' && file.gdriveFileId && this.driveService && userEmail) {
+    if (file.storageType === 'GDRIVE' && file.gdriveFileId && userEmail) {
       await this.driveService.deleteFile(userEmail, file.gdriveFileId);
     } else if (file.r2Key) {
       await this.deleteR2Object(file.r2Key);
@@ -258,16 +198,15 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
    * This method deletes storage objects (R2 or Google Drive).
    */
   async deleteWorkNoteFiles(workId: string, userEmail?: string): Promise<void> {
-    const folderId =
-      this.driveService && userEmail
-        ? ((
-            await this.db
-              .prepare(`SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?`)
-              .bind(workId)
-              .first<{ gdrive_folder_id: string }>()
-          )?.gdrive_folder_id ?? null)
-        : null;
-    const shouldDeleteDriveFiles = !!(this.driveService && userEmail && !folderId);
+    const folderId = userEmail
+      ? ((
+          await this.db
+            .prepare(`SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?`)
+            .bind(workId)
+            .first<{ gdrive_folder_id: string }>()
+        )?.gdrive_folder_id ?? null)
+      : null;
+    const shouldDeleteDriveFiles = !!(userEmail && !folderId);
 
     const files = await this.db
       .prepare(
@@ -294,7 +233,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
         try {
           if (row.storage_type === 'GDRIVE') {
             if (shouldDeleteDriveFiles && row.gdrive_file_id) {
-              await this.driveService!.deleteFile(userEmail!, row.gdrive_file_id);
+              await this.driveService.deleteFile(userEmail!, row.gdrive_file_id);
             }
             return;
           }
@@ -310,7 +249,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     );
 
     // Also delete the Google Drive folder if it exists
-    if (this.driveService && userEmail && folderId) {
+    if (userEmail && folderId) {
       try {
         await this.driveService.deleteFolder(userEmail, folderId);
       } catch (error) {

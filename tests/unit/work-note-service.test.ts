@@ -196,12 +196,10 @@ describe('WorkNoteService Google Drive integration', () => {
 
     const service = new WorkNoteService(envWithDrive);
     const fileService = (service as unknown as { fileService: unknown }).fileService as null | {
-      useGoogleDrive?: boolean;
       driveService?: unknown;
     };
 
     expect(fileService).toBeTruthy();
-    expect(fileService?.useGoogleDrive).toBe(true);
     expect(fileService?.driveService).not.toBeNull();
   });
 });

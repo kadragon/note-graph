@@ -24,7 +24,7 @@ Personal work note management system with AI-powered features, built on Cloudfla
 - **AI**: OpenAI GPT-4.5 + text-embedding-3-small via AI Gateway
 - **Auth**: Cloudflare Access (Google OAuth)
 - **Async Processing**: Cloudflare Queues
-- **Storage**: Cloudflare R2 (임시 PDF 저장)
+- **Storage**: Google Drive (업무노트 첨부), Cloudflare R2 (프로젝트 파일/임시 PDF)
 
 ## Project Structure
 
@@ -142,11 +142,15 @@ bun run dev
    cp .dev.vars.example .dev.vars
    ```
 
-2. Update `.dev.vars` with your Cloudflare Account ID:
+2. Update `.dev.vars` with required Google OAuth settings (업무노트 첨부에 필수):
 
    ```bash
    # .dev.vars
    CLOUDFLARE_ACCOUNT_ID=your-actual-cloudflare-account-id
+   GOOGLE_CLIENT_ID=your-client-id
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   GOOGLE_REDIRECT_URI=https://example.test/oauth/callback
+   GDRIVE_ROOT_FOLDER_ID=your-folder-id
    ```
 
    Find your account ID at: <https://dash.cloudflare.com/?to=/:account/workers>
@@ -164,6 +168,9 @@ Set secrets using Wrangler CLI:
 
 ```bash
 wrangler secret put CLOUDFLARE_ACCOUNT_ID
+wrangler secret put GOOGLE_CLIENT_ID
+wrangler secret put GOOGLE_CLIENT_SECRET
+wrangler secret put GDRIVE_ROOT_FOLDER_ID
 wrangler secret put OPENAI_API_KEY
 wrangler secret put CF_AIG_AUTHORIZATION  # Optional, if AI Gateway requires auth
 ```

@@ -45,8 +45,10 @@ export class WorkNoteService {
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
     this.embeddingProcessor = new EmbeddingProcessor(env);
 
-    // Initialize file service if R2 bucket is available
-    this.fileService = env.R2_BUCKET ? new WorkNoteFileService(env.R2_BUCKET, env.DB, env) : null;
+    // Initialize file service only when Google Drive credentials are configured
+    const hasGoogleDrive = !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+    this.fileService =
+      env.R2_BUCKET && hasGoogleDrive ? new WorkNoteFileService(env.R2_BUCKET, env.DB, env) : null;
   }
 
   /**

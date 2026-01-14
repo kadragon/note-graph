@@ -70,6 +70,7 @@ AI_GATEWAY_ID = "worknote-maker"
 OPENAI_MODEL_CHAT = "gpt-5.1"
 OPENAI_MODEL_EMBEDDING = "text-embedding-3-small"
 OPENAI_MODEL_LIGHTWEIGHT = "gpt-5-mini"
+# Google OAuth (필수)
 GOOGLE_REDIRECT_URI = "https://note.kadragon.work/api/auth/google/callback"
 
 # ============================================================================
@@ -78,9 +79,9 @@ GOOGLE_REDIRECT_URI = "https://note.kadragon.work/api/auth/google/callback"
 # CLOUDFLARE_ACCOUNT_ID - Set via: wrangler secret put CLOUDFLARE_ACCOUNT_ID
 # OPENAI_API_KEY - Set via: wrangler secret put OPENAI_API_KEY
 # CF_AIG_AUTHORIZATION - (Optional) Set via: wrangler secret put CF_AIG_AUTHORIZATION
-# GOOGLE_CLIENT_ID - Set via: wrangler secret put GOOGLE_CLIENT_ID
-# GOOGLE_CLIENT_SECRET - Set via: wrangler secret put GOOGLE_CLIENT_SECRET
-# GDRIVE_ROOT_FOLDER_ID - (Optional) Set via: wrangler secret put GDRIVE_ROOT_FOLDER_ID
+# GOOGLE_CLIENT_ID - (Required) Set via: wrangler secret put GOOGLE_CLIENT_ID
+# GOOGLE_CLIENT_SECRET - (Required) Set via: wrangler secret put GOOGLE_CLIENT_SECRET
+# GDRIVE_ROOT_FOLDER_ID - (Required) Set via: wrangler secret put GDRIVE_ROOT_FOLDER_ID
 
 # ============================================================================
 # Development Settings
@@ -118,7 +119,7 @@ head_sampling_rate = 0.1
 # ============================================================================
 # Development Setup:
 # 1. Copy .dev.vars.example to .dev.vars
-# 2. Update .dev.vars with your CLOUDFLARE_ACCOUNT_ID
+# 2. Update .dev.vars with your CLOUDFLARE_ACCOUNT_ID and Google OAuth variables
 # 3. Create D1 database: wrangler d1 create worknote-db
 # 4. Create Vectorize index: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
 # 5. Create AI Gateway in Cloudflare Dashboard: https://dash.cloudflare.com/?to=/:account/ai/ai-gateway
