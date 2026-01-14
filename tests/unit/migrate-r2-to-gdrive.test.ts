@@ -2,7 +2,7 @@ import { env } from 'cloudflare:test';
 import type { R2Bucket } from '@cloudflare/workers-types';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { migrateR2WorkNoteFiles } from '../../scripts/migrate-r2-to-gdrive';
+import { migrateR2WorkNoteFiles, runMigrationCli } from '../../scripts/migrate-r2-to-gdrive';
 import { MockR2 } from '../test-setup';
 
 describe('migrateR2WorkNoteFiles', () => {
@@ -222,6 +222,46 @@ describe('migrateR2WorkNoteFiles', () => {
     expect(fileRow).toEqual({
       storage_type: 'R2',
       gdrive_file_id: null,
+    });
+  });
+});
+
+describe('runMigrationCli', () => {
+  it('wires CLI flags into migration options', async () => {
+    const baseEnv = env as unknown as Env;
+    const db = baseEnv.DB;
+    const r2 = new MockR2() as unknown as R2Bucket;
+    const envBindings = { GOOGLE_CLIENT_ID: 'id' } as Env;
+    const drive = {
+      getOrCreateWorkNoteFolder: vi.fn(),
+      uploadFile: vi.fn(),
+    };
+    const migrate = vi.fn().mockResolvedValue(2);
+    const createBindings = vi.fn().mockResolvedValue({ env: envBindings, db, r2 });
+    const driveFactory = vi.fn().mockReturnValue(drive);
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    const exitCode = await runMigrationCli(['--user-email', 'cli@example.com', '--delete-r2'], {
+      createBindings,
+      driveFactory,
+      migrate,
+      logger,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(createBindings).toHaveBeenCalledTimes(1);
+    expect(driveFactory).toHaveBeenCalledWith(envBindings, db);
+    expect(migrate).toHaveBeenCalledWith({
+      db,
+      r2,
+      drive,
+      userEmail: 'cli@example.com',
+      deleteR2: true,
+      logger,
     });
   });
 });

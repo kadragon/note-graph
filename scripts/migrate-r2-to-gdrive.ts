@@ -1,4 +1,5 @@
 import type { D1Database, R2Bucket, R2ObjectBody } from '@cloudflare/workers-types';
+import type { Env } from '../apps/worker/src/types/env.js';
 
 type Logger = Pick<Console, 'info' | 'warn' | 'error'>;
 
@@ -53,6 +54,25 @@ interface GDriveFolderRow {
 }
 
 const DEFAULT_LOGGER: Logger = console;
+
+interface CliBindings {
+  env: Env;
+  db: D1Database;
+  r2: R2Bucket;
+  dispose?: () => Promise<void>;
+}
+
+interface CliDeps {
+  createBindings?: () => Promise<CliBindings>;
+  driveFactory?: (env: Env, db: D1Database) => DriveClient | Promise<DriveClient>;
+  migrate?: (options: MigrationOptions) => Promise<number>;
+  logger?: Logger;
+}
+
+interface CliArgs {
+  userEmail: string | null;
+  deleteR2: boolean;
+}
 
 export async function migrateR2WorkNoteFiles(options: MigrationOptions): Promise<number> {
   const { db, r2, drive, userEmail, deleteR2 = false, logger = DEFAULT_LOGGER } = options;
@@ -130,6 +150,132 @@ export async function migrateR2WorkNoteFiles(options: MigrationOptions): Promise
   return migratedCount;
 }
 
+export async function runMigrationCli(
+  argv: string[] = defaultArgv(),
+  deps: CliDeps = {}
+): Promise<number> {
+  const logger = deps.logger ?? DEFAULT_LOGGER;
+  const args = parseCliArgs(argv);
+
+  if (!args.userEmail) {
+    logger.error('Missing required flag: --user-email');
+    logger.info('Usage: bun run scripts/migrate-r2-to-gdrive.ts --user-email you@example.com');
+    return 1;
+  }
+
+  const createBindings = deps.createBindings ?? createDefaultBindings;
+  const driveFactory = deps.driveFactory ?? defaultDriveFactory;
+  const migrate = deps.migrate ?? migrateR2WorkNoteFiles;
+  let bindings: CliBindings | null = null;
+
+  try {
+    bindings = await createBindings();
+    const drive = await driveFactory(bindings.env, bindings.db);
+    const migrated = await migrate({
+      db: bindings.db,
+      r2: bindings.r2,
+      drive,
+      userEmail: args.userEmail,
+      deleteR2: args.deleteR2,
+      logger,
+    });
+
+    logger.info(`Migrated ${migrated} file${migrated === 1 ? '' : 's'}.`);
+    return 0;
+  } catch (error) {
+    logger.error(error);
+    return 1;
+  } finally {
+    await bindings?.dispose?.();
+  }
+}
+
+function parseCliArgs(argv: string[]): CliArgs {
+  let userEmail: string | null = null;
+  let deleteR2 = false;
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--delete-r2') {
+      deleteR2 = true;
+      continue;
+    }
+
+    if (arg === '--user-email') {
+      userEmail = argv[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith('--user-email=')) {
+      userEmail = arg.split('=').slice(1).join('=') || null;
+    }
+  }
+
+  return { userEmail, deleteR2 };
+}
+
+function defaultArgv(): string[] {
+  if (typeof process === 'undefined') {
+    return [];
+  }
+
+  return process.argv.slice(2);
+}
+
+async function createDefaultBindings(): Promise<CliBindings> {
+  const { Miniflare } = await import('miniflare');
+  const bindings = buildEnvBindings();
+  const mf = new Miniflare({
+    modules: true,
+    compatibilityDate: '2025-01-01',
+    compatibilityFlags: ['nodejs_compat'],
+    d1Databases: { DB: 'worknote-db' },
+    r2Buckets: { R2_BUCKET: 'worknote-files' },
+    bindings,
+    d1Persist: process.env.D1_PERSIST,
+    r2Persist: process.env.R2_PERSIST,
+  });
+
+  const db = await mf.getD1Database('DB');
+  const r2 = await mf.getR2Bucket('R2_BUCKET');
+  const env = {
+    ...bindings,
+    DB: db,
+    R2_BUCKET: r2,
+  } as Env;
+
+  return {
+    env,
+    db,
+    r2,
+    dispose: () => mf.dispose(),
+  };
+}
+
+async function defaultDriveFactory(env: Env, db: D1Database): Promise<DriveClient> {
+  const { GoogleDriveService } = await import(
+    '../apps/worker/src/services/google-drive-service.js'
+  );
+  return new GoogleDriveService(env, db);
+}
+
+function buildEnvBindings(): Record<string, string> {
+  return {
+    ENVIRONMENT: process.env.ENVIRONMENT ?? 'development',
+    CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID ?? '',
+    AI_GATEWAY_ID: process.env.AI_GATEWAY_ID ?? 'worknote-maker',
+    OPENAI_MODEL_CHAT: process.env.OPENAI_MODEL_CHAT ?? 'gpt-5.1',
+    OPENAI_MODEL_EMBEDDING: process.env.OPENAI_MODEL_EMBEDDING ?? 'text-embedding-3-small',
+    OPENAI_MODEL_LIGHTWEIGHT: process.env.OPENAI_MODEL_LIGHTWEIGHT ?? 'gpt-5-mini',
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? '',
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI ?? '',
+    GDRIVE_ROOT_FOLDER_ID: process.env.GDRIVE_ROOT_FOLDER_ID ?? '',
+  };
+}
+
 async function ensureWorkNoteFolder(params: {
   db: D1Database;
   drive: DriveClient;
@@ -178,4 +324,19 @@ async function r2ObjectToBlob(object: R2ObjectBody, fallbackType: string): Promi
   const contentType =
     object.httpMetadata?.contentType || fallbackType || 'application/octet-stream';
   return new Blob([buffer], { type: contentType });
+}
+
+if (import.meta.main) {
+  runMigrationCli()
+    .then((code) => {
+      if (typeof process !== 'undefined') {
+        process.exit(code);
+      }
+    })
+    .catch((error) => {
+      console.error(error);
+      if (typeof process !== 'undefined') {
+        process.exit(1);
+      }
+    });
 }
