@@ -46,7 +46,7 @@ export class WorkNoteService {
     this.embeddingProcessor = new EmbeddingProcessor(env);
 
     // Initialize file service if R2 bucket is available
-    this.fileService = env.R2_BUCKET ? new WorkNoteFileService(env.R2_BUCKET, env.DB) : null;
+    this.fileService = env.R2_BUCKET ? new WorkNoteFileService(env.R2_BUCKET, env.DB, env) : null;
   }
 
   /**
@@ -117,10 +117,10 @@ export class WorkNoteService {
   /**
    * Delete work note, remove embeddings, and delete attached files
    */
-  async delete(workId: string): Promise<void> {
+  async delete(workId: string, userEmail?: string): Promise<void> {
     // Delete attached files from R2 and DB (async, non-blocking)
     if (this.fileService) {
-      this.fileService.deleteWorkNoteFiles(workId).catch((error) => {
+      this.fileService.deleteWorkNoteFiles(workId, userEmail).catch((error) => {
         const errorMessage = error instanceof Error ? error.message : String(error);
 
         console.error('[WorkNoteService] Failed to delete work note files:', {

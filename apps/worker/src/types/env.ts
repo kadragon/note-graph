@@ -16,4 +16,9 @@ export interface Env {
   OPENAI_MODEL_LIGHTWEIGHT: string; // gpt-5-mini for simple tasks
   OPENAI_API_KEY: string;
   CF_AIG_AUTHORIZATION?: string;
+  // Google OAuth for Drive integration
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_REDIRECT_URI: string;
+  GDRIVE_ROOT_FOLDER_ID?: string; // Optional: parent folder for all work note folders
 }

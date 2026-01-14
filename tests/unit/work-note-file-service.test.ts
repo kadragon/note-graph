@@ -14,6 +14,9 @@ import type { Env } from '@worker/types/env';
 import { BadRequestError, NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+// Note: Tests run in R2 mode (no Google OAuth credentials configured)
+// Google Drive integration is tested manually
+
 // Simple in-memory R2 mock
 class MockR2Bucket implements R2Bucket {
   storage = new Map<
@@ -71,11 +74,13 @@ describe('WorkNoteFileService', () => {
   beforeEach(async () => {
     // Clean DB tables
     await baseEnv.DB.batch([
+      baseEnv.DB.prepare('DELETE FROM work_note_gdrive_folders'),
       baseEnv.DB.prepare('DELETE FROM work_note_files'),
       baseEnv.DB.prepare('DELETE FROM work_notes'),
     ]);
 
     r2 = new MockR2Bucket();
+    // Create service without Google OAuth credentials (R2 mode)
     service = new WorkNoteFileService(r2 as unknown as R2Bucket, baseEnv.DB);
   });
 
@@ -97,6 +102,8 @@ describe('WorkNoteFileService', () => {
     expect(result.originalName).toBe('document.pdf');
     expect(result.fileType).toBe('application/pdf');
     expect(result.fileSize).toBe(file.size);
+    expect(result.storageType).toBe('R2');
+    expect(result.r2Key).toMatch(/^work-notes\/WORK-123\/files\//);
 
     // Assert - DB record exists
     const row = await baseEnv.DB.prepare('SELECT * FROM work_note_files WHERE file_id = ?')
@@ -106,8 +113,7 @@ describe('WorkNoteFileService', () => {
     expect(row?.work_id).toBe('WORK-123');
 
     // Assert - R2 stored at expected key
-    expect(r2.storage.has(result.r2Key)).toBe(true);
-    expect(result.r2Key).toMatch(/^work-notes\/WORK-123\/files\//);
+    expect(r2.storage.has(result.r2Key!)).toBe(true);
   });
 
   it('uploads HWP file successfully', async () => {
@@ -122,7 +128,7 @@ describe('WorkNoteFileService', () => {
     });
 
     expect(result.fileType).toBe('application/x-hwp');
-    expect(r2.storage.has(result.r2Key)).toBe(true);
+    expect(r2.storage.has(result.r2Key!)).toBe(true);
   });
 
   it('uploads HWPX file when browser sends empty mime type', async () => {
@@ -138,7 +144,7 @@ describe('WorkNoteFileService', () => {
 
     expect(result.fileType).toBe('application/vnd.hancom.hwpx');
 
-    const stored = r2.storage.get(result.r2Key);
+    const stored = r2.storage.get(result.r2Key!);
     expect(stored?.httpMetadata?.contentType).toBe('application/vnd.hancom.hwpx');
   });
 
@@ -186,7 +192,7 @@ describe('WorkNoteFileService', () => {
     });
 
     expect(result.fileType).toBe('image/jpeg');
-    const stored = r2.storage.get(result.r2Key);
+    const stored = r2.storage.get(result.r2Key!);
     expect(stored?.httpMetadata?.contentType).toBe('image/jpeg');
   });
 
@@ -319,7 +325,7 @@ describe('WorkNoteFileService', () => {
     expect(row?.deleted_at).not.toBeNull();
 
     // Assert - R2 file removed
-    expect(r2.storage.has(uploaded.r2Key)).toBe(false);
+    expect(r2.storage.has(uploaded.r2Key!)).toBe(false);
 
     // Assert - Not returned by getFileById
     const file = await service.getFileById(uploaded.fileId);
@@ -348,8 +354,8 @@ describe('WorkNoteFileService', () => {
     await service.deleteWorkNoteFiles('WORK-123');
 
     // Assert - Both files deleted from R2
-    expect(r2.storage.has(file1.r2Key)).toBe(false);
-    expect(r2.storage.has(file2.r2Key)).toBe(false);
+    expect(r2.storage.has(file1.r2Key!)).toBe(false);
+    expect(r2.storage.has(file2.r2Key!)).toBe(false);
 
     // Assert - DB records still exist (will be cleaned up by CASCADE when work note is deleted)
     const rows = await baseEnv.DB.prepare('SELECT file_id FROM work_note_files WHERE work_id = ?')

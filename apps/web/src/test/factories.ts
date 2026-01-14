@@ -224,6 +224,7 @@ export function createWorkNoteFile(overrides: Partial<WorkNoteFile> = {}): WorkN
     fileId,
     workId,
     r2Key: `work-notes/${workId}/files/${fileId}`,
+    storageType: 'R2',
     originalName: 'test-file.pdf',
     fileType: 'application/pdf',
     fileSize: 1024,

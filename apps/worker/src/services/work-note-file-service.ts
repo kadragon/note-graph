@@ -1,12 +1,14 @@
 // Trace: SPEC-worknote-attachments-1, SPEC-refactor-file-service, TASK-057, TASK-058, TASK-066, TASK-REFACTOR-003
 /**
- * Service for managing work note file uploads and R2 storage
+ * Service for managing work note file uploads and Google Drive storage
  * Note: No automatic text extraction or embedding (unlike project files)
  */
 
-import type { WorkNoteFile } from '@shared/types/work-note';
+import type { WorkNoteFile, WorkNoteFileStorageType } from '@shared/types/work-note';
 import { nanoid } from 'nanoid';
+import type { Env } from '../types/env';
 import { BaseFileService } from './base-file-service.js';
+import { GoogleDriveService } from './google-drive-service.js';
 
 // Configuration
 const ALLOWED_MIME_TYPES = [
@@ -52,6 +54,15 @@ interface UploadFileParams {
 export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   protected tableName = 'work_note_files';
   protected ownerIdColumn = 'work_id';
+  private driveService: GoogleDriveService | null;
+  private useGoogleDrive: boolean;
+
+  constructor(r2: R2Bucket, db: D1Database, env?: Env) {
+    super(r2, db);
+    // Only use Google Drive if OAuth credentials are configured
+    this.useGoogleDrive = !!(env?.GOOGLE_CLIENT_ID && env?.GOOGLE_CLIENT_SECRET);
+    this.driveService = this.useGoogleDrive && env ? new GoogleDriveService(env, db) : null;
+  }
 
   protected buildR2Key(workId: string, fileId: string): string {
     return `work-notes/${workId}/files/${fileId}`;
@@ -70,7 +81,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   }
 
   /**
-   * Upload file to R2 and create DB record
+   * Upload file to Google Drive (or R2 as fallback) and create DB record
    * No automatic text extraction or embedding (simple attachment only)
    */
   async uploadFile(params: UploadFileParams): Promise<WorkNoteFile> {
@@ -80,10 +91,111 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
 
     const resolvedFileType = this.resolveFileType(originalName, file.type);
 
-    // Generate file ID and R2 key
+    // Generate file ID
     const fileId = `FILE-${nanoid()}`;
-    const r2Key = this.buildR2Key(workId, fileId);
     const now = new Date().toISOString();
+
+    // Use Google Drive if available, otherwise fallback to R2
+    if (this.useGoogleDrive && this.driveService) {
+      return this.uploadToGoogleDrive({
+        workId,
+        fileId,
+        file,
+        originalName,
+        resolvedFileType,
+        uploadedBy,
+        now,
+      });
+    }
+
+    // Fallback to R2 storage
+    return this.uploadToR2({
+      workId,
+      fileId,
+      file,
+      originalName,
+      resolvedFileType,
+      uploadedBy,
+      now,
+    });
+  }
+
+  private async uploadToGoogleDrive(params: {
+    workId: string;
+    fileId: string;
+    file: Blob;
+    originalName: string;
+    resolvedFileType: string;
+    uploadedBy: string;
+    now: string;
+  }): Promise<WorkNoteFile> {
+    const { workId, fileId, file, originalName, resolvedFileType, uploadedBy, now } = params;
+
+    // Get or create Google Drive folder for this work note
+    const folder = await this.driveService!.getOrCreateWorkNoteFolder(uploadedBy, workId);
+
+    // Upload to Google Drive
+    const driveFile = await this.driveService!.uploadFile(
+      uploadedBy,
+      folder.gdriveFolderId,
+      file,
+      originalName,
+      resolvedFileType
+    );
+
+    // Create DB record with Google Drive info
+    await this.db
+      .prepare(
+        `INSERT INTO work_note_files (
+          file_id, work_id, r2_key, original_name, file_type, file_size,
+          uploaded_by, uploaded_at, storage_type,
+          gdrive_file_id, gdrive_folder_id, gdrive_web_view_link
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(
+        fileId,
+        workId,
+        '', // r2_key is empty for Google Drive files
+        originalName,
+        resolvedFileType,
+        file.size,
+        uploadedBy,
+        now,
+        'GDRIVE',
+        driveFile.id,
+        folder.gdriveFolderId,
+        driveFile.webViewLink
+      )
+      .run();
+
+    return {
+      fileId,
+      workId,
+      r2Key: undefined,
+      gdriveFileId: driveFile.id,
+      gdriveFolderId: folder.gdriveFolderId,
+      gdriveWebViewLink: driveFile.webViewLink,
+      storageType: 'GDRIVE',
+      originalName,
+      fileType: resolvedFileType,
+      fileSize: file.size,
+      uploadedBy,
+      uploadedAt: now,
+      deletedAt: null,
+    };
+  }
+
+  private async uploadToR2(params: {
+    workId: string;
+    fileId: string;
+    file: Blob;
+    originalName: string;
+    resolvedFileType: string;
+    uploadedBy: string;
+    now: string;
+  }): Promise<WorkNoteFile> {
+    const { workId, fileId, file, originalName, resolvedFileType, uploadedBy, now } = params;
+    const r2Key = this.buildR2Key(workId, fileId);
 
     // Upload to R2
     await this.putFileObject({
@@ -114,6 +226,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       fileId,
       workId,
       r2Key,
+      storageType: 'R2',
       originalName,
       fileType: resolvedFileType,
       fileSize: file.size,
@@ -124,56 +237,102 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   }
 
   /**
-   * Delete file from R2 and mark as deleted in DB
+   * Delete file from storage (R2 or Google Drive) and mark as deleted in DB
    */
-  async deleteFile(fileId: string): Promise<void> {
+  async deleteFile(fileId: string, userEmail?: string): Promise<void> {
     const file = await this.requireFile(fileId);
 
     await this.softDeleteFileRecord(fileId);
-    await this.deleteR2Object(file.r2Key);
+
+    // Delete from appropriate storage
+    if (file.storageType === 'GDRIVE' && file.gdriveFileId && this.driveService && userEmail) {
+      await this.driveService.deleteFile(userEmail, file.gdriveFileId);
+    } else if (file.r2Key) {
+      await this.deleteR2Object(file.r2Key);
+    }
   }
 
   /**
    * Delete all files for a work note (used during work note deletion)
    * DB records are cleaned up by ON DELETE CASCADE when parent work_note is deleted.
-   * This method only needs to delete R2 objects.
+   * This method deletes storage objects (R2 or Google Drive).
    */
-  async deleteWorkNoteFiles(workId: string): Promise<void> {
+  async deleteWorkNoteFiles(workId: string, userEmail?: string): Promise<void> {
+    const folderId =
+      this.driveService && userEmail
+        ? ((
+            await this.db
+              .prepare(`SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?`)
+              .bind(workId)
+              .first<{ gdrive_folder_id: string }>()
+          )?.gdrive_folder_id ?? null)
+        : null;
+    const shouldDeleteDriveFiles = !!(this.driveService && userEmail && !folderId);
+
     const files = await this.db
       .prepare(
         `
-      SELECT file_id, r2_key FROM work_note_files
+      SELECT file_id, r2_key, storage_type, gdrive_file_id FROM work_note_files
       WHERE work_id = ? AND deleted_at IS NULL
     `
       )
       .bind(workId)
-      .all<{ file_id: string; r2_key: string }>();
+      .all<{
+        file_id: string;
+        r2_key: string;
+        storage_type: WorkNoteFileStorageType;
+        gdrive_file_id: string | null;
+      }>();
 
     if (!files.results || files.results.length === 0) {
       return;
     }
 
-    // Delete R2 objects in parallel. DB records will be cleaned up by ON DELETE CASCADE.
+    // Delete storage objects in parallel. DB records will be cleaned up by ON DELETE CASCADE.
     await Promise.all(
       files.results.map(async (row) => {
         try {
-          await this.r2.delete(row.r2_key);
+          if (row.storage_type === 'GDRIVE') {
+            if (shouldDeleteDriveFiles && row.gdrive_file_id) {
+              await this.driveService!.deleteFile(userEmail!, row.gdrive_file_id);
+            }
+            return;
+          }
+
+          if (row.r2_key) {
+            await this.r2.delete(row.r2_key);
+          }
         } catch (error) {
-          console.error(`Failed to delete R2 object ${row.r2_key} for file ${row.file_id}:`, error);
+          console.error(`Failed to delete file ${row.file_id}:`, error);
           // Non-fatal: continue with other files
         }
       })
     );
+
+    // Also delete the Google Drive folder if it exists
+    if (this.driveService && userEmail && folderId) {
+      try {
+        await this.driveService.deleteFolder(userEmail, folderId);
+      } catch (error) {
+        console.error(`Failed to delete Google Drive folder for work note ${workId}:`, error);
+        // Non-fatal
+      }
+    }
   }
 
   /**
    * Map database row to WorkNoteFile type
    */
   protected mapDbToFile(row: Record<string, unknown>): WorkNoteFile {
+    const r2Key = row.r2_key as string;
     return {
       fileId: row.file_id as string,
       workId: row.work_id as string,
-      r2Key: row.r2_key as string,
+      r2Key: r2Key || undefined,
+      gdriveFileId: (row.gdrive_file_id as string) || undefined,
+      gdriveFolderId: (row.gdrive_folder_id as string) || undefined,
+      gdriveWebViewLink: (row.gdrive_web_view_link as string) || undefined,
+      storageType: (row.storage_type as WorkNoteFileStorageType) || 'R2',
       originalName: row.original_name as string,
       fileType: row.file_type as string,
       fileSize: row.file_size as number,

@@ -158,17 +158,7 @@ interface BackendWorkNote {
     relatedWorkId: string;
     relatedWorkTitle?: string;
   }>;
-  files?: Array<{
-    fileId: string;
-    workId: string;
-    r2Key: string;
-    originalName: string;
-    fileType: string;
-    fileSize: number;
-    uploadedBy: string;
-    uploadedAt: string;
-    deletedAt: string | null;
-  }>;
+  files?: WorkNoteFile[];
   createdAt: string;
   updatedAt: string;
 }

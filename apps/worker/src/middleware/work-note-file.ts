@@ -41,7 +41,7 @@ export async function workNoteFileMiddleware(
   const r2Bucket = getR2Bucket(c.env);
 
   // Create file service and add to context
-  const fileService = new WorkNoteFileService(r2Bucket, c.env.DB);
+  const fileService = new WorkNoteFileService(r2Bucket, c.env.DB, c.env);
   c.set('fileService', fileService);
 
   // If fileId param exists, validate file

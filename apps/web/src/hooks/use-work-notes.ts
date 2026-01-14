@@ -4,6 +4,7 @@ import { API } from '@web/lib/api';
 import type {
   CreateWorkNoteRequest,
   UpdateWorkNoteRequest,
+  WorkNoteFile,
   WorkNoteWithStats,
 } from '@web/types/api';
 import { getLatestTodoDate } from './get-latest-todo-date';
@@ -214,14 +215,19 @@ export function useDeleteWorkNoteFile() {
   });
 }
 
-export async function downloadWorkNoteFile(workId: string, fileId: string, fileName: string) {
-  const blob = await API.downloadWorkNoteFile(workId, fileId);
+export async function downloadWorkNoteFile(workId: string, file: WorkNoteFile) {
+  if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
+    return file.gdriveWebViewLink;
+  }
+
+  const blob = await API.downloadWorkNoteFile(workId, file.fileId);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = fileName;
+  a.download = file.originalName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return null;
 }

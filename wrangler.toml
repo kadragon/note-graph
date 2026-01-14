@@ -70,6 +70,7 @@ AI_GATEWAY_ID = "worknote-maker"
 OPENAI_MODEL_CHAT = "gpt-5.1"
 OPENAI_MODEL_EMBEDDING = "text-embedding-3-small"
 OPENAI_MODEL_LIGHTWEIGHT = "gpt-5-mini"
+GOOGLE_REDIRECT_URI = "https://note.kadragon.work/api/auth/google/callback"
 
 # ============================================================================
 # Production Environment Variables (use wrangler secret for sensitive data)
@@ -77,6 +78,9 @@ OPENAI_MODEL_LIGHTWEIGHT = "gpt-5-mini"
 # CLOUDFLARE_ACCOUNT_ID - Set via: wrangler secret put CLOUDFLARE_ACCOUNT_ID
 # OPENAI_API_KEY - Set via: wrangler secret put OPENAI_API_KEY
 # CF_AIG_AUTHORIZATION - (Optional) Set via: wrangler secret put CF_AIG_AUTHORIZATION
+# GOOGLE_CLIENT_ID - Set via: wrangler secret put GOOGLE_CLIENT_ID
+# GOOGLE_CLIENT_SECRET - Set via: wrangler secret put GOOGLE_CLIENT_SECRET
+# GDRIVE_ROOT_FOLDER_ID - (Optional) Set via: wrangler secret put GDRIVE_ROOT_FOLDER_ID
 
 # ============================================================================
 # Development Settings

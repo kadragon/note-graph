@@ -43,6 +43,10 @@ export function useDownloadWorkNote() {
         const files = workNote.files ?? [];
         if (files.length > 0) {
           const downloadPromises = files.map(async (file) => {
+            if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
+              window.open(file.gdriveWebViewLink, '_blank');
+              return;
+            }
             const fileBlob = await API.downloadWorkNoteFile(workNote.id, file.fileId);
             triggerDownload(fileBlob, file.originalName);
           });
@@ -52,9 +56,19 @@ export function useDownloadWorkNote() {
         // 4. Show success toast
         const fileCount = files.length;
         if (fileCount > 0) {
+          const driveFileCount = files.filter(
+            (file) => file.storageType === 'GDRIVE' && file.gdriveWebViewLink
+          ).length;
+          const downloadFileCount = fileCount - driveFileCount;
+          const description =
+            driveFileCount === 0
+              ? `PDF와 첨부파일 ${downloadFileCount}개가 다운로드되었습니다.`
+              : downloadFileCount === 0
+                ? `PDF가 다운로드되고 첨부파일 ${driveFileCount}개가 열렸습니다.`
+                : `PDF가 다운로드되고 첨부파일 ${downloadFileCount}개가 다운로드되었으며 Google Drive 첨부파일 ${driveFileCount}개가 열렸습니다.`;
           toast({
             title: '다운로드 완료',
-            description: `PDF와 첨부파일 ${fileCount}개가 다운로드되었습니다.`,
+            description,
           });
         } else {
           toast({

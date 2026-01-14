@@ -184,3 +184,47 @@ describe('WorkNoteService.findSimilarNotes', () => {
     expect(result[0].todos).toEqual([]);
   });
 });
+
+describe('WorkNoteService Google Drive integration', () => {
+  it('enables drive service when Google Drive credentials are configured', () => {
+    const envWithDrive = {
+      ...dummyEnv,
+      R2_BUCKET: {} as Env['R2_BUCKET'],
+      GOOGLE_CLIENT_ID: 'client-id',
+      GOOGLE_CLIENT_SECRET: 'client-secret',
+    } as Env;
+
+    const service = new WorkNoteService(envWithDrive);
+    const fileService = (service as unknown as { fileService: unknown }).fileService as null | {
+      useGoogleDrive?: boolean;
+      driveService?: unknown;
+    };
+
+    expect(fileService).toBeTruthy();
+    expect(fileService?.useGoogleDrive).toBe(true);
+    expect(fileService?.driveService).not.toBeNull();
+  });
+});
+
+describe('WorkNoteService.delete', () => {
+  it('passes userEmail to deleteWorkNoteFiles when provided', async () => {
+    const service = new WorkNoteService(dummyEnv);
+
+    const deleteWorkNoteFiles = vi.fn().mockResolvedValue(undefined);
+    const deleteWorkNoteChunks = vi.fn().mockResolvedValue(undefined);
+    const repositoryDelete = vi.fn().mockResolvedValue(undefined);
+
+    (service as unknown as { fileService: unknown }).fileService = {
+      deleteWorkNoteFiles,
+    };
+    (service as unknown as { deleteWorkNoteChunks: unknown }).deleteWorkNoteChunks =
+      deleteWorkNoteChunks;
+    (service as unknown as { repository: unknown }).repository = {
+      delete: repositoryDelete,
+    };
+
+    await service.delete('WORK-123', 'tester@example.com');
+
+    expect(deleteWorkNoteFiles).toHaveBeenCalledWith('WORK-123', 'tester@example.com');
+  });
+});

@@ -11,7 +11,7 @@ const GENERIC_MIME_TYPES = ['', 'application/octet-stream'];
 
 export interface BaseFileRecord {
   fileId: string;
-  r2Key: string;
+  r2Key?: string;
   originalName: string;
   fileType: string;
   fileSize: number;
@@ -188,6 +188,9 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
     inline = false
   ): Promise<{ body: ReadableStream; headers: Headers }> {
     const file = await this.requireFile(fileId);
+    if (!file.r2Key) {
+      throw new NotFoundError('File in R2', file.fileId);
+    }
 
     const object = await this.r2.get(file.r2Key);
     if (!object) {
