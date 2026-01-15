@@ -14,6 +14,7 @@ import { Button } from '@web/components/ui/button';
 import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@web/components/ui/popover';
+import { STORAGE_KEYS } from '@web/constants/storage';
 import { useToast } from '@web/hooks/use-toast';
 import {
   downloadWorkNoteFile,
@@ -93,30 +94,51 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const hasLegacyR2Files = files.some((file) => file.storageType === 'R2');
 
   useEffect(() => {
-    const saved = localStorage.getItem('note-graph-local-drive-path');
+    const saved = localStorage.getItem(STORAGE_KEYS.LOCAL_DRIVE_PATH);
     if (saved) {
       setLocalDrivePath(saved);
     }
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEYS.LOCAL_DRIVE_PATH && event.newValue) {
+        setLocalDrivePath(event.newValue);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const handleLocalDrivePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const path = e.target.value;
     setLocalDrivePath(path);
-    localStorage.setItem('note-graph-local-drive-path', path);
+    localStorage.setItem(STORAGE_KEYS.LOCAL_DRIVE_PATH, path);
   };
 
   const getLocalFilePath = (file: WorkNoteFile) => {
     if (!localDrivePath) return null;
     const sep = localDrivePath.includes('\\') ? '\\' : '/';
     const cleanPath = localDrivePath.replace(/[/\\]$/, '');
-    return `${cleanPath}${sep}workNote${sep}${workId}${sep}${file.originalName}`;
+    // Sanitize filename: replace / and \ with _ to avoid path traversal confusion
+    const sanitizedName = file.originalName.replace(/[/\\]/g, '_');
+    return `${cleanPath}${sep}workNote${sep}${workId}${sep}${sanitizedName}`;
   };
 
-  const copyLocalPath = (file: WorkNoteFile) => {
+  const copyLocalPath = async (file: WorkNoteFile) => {
     const path = getLocalFilePath(file);
     if (path) {
-      navigator.clipboard.writeText(path);
-      toast({ description: '로컬 경로가 복사되었습니다.' });
+      try {
+        await navigator.clipboard.writeText(path);
+        toast({ description: '로컬 경로가 복사되었습니다.' });
+      } catch (error) {
+        console.error('Failed to copy path:', error);
+        toast({
+          variant: 'destructive',
+          description: '클립보드에 복사할 수 없습니다.',
+        });
+      }
     }
   };
 

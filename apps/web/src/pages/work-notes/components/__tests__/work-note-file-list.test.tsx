@@ -1,4 +1,5 @@
 import userEvent from '@testing-library/user-event';
+import { STORAGE_KEYS } from '@web/constants/storage';
 import {
   useDeleteWorkNoteFile,
   useGoogleDriveStatus,
@@ -12,6 +13,16 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkNoteFileList } from '../work-note-file-list';
+
+// Mock clipboard
+const writeTextMock = vi.fn();
+Object.defineProperty(navigator, 'clipboard', {
+  value: {
+    writeText: writeTextMock,
+  },
+  writable: true,
+  configurable: true,
+});
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -55,7 +66,7 @@ vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-// Mock Popover components since they are not in the standard test setup usually (Radix UI)
+// Mock Popover components
 vi.mock('@web/components/ui/popover', () => ({
   Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PopoverTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -208,5 +219,38 @@ describe('WorkNoteFileList', () => {
     expect(
       screen.getByText('Google Drive 설정이 필요합니다. 현재 R2에 있는 기존 파일만 표시됩니다.')
     ).toBeInTheDocument();
+  });
+
+  it('copies local file path with sanitization when local drive path is set', async () => {
+    const user = userEvent.setup();
+    const files = [
+      createWorkNoteFile({
+        storageType: 'GDRIVE',
+        originalName: 'report/2025.pdf', // contains slash
+      }),
+    ];
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: { files, googleDriveConfigured: true },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    // Setup local storage with a path
+    localStorageMock.getItem.mockReturnValue('C:\\Users\\Drive');
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(localStorageMock.getItem).toHaveBeenCalledWith(STORAGE_KEYS.LOCAL_DRIVE_PATH);
+
+    const writeTextSpy = vi.spyOn(navigator.clipboard, 'writeText');
+
+    // Click copy button
+    await user.click(screen.getByRole('button', { name: '로컬 경로 복사' }));
+
+    // Expected path: C:\Users\Drive\workNote\work-1\report_2025.pdf
+    // Note: sanitization replaces / with _
+    const expectedPath = 'C:\\Users\\Drive\\workNote\\work-1\\report_2025.pdf';
+    expect(writeTextSpy).toHaveBeenCalledWith(expectedPath);
+    expect(mockToast).toHaveBeenCalledWith({ description: '로컬 경로가 복사되었습니다.' });
   });
 });
