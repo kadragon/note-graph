@@ -14,6 +14,7 @@ import {
   useCreateWorkNote,
   useDeleteWorkNote,
   useDeleteWorkNoteFile,
+  useMigrateWorkNoteFiles,
   useUpdateWorkNote,
   useUploadWorkNoteFile,
   useWorkNoteFiles,
@@ -31,6 +32,7 @@ vi.mock('@web/lib/api', () => ({
     getWorkNoteFiles: vi.fn(),
     uploadWorkNoteFile: vi.fn(),
     deleteWorkNoteFile: vi.fn(),
+    migrateWorkNoteFiles: vi.fn(),
   },
 }));
 
@@ -603,5 +605,36 @@ describe('useDeleteWorkNoteFile', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['work-note-files', 'work-1'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['work-note-detail', 'work-1'] });
+  });
+});
+
+describe('useMigrateWorkNoteFiles', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetFactoryCounter();
+  });
+
+  it('migrates R2 files successfully', async () => {
+    vi.mocked(API.migrateWorkNoteFiles).mockResolvedValue({
+      migrated: 2,
+      skipped: 0,
+      failed: 0,
+    });
+
+    const { result } = renderHookWithClient(() => useMigrateWorkNoteFiles());
+
+    await act(async () => {
+      result.current.mutate('work-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(API.migrateWorkNoteFiles).toHaveBeenCalledWith('work-1');
+    expect(mockToast).toHaveBeenCalledWith({
+      title: '성공',
+      description: '마이그레이션 완료: 이동 2개 · 건너뜀 0개 · 실패 0개',
+    });
   });
 });

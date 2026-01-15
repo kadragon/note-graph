@@ -5,6 +5,7 @@ import type {
   CreateWorkNoteRequest,
   UpdateWorkNoteRequest,
   WorkNoteFile,
+  WorkNoteFileMigrationResult,
   WorkNoteWithStats,
 } from '@web/types/api';
 import { getLatestTodoDate } from './get-latest-todo-date';
@@ -210,6 +211,35 @@ export function useDeleteWorkNoteFile() {
         variant: 'destructive',
         title: '오류',
         description: error.message || '파일을 삭제할 수 없습니다.',
+      });
+    },
+  });
+}
+
+export function useMigrateWorkNoteFiles() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (workId: string) => API.migrateWorkNoteFiles(workId),
+    onSuccess: (result: WorkNoteFileMigrationResult, workId: string) => {
+      void queryClient.invalidateQueries({ queryKey: ['work-note-files', workId] });
+      void queryClient.invalidateQueries({ queryKey: ['work-note-detail', workId] });
+      const summary = `이동 ${result.migrated}개 · 건너뜀 ${result.skipped}개 · 실패 ${result.failed}개`;
+      const description =
+        result.migrated === 0 && result.skipped === 0 && result.failed === 0
+          ? '옮길 R2 파일이 없습니다.'
+          : `마이그레이션 완료: ${summary}`;
+      toast({
+        title: '성공',
+        description,
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error.message || '파일을 옮길 수 없습니다.',
       });
     },
   });

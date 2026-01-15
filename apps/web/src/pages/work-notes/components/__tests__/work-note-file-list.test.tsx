@@ -1,5 +1,7 @@
+import userEvent from '@testing-library/user-event';
 import {
   useDeleteWorkNoteFile,
+  useMigrateWorkNoteFiles,
   useUploadWorkNoteFile,
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
@@ -35,6 +37,7 @@ vi.mock('@web/hooks/use-work-notes', () => ({
   useWorkNoteFiles: vi.fn(),
   useUploadWorkNoteFile: vi.fn(),
   useDeleteWorkNoteFile: vi.fn(),
+  useMigrateWorkNoteFiles: vi.fn(),
   downloadWorkNoteFile: vi.fn(),
 }));
 
@@ -57,6 +60,11 @@ describe('WorkNoteFileList', () => {
       mutate: vi.fn(),
       isPending: false,
     } as unknown as ReturnType<typeof useDeleteWorkNoteFile>);
+
+    vi.mocked(useMigrateWorkNoteFiles).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof useMigrateWorkNoteFiles>);
   });
 
   it('renders Google Drive link and button for Drive files', () => {
@@ -86,5 +94,69 @@ describe('WorkNoteFileList', () => {
     expect(driveButton).toHaveAttribute('target', '_blank');
 
     expect(screen.getByTestId('drive-icon')).toBeInTheDocument();
+  });
+
+  it('renders R2 badge and migration button for legacy R2 files', () => {
+    const files = [
+      createWorkNoteFile({
+        storageType: 'R2',
+        originalName: 'legacy.pdf',
+      }),
+    ];
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: files,
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(screen.getByText('Cloudflare R2')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'R2 파일 Google Drive로 옮기기' })
+    ).toBeInTheDocument();
+  });
+
+  it('shows migration result summary after moving R2 files', async () => {
+    const user = userEvent.setup();
+    const files = [
+      createWorkNoteFile({
+        storageType: 'R2',
+        originalName: 'legacy.pdf',
+      }),
+    ];
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: files,
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    const migrateMock = vi.fn(
+      (
+        _workId: string,
+        options?: {
+          onSuccess?: (result: { migrated: number; skipped: number; failed: number }) => void;
+        }
+      ) => {
+        options?.onSuccess?.({
+          migrated: 1,
+          skipped: 1,
+          failed: 0,
+        });
+      }
+    );
+
+    vi.mocked(useMigrateWorkNoteFiles).mockReturnValue({
+      mutate: migrateMock,
+      isPending: false,
+    } as unknown as ReturnType<typeof useMigrateWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    await user.click(screen.getByRole('button', { name: 'R2 파일 Google Drive로 옮기기' }));
+
+    expect(
+      screen.getByText('마이그레이션 결과: 이동 1개 · 건너뜀 1개 · 실패 0개')
+    ).toBeInTheDocument();
   });
 });

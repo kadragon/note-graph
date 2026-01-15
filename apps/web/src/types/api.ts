@@ -32,11 +32,11 @@ import type {
   StatisticsPeriod,
 } from '@shared/types/statistics';
 import type { TaskCategory } from '@shared/types/task-category';
-import type { WorkNoteFile } from '@shared/types/work-note';
+import type { WorkNoteFile, WorkNoteFileMigrationResult } from '@shared/types/work-note';
 
 export type { Department, TaskCategory };
 export type { EmploymentStatus, Person, PersonDeptHistory };
-export type { WorkNoteFile };
+export type { WorkNoteFile, WorkNoteFileMigrationResult };
 export type {
   Project,
   ProjectDetail,

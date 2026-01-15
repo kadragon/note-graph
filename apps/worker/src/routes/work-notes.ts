@@ -213,6 +213,28 @@ workNotes.get('/:workId/files', workNoteFileMiddleware, async (c) => {
 });
 
 /**
+ * POST /work-notes/:workId/files/migrate - Migrate legacy R2 files to Google Drive
+ */
+workNotes.post('/:workId/files/migrate', workNoteFileMiddleware, async (c) => {
+  const { workId } = c.req.param();
+  const user = getAuthUser(c);
+  if (!workId) {
+    return c.json({ error: 'workId is required' }, 400);
+  }
+
+  const workNoteService = new WorkNoteService(c.env);
+  const workNote = await workNoteService.findById(workId);
+  if (!workNote) {
+    return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
+  }
+
+  const fileService = c.get('fileService');
+  const result = await fileService.migrateR2FilesToDrive(workId, user.email);
+
+  return c.json(result);
+});
+
+/**
  * GET /work-notes/:workId/files/:fileId - Get file metadata
  */
 workNotes.get('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {

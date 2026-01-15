@@ -16,12 +16,23 @@ import { useToast } from '@web/hooks/use-toast';
 import {
   downloadWorkNoteFile,
   useDeleteWorkNoteFile,
+  useMigrateWorkNoteFiles,
   useUploadWorkNoteFile,
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
-import type { WorkNoteFile } from '@web/types/api';
-import { Cloud, Download, ExternalLink, Eye, FileIcon, Trash2, Upload } from 'lucide-react';
+import type { WorkNoteFile, WorkNoteFileMigrationResult } from '@web/types/api';
+import {
+  ArrowRightLeft,
+  Cloud,
+  Database,
+  Download,
+  ExternalLink,
+  Eye,
+  FileIcon,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
 
@@ -59,11 +70,15 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [fileToDelete, setFileToDelete] = useState<WorkNoteFile | null>(null);
+  const [migrationResult, setMigrationResult] = useState<WorkNoteFileMigrationResult | null>(null);
   const { toast } = useToast();
 
   const { data: files = [], isLoading } = useWorkNoteFiles(workId);
   const uploadMutation = useUploadWorkNoteFile();
   const deleteMutation = useDeleteWorkNoteFile();
+  const migrateMutation = useMigrateWorkNoteFiles();
+
+  const hasLegacyR2Files = files.some((file) => file.storageType === 'R2');
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
@@ -124,26 +139,55 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <Label className="text-base font-semibold">첨부파일</Label>
-        <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            onChange={handleFileSelect}
-            className="hidden"
-            accept=".pdf,.hwp,.hwpx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
-            disabled={uploadingFiles.length > 0}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingFiles.length > 0}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            {uploadingFiles.length > 0 ? '업로드 중...' : '파일 업로드'}
-          </Button>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-2">
+            {hasLegacyR2Files && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  migrateMutation.mutate(workId, {
+                    onSuccess: (result) => setMigrationResult(result),
+                  })
+                }
+                disabled={migrateMutation.isPending}
+              >
+                <ArrowRightLeft className="h-4 w-4 mr-2" />
+                {migrateMutation.isPending
+                  ? 'Google Drive로 옮기는 중...'
+                  : 'R2 파일 Google Drive로 옮기기'}
+              </Button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              accept=".pdf,.hwp,.hwpx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
+              disabled={uploadingFiles.length > 0}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingFiles.length > 0}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              {uploadingFiles.length > 0 ? '업로드 중...' : '파일 업로드'}
+            </Button>
+          </div>
+          {migrateMutation.isPending && (
+            <p className="text-xs text-muted-foreground">마이그레이션 진행 중...</p>
+          )}
+          {!migrateMutation.isPending && migrationResult && (
+            <p className="text-xs text-muted-foreground">
+              마이그레이션 결과: 이동 {migrationResult.migrated}개 · 건너뜀{' '}
+              {migrationResult.skipped}개 · 실패 {migrationResult.failed}개
+            </p>
+          )}
         </div>
       </div>
 
@@ -174,6 +218,8 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
         <div className="space-y-2">
           {sortFilesByUploadedAtDesc(files).map((file) => {
             const driveLink = getDriveLink(file);
+            const isDriveFile = file.storageType === 'GDRIVE';
+            const isR2File = file.storageType === 'R2';
             return (
               <div
                 key={file.fileId}
@@ -203,10 +249,16 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {driveLink && (
+                  {isDriveFile && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
                       <Cloud data-testid="drive-icon" className="h-3 w-3" />
                       Google Drive
+                    </span>
+                  )}
+                  {isR2File && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                      <Database className="h-3 w-3" />
+                      Cloudflare R2
                     </span>
                   )}
                   {isUploadedToday(file.uploadedAt) && (

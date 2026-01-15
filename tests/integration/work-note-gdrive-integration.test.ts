@@ -164,4 +164,47 @@ describe('Work Note Google Drive Integration', () => {
 
     expect(deleteUrls).toEqual([`${DRIVE_API_BASE}/files/FOLDER-1`]);
   });
+
+  it('migrates legacy R2 work note files to Google Drive', async () => {
+    const fileId = 'FILE-R2-1';
+    const r2Key = `work-notes/${workId}/files/${fileId}`;
+
+    await testEnv.DB.prepare(
+      `INSERT INTO work_note_files
+        (file_id, work_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at, deleted_at, storage_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(fileId, workId, r2Key, 'legacy.pdf', 'application/pdf', 9, userEmail, now, null, 'R2')
+      .run();
+
+    await testEnv.R2_BUCKET.put(r2Key, new Blob(['r2 data'], { type: 'application/pdf' }));
+
+    const fileService = new WorkNoteFileService(
+      testEnv.R2_BUCKET,
+      testEnv.DB,
+      testEnv as unknown as Env
+    );
+
+    const result = await fileService.migrateR2FilesToDrive(workId, userEmail);
+
+    expect(result.migrated).toBe(1);
+    expect(result.failed).toBe(0);
+
+    const updated = await testEnv.DB.prepare(
+      `SELECT storage_type, gdrive_file_id, gdrive_web_view_link FROM work_note_files WHERE file_id = ?`
+    )
+      .bind(fileId)
+      .first<{
+        storage_type: string;
+        gdrive_file_id: string | null;
+        gdrive_web_view_link: string | null;
+      }>();
+
+    expect(updated?.storage_type).toBe('GDRIVE');
+    expect(updated?.gdrive_file_id).toBe('GFILE-1');
+    expect(updated?.gdrive_web_view_link).toBe('https://drive.example/file');
+
+    const r2Object = await testEnv.R2_BUCKET.get(r2Key);
+    expect(r2Object).toBeNull();
+  });
 });

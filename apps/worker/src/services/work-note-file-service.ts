@@ -4,7 +4,11 @@
  * Note: No automatic text extraction or embedding (unlike project files)
  */
 
-import type { WorkNoteFile, WorkNoteFileStorageType } from '@shared/types/work-note';
+import type {
+  WorkNoteFile,
+  WorkNoteFileMigrationResult,
+  WorkNoteFileStorageType,
+} from '@shared/types/work-note';
 import { nanoid } from 'nanoid';
 import type { Env } from '../types/env';
 import { DomainError } from '../types/errors';
@@ -257,6 +261,75 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
         // Non-fatal
       }
     }
+  }
+
+  /**
+   * Migrate all legacy R2 files for a work note to Google Drive
+   */
+  async migrateR2FilesToDrive(
+    workId: string,
+    userEmail?: string
+  ): Promise<WorkNoteFileMigrationResult> {
+    if (!userEmail) {
+      throw new DomainError('사용자 이메일이 필요합니다.', 'BAD_REQUEST', 400);
+    }
+
+    const files = await this.listFiles(workId);
+    const r2Files = files.filter((file) => file.storageType === 'R2');
+
+    if (r2Files.length === 0) {
+      return { migrated: 0, skipped: 0, failed: 0 };
+    }
+
+    const folder = await this.driveService.getOrCreateWorkNoteFolder(userEmail, workId);
+    let migrated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const file of r2Files) {
+      if (!file.r2Key) {
+        skipped++;
+        continue;
+      }
+
+      const object = await this.r2.get(file.r2Key);
+      if (!object) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        const buffer = await object.arrayBuffer();
+        const blob = new Blob([buffer], {
+          type: file.fileType || 'application/octet-stream',
+        });
+
+        const driveFile = await this.driveService.uploadFile(
+          userEmail,
+          folder.gdriveFolderId,
+          blob,
+          file.originalName,
+          file.fileType || 'application/octet-stream'
+        );
+
+        await this.db
+          .prepare(
+            `UPDATE work_note_files
+             SET storage_type = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
+             WHERE file_id = ?`
+          )
+          .bind('GDRIVE', driveFile.id, folder.gdriveFolderId, driveFile.webViewLink, file.fileId)
+          .run();
+
+        await this.deleteR2Object(file.r2Key);
+        migrated++;
+      } catch (error) {
+        failed++;
+        console.error(`Failed to migrate file ${file.fileId} to Google Drive:`, error);
+      }
+    }
+
+    return { migrated, skipped, failed };
   }
 
   /**
