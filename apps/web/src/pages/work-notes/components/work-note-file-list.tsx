@@ -16,6 +16,7 @@ import { useToast } from '@web/hooks/use-toast';
 import {
   downloadWorkNoteFile,
   useDeleteWorkNoteFile,
+  useGoogleDriveStatus,
   useMigrateWorkNoteFiles,
   useUploadWorkNoteFile,
   useWorkNoteFiles,
@@ -35,6 +36,8 @@ import {
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
+
+const GOOGLE_AUTH_URL = '/api/auth/google/authorize';
 
 interface WorkNoteFileListProps {
   workId: string;
@@ -74,17 +77,28 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const { toast } = useToast();
 
   const { data, isLoading } = useWorkNoteFiles(workId);
+  const { data: driveStatus } = useGoogleDriveStatus();
   const uploadMutation = useUploadWorkNoteFile();
   const deleteMutation = useDeleteWorkNoteFile();
   const migrateMutation = useMigrateWorkNoteFiles();
   const files = data?.files ?? [];
-  const googleDriveConfigured = data?.googleDriveConfigured ?? true;
+  const googleDriveConfigured = data?.googleDriveConfigured ?? false;
+  const isDriveConnected = driveStatus?.connected ?? false;
 
   const hasLegacyR2Files = files.some((file) => file.storageType === 'R2');
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
+
+    if (!isDriveConnected && googleDriveConfigured) {
+      toast({
+        variant: 'destructive',
+        title: 'Google Drive 연결 필요',
+        description: '파일을 업로드하려면 Google Drive 연결이 필요합니다.',
+      });
+      return;
+    }
 
     const filesArray = Array.from(selectedFiles);
     setUploadingFiles(filesArray);
@@ -142,10 +156,24 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
       <div className="flex items-center justify-between">
         <Label className="text-base font-semibold">첨부파일</Label>
         <div className="flex flex-col items-end gap-1">
-          {!googleDriveConfigured && (
+          {!isLoading && !googleDriveConfigured && (
             <p className="text-xs text-amber-600">
               Google Drive 설정이 필요합니다. 현재 R2에 있는 기존 파일만 표시됩니다.
             </p>
+          )}
+          {!isLoading && googleDriveConfigured && !isDriveConnected && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                window.location.href = GOOGLE_AUTH_URL;
+              }}
+              className="text-amber-600 border-amber-200 hover:bg-amber-50"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Google Drive 연결하기
+            </Button>
           )}
           <div className="flex items-center gap-2">
             {hasLegacyR2Files && (

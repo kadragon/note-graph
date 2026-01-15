@@ -13,6 +13,7 @@ import type {
   Department,
   DepartmentSearchResult,
   EmbeddingStats,
+  GoogleDriveStatus,
   ImportPersonFromTextRequest,
   ImportPersonResponse,
   ParsedPersonData,
@@ -106,7 +107,7 @@ class CFAccessTokenRefresher {
     this.refreshPromise = new Promise<void>((resolve) => {
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
-      iframe.src = window.location.origin + '/';
+      iframe.src = `${window.location.origin}/`;
 
       const finalCleanup = () => {
         if (iframe.parentNode) {
@@ -317,6 +318,11 @@ export class APIClient {
   // Auth
   getMe() {
     return this.request<User>('/me');
+  }
+
+  // Google Drive Auth
+  getGoogleDriveStatus() {
+    return this.request<GoogleDriveStatus>('/auth/google/status');
   }
 
   // Work Notes
