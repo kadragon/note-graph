@@ -3,7 +3,7 @@
 import type { R2Bucket } from '@cloudflare/workers-types';
 import { WorkNoteFileService } from '@worker/services/work-note-file-service';
 import type { Env } from '@worker/types/env';
-import { BadRequestError, DomainError, NotFoundError } from '@worker/types/errors';
+import { BadRequestError, NotFoundError } from '@worker/types/errors';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MockR2, setTestR2Bucket, testEnv } from '../test-setup';
@@ -172,21 +172,37 @@ describe('WorkNoteFileService', () => {
     testEnv.GDRIVE_ROOT_FOLDER_ID = originalGdriveRootFolderId as string;
   });
 
-  describe.each([
-    ['GOOGLE_CLIENT_ID', { GOOGLE_CLIENT_ID: '' }],
-    ['GOOGLE_CLIENT_SECRET', { GOOGLE_CLIENT_SECRET: '' }],
-    ['GDRIVE_ROOT_FOLDER_ID', { GDRIVE_ROOT_FOLDER_ID: '' }],
-  ])('throws when %s is missing', (_label, overrides) => {
-    it('throws DomainError', () => {
-      const envWithoutGoogle = {
-        ...baseEnv,
-        ...overrides,
-      } as Env;
+  it('lists legacy R2 files even when Google Drive config is missing', async () => {
+    await insertWorkNote('WORK-123');
+    const fileId = 'FILE-R2-LEGACY';
+    const r2Key = `work-notes/WORK-123/files/${fileId}`;
 
-      expect(
-        () => new WorkNoteFileService(r2 as unknown as R2Bucket, baseEnv.DB, envWithoutGoogle)
-      ).toThrow(DomainError);
+    await insertLegacyR2File({
+      workId: 'WORK-123',
+      fileId,
+      r2Key,
+      originalName: 'legacy.pdf',
+      fileType: 'application/pdf',
+      fileSize: 10,
     });
+
+    const envWithoutGoogle = {
+      ...baseEnv,
+      GOOGLE_CLIENT_ID: '',
+      GOOGLE_CLIENT_SECRET: '',
+      GDRIVE_ROOT_FOLDER_ID: '',
+    } as Env;
+
+    const legacyService = new WorkNoteFileService(
+      r2 as unknown as R2Bucket,
+      baseEnv.DB,
+      envWithoutGoogle
+    );
+
+    const files = await legacyService.listFiles('WORK-123');
+
+    expect(files).toHaveLength(1);
+    expect(files[0]?.fileId).toBe(fileId);
   });
 
   it('uploads PDF and stores record', async () => {

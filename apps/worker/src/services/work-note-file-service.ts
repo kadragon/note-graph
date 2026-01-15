@@ -61,18 +61,15 @@ interface UploadFileParams {
 export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   protected tableName = 'work_note_files';
   protected ownerIdColumn = 'work_id';
-  private driveService: GoogleDriveService;
+  private driveService: GoogleDriveService | null;
 
   constructor(r2: R2Bucket, db: D1Database, env?: Env) {
     super(r2, db);
-    if (!env || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GDRIVE_ROOT_FOLDER_ID) {
-      throw new DomainError(
-        'Google OAuth 또는 Google Drive 환경 변수가 설정되어 있지 않습니다.',
-        'CONFIGURATION_ERROR',
-        500
-      );
+    if (env && env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GDRIVE_ROOT_FOLDER_ID) {
+      this.driveService = new GoogleDriveService(env, db);
+    } else {
+      this.driveService = null;
     }
-    this.driveService = new GoogleDriveService(env, db);
   }
 
   protected buildR2Key(workId: string, fileId: string): string {
@@ -128,11 +125,13 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   }): Promise<WorkNoteFile> {
     const { workId, fileId, file, originalName, resolvedFileType, uploadedBy, now } = params;
 
+    const driveService = this.requireDriveService();
+
     // Get or create Google Drive folder for this work note
-    const folder = await this.driveService.getOrCreateWorkNoteFolder(uploadedBy, workId);
+    const folder = await driveService.getOrCreateWorkNoteFolder(uploadedBy, workId);
 
     // Upload to Google Drive
-    const driveFile = await this.driveService.uploadFile(
+    const driveFile = await driveService.uploadFile(
       uploadedBy,
       folder.gdriveFolderId,
       file,
@@ -196,7 +195,8 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
 
     // Delete from appropriate storage
     if (file.storageType === 'GDRIVE' && file.gdriveFileId && userEmail) {
-      await this.driveService.deleteFile(userEmail, file.gdriveFileId);
+      const driveService = this.requireDriveService();
+      await driveService.deleteFile(userEmail, file.gdriveFileId);
     } else if (file.r2Key) {
       await this.deleteR2Object(file.r2Key);
     }
@@ -242,7 +242,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       files.results.map(async (row) => {
         try {
           if (row.storage_type === 'GDRIVE') {
-            if (shouldDeleteDriveFiles && row.gdrive_file_id) {
+            if (shouldDeleteDriveFiles && row.gdrive_file_id && this.driveService) {
               await this.driveService.deleteFile(userEmail!, row.gdrive_file_id);
             }
             return;
@@ -259,7 +259,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     );
 
     // Also delete the Google Drive folder if it exists
-    if (userEmail && folderId) {
+    if (userEmail && folderId && this.driveService) {
       try {
         await this.driveService.deleteFolder(userEmail, folderId);
       } catch (error) {
@@ -295,6 +295,8 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       throw new DomainError('사용자 이메일이 필요합니다.', 'BAD_REQUEST', 400);
     }
 
+    const driveService = this.requireDriveService();
+
     const files = await this.listFiles(workId);
     const r2Files = files.filter((file) => file.storageType === 'R2');
 
@@ -302,7 +304,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       return { migrated: 0, skipped: 0, failed: 0 };
     }
 
-    const folder = await this.driveService.getOrCreateWorkNoteFolder(userEmail, workId);
+    const folder = await driveService.getOrCreateWorkNoteFolder(userEmail, workId);
     let migrated = 0;
     let skipped = 0;
     let failed = 0;
@@ -322,7 +324,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       let uploadedFile: { id: string; webViewLink: string } | null = null;
 
       try {
-        const existingFile = await this.driveService.findFileByAppPropertyInFolder(
+        const existingFile = await driveService.findFileByAppPropertyInFolder(
           userEmail,
           folder.gdriveFolderId,
           DRIVE_APP_PROPERTY_FILE_ID,
@@ -340,7 +342,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
           type: file.fileType || 'application/octet-stream',
         });
 
-        const driveFile = await this.driveService.uploadFile(
+        const driveFile = await driveService.uploadFile(
           userEmail,
           folder.gdriveFolderId,
           blob,
@@ -362,7 +364,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
         console.error(`Failed to migrate file ${file.fileId} to Google Drive:`, error);
         if (uploadedFile) {
           try {
-            await this.driveService.deleteFile(userEmail, uploadedFile.id);
+            await driveService.deleteFile(userEmail, uploadedFile.id);
           } catch (cleanupError) {
             console.error(
               `Failed to rollback Google Drive file ${uploadedFile.id} after migration error:`,
@@ -396,5 +398,21 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       uploadedAt: row.uploaded_at as string,
       deletedAt: (row.deleted_at as string) || null,
     };
+  }
+
+  isDriveConfigured(): boolean {
+    return !!this.driveService;
+  }
+
+  private requireDriveService(): GoogleDriveService {
+    if (!this.driveService) {
+      throw new DomainError(
+        'Google OAuth 또는 Google Drive 환경 변수가 설정되어 있지 않습니다.',
+        'CONFIGURATION_ERROR',
+        500
+      );
+    }
+
+    return this.driveService;
   }
 }

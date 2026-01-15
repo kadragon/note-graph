@@ -79,7 +79,7 @@ describe('WorkNoteFileList', () => {
     ];
 
     vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: files,
+      data: { files, googleDriveConfigured: true },
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
@@ -105,7 +105,7 @@ describe('WorkNoteFileList', () => {
     ];
 
     vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: files,
+      data: { files, googleDriveConfigured: true },
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
@@ -127,7 +127,7 @@ describe('WorkNoteFileList', () => {
     ];
 
     vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: files,
+      data: { files, googleDriveConfigured: true },
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
@@ -157,6 +157,21 @@ describe('WorkNoteFileList', () => {
 
     expect(
       screen.getByText('마이그레이션 결과: 이동 1개 · 건너뜀 1개 · 실패 0개')
+    ).toBeInTheDocument();
+  });
+
+  it('shows warning when Google Drive is not configured', () => {
+    const files = [createWorkNoteFile({ storageType: 'R2', originalName: 'legacy.pdf' })];
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: { files, googleDriveConfigured: false },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(
+      screen.getByText('Google Drive 설정이 필요합니다. 현재 R2에 있는 기존 파일만 표시됩니다.')
     ).toBeInTheDocument();
   });
 });

@@ -37,6 +37,10 @@ import type { WorkNoteFile, WorkNoteFileMigrationResult } from '@shared/types/wo
 export type { Department, TaskCategory };
 export type { EmploymentStatus, Person, PersonDeptHistory };
 export type { WorkNoteFile, WorkNoteFileMigrationResult };
+export interface WorkNoteFilesResponse {
+  files: WorkNoteFile[];
+  googleDriveConfigured: boolean;
+}
 export type {
   Project,
   ProjectDetail,

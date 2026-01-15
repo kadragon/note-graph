@@ -18,6 +18,7 @@ import { getR2Bucket } from '../utils/r2-access';
  */
 export interface FileContext {
   fileService: WorkNoteFileService;
+  driveConfigured: boolean;
   file?: WorkNoteFile;
 }
 
@@ -43,6 +44,7 @@ export async function workNoteFileMiddleware(
   // Create file service and add to context
   const fileService = new WorkNoteFileService(r2Bucket, c.env.DB, c.env);
   c.set('fileService', fileService);
+  c.set('driveConfigured', fileService.isDriveConfigured());
 
   // If fileId param exists, validate file
   const { workId, fileId } = c.req.param();

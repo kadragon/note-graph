@@ -47,6 +47,7 @@ import type {
   WorkNote,
   WorkNoteFile,
   WorkNoteFileMigrationResult,
+  WorkNoteFilesResponse,
   WorkNoteStatistics,
 } from '@web/types/api';
 
@@ -195,12 +196,20 @@ export class APIClient {
     options: RequestInit = {},
     isRetry = false
   ): Promise<T> {
+    const { data } = await this.requestWithHeaders<T>(endpoint, options, isRetry);
+    return data;
+  }
+
+  private async requestWithHeaders<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    isRetry = false
+  ): Promise<{ data: T; headers: Headers }> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
 
-    // In development, use test auth header
     if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
       (headers as Record<string, string>)['X-Test-User-Email'] = 'test@example.com';
     }
@@ -219,15 +228,14 @@ export class APIClient {
       }
 
       if (response.status === 204) {
-        return null as T;
+        return { data: null as T, headers: response.headers };
       }
 
-      return response.json() as Promise<T>;
+      return { data: (await response.json()) as T, headers: response.headers };
     } catch (error) {
-      // Handle CF Access CORS errors by refreshing token and retrying once
       if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
         await cfTokenRefresher.refreshToken();
-        return this.request<T>(endpoint, options, true);
+        return this.requestWithHeaders<T>(endpoint, options, true);
       }
       throw error;
     }
@@ -368,7 +376,15 @@ export class APIClient {
 
   // Work note file operations
   async getWorkNoteFiles(workId: string) {
-    return this.request<WorkNoteFile[]>(`/work-notes/${workId}/files`);
+    const { data, headers } = await this.requestWithHeaders<WorkNoteFile[]>(
+      `/work-notes/${workId}/files`
+    );
+    const configuredHeader = headers.get('X-Google-Drive-Configured');
+    const googleDriveConfigured = configuredHeader !== 'false';
+    return {
+      files: data,
+      googleDriveConfigured,
+    } satisfies WorkNoteFilesResponse;
   }
 
   async uploadWorkNoteFile(workId: string, file: File) {
