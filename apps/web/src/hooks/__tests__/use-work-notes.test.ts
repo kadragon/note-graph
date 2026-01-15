@@ -429,7 +429,8 @@ describe('useWorkNoteFiles', () => {
       createWorkNoteFile({ fileId: 'file-1', originalName: 'file1.pdf' }),
       createWorkNoteFile({ fileId: 'file-2', originalName: 'file2.jpg' }),
     ];
-    vi.mocked(API.getWorkNoteFiles).mockResolvedValue(mockFiles);
+    const response = { files: mockFiles, googleDriveConfigured: true };
+    vi.mocked(API.getWorkNoteFiles).mockResolvedValue(response);
 
     const { result } = renderHookWithClient(() => useWorkNoteFiles('work-1'));
 
@@ -438,7 +439,7 @@ describe('useWorkNoteFiles', () => {
     });
 
     expect(API.getWorkNoteFiles).toHaveBeenCalledWith('work-1');
-    expect(result.current.data).toEqual(mockFiles);
+    expect(result.current.data).toEqual(response);
   });
 
   it('returns empty array when workId is null', async () => {

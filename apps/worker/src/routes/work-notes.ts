@@ -209,6 +209,9 @@ workNotes.get('/:workId/files', workNoteFileMiddleware, async (c) => {
   const fileService = c.get('fileService');
   const files = await fileService.listFiles(workId);
 
+  const driveConfigured = c.get('driveConfigured');
+  c.header('X-Google-Drive-Configured', driveConfigured ? 'true' : 'false');
+
   return c.json(files);
 });
 

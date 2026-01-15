@@ -47,6 +47,7 @@ import type {
   WorkNote,
   WorkNoteFile,
   WorkNoteFileMigrationResult,
+  WorkNoteFilesResponse,
   WorkNoteStatistics,
 } from '@web/types/api';
 
@@ -233,6 +234,47 @@ export class APIClient {
     }
   }
 
+  private async requestWithHeaders<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    isRetry = false
+  ): Promise<{ data: T; headers: Headers }> {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
+      (headers as Record<string, string>)['X-Test-User-Email'] = 'test@example.com';
+    }
+
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = (await response.json().catch(() => ({
+          message: '알 수 없는 오류가 발생했습니다',
+        }))) as { message?: string };
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+
+      if (response.status === 204) {
+        return { data: null as T, headers: response.headers };
+      }
+
+      return { data: (await response.json()) as T, headers: response.headers };
+    } catch (error) {
+      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
+        await cfTokenRefresher.refreshToken();
+        return this.requestWithHeaders<T>(endpoint, options, true);
+      }
+      throw error;
+    }
+  }
+
   async uploadFile<T>(
     endpoint: string,
     file: File,
@@ -368,7 +410,15 @@ export class APIClient {
 
   // Work note file operations
   async getWorkNoteFiles(workId: string) {
-    return this.request<WorkNoteFile[]>(`/work-notes/${workId}/files`);
+    const { data, headers } = await this.requestWithHeaders<WorkNoteFile[]>(
+      `/work-notes/${workId}/files`
+    );
+    const configuredHeader = headers.get('X-Google-Drive-Configured');
+    const googleDriveConfigured = configuredHeader !== 'false';
+    return {
+      files: data,
+      googleDriveConfigured,
+    } satisfies WorkNoteFilesResponse;
   }
 
   async uploadWorkNoteFile(workId: string, file: File) {

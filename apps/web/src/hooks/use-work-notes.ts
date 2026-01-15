@@ -161,7 +161,10 @@ export function useDeleteWorkNote() {
 export function useWorkNoteFiles(workId: string | null) {
   return useQuery({
     queryKey: ['work-note-files', workId],
-    queryFn: () => (workId ? API.getWorkNoteFiles(workId) : Promise.resolve([])),
+    queryFn: () =>
+      workId
+        ? API.getWorkNoteFiles(workId)
+        : Promise.resolve({ files: [], googleDriveConfigured: true }),
     enabled: !!workId,
   });
 }

@@ -73,10 +73,12 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const [migrationResult, setMigrationResult] = useState<WorkNoteFileMigrationResult | null>(null);
   const { toast } = useToast();
 
-  const { data: files = [], isLoading } = useWorkNoteFiles(workId);
+  const { data, isLoading } = useWorkNoteFiles(workId);
   const uploadMutation = useUploadWorkNoteFile();
   const deleteMutation = useDeleteWorkNoteFile();
   const migrateMutation = useMigrateWorkNoteFiles();
+  const files = data?.files ?? [];
+  const googleDriveConfigured = data?.googleDriveConfigured ?? true;
 
   const hasLegacyR2Files = files.some((file) => file.storageType === 'R2');
 
@@ -140,6 +142,11 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
       <div className="flex items-center justify-between">
         <Label className="text-base font-semibold">첨부파일</Label>
         <div className="flex flex-col items-end gap-1">
+          {!googleDriveConfigured && (
+            <p className="text-xs text-amber-600">
+              Google Drive 설정이 필요합니다. 현재 R2에 있는 기존 파일만 표시됩니다.
+            </p>
+          )}
           <div className="flex items-center gap-2">
             {hasLegacyR2Files && (
               <Button
