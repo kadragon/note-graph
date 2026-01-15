@@ -46,7 +46,11 @@ export class WorkNoteService {
     this.embeddingProcessor = new EmbeddingProcessor(env);
 
     // Initialize file service only when Google Drive credentials are configured
-    const hasGoogleDrive = !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+    const hasGoogleDrive = !!(
+      env.GOOGLE_CLIENT_ID &&
+      env.GOOGLE_CLIENT_SECRET &&
+      env.GDRIVE_ROOT_FOLDER_ID
+    );
     this.fileService =
       env.R2_BUCKET && hasGoogleDrive ? new WorkNoteFileService(env.R2_BUCKET, env.DB, env) : null;
   }

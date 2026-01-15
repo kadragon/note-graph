@@ -35,6 +35,7 @@ describe('GoogleDriveService', () => {
       GOOGLE_CLIENT_ID: 'client-id',
       GOOGLE_CLIENT_SECRET: 'client-secret',
       GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+      GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
     } as Env;
 
     const service = new TestGoogleDriveService(env, db as unknown as D1Database);

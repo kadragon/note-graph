@@ -22,6 +22,9 @@ if (!testEnv.GOOGLE_CLIENT_SECRET) {
 if (!testEnv.GOOGLE_REDIRECT_URI) {
   testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
 }
+if (!testEnv.GDRIVE_ROOT_FOLDER_ID) {
+  testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
+}
 
 const migrationModules = import.meta.glob('../migrations/*.sql', {
   eager: true,

@@ -20,6 +20,7 @@ describe('WorkNoteFileService', () => {
   let originalGoogleClientId: string | undefined;
   let originalGoogleClientSecret: string | undefined;
   let originalGoogleRedirectUri: string | undefined;
+  let originalGdriveRootFolderId: string | undefined;
   const userEmail = 'tester@example.com';
 
   const insertWorkNote = async (workId: string) => {
@@ -87,6 +88,7 @@ describe('WorkNoteFileService', () => {
     originalGoogleClientId = testEnv.GOOGLE_CLIENT_ID;
     originalGoogleClientSecret = testEnv.GOOGLE_CLIENT_SECRET;
     originalGoogleRedirectUri = testEnv.GOOGLE_REDIRECT_URI;
+    originalGdriveRootFolderId = testEnv.GDRIVE_ROOT_FOLDER_ID;
 
     // Clean DB tables
     await baseEnv.DB.batch([
@@ -101,6 +103,7 @@ describe('WorkNoteFileService', () => {
     testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
     testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
     testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
+    testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
 
     await insertOAuthToken();
 
@@ -155,18 +158,24 @@ describe('WorkNoteFileService', () => {
     testEnv.GOOGLE_CLIENT_ID = originalGoogleClientId as string;
     testEnv.GOOGLE_CLIENT_SECRET = originalGoogleClientSecret as string;
     testEnv.GOOGLE_REDIRECT_URI = originalGoogleRedirectUri as string;
+    testEnv.GDRIVE_ROOT_FOLDER_ID = originalGdriveRootFolderId as string;
   });
 
-  it('throws when Google OAuth credentials are missing', () => {
-    const envWithoutGoogle = {
-      ...baseEnv,
-      GOOGLE_CLIENT_ID: '',
-      GOOGLE_CLIENT_SECRET: '',
-    } as Env;
+  describe.each([
+    ['GOOGLE_CLIENT_ID', { GOOGLE_CLIENT_ID: '' }],
+    ['GOOGLE_CLIENT_SECRET', { GOOGLE_CLIENT_SECRET: '' }],
+    ['GDRIVE_ROOT_FOLDER_ID', { GDRIVE_ROOT_FOLDER_ID: '' }],
+  ])('throws when %s is missing', (_label, overrides) => {
+    it('throws DomainError', () => {
+      const envWithoutGoogle = {
+        ...baseEnv,
+        ...overrides,
+      } as Env;
 
-    expect(
-      () => new WorkNoteFileService(r2 as unknown as R2Bucket, baseEnv.DB, envWithoutGoogle)
-    ).toThrow(DomainError);
+      expect(
+        () => new WorkNoteFileService(r2 as unknown as R2Bucket, baseEnv.DB, envWithoutGoogle)
+      ).toThrow(DomainError);
+    });
   });
 
   it('uploads PDF and stores record', async () => {

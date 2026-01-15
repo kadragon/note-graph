@@ -192,6 +192,7 @@ describe('WorkNoteService Google Drive integration', () => {
       R2_BUCKET: {} as Env['R2_BUCKET'],
       GOOGLE_CLIENT_ID: 'client-id',
       GOOGLE_CLIENT_SECRET: 'client-secret',
+      GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
     } as Env;
 
     const service = new WorkNoteService(envWithDrive);

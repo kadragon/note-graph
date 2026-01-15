@@ -13,6 +13,7 @@ describe('Work Note File Preview Route', () => {
   let originalGoogleClientId: string | undefined;
   let originalGoogleClientSecret: string | undefined;
   let originalGoogleRedirectUri: string | undefined;
+  let originalGdriveRootFolderId: string | undefined;
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
@@ -20,6 +21,7 @@ describe('Work Note File Preview Route', () => {
     originalGoogleClientId = testEnv.GOOGLE_CLIENT_ID;
     originalGoogleClientSecret = testEnv.GOOGLE_CLIENT_SECRET;
     originalGoogleRedirectUri = testEnv.GOOGLE_REDIRECT_URI;
+    originalGdriveRootFolderId = testEnv.GDRIVE_ROOT_FOLDER_ID;
 
     await testEnv.DB.batch([
       testEnv.DB.prepare('DELETE FROM google_oauth_tokens'),
@@ -30,6 +32,7 @@ describe('Work Note File Preview Route', () => {
     testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
     testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
     testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
+    testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
 
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -102,6 +105,7 @@ describe('Work Note File Preview Route', () => {
     testEnv.GOOGLE_CLIENT_ID = originalGoogleClientId as string;
     testEnv.GOOGLE_CLIENT_SECRET = originalGoogleClientSecret as string;
     testEnv.GOOGLE_REDIRECT_URI = originalGoogleRedirectUri as string;
+    testEnv.GDRIVE_ROOT_FOLDER_ID = originalGdriveRootFolderId as string;
   });
 
   it('redirects preview and download to Google Drive links', async () => {

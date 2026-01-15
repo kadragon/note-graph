@@ -59,9 +59,9 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
 
   constructor(r2: R2Bucket, db: D1Database, env?: Env) {
     super(r2, db);
-    if (!env || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+    if (!env || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GDRIVE_ROOT_FOLDER_ID) {
       throw new DomainError(
-        'Google OAuth 환경 변수가 설정되어 있지 않습니다.',
+        'Google OAuth 또는 Google Drive 환경 변수가 설정되어 있지 않습니다.',
         'CONFIGURATION_ERROR',
         500
       );

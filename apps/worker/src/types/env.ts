@@ -20,5 +20,5 @@ export interface Env {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_REDIRECT_URI: string;
-  GDRIVE_ROOT_FOLDER_ID?: string; // Optional: parent folder for all work note folders
+  GDRIVE_ROOT_FOLDER_ID: string; // Parent folder for all work note folders
 }
