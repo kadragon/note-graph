@@ -124,3 +124,6 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For CLI scripts in this repo, keep worker-only dependencies (like Miniflare/Drive services) behind dynamic imports so worker-based tests can import the module without bundling errors.
 - For migration actions, capture per-mutation results (migrated/skipped/failed) via `mutate` callbacks and surface a short UI summary to reduce storage confusion.
 - For Drive migrations, use `appProperties` to match files by `workNoteFileId` and roll back Drive uploads if DB updates fail.
+
+## Agent Log
+- 2026-01-15: Documented completion of PR #202 (fix/google-drive-file-handling) refactor that centralizes `request` behavior in `requestWithHeaders`; verified via `bun run test` (584 suites) before pushing.
