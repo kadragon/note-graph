@@ -46,6 +46,7 @@ import type {
   User,
   WorkNote,
   WorkNoteFile,
+  WorkNoteFileMigrationResult,
   WorkNoteStatistics,
 } from '@web/types/api';
 
@@ -372,6 +373,12 @@ export class APIClient {
 
   async uploadWorkNoteFile(workId: string, file: File) {
     return this.uploadFile<WorkNoteFile>(`/work-notes/${workId}/files`, file);
+  }
+
+  async migrateWorkNoteFiles(workId: string) {
+    return this.request<WorkNoteFileMigrationResult>(`/work-notes/${workId}/files/migrate`, {
+      method: 'POST',
+    });
   }
 
   downloadWorkNoteFile(workId: string, fileId: string): Promise<Blob> {

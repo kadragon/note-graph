@@ -80,6 +80,15 @@ export interface WorkNoteFile {
 }
 
 /**
+ * Result summary for migrating work note files from R2 to Google Drive
+ */
+export interface WorkNoteFileMigrationResult {
+  migrated: number;
+  skipped: number;
+  failed: number;
+}
+
+/**
  * Detailed work note with associations
  */
 export interface WorkNoteDetail extends WorkNote {

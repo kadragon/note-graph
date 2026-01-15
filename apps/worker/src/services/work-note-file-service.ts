@@ -4,7 +4,11 @@
  * Note: No automatic text extraction or embedding (unlike project files)
  */
 
-import type { WorkNoteFile, WorkNoteFileStorageType } from '@shared/types/work-note';
+import type {
+  WorkNoteFile,
+  WorkNoteFileMigrationResult,
+  WorkNoteFileStorageType,
+} from '@shared/types/work-note';
 import { nanoid } from 'nanoid';
 import type { Env } from '../types/env';
 import { DomainError } from '../types/errors';
@@ -44,6 +48,8 @@ const EXTENSION_MIME_MAP: Record<string, string> = {
 
 const UNSUPPORTED_FILE_MESSAGE =
   '지원하지 않는 파일 형식입니다. 허용된 형식: PDF, HWP/HWPX, Excel (XLS/XLSX), 이미지 (PNG, JPEG, GIF, WebP)';
+
+const DRIVE_APP_PROPERTY_FILE_ID = 'workNoteFileId';
 
 interface UploadFileParams {
   workId: string;
@@ -131,7 +137,11 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       folder.gdriveFolderId,
       file,
       originalName,
-      resolvedFileType
+      resolvedFileType,
+      {
+        [DRIVE_APP_PROPERTY_FILE_ID]: fileId,
+        workId,
+      }
     );
 
     // Create DB record with Google Drive info
@@ -257,6 +267,113 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
         // Non-fatal
       }
     }
+  }
+
+  private async updateFileToDriveRecord(
+    fileId: string,
+    folderId: string,
+    driveFile: { id: string; webViewLink: string }
+  ): Promise<void> {
+    await this.db
+      .prepare(
+        `UPDATE work_note_files
+         SET storage_type = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
+         WHERE file_id = ?`
+      )
+      .bind('GDRIVE', driveFile.id, folderId, driveFile.webViewLink, fileId)
+      .run();
+  }
+
+  /**
+   * Migrate all legacy R2 files for a work note to Google Drive
+   */
+  async migrateR2FilesToDrive(
+    workId: string,
+    userEmail?: string
+  ): Promise<WorkNoteFileMigrationResult> {
+    if (!userEmail) {
+      throw new DomainError('사용자 이메일이 필요합니다.', 'BAD_REQUEST', 400);
+    }
+
+    const files = await this.listFiles(workId);
+    const r2Files = files.filter((file) => file.storageType === 'R2');
+
+    if (r2Files.length === 0) {
+      return { migrated: 0, skipped: 0, failed: 0 };
+    }
+
+    const folder = await this.driveService.getOrCreateWorkNoteFolder(userEmail, workId);
+    let migrated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const file of r2Files) {
+      if (!file.r2Key) {
+        skipped++;
+        continue;
+      }
+
+      const object = await this.r2.get(file.r2Key);
+      if (!object) {
+        skipped++;
+        continue;
+      }
+
+      let uploadedFile: { id: string; webViewLink: string } | null = null;
+
+      try {
+        const existingFile = await this.driveService.findFileByAppPropertyInFolder(
+          userEmail,
+          folder.gdriveFolderId,
+          DRIVE_APP_PROPERTY_FILE_ID,
+          file.fileId
+        );
+        if (existingFile) {
+          await this.updateFileToDriveRecord(file.fileId, folder.gdriveFolderId, existingFile);
+          await this.deleteR2Object(file.r2Key);
+          migrated++;
+          continue;
+        }
+
+        const buffer = await object.arrayBuffer();
+        const blob = new Blob([buffer], {
+          type: file.fileType || 'application/octet-stream',
+        });
+
+        const driveFile = await this.driveService.uploadFile(
+          userEmail,
+          folder.gdriveFolderId,
+          blob,
+          file.originalName,
+          file.fileType || 'application/octet-stream',
+          {
+            [DRIVE_APP_PROPERTY_FILE_ID]: file.fileId,
+            workId,
+          }
+        );
+        uploadedFile = driveFile;
+
+        await this.updateFileToDriveRecord(file.fileId, folder.gdriveFolderId, driveFile);
+
+        await this.deleteR2Object(file.r2Key);
+        migrated++;
+      } catch (error) {
+        failed++;
+        console.error(`Failed to migrate file ${file.fileId} to Google Drive:`, error);
+        if (uploadedFile) {
+          try {
+            await this.driveService.deleteFile(userEmail, uploadedFile.id);
+          } catch (cleanupError) {
+            console.error(
+              `Failed to rollback Google Drive file ${uploadedFile.id} after migration error:`,
+              cleanupError
+            );
+          }
+        }
+      }
+    }
+
+    return { migrated, skipped, failed };
   }
 
   /**

@@ -20,6 +20,7 @@ export interface DriveFile {
   mimeType: string;
   webViewLink: string;
   size: string;
+  appProperties?: Record<string, string>;
 }
 
 export interface GDriveFolderRecord {
@@ -129,15 +130,19 @@ export class GoogleDriveService {
     folderId: string,
     file: Blob,
     fileName: string,
-    mimeType: string
+    mimeType: string,
+    appProperties?: Record<string, string>
   ): Promise<DriveFile> {
     const accessToken = await this.getAccessToken(userEmail);
 
     // Use multipart upload for files
-    const metadata = {
+    const metadata: Record<string, unknown> = {
       name: fileName,
       parents: [folderId],
     };
+    if (appProperties) {
+      metadata.appProperties = appProperties;
+    }
 
     const boundary = '-------314159265358979323846';
     const delimiter = `\r\n--${boundary}\r\n`;
@@ -188,6 +193,34 @@ export class GoogleDriveService {
 
     const data = (await response.json()) as DriveFile;
     return data;
+  }
+
+  /**
+   * Find a file in a folder by appProperties key/value
+   */
+  async findFileByAppPropertyInFolder(
+    userEmail: string,
+    folderId: string,
+    key: string,
+    value: string
+  ): Promise<DriveFile | null> {
+    const accessToken = await this.getAccessToken(userEmail);
+    const query = `appProperties has { key='${key}' and value='${value}' } and '${folderId}' in parents and trashed = false`;
+    const url = `${DRIVE_API_BASE}/files?fields=files(id,name,mimeType,webViewLink,size,appProperties)&q=${encodeURIComponent(query)}`;
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to list files: ${error}`);
+    }
+
+    const data = (await response.json()) as { files?: DriveFile[] };
+    return data.files?.[0] ?? null;
   }
 
   /**

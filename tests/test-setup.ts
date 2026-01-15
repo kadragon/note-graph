@@ -42,6 +42,10 @@ class MockR2 implements R2Bucket {
       httpMetadata: entry.httpMetadata ?? {},
       customMetadata: entry.customMetadata ?? {},
       httpEtag: '',
+      arrayBuffer: () => entry.value.arrayBuffer(),
+      text: () => entry.value.text(),
+      json: async () => JSON.parse(await entry.value.text()),
+      blob: () => entry.value,
       writeHttpMetadata: () => {},
     } as unknown as R2ObjectBody;
   }
