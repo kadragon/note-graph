@@ -37,6 +37,8 @@ import {
 import { useRef, useState } from 'react';
 import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
 
+const GOOGLE_AUTH_URL = '/api/auth/google/authorize';
+
 interface WorkNoteFileListProps {
   workId: string;
 }
@@ -80,7 +82,7 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const deleteMutation = useDeleteWorkNoteFile();
   const migrateMutation = useMigrateWorkNoteFiles();
   const files = data?.files ?? [];
-  const googleDriveConfigured = data?.googleDriveConfigured ?? true;
+  const googleDriveConfigured = data?.googleDriveConfigured ?? false;
   const isDriveConnected = driveStatus?.connected ?? false;
 
   const hasLegacyR2Files = files.some((file) => file.storageType === 'R2');
@@ -154,18 +156,18 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
       <div className="flex items-center justify-between">
         <Label className="text-base font-semibold">첨부파일</Label>
         <div className="flex flex-col items-end gap-1">
-          {!googleDriveConfigured && (
+          {!isLoading && !googleDriveConfigured && (
             <p className="text-xs text-amber-600">
               Google Drive 설정이 필요합니다. 현재 R2에 있는 기존 파일만 표시됩니다.
             </p>
           )}
-          {googleDriveConfigured && !isDriveConnected && (
+          {!isLoading && googleDriveConfigured && !isDriveConnected && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => {
-                window.location.href = '/api/auth/google/authorize';
+                window.location.href = GOOGLE_AUTH_URL;
               }}
               className="text-amber-600 border-amber-200 hover:bg-amber-50"
             >
