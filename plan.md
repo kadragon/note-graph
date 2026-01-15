@@ -421,11 +421,11 @@ if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
 ## Phase 7: 운영 간소화
 
 ### Task 7.1: R2 폴백 제거
-- [ ] `apps/worker/src/services/work-note-file-service.ts` 리팩토링
+- [x] `apps/worker/src/services/work-note-file-service.ts` 리팩토링
   - 조건: `GOOGLE_CLIENT_ID` 환경 변수 체크
   - 없으면: 에러 발생 (더 이상 R2 폴백 미지원)
   - 있으면: Google Drive 사용
-- [ ] 문서 업데이트: "Google OAuth 필수 환경 변수" 명시
+- [x] 문서 업데이트: "Google OAuth 필수 환경 변수" 명시
 - [ ] 마이그레이션 검증: 기존 R2 파일 모두 Drive로 이동 완료 확인
 
 ### Task 7.2: 인증 미들웨어 통합 가이드
@@ -433,7 +433,7 @@ if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
   - Cloudflare Access는 기본 보호층 (프록시 레벨)
   - getAuthUser()는 user_email 추출용 (이미 인증된 사용자만)
   - Google OAuth는 Drive 접근용 (필수)
-- [ ] 개발 환경 문서화
+- [x] 개발 환경 문서화
   ```
   로컬 테스트:
   - CF Access 헤더 모의: x-test-user-email: dev@localhost
@@ -441,7 +441,7 @@ if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
   ```
 
 ### Task 7.3: 환경 변수 정리 및 필수 여부 명시
-- [ ] `.dev.vars.example` 수정
+- [x] `.dev.vars.example` 수정
   ```
   # Cloudflare Access (자동 제공, 설정 불필요)
   # ENVIRONMENT: 자동 감지
@@ -459,7 +459,7 @@ if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
   - R2 관련 설정 제거 검토
 
 ### Task 7.4: 배포 가이드 작성
-- [ ] `docs/DEPLOYMENT.md` 또는 README 업데이트
+- [x] `docs/DEPLOYMENT.md` 또는 README 업데이트
   ```
   ## 배포 체크리스트
   

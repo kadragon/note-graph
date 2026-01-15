@@ -257,7 +257,10 @@ describe('runMigrationCli', () => {
     const baseEnv = env as unknown as Env;
     const db = baseEnv.DB;
     const r2 = new MockR2() as unknown as R2Bucket;
-    const envBindings = { GOOGLE_CLIENT_ID: 'id' } as Env;
+    const envBindings = {
+      GOOGLE_CLIENT_ID: 'id',
+      GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+    } as Env;
     const drive = {
       getOrCreateWorkNoteFolder: vi.fn(),
       uploadFile: vi.fn(),

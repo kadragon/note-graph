@@ -22,6 +22,7 @@ describe('Work Note Google Drive Integration', () => {
   let originalGoogleClientId: string | undefined;
   let originalGoogleClientSecret: string | undefined;
   let originalGoogleRedirectUri: string | undefined;
+  let originalGdriveRootFolderId: string | undefined;
   let originalVectorize: unknown;
   let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -30,6 +31,7 @@ describe('Work Note Google Drive Integration', () => {
     originalGoogleClientId = testEnv.GOOGLE_CLIENT_ID;
     originalGoogleClientSecret = testEnv.GOOGLE_CLIENT_SECRET;
     originalGoogleRedirectUri = testEnv.GOOGLE_REDIRECT_URI;
+    originalGdriveRootFolderId = testEnv.GDRIVE_ROOT_FOLDER_ID;
     originalVectorize = testEnv.VECTORIZE;
 
     await testEnv.DB.batch([
@@ -49,6 +51,7 @@ describe('Work Note Google Drive Integration', () => {
     testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
     testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
     testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
+    testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
 
     await testEnv.DB.prepare(
       `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
@@ -123,6 +126,7 @@ describe('Work Note Google Drive Integration', () => {
     testEnv.GOOGLE_CLIENT_ID = originalGoogleClientId as string;
     testEnv.GOOGLE_CLIENT_SECRET = originalGoogleClientSecret as string;
     testEnv.GOOGLE_REDIRECT_URI = originalGoogleRedirectUri as string;
+    testEnv.GDRIVE_ROOT_FOLDER_ID = originalGdriveRootFolderId as string;
     testEnv.VECTORIZE = originalVectorize as typeof testEnv.VECTORIZE;
   });
 

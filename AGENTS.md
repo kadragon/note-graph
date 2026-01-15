@@ -114,6 +114,8 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For dialog markdown previews, keep system color mode sync via `matchMedia` and stub it in tests to avoid jsdom errors.
 - For PWA navigation fallback, denylist `/api` and `/health` to avoid serving the SPA shell for file preview endpoints (e.g., `/api/work-notes/.../view`).
 - For dual-storage services (R2 + Google Drive), make the external service optional via environment variable check (e.g., `GOOGLE_CLIENT_ID`) to maintain testability without mocking complex OAuth flows. Tests run in R2-only mode when OAuth credentials are absent.
+- For work note attachments now using Drive-only, fail fast on missing Google OAuth env vars and set test bindings in Vitest config to avoid accidental 500s during integration tests.
+- Treat `GDRIVE_ROOT_FOLDER_ID` as required for Drive-only attachments to avoid creating folders at the user's Drive root; enforce in services and test bindings.
 - For Google Drive work note attachments, prefer opening `gdriveWebViewLink` in a new tab from UI actions and have download helpers return the Drive link when available.
 - For Drive cleanup on work note deletion, read `work_note_gdrive_folders` before deleting file rows so folder IDs remain available, then delete files and finally the folder.
 - For Drive-backed work notes with a stored folder ID, delete the folder directly and skip per-file Drive deletions to reduce API calls and avoid redundant deletes.

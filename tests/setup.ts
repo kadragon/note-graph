@@ -8,6 +8,24 @@ import type { Env } from '@worker/types/env';
 // Trace: SPEC-devx-1, TASK-028
 import { beforeAll } from 'vitest';
 
+type WritableEnv = {
+  -readonly [K in keyof Env]: Env[K];
+};
+
+const testEnv = env as unknown as WritableEnv;
+if (!testEnv.GOOGLE_CLIENT_ID) {
+  testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
+}
+if (!testEnv.GOOGLE_CLIENT_SECRET) {
+  testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
+}
+if (!testEnv.GOOGLE_REDIRECT_URI) {
+  testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
+}
+if (!testEnv.GDRIVE_ROOT_FOLDER_ID) {
+  testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
+}
+
 const migrationModules = import.meta.glob('../migrations/*.sql', {
   eager: true,
   import: 'default',

@@ -30,6 +30,10 @@ export default defineWorkersConfig({
           d1Persist: false,
           bindings: {
             ENVIRONMENT: "production",
+            GOOGLE_CLIENT_ID: "test-client-id",
+            GOOGLE_CLIENT_SECRET: "test-client-secret",
+            GOOGLE_REDIRECT_URI: "https://example.test/oauth/callback",
+            GDRIVE_ROOT_FOLDER_ID: "test-gdrive-root-folder-id",
           },
         },
       },
