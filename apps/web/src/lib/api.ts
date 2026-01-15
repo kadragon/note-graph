@@ -196,42 +196,8 @@ export class APIClient {
     options: RequestInit = {},
     isRetry = false
   ): Promise<T> {
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
-
-    // In development, use test auth header
-    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
-      (headers as Record<string, string>)['X-Test-User-Email'] = 'test@example.com';
-    }
-
-    try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
-        ...options,
-        headers,
-      });
-
-      if (!response.ok) {
-        const error = (await response.json().catch(() => ({
-          message: '알 수 없는 오류가 발생했습니다',
-        }))) as { message?: string };
-        throw new Error(error.message || `HTTP ${response.status}`);
-      }
-
-      if (response.status === 204) {
-        return null as T;
-      }
-
-      return response.json() as Promise<T>;
-    } catch (error) {
-      // Handle CF Access CORS errors by refreshing token and retrying once
-      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
-        await cfTokenRefresher.refreshToken();
-        return this.request<T>(endpoint, options, true);
-      }
-      throw error;
-    }
+    const { data } = await this.requestWithHeaders<T>(endpoint, options, isRetry);
+    return data;
   }
 
   private async requestWithHeaders<T>(
