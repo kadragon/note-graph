@@ -1,6 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import {
   useDeleteWorkNoteFile,
+  useGoogleDriveStatus,
   useMigrateWorkNoteFiles,
   useUploadWorkNoteFile,
   useWorkNoteFiles,
@@ -11,6 +12,27 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkNoteFileList } from '../work-note-file-list';
+
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value.toString();
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: vi.fn(() => {
+      store = {};
+    }),
+  };
+})();
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+});
 
 vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialog: ({ open, children }: { open?: boolean; children: ReactNode }) => (
@@ -33,12 +55,20 @@ vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
+// Mock Popover components since they are not in the standard test setup usually (Radix UI)
+vi.mock('@web/components/ui/popover', () => ({
+  Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
 vi.mock('@web/hooks/use-work-notes', () => ({
   useWorkNoteFiles: vi.fn(),
   useUploadWorkNoteFile: vi.fn(),
   useDeleteWorkNoteFile: vi.fn(),
   useMigrateWorkNoteFiles: vi.fn(),
   downloadWorkNoteFile: vi.fn(),
+  useGoogleDriveStatus: vi.fn(),
 }));
 
 const mockToast = vi.fn();
@@ -50,6 +80,7 @@ describe('WorkNoteFileList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetFactoryCounter();
+    localStorageMock.clear();
 
     vi.mocked(useUploadWorkNoteFile).mockReturnValue({
       mutate: vi.fn(),
@@ -65,6 +96,10 @@ describe('WorkNoteFileList', () => {
       mutate: vi.fn(),
       isPending: false,
     } as unknown as ReturnType<typeof useMigrateWorkNoteFiles>);
+
+    vi.mocked(useGoogleDriveStatus).mockReturnValue({
+      data: { connected: true },
+    } as unknown as ReturnType<typeof useGoogleDriveStatus>);
   });
 
   it('renders Google Drive link and button for Drive files', () => {
