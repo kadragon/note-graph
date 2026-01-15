@@ -367,6 +367,12 @@ export interface WorkNoteStatistics {
   workNotes: WorkNoteStatisticsItem[];
 }
 
+export interface GoogleDriveStatus {
+  connected: boolean;
+  connectedAt?: string;
+  scope?: string;
+}
+
 export interface StatisticsQueryParams {
   period: StatisticsPeriod;
   year?: number;

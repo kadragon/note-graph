@@ -169,6 +169,14 @@ export function useWorkNoteFiles(workId: string | null) {
   });
 }
 
+export function useGoogleDriveStatus() {
+  return useQuery({
+    queryKey: ['google-drive-status'],
+    queryFn: () => API.getGoogleDriveStatus(),
+    retry: false,
+  });
+}
+
 export function useUploadWorkNoteFile() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
