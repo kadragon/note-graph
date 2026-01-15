@@ -49,6 +49,8 @@ const EXTENSION_MIME_MAP: Record<string, string> = {
 const UNSUPPORTED_FILE_MESSAGE =
   '지원하지 않는 파일 형식입니다. 허용된 형식: PDF, HWP/HWPX, Excel (XLS/XLSX), 이미지 (PNG, JPEG, GIF, WebP)';
 
+const DRIVE_APP_PROPERTY_FILE_ID = 'workNoteFileId';
+
 interface UploadFileParams {
   workId: string;
   file: Blob;
@@ -135,7 +137,11 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       folder.gdriveFolderId,
       file,
       originalName,
-      resolvedFileType
+      resolvedFileType,
+      {
+        [DRIVE_APP_PROPERTY_FILE_ID]: fileId,
+        workId,
+      }
     );
 
     // Create DB record with Google Drive info
@@ -263,6 +269,21 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     }
   }
 
+  private async updateFileToDriveRecord(
+    fileId: string,
+    folderId: string,
+    driveFile: { id: string; webViewLink: string }
+  ): Promise<void> {
+    await this.db
+      .prepare(
+        `UPDATE work_note_files
+         SET storage_type = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
+         WHERE file_id = ?`
+      )
+      .bind('GDRIVE', driveFile.id, folderId, driveFile.webViewLink, fileId)
+      .run();
+  }
+
   /**
    * Migrate all legacy R2 files for a work note to Google Drive
    */
@@ -298,7 +319,22 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
         continue;
       }
 
+      let uploadedFile: { id: string; webViewLink: string } | null = null;
+
       try {
+        const existingFile = await this.driveService.findFileByAppPropertyInFolder(
+          userEmail,
+          folder.gdriveFolderId,
+          DRIVE_APP_PROPERTY_FILE_ID,
+          file.fileId
+        );
+        if (existingFile) {
+          await this.updateFileToDriveRecord(file.fileId, folder.gdriveFolderId, existingFile);
+          await this.deleteR2Object(file.r2Key);
+          migrated++;
+          continue;
+        }
+
         const buffer = await object.arrayBuffer();
         const blob = new Blob([buffer], {
           type: file.fileType || 'application/octet-stream',
@@ -309,23 +345,31 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
           folder.gdriveFolderId,
           blob,
           file.originalName,
-          file.fileType || 'application/octet-stream'
+          file.fileType || 'application/octet-stream',
+          {
+            [DRIVE_APP_PROPERTY_FILE_ID]: file.fileId,
+            workId,
+          }
         );
+        uploadedFile = driveFile;
 
-        await this.db
-          .prepare(
-            `UPDATE work_note_files
-             SET storage_type = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
-             WHERE file_id = ?`
-          )
-          .bind('GDRIVE', driveFile.id, folder.gdriveFolderId, driveFile.webViewLink, file.fileId)
-          .run();
+        await this.updateFileToDriveRecord(file.fileId, folder.gdriveFolderId, driveFile);
 
         await this.deleteR2Object(file.r2Key);
         migrated++;
       } catch (error) {
         failed++;
         console.error(`Failed to migrate file ${file.fileId} to Google Drive:`, error);
+        if (uploadedFile) {
+          try {
+            await this.driveService.deleteFile(userEmail, uploadedFile.id);
+          } catch (cleanupError) {
+            console.error(
+              `Failed to rollback Google Drive file ${uploadedFile.id} after migration error:`,
+              cleanupError
+            );
+          }
+        }
       }
     }
 

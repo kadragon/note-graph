@@ -16,6 +16,7 @@ describe('WorkNoteFileService', () => {
   let r2: MockR2;
   let service: WorkNoteFileService;
   let fetchMock: ReturnType<typeof vi.fn>;
+  let defaultFetchMockImplementation: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
   let originalFetch: typeof global.fetch;
   let originalGoogleClientId: string | undefined;
   let originalGoogleClientSecret: string | undefined;
@@ -107,9 +108,17 @@ describe('WorkNoteFileService', () => {
 
     await insertOAuthToken();
 
-    fetchMock = vi.fn().mockImplementation(async (input, init = {}) => {
+    defaultFetchMockImplementation = async (input, init = {}) => {
       const url = typeof input === 'string' ? input : input.toString();
       const method = (init as RequestInit).method ?? 'GET';
+
+      if (url.startsWith(`${DRIVE_API_BASE}/files?`) && method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ files: [] }),
+        } as Response;
+      }
 
       if (url.startsWith(`${DRIVE_API_BASE}/files`) && method === 'POST') {
         return {
@@ -146,7 +155,9 @@ describe('WorkNoteFileService', () => {
       }
 
       return originalFetch(input as RequestInfo, init as RequestInit);
-    });
+    };
+
+    fetchMock = vi.fn().mockImplementation(defaultFetchMockImplementation);
 
     global.fetch = fetchMock as typeof fetch;
 
@@ -409,6 +420,123 @@ describe('WorkNoteFileService', () => {
 
   it('throws NotFoundError when streaming non-existent file', async () => {
     await expect(service.streamFile('FILE-nonexistent')).rejects.toThrow(NotFoundError);
+  });
+
+  it('reuses existing Drive file when appProperties match during migration', async () => {
+    const workId = 'WORK-123';
+    const fileId = 'FILE-R2-EXISTING';
+    const r2Key = `work-notes/${workId}/files/${fileId}`;
+
+    await insertWorkNote(workId);
+    await insertLegacyR2File({
+      workId,
+      fileId,
+      r2Key,
+      originalName: 'legacy.pdf',
+      fileType: 'application/pdf',
+      fileSize: 11,
+    });
+
+    await r2.put(r2Key, new Blob(['legacy'], { type: 'application/pdf' }));
+
+    fetchMock.mockImplementation(async (input, init = {}) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      const method = (init as RequestInit).method ?? 'GET';
+
+      if (url.startsWith(`${DRIVE_API_BASE}/files?`) && method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            files: [
+              {
+                id: 'GFILE-EXISTING',
+                name: 'legacy.pdf',
+                mimeType: 'application/pdf',
+                webViewLink: 'https://drive.example/existing',
+                size: '11',
+                appProperties: { workNoteFileId: fileId },
+              },
+            ],
+          }),
+        } as Response;
+      }
+
+      return defaultFetchMockImplementation(input, init);
+    });
+
+    const result = await service.migrateR2FilesToDrive(workId, userEmail);
+
+    expect(result.migrated).toBe(1);
+    expect(
+      fetchMock.mock.calls.filter(([url, options]) => {
+        const targetUrl = typeof url === 'string' ? url : url.toString();
+        const method = (options as RequestInit | undefined)?.method;
+        return targetUrl.startsWith(`${DRIVE_UPLOAD_BASE}/files`) && method === 'POST';
+      })
+    ).toHaveLength(0);
+
+    const row = await baseEnv.DB.prepare(
+      'SELECT storage_type, gdrive_file_id, gdrive_web_view_link FROM work_note_files WHERE file_id = ?'
+    )
+      .bind(fileId)
+      .first<Record<string, unknown>>();
+
+    expect(row).toEqual({
+      storage_type: 'GDRIVE',
+      gdrive_file_id: 'GFILE-EXISTING',
+      gdrive_web_view_link: 'https://drive.example/existing',
+    });
+
+    expect(await r2.get(r2Key)).toBeNull();
+  });
+
+  it('rolls back Drive upload when DB update fails during migration', async () => {
+    const workId = 'WORK-456';
+    const fileId = 'FILE-R2-FAIL';
+    const r2Key = `work-notes/${workId}/files/${fileId}`;
+
+    await insertWorkNote(workId);
+    await insertLegacyR2File({
+      workId,
+      fileId,
+      r2Key,
+      originalName: 'rollback.pdf',
+      fileType: 'application/pdf',
+      fileSize: 6,
+    });
+
+    await r2.put(r2Key, new Blob(['rollback'], { type: 'application/pdf' }));
+
+    const failingDb = new Proxy(baseEnv.DB, {
+      get(target, prop) {
+        if (prop === 'prepare') {
+          return (query: string) => {
+            if (query.includes('UPDATE work_note_files')) {
+              throw new Error('DB update failed');
+            }
+            return target.prepare(query);
+          };
+        }
+        const value = target[prop as keyof typeof target];
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+
+    const failingService = new WorkNoteFileService(
+      r2 as unknown as R2Bucket,
+      failingDb as unknown as Env['DB'],
+      baseEnv
+    );
+
+    const result = await failingService.migrateR2FilesToDrive(workId, userEmail);
+
+    expect(result.failed).toBe(1);
+    expect(await r2.get(r2Key)).not.toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${DRIVE_API_BASE}/files/GFILE-1`,
+      expect.objectContaining({ method: 'DELETE' })
+    );
   });
 
   it('deletes file from R2 and DB', async () => {
