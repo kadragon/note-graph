@@ -236,8 +236,10 @@ describe('WorkNoteFileList', () => {
       isFetching: false,
     } as unknown as ReturnType<typeof useGoogleDriveStatus>);
 
-    const locationSpy = vi.spyOn(window, 'location', 'get');
-    locationSpy.mockReturnValue({ ...window.location, href: '' } as Location);
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, href: '' },
+    });
 
     render(<WorkNoteFileList workId="work-1" />);
 
