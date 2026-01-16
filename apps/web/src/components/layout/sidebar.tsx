@@ -1,14 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
+import { Button } from '@web/components/ui/button';
 import { ScrollArea } from '@web/components/ui/scroll-area';
 import { useSidebar } from '@web/contexts/sidebar-context';
+import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
 import { cn } from '@web/lib/utils';
 import {
+  AlertTriangle,
   BarChart3,
   BriefcaseBusiness,
   Building2,
+  CheckCircle2,
   ChevronRight,
+  Cloud,
   Database,
+  ExternalLink,
   FileText,
   FolderKanban,
   LayoutDashboard,
@@ -18,6 +24,8 @@ import {
   User,
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+
+const GOOGLE_AUTH_URL = '/api/auth/google/authorize';
 
 interface NavItem {
   path: string;
@@ -111,6 +119,14 @@ export default function Sidebar() {
 
   const { isCollapsed } = useSidebar();
 
+  const {
+    configured,
+    data: driveStatus,
+    refetch: refreshDriveStatus,
+    isFetching: isDriveChecking,
+  } = useGoogleDriveConfigStatus();
+  const isDriveConnected = driveStatus?.connected ?? false;
+
   return (
     <aside
       data-collapsed={isCollapsed}
@@ -173,7 +189,7 @@ export default function Sidebar() {
       </ScrollArea>
 
       {/* User Section */}
-      <div className="border-t p-4">
+      <div className="border-t p-4 space-y-4">
         <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-3 py-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
             <User className="h-4 w-4" />
@@ -184,6 +200,63 @@ export default function Sidebar() {
             </p>
             {user?.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
           </div>
+        </div>
+
+        <div className="space-y-2 px-1">
+          <div className="space-y-1">
+            <div
+              className={cn(
+                'flex items-center gap-2 text-xs',
+                configured ? 'text-muted-foreground' : 'text-amber-600 font-medium'
+              )}
+              data-testid="drive-config-badge"
+            >
+              {configured ? (
+                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+              ) : (
+                <AlertTriangle className="h-3 w-3" />
+              )}
+              <span>{configured ? '환경 설정 완료' : '환경 설정 필요'}</span>
+            </div>
+
+            <div
+              className={cn(
+                'flex items-center gap-2 text-xs',
+                isDriveConnected ? 'text-emerald-600 font-medium' : 'text-amber-600'
+              )}
+              data-testid="drive-connection-badge"
+            >
+              <Cloud className="h-3 w-3" />
+              <span>{isDriveConnected ? 'Drive 연결됨' : 'Drive 미연결'}</span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              'w-full justify-start h-7 text-xs',
+              isDriveConnected ? 'text-emerald-600 hover:text-emerald-700' : 'text-amber-600'
+            )}
+            onClick={async () => {
+              const nextStatus = await refreshDriveStatus();
+              if (!nextStatus.data?.connected) {
+                window.location.href = GOOGLE_AUTH_URL;
+              }
+            }}
+            disabled={!configured || isDriveChecking}
+            title={
+              !configured
+                ? 'Google Drive 설정이 필요합니다'
+                : isDriveConnected
+                  ? '연결 상태 확인'
+                  : 'Google Drive 연결하기'
+            }
+            data-testid="drive-connect-button"
+          >
+            <ExternalLink className="h-3 w-3 mr-2" />
+            {isDriveConnected ? '연결 확인' : '연결하기'}
+          </Button>
         </div>
       </div>
     </aside>

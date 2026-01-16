@@ -321,8 +321,12 @@ export class APIClient {
   }
 
   // Google Drive Auth
-  getGoogleDriveStatus() {
-    return this.request<GoogleDriveStatus>('/auth/google/status');
+  async getGoogleDriveStatus() {
+    const { data, headers } =
+      await this.requestWithHeaders<GoogleDriveStatus>('/auth/google/status');
+    const configuredHeader = headers.get('X-Google-Drive-Configured');
+    const configured = configuredHeader !== 'false';
+    return { ...data, configured };
   }
 
   // Work Notes

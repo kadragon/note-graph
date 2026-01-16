@@ -42,8 +42,6 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
 
-const GOOGLE_AUTH_URL = '/api/auth/google/authorize';
-
 interface WorkNoteFileListProps {
   workId: string;
 }
@@ -83,11 +81,7 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const { toast } = useToast();
 
   const { data, isLoading } = useWorkNoteFiles(workId);
-  const {
-    data: driveStatus,
-    refetch: refreshDriveStatus,
-    isFetching: isDriveChecking,
-  } = useGoogleDriveStatus();
+  const { data: driveStatus } = useGoogleDriveStatus();
   const uploadMutation = useUploadWorkNoteFile();
   const deleteMutation = useDeleteWorkNoteFile();
   const migrateMutation = useMigrateWorkNoteFiles();
@@ -215,40 +209,6 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
       <div className="flex items-center justify-between">
         <Label className="text-base font-semibold">첨부파일</Label>
         <div className="flex flex-col items-end gap-1">
-          {!isLoading && !googleDriveConfigured && (
-            <p className="text-xs text-amber-600">
-              Google Drive 설정이 필요합니다. 현재 R2에 있는 기존 파일만 표시됩니다.
-            </p>
-          )}
-          {!isLoading && googleDriveConfigured && (
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant={isDriveConnected ? 'ghost' : 'outline'}
-                size="sm"
-                onClick={async () => {
-                  const nextStatus = await refreshDriveStatus();
-                  if (!nextStatus.data?.connected) {
-                    window.location.href = GOOGLE_AUTH_URL;
-                  }
-                }}
-                disabled={isDriveChecking}
-                className={
-                  isDriveConnected
-                    ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
-                    : 'text-amber-600 border-amber-200 hover:bg-amber-50'
-                }
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                연결 상태 확인
-              </Button>
-              <span
-                className={isDriveConnected ? 'text-xs text-emerald-600' : 'text-xs text-amber-600'}
-              >
-                {isDriveConnected ? 'Google Drive 연결됨' : 'Google Drive 연결 필요'}
-              </span>
-            </div>
-          )}
           <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
