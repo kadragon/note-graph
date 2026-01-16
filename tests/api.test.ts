@@ -85,9 +85,8 @@ describe('API Integration Tests', () => {
         expect(response.status).toBe(200);
         expect(response.headers.get('X-Google-Drive-Configured')).toBe('true');
 
-        const data = await response.json<{ connected: boolean; configured?: boolean }>();
+        const data = await response.json<{ connected: boolean }>();
         expect(data.connected).toBe(false);
-        expect(data.configured).toBe(true);
       } finally {
         testEnv.GOOGLE_CLIENT_ID = originalClientId;
         testEnv.GOOGLE_CLIENT_SECRET = originalSecret;

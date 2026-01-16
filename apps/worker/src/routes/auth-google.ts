@@ -90,14 +90,13 @@ authGoogle.get('/status', async (c) => {
   c.header('X-Google-Drive-Configured', isConfigured ? 'true' : 'false');
 
   if (!tokens) {
-    return c.json({ connected: false, configured: isConfigured });
+    return c.json({ connected: false });
   }
 
   return c.json({
     connected: true,
     connectedAt: tokens.createdAt,
     scope: tokens.scope,
-    configured: isConfigured,
   });
 });
 
