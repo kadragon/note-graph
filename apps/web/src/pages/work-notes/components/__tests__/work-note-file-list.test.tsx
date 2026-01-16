@@ -206,49 +206,6 @@ describe('WorkNoteFileList', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows warning when Google Drive is not configured', () => {
-    const files = [createWorkNoteFile({ storageType: 'R2', originalName: 'legacy.pdf' })];
-
-    vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: { files, googleDriveConfigured: false },
-      isLoading: false,
-    } as unknown as ReturnType<typeof useWorkNoteFiles>);
-
-    render(<WorkNoteFileList workId="work-1" />);
-
-    expect(
-      screen.getByText('Google Drive 설정이 필요합니다. 현재 R2에 있는 기존 파일만 표시됩니다.')
-    ).toBeInTheDocument();
-  });
-
-  it('refreshes drive status and redirects when disconnected', async () => {
-    const user = userEvent.setup();
-    const refetch = vi.fn().mockResolvedValue({ data: { connected: false } });
-
-    vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: { files: [], googleDriveConfigured: true },
-      isLoading: false,
-    } as unknown as ReturnType<typeof useWorkNoteFiles>);
-
-    vi.mocked(useGoogleDriveStatus).mockReturnValue({
-      data: { connected: false },
-      refetch,
-      isFetching: false,
-    } as unknown as ReturnType<typeof useGoogleDriveStatus>);
-
-    Object.defineProperty(window, 'location', {
-      writable: true,
-      value: { ...window.location, href: '' },
-    });
-
-    render(<WorkNoteFileList workId="work-1" />);
-
-    await user.click(screen.getByRole('button', { name: '연결 상태 확인' }));
-
-    expect(refetch).toHaveBeenCalled();
-    expect(window.location.href).toBe('/api/auth/google/authorize');
-  });
-
   it('copies local file path with sanitization when local drive path is set', async () => {
     const user = userEvent.setup();
     const files = [

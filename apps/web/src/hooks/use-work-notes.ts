@@ -177,6 +177,15 @@ export function useGoogleDriveStatus() {
   });
 }
 
+export function useGoogleDriveConfigStatus() {
+  const { data, ...rest } = useGoogleDriveStatus();
+  return {
+    configured: data?.configured ?? false,
+    data,
+    ...rest,
+  };
+}
+
 export function useUploadWorkNoteFile() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

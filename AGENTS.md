@@ -129,3 +129,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - 2026-01-15: Enhanced Work Note attachments UI: replaced "Open in Drive" with icon, hid preview for Drive files, and added local Drive path configuration (persisted in localStorage) to allow copying absolute file paths. Refactored `localDrivePath` state to use `useEffect` to avoid hydration/render issues.
 - 2026-01-15: Documented completion of PR #202 (fix/google-drive-file-handling) refactor that centralizes `request` behavior in `requestWithHeaders`; verified via `bun run test` (584 suites) before pushing.
 - 2026-01-16: Added Google Drive status check UI in attachments with a manual refresh + re-auth flow and a dedicated test for the button behavior.
+- 2026-01-16: Moved Google Drive status UI from work note attachments to sidebar user section. Added `useGoogleDriveConfigStatus` hook and updated `API.getGoogleDriveStatus` to check for configuration header. Updated tests.
