@@ -64,6 +64,38 @@ describe('API Integration Tests', () => {
     });
   });
 
+  describe('Google Drive Status', () => {
+    it('should include configuration header on status endpoint', async () => {
+      const testEnv = env as unknown as Env;
+      const originalClientId = testEnv.GOOGLE_CLIENT_ID;
+      const originalSecret = testEnv.GOOGLE_CLIENT_SECRET;
+      const originalRootFolderId = testEnv.GDRIVE_ROOT_FOLDER_ID;
+
+      testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
+      testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
+      testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-root-folder';
+
+      try {
+        const response = await SELF.fetch('http://localhost/api/auth/google/status', {
+          headers: {
+            'Cf-Access-Authenticated-User-Email': 'test@example.com',
+          },
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get('X-Google-Drive-Configured')).toBe('true');
+
+        const data = await response.json<{ connected: boolean; configured?: boolean }>();
+        expect(data.connected).toBe(false);
+        expect(data.configured).toBe(true);
+      } finally {
+        testEnv.GOOGLE_CLIENT_ID = originalClientId;
+        testEnv.GOOGLE_CLIENT_SECRET = originalSecret;
+        testEnv.GDRIVE_ROOT_FOLDER_ID = originalRootFolderId;
+      }
+    });
+  });
+
   describe('404 Handler', () => {
     it('should return 404 for non-existent routes', async () => {
       const response = await SELF.fetch('http://localhost/non-existent');

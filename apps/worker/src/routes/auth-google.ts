@@ -79,17 +79,25 @@ authGoogle.get('/callback', async (c) => {
 authGoogle.get('/status', async (c) => {
   const user = getAuthUser(c);
   const oauthService = new GoogleOAuthService(c.env, c.env.DB);
+  const isConfigured = !!(
+    c.env.GOOGLE_CLIENT_ID &&
+    c.env.GOOGLE_CLIENT_SECRET &&
+    c.env.GDRIVE_ROOT_FOLDER_ID
+  );
 
   const tokens = await oauthService.getStoredTokens(user.email);
 
+  c.header('X-Google-Drive-Configured', isConfigured ? 'true' : 'false');
+
   if (!tokens) {
-    return c.json({ connected: false });
+    return c.json({ connected: false, configured: isConfigured });
   }
 
   return c.json({
     connected: true,
     connectedAt: tokens.createdAt,
     scope: tokens.scope,
+    configured: isConfigured,
   });
 });
 
