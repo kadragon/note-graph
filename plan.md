@@ -98,6 +98,10 @@ Goal: Branches 62% → 68%, Functions 62% → 68%
 ### Phase 4: Layout & Utility Testing
 Goal: Branches 68% → 70%, Functions 68% → 70%
 
+#### Task 4.3: Google Drive Status Button
+- [ ] Test Google Drive status check button in work note attachments
+- [ ] Implement status button UI to refresh status and re-auth when disconnected
+
 #### Task 4.1: Layout Components
 - [x] Test app-layout.tsx (sidebar/header rendering, responsive)
 - [x] Test sidebar.tsx (navigation, collapsible sections, active state)

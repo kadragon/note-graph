@@ -221,6 +221,32 @@ describe('WorkNoteFileList', () => {
     ).toBeInTheDocument();
   });
 
+  it('refreshes drive status and redirects when disconnected', async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn().mockResolvedValue({ data: { connected: false } });
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: { files: [], googleDriveConfigured: true },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    vi.mocked(useGoogleDriveStatus).mockReturnValue({
+      data: { connected: false },
+      refetch,
+      isFetching: false,
+    } as unknown as ReturnType<typeof useGoogleDriveStatus>);
+
+    const locationSpy = vi.spyOn(window, 'location', 'get');
+    locationSpy.mockReturnValue({ ...window.location, href: '' } as Location);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    await user.click(screen.getByRole('button', { name: '연결 상태 확인' }));
+
+    expect(refetch).toHaveBeenCalled();
+    expect(window.location.href).toBe('/api/auth/google/authorize');
+  });
+
   it('copies local file path with sanitization when local drive path is set', async () => {
     const user = userEvent.setup();
     const files = [
