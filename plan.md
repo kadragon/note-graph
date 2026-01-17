@@ -52,7 +52,7 @@
 ## Phase 2: 웹 UI 수정
 
 ### Task 2.1: 프로토콜 링크 생성 유틸리티
-- [ ] `apps/web/src/lib/protocol-handler.ts` 생성
+- [x] `apps/web/src/lib/protocol-handler.ts` 생성
   ```typescript
   export function buildLocalFileUrl(localDrivePath: string, relativePath: string): string {
     const fullPath = `${localDrivePath}/${relativePath}`;
@@ -61,14 +61,14 @@
   ```
 
 ### Task 2.2: 파일 목록 UI 수정
-- [ ] `work-note-file-list.tsx` 수정
+- [x] `work-note-file-list.tsx` 수정
   - "로컬에서 열기" 버튼 추가 (localDrivePath 설정 시만 표시)
   - 클릭 시 `<a href="notegraph://...">` 또는 `window.location.href` 사용
   - 아이콘: 폴더 열기 또는 외부 링크 아이콘
 
 ### Task 2.3: 설정 UI 업데이트
-- [ ] 프로토콜 핸들러 설치 안내 추가
-- [ ] 다운로드 링크 제공 (GitHub Releases)
+- [x] 프로토콜 핸들러 설치 안내 추가
+- [x] 다운로드 링크 제공 (GitHub Releases)
 
 ---
 

@@ -25,6 +25,7 @@ import {
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
+import { buildLocalFileUrl } from '@web/lib/protocol-handler';
 import type { WorkNoteFile, WorkNoteFileMigrationResult } from '@web/types/api';
 import {
   ArrowRightLeft,
@@ -35,6 +36,7 @@ import {
   ExternalLink,
   Eye,
   FileIcon,
+  FolderOpen,
   Settings,
   Trash2,
   Upload,
@@ -217,19 +219,36 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80" align="end">
-                <div className="space-y-2">
-                  <h4 className="font-medium leading-none">로컬 Google Drive 설정</h4>
-                  <p className="text-sm text-muted-foreground">
-                    로컬 동기화 경로를 설정하면 파일 경로를 쉽게 복사할 수 있습니다.
-                  </p>
-                  <div className="grid gap-2">
-                    <Label htmlFor="local-path">로컬 경로</Label>
-                    <Input
-                      id="local-path"
-                      value={localDrivePath}
-                      onChange={handleLocalDrivePathChange}
-                      placeholder="예: C:\Users\Name\Google Drive"
-                    />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium leading-none">로컬 Google Drive 설정</h4>
+                    <p className="text-sm text-muted-foreground">
+                      로컬 동기화 경로를 설정하면 파일 경로를 쉽게 복사할 수 있습니다.
+                    </p>
+                    <div className="grid gap-2">
+                      <Label htmlFor="local-path">로컬 경로</Label>
+                      <Input
+                        id="local-path"
+                        value={localDrivePath}
+                        onChange={handleLocalDrivePathChange}
+                        placeholder="예: C:\Users\Name\Google Drive"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2 border-t pt-4">
+                    <h4 className="font-medium leading-none">프로토콜 핸들러</h4>
+                    <p className="text-sm text-muted-foreground">
+                      로컬에서 열기 버튼을 사용하려면 프로토콜 핸들러를 설치하세요.
+                    </p>
+                    <a
+                      href="https://github.com/kadragon/note-graph/releases"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
+                      <Download className="h-3 w-3" />
+                      다운로드 (GitHub Releases)
+                    </a>
                   </div>
                 </div>
               </PopoverContent>
@@ -360,17 +379,36 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
                     </span>
                   )}
                   {isDriveFile && localDrivePath && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyLocalPath(file)}
-                      className="h-8 w-8 p-0"
-                      title="로컬 경로 복사"
-                    >
-                      <Copy className="h-4 w-4" />
-                      <span className="sr-only">로컬 경로 복사</span>
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyLocalPath(file)}
+                        className="h-8 w-8 p-0"
+                        title="로컬 경로 복사"
+                      >
+                        <Copy className="h-4 w-4" />
+                        <span className="sr-only">로컬 경로 복사</span>
+                      </Button>
+                      <Button
+                        asChild
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        title="로컬에서 열기"
+                      >
+                        <a
+                          href={buildLocalFileUrl(
+                            localDrivePath,
+                            `workNote/${workId}/${file.originalName.replace(/[/\\]/g, '_')}`
+                          )}
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                          <span className="sr-only">로컬에서 열기</span>
+                        </a>
+                      </Button>
+                    </>
                   )}
                   {driveLink && (
                     <Button
