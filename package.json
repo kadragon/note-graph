@@ -110,6 +110,7 @@
       "bash -c 'tsc --noEmit --project apps/worker/tsconfig.json'",
       "vitest related --run"
     ],
-    "apps/web/src/**/*.{ts,tsx}": "bash -c 'tsc --noEmit --project apps/web/tsconfig.json'"
+    "apps/web/src/**/*.{ts,tsx}": "bash -c 'tsc --noEmit --project apps/web/tsconfig.json'",
+    "tools/notegraph-opener/**/*.go": "bash -c 'cd tools/notegraph-opener && go build ./... && go test ./...'"
   }
 }

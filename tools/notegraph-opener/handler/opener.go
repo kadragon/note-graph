@@ -45,9 +45,10 @@ func HandleURL(rawURL string) error {
 // openFile opens a file with the default Windows application.
 // Uses "cmd /c start" which is the standard way to open files on Windows.
 func openFile(path string) error {
-	// Escape path for Windows cmd
-	// Using /c start "" "path" format to handle spaces in paths
-	cmd := exec.Command("cmd", "/c", "start", "", path)
+	// Quote the path to handle spaces and cmd metacharacters (&, |, ^, <, >)
+	// Without quotes, filenames like "R&D.pdf" would be misinterpreted by cmd
+	quotedPath := `"` + path + `"`
+	cmd := exec.Command("cmd", "/c", "start", "", quotedPath)
 
 	// Hide the command window
 	cmd.Stdout = nil
