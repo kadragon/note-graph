@@ -2,12 +2,26 @@ import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/rendere
 import type { Todo, WorkNoteWithStats } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 
+import { MarkdownRenderer } from './markdown-renderer';
+import { colors } from './styles';
+
 /**
- * Format a date string to a human-readable format
+ * Format a date string to a human-readable format (with time)
  */
 function formatDate(dateString: string): string {
   try {
     return format(parseISO(dateString), 'yyyy-MM-dd HH:mm');
+  } catch {
+    return dateString;
+  }
+}
+
+/**
+ * Format a date string to date only (no time)
+ */
+function formatDateOnly(dateString: string): string {
+  try {
+    return format(parseISO(dateString), 'yyyy-MM-dd');
   } catch {
     return dateString;
   }
@@ -30,81 +44,183 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    padding: 0,
     fontFamily: 'NotoSansKR',
     fontSize: 10,
+    backgroundColor: '#ffffff',
+  },
+  // Top color band
+  topBand: {
+    height: 6,
+    backgroundColor: colors.primary,
+  },
+  // Main content area
+  mainContent: {
+    padding: 40,
+    paddingTop: 30,
+  },
+  // Header section
+  header: {
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 700,
-    marginBottom: 16,
-  },
-  section: {
+    color: colors.gray900,
     marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 700,
-    marginBottom: 6,
-    color: '#374151',
-  },
-  categoryBadge: {
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginRight: 4,
-    marginBottom: 4,
-  },
-  categoryText: {
-    fontSize: 9,
-    color: '#4b5563',
-  },
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  label: {
-    color: '#6b7280',
-    marginRight: 8,
-  },
-  personName: {
-    fontWeight: 700,
-  },
-  personDept: {
-    color: '#6b7280',
-  },
-  content: {
-    lineHeight: 1.6,
-    color: '#1f2937',
-  },
-  todoItem: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
   },
-  todoStatus: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+  metaLabel: {
+    fontSize: 9,
+    color: colors.gray500,
+    width: 45,
   },
-  todoStatusCompleted: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+  metaValue: {
+    fontSize: 9,
+    color: colors.gray600,
+  },
+  // Category badges
+  categoryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  categoryBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  categoryText: {
+    fontSize: 9,
+    color: colors.primary,
+    fontWeight: 700,
+  },
+  // Section card style
+  section: {
+    marginBottom: 20,
+  },
+  sectionCard: {
+    backgroundColor: colors.gray50,
+    borderRadius: 8,
+    padding: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: colors.gray700,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  // Person/Assignee styles
+  personItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  personBullet: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginRight: 8,
+  },
+  personName: {
+    fontWeight: 700,
+    color: colors.gray800,
+  },
+  personDept: {
+    color: colors.gray500,
+    fontSize: 9,
+  },
+  // Content section
+  contentCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  content: {
+    lineHeight: 1.8,
+    color: colors.gray700,
+    fontSize: 10,
+  },
+  // Todo section
+  todoCard: {
+    backgroundColor: colors.gray50,
+    borderRadius: 8,
+    padding: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.success,
+  },
+  todoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+  },
+  todoItemLast: {
+    borderBottomWidth: 0,
+  },
+  todoCheckbox: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    marginRight: 10,
+    borderWidth: 1.5,
+    borderColor: colors.gray300,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  todoCheckboxCompleted: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  todoCheckmark: {
+    fontSize: 8,
+    color: '#ffffff',
+    fontWeight: 700,
   },
   todoTitle: {
     flex: 1,
+    color: colors.gray700,
   },
   todoTitleCompleted: {
     textDecoration: 'line-through',
-    color: '#9ca3af',
+    color: colors.gray400,
   },
-  dateText: {
-    fontSize: 9,
-    color: '#6b7280',
+  todoDate: {
+    fontSize: 8,
+    color: colors.gray500,
+    backgroundColor: colors.gray100,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  todoDateCompleted: {
+    backgroundColor: colors.successLight,
+    color: colors.success,
+  },
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: colors.gray200,
+    marginVertical: 16,
   },
 });
 
@@ -117,86 +233,118 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Title */}
-        <Text style={styles.title}>{workNote.title}</Text>
+        {/* Top color band */}
+        <View style={styles.topBand} />
 
-        {/* Categories */}
-        {workNote.categories && workNote.categories.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>업무 구분</Text>
-            <View style={styles.row}>
-              {workNote.categories.map((category) => (
-                <View key={category.categoryId} style={styles.categoryBadge}>
-                  <Text style={styles.categoryText}>{category.name}</Text>
-                </View>
-              ))}
+        <View style={styles.mainContent}>
+          {/* Header section with title, dates, and categories */}
+          <View style={styles.header}>
+            <Text style={styles.title}>{workNote.title}</Text>
+
+            {/* Meta information */}
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>생성일</Text>
+              <Text style={styles.metaValue}>{formatDate(workNote.createdAt)}</Text>
             </View>
-          </View>
-        )}
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>수정일</Text>
+              <Text style={styles.metaValue}>{formatDate(workNote.updatedAt)}</Text>
+            </View>
 
-        {/* Assignees */}
-        {workNote.persons && workNote.persons.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>담당자</Text>
-            {workNote.persons.map((person) => (
-              <View key={person.personId} style={styles.row}>
-                <Text style={styles.personName}>{person.personName}</Text>
-                {person.currentDept && (
-                  <Text style={styles.personDept}> ({person.currentDept})</Text>
-                )}
+            {/* Categories as badges */}
+            {workNote.categories && workNote.categories.length > 0 && (
+              <View style={styles.categoryRow}>
+                {workNote.categories.map((category) => (
+                  <View key={category.categoryId} style={styles.categoryBadge}>
+                    <Text style={styles.categoryText}>{category.name}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
+            )}
           </View>
-        )}
 
-        {/* Dates */}
-        <View style={styles.section}>
-          <View style={styles.row}>
-            <Text style={styles.label}>생성일:</Text>
-            <Text style={styles.dateText}>{formatDate(workNote.createdAt)}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>수정일:</Text>
-            <Text style={styles.dateText}>{formatDate(workNote.updatedAt)}</Text>
-          </View>
+          {/* Assignees section */}
+          {workNote.persons && workNote.persons.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>담당자</Text>
+                {workNote.persons.map((person) => (
+                  <View key={person.personId} style={styles.personItem}>
+                    <View style={styles.personBullet} />
+                    <Text style={styles.personName}>{person.personName}</Text>
+                    {person.currentDept && (
+                      <Text style={styles.personDept}> ({person.currentDept})</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Content section with markdown rendering */}
+          {workNote.content && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>내용</Text>
+              <View style={styles.contentCard}>
+                <MarkdownRenderer content={workNote.content} />
+              </View>
+            </View>
+          )}
+
+          {/* Todos section */}
+          {todos.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.todoCard}>
+                <Text style={styles.sectionTitle}>할일 목록</Text>
+                {todos.map((todo, index) => {
+                  const isCompleted = todo.status === '완료';
+                  const isLast = index === todos.length - 1;
+                  // 완료된 할일: updatedAt을 완료일로 표시
+                  // 미완료 할일: dueDate를 마감일로 표시
+                  const displayDate = isCompleted ? todo.updatedAt : todo.dueDate;
+                  const dateLabel = isCompleted ? '완료' : '마감';
+
+                  return (
+                    <View
+                      key={todo.id}
+                      style={isLast ? [styles.todoItem, styles.todoItemLast] : styles.todoItem}
+                    >
+                      <View
+                        style={
+                          isCompleted
+                            ? [styles.todoCheckbox, styles.todoCheckboxCompleted]
+                            : styles.todoCheckbox
+                        }
+                      >
+                        {isCompleted && <Text style={styles.todoCheckmark}>✓</Text>}
+                      </View>
+                      <Text
+                        style={
+                          isCompleted
+                            ? [styles.todoTitle, styles.todoTitleCompleted]
+                            : styles.todoTitle
+                        }
+                      >
+                        {todo.title}
+                      </Text>
+                      {displayDate && (
+                        <Text
+                          style={
+                            isCompleted
+                              ? [styles.todoDate, styles.todoDateCompleted]
+                              : styles.todoDate
+                          }
+                        >
+                          {dateLabel}: {formatDateOnly(displayDate)}
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
-
-        {/* Content */}
-        {workNote.content && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>내용</Text>
-            <Text style={styles.content}>{workNote.content}</Text>
-          </View>
-        )}
-
-        {/* Todos */}
-        {todos.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>할일 목록</Text>
-            {todos.map((todo) => {
-              const isCompleted = todo.status === '완료';
-              return (
-                <View key={todo.id} style={styles.todoItem}>
-                  <View
-                    style={
-                      isCompleted
-                        ? [styles.todoStatus, styles.todoStatusCompleted]
-                        : styles.todoStatus
-                    }
-                  />
-                  <Text
-                    style={
-                      isCompleted ? [styles.todoTitle, styles.todoTitleCompleted] : styles.todoTitle
-                    }
-                  >
-                    {todo.title}
-                  </Text>
-                  {todo.dueDate && <Text style={styles.dateText}>{formatDate(todo.dueDate)}</Text>}
-                </View>
-              );
-            })}
-          </View>
-        )}
       </Page>
     </Document>
   );
