@@ -62,3 +62,6 @@ wrangler.toml.backup
 # User-specific configuration (after initial setup)
 # Uncomment if you want to ignore local config changes
 # wrangler.toml
+
+# Serena
+.serena/
