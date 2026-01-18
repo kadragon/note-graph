@@ -58,11 +58,25 @@ export function useWorkNotesWithStats() {
             );
 
             const latestTodoDate = getLatestTodoDate(todos);
+            // Find the most recent completion timestamp from completed todos.
+            // If all completed todos lack updatedAt, this returns null and the work note
+            // will only appear in the "All" completed tab, not time-filtered tabs.
+            const latestCompletedAt = todos.reduce<string | null>((latest, todo) => {
+              if (todo.status !== TODO_STATUS.COMPLETED) {
+                return latest;
+              }
+              const candidate = todo.updatedAt;
+              if (!candidate) {
+                return latest;
+              }
+              return !latest || candidate > latest ? candidate : latest;
+            }, null);
 
             return {
               ...workNote,
               todoStats: { total, completed, remaining, pending },
               latestTodoDate,
+              latestCompletedAt,
             } as WorkNoteWithStats;
           } catch (error) {
             // Log error for debugging
@@ -73,6 +87,7 @@ export function useWorkNotesWithStats() {
               ...workNote,
               todoStats: { total: 0, completed: 0, remaining: 0, pending: 0 },
               latestTodoDate: null,
+              latestCompletedAt: null,
             } as WorkNoteWithStats;
           }
         })

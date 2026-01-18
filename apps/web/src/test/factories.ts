@@ -61,6 +61,7 @@ export function createWorkNoteWithStats(
       pending: 0,
     },
     latestTodoDate: null,
+    latestCompletedAt: null,
     ...overrides,
   };
 }

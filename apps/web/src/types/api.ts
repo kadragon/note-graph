@@ -92,6 +92,7 @@ export interface WorkNoteWithStats extends WorkNote {
     pending: number;
   };
   latestTodoDate: string | null;
+  latestCompletedAt: string | null;
 }
 
 export interface CreateWorkNoteRequest {

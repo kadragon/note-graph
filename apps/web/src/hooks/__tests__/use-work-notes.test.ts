@@ -97,9 +97,13 @@ describe('useWorkNotesWithStats', () => {
     const workNote = createWorkNote({ id: 'work-1', title: 'Work Note 1' });
     vi.mocked(API.getWorkNotes).mockResolvedValue([workNote]);
 
+    const now = new Date();
     const todos = [
-      createTodo({ status: TODO_STATUS.COMPLETED }),
-      createTodo({ status: TODO_STATUS.COMPLETED }),
+      createTodo({ status: TODO_STATUS.COMPLETED, updatedAt: now.toISOString() }),
+      createTodo({
+        status: TODO_STATUS.COMPLETED,
+        updatedAt: new Date(now.getTime() - 3600000).toISOString(),
+      }),
       createTodo({ status: TODO_STATUS.IN_PROGRESS }),
     ];
     vi.mocked(API.getWorkNoteTodos).mockResolvedValue(todos);
@@ -121,6 +125,7 @@ describe('useWorkNotesWithStats', () => {
       remaining: 1,
       pending: 0,
     });
+    expect(data![0].latestCompletedAt).toBe(now.toISOString());
   });
 
   it('calculates pending count for todos with future waitUntil', async () => {
@@ -175,6 +180,7 @@ describe('useWorkNotesWithStats', () => {
       pending: 0,
     });
     expect(data![0].latestTodoDate).toBeNull();
+    expect(data![0].latestCompletedAt).toBeNull();
 
     consoleSpy.mockRestore();
   });
