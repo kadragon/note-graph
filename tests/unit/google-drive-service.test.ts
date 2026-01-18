@@ -155,8 +155,8 @@ describe('GoogleDriveService', () => {
     const [url] = fetchSpy.mock.calls[0] ?? [];
     const urlValue = typeof url === 'string' ? url : String(url);
     const decodedQuery = decodeURIComponent(new URL(urlValue).searchParams.get('q') ?? '');
-    const escapedName = name.replace(/'/g, "\\'");
-    const escapedParentId = parentId.replace(/'/g, "\\'");
+    const escapedName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const escapedParentId = parentId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
     expect(decodedQuery).toContain(`name = '${escapedName}'`);
     expect(decodedQuery).toContain(`'${escapedParentId}' in parents`);
