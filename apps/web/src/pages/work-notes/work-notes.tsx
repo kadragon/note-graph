@@ -23,6 +23,14 @@ import { ViewWorkNoteDialog } from './components/view-work-note-dialog';
 import { type SortDirection, type SortKey, WorkNotesTable } from './components/work-notes-table';
 import { createWorkNotesComparator } from './lib/sort-work-notes';
 
+type WorkNoteTab =
+  | 'active'
+  | 'pending'
+  | 'completed-today'
+  | 'completed-week'
+  | 'completed-year'
+  | 'completed-all';
+
 export default function WorkNotes() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [textDialogOpen, setTextDialogOpen] = useState(false);
@@ -31,9 +39,7 @@ export default function WorkNotes() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedWorkNote, setSelectedWorkNote] = useState<WorkNoteWithStats | null>(null);
   const [workNoteToDelete, setWorkNoteToDelete] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<
-    'active' | 'pending' | 'completed-today' | 'completed-week' | 'completed-year' | 'completed-all'
-  >('active');
+  const [activeTab, setActiveTab] = useState<WorkNoteTab>('active');
   const [sortKey, setSortKey] = useState<SortKey>('category');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -73,8 +79,8 @@ export default function WorkNotes() {
     const getCompletedAt = (workNote: WorkNoteWithStats) =>
       workNote.latestCompletedAt ? new Date(workNote.latestCompletedAt) : null;
 
-    const isInRange = (completedAt: Date | null, start: Date) =>
-      Boolean(completedAt && completedAt >= start);
+    const isInRange = (completedAt: Date | null, start: Date, end?: Date) =>
+      Boolean(completedAt && completedAt >= start && (!end || completedAt < end));
 
     // 진행 중: 할일이 없거나 현재 활성화된 할일이 있는 업무노트
     const active = workNotes
@@ -86,11 +92,14 @@ export default function WorkNotes() {
       .sort(sortWorkNotes);
 
     const completedAll = workNotes.filter(isCompleted).sort(sortWorkNotes);
+    // Exclusive ranges: today only, week excluding today, year excluding week
     const completedToday = completedAll.filter((wn) => isInRange(getCompletedAt(wn), startOfToday));
     const completedWeek = completedAll.filter((wn) =>
-      isInRange(getCompletedAt(wn), startOfWeekDate)
+      isInRange(getCompletedAt(wn), startOfWeekDate, startOfToday)
     );
-    const completedYear = completedAll.filter((wn) => isInRange(getCompletedAt(wn), startOfYear));
+    const completedYear = completedAll.filter((wn) =>
+      isInRange(getCompletedAt(wn), startOfYear, startOfWeekDate)
+    );
 
     return {
       activeWorkNotes: active,
@@ -166,20 +175,7 @@ export default function WorkNotes() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Tabs
-              value={activeTab}
-              onValueChange={(v) =>
-                setActiveTab(
-                  v as
-                    | 'active'
-                    | 'pending'
-                    | 'completed-today'
-                    | 'completed-week'
-                    | 'completed-year'
-                    | 'completed-all'
-                )
-              }
-            >
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkNoteTab)}>
               <TabsList className="mb-4 flex flex-wrap gap-2">
                 <TabsTrigger value="active">진행 중 ({activeWorkNotes.length})</TabsTrigger>
                 <TabsTrigger value="pending">대기중 ({pendingWorkNotes.length})</TabsTrigger>
