@@ -95,13 +95,15 @@ export class GoogleCalendarService {
 
     const data = (await response.json()) as CalendarEventsResponse;
 
-    return (data.items ?? []).map((item) => ({
-      id: item.id,
-      summary: item.summary ?? '',
-      description: item.description,
-      start: item.start ?? {},
-      end: item.end ?? {},
-      htmlLink: item.htmlLink ?? '',
-    }));
+    return (data.items ?? [])
+      .filter((item) => item.id && item.start && item.end)
+      .map((item) => ({
+        id: item.id,
+        summary: item.summary ?? '',
+        description: item.description,
+        start: item.start!,
+        end: item.end!,
+        htmlLink: item.htmlLink ?? '',
+      }));
   }
 }

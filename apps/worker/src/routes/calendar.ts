@@ -31,7 +31,10 @@ calendar.get('/events', async (c) => {
   }
 
   // Parse timezone offset (in minutes, e.g., 540 for KST +09:00)
-  const timezoneOffset = timezoneOffsetParam ? parseInt(timezoneOffsetParam, 10) : 0;
+  const timezoneOffset = Number(timezoneOffsetParam ?? 0);
+  if (Number.isNaN(timezoneOffset)) {
+    throw new DomainError('Invalid timezoneOffset parameter', 'VALIDATION_ERROR', 400);
+  }
 
   // Check if Google account is connected with calendar scope
   const oauthService = new GoogleOAuthService(c.env, c.env.DB);

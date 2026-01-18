@@ -20,7 +20,7 @@ export function CalendarCard() {
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const startDate = format(weekStart, 'yyyy-MM-dd');
-  const endDate = format(addDays(weekStart, 14), 'yyyy-MM-dd');
+  const endDate = format(addDays(weekStart, 13), 'yyyy-MM-dd');
 
   const {
     data: events = [],

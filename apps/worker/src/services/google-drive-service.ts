@@ -92,8 +92,8 @@ export class GoogleDriveService {
     parentId: string
   ): Promise<DriveFolder | null> {
     const accessToken = await this.getAccessToken(userEmail);
-    const escapedName = name.replace(/'/g, "\\'");
-    const escapedParentId = parentId.replace(/'/g, "\\'");
+    const escapedName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const escapedParentId = parentId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const query = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.folder' and '${escapedParentId}' in parents and trashed = false`;
     const url = `${DRIVE_API_BASE}/files?fields=files(id,name,webViewLink,parents)&q=${encodeURIComponent(query)}`;
 

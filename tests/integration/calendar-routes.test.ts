@@ -174,6 +174,32 @@ describe('Calendar API Routes', () => {
       expect(data.events[0].summary).toBe('Test Meeting');
     });
 
+    it('should return 400 when timezoneOffset is invalid', async () => {
+      // Setup: Add OAuth token with calendar scope
+      await testEnv.DB.prepare(`
+        INSERT INTO google_oauth_tokens (
+          user_email, access_token, refresh_token, token_type, expires_at, scope
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `)
+        .bind(
+          'test@example.com',
+          'test-access-token',
+          'test-refresh-token',
+          'Bearer',
+          new Date(Date.now() + 3600000).toISOString(),
+          'https://www.googleapis.com/auth/calendar.readonly'
+        )
+        .run();
+
+      const response = await authFetch(
+        '/api/calendar/events?startDate=2026-01-19&endDate=2026-02-01&timezoneOffset=abc'
+      );
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.code).toBe('VALIDATION_ERROR');
+    });
+
     it('should use timezone offset for correct local time bounds', async () => {
       // Setup: Add OAuth token with calendar scope
       await testEnv.DB.prepare(`

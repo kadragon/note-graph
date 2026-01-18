@@ -1,3 +1,4 @@
+import { getEventStartDate, isAllDayEvent } from '@web/hooks/use-calendar';
 import { cn } from '@web/lib/utils';
 import type { CalendarEvent } from '@web/types/api';
 import { addDays, eachDayOfInterval, format, isToday, startOfWeek } from 'date-fns';
@@ -13,18 +14,6 @@ interface WeekCalendarProps {
 interface DayEvents {
   date: Date;
   events: CalendarEvent[];
-}
-
-function getEventDate(event: CalendarEvent): Date {
-  if (event.start.dateTime) {
-    return new Date(event.start.dateTime);
-  }
-  // All-day events use date string (YYYY-MM-DD)
-  return new Date(`${event.start.date}T00:00:00`);
-}
-
-function isAllDayEvent(event: CalendarEvent): boolean {
-  return !!event.start.date && !event.start.dateTime;
 }
 
 function formatEventTime(event: CalendarEvent): string {
@@ -48,7 +37,7 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
   // Group events by date
   const dayEventsMap = new Map<string, CalendarEvent[]>();
   events.forEach((event) => {
-    const eventDate = getEventDate(event);
+    const eventDate = getEventStartDate(event);
     const dateKey = format(eventDate, 'yyyy-MM-dd');
     const existing = dayEventsMap.get(dateKey) || [];
     dayEventsMap.set(dateKey, [...existing, event]);

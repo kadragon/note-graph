@@ -155,5 +155,56 @@ describe('GoogleCalendarService', () => {
         service.getEvents('user@example.com', '2026-01-19', '2026-02-01')
       ).rejects.toThrow('Failed to fetch calendar events');
     });
+
+    it('filters out malformed events missing required fields', async () => {
+      const env = createEnv();
+      const db = {} as D1Database;
+      const service = new GoogleCalendarService(env, db);
+
+      vi.spyOn(
+        service as unknown as { getAccessToken: (userEmail: string) => Promise<string> },
+        'getAccessToken'
+      ).mockResolvedValue('test-access-token');
+
+      const mockResponse = {
+        items: [
+          // Valid event
+          {
+            id: 'valid-event',
+            summary: 'Valid Event',
+            start: { dateTime: '2026-01-20T09:00:00+09:00' },
+            end: { dateTime: '2026-01-20T10:00:00+09:00' },
+            htmlLink: 'https://calendar.google.com/event/1',
+          },
+          // Missing id
+          {
+            summary: 'No ID Event',
+            start: { dateTime: '2026-01-20T11:00:00+09:00' },
+            end: { dateTime: '2026-01-20T12:00:00+09:00' },
+          },
+          // Missing start
+          {
+            id: 'no-start',
+            summary: 'No Start Event',
+            end: { dateTime: '2026-01-20T13:00:00+09:00' },
+          },
+          // Missing end
+          {
+            id: 'no-end',
+            summary: 'No End Event',
+            start: { dateTime: '2026-01-20T14:00:00+09:00' },
+          },
+        ],
+      };
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(mockResponse), { status: 200 })
+      );
+
+      const events = await service.getEvents('user@example.com', '2026-01-19', '2026-02-01');
+
+      expect(events).toHaveLength(1);
+      expect(events[0].id).toBe('valid-event');
+    });
   });
 });
