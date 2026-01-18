@@ -21,6 +21,7 @@ export interface DriveFile {
   webViewLink: string;
   size: string;
   appProperties?: Record<string, string>;
+  parents?: string[];
 }
 
 export interface GDriveFolderRecord {
@@ -64,7 +65,7 @@ export class GoogleDriveService {
       metadata.parents = [this.env.GDRIVE_ROOT_FOLDER_ID];
     }
 
-    const response = await fetch(`${DRIVE_API_BASE}/files?fields=id,name,webViewLink`, {
+    const response = await fetch(`${DRIVE_API_BASE}/files?fields=id,name,webViewLink,parents`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -83,6 +84,72 @@ export class GoogleDriveService {
   }
 
   /**
+   * Find a folder by name within a parent folder
+   */
+  async findFolderByNameInParent(
+    userEmail: string,
+    name: string,
+    parentId: string
+  ): Promise<DriveFolder | null> {
+    const accessToken = await this.getAccessToken(userEmail);
+    const query = `name = '${name}' and mimeType = 'application/vnd.google-apps.folder' and '${parentId}' in parents and trashed = false`;
+    const url = `${DRIVE_API_BASE}/files?fields=files(id,name,webViewLink,parents)&q=${encodeURIComponent(query)}`;
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to list folders: ${error}`);
+    }
+
+    const data = (await response.json()) as { files?: DriveFolder[] };
+    return data.files?.[0] ?? null;
+  }
+
+  /**
+   * Build a year folder name from ISO timestamp
+   */
+  private buildYearFolderName(createdAt: string): string {
+    return new Date(createdAt).getUTCFullYear().toString();
+  }
+
+  /**
+   * Ensure a folder exists in the specified parent
+   */
+  protected async ensureFolderInParent(
+    userEmail: string,
+    folderId: string,
+    parentId: string
+  ): Promise<void> {
+    const metadata = await this.getFileMetadata(userEmail, folderId);
+
+    if (!metadata) {
+      throw new Error(`Google Drive folder not found: ${folderId}`);
+    }
+
+    if (metadata.parents?.includes(parentId)) {
+      return;
+    }
+
+    const accessToken = await this.getAccessToken(userEmail);
+    const response = await fetch(`${DRIVE_API_BASE}/files/${folderId}?addParents=${parentId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to move Drive folder: ${error}`);
+    }
+  }
+
+  /**
    * Get or create a folder for a work note
    */
   async getOrCreateWorkNoteFolder(userEmail: string, workId: string): Promise<GDriveFolderRecord> {
@@ -97,12 +164,32 @@ export class GoogleDriveService {
       .bind(workId)
       .first<GDriveFolderRecord>();
 
+    const workNote = await this.db
+      .prepare('SELECT created_at as createdAt FROM work_notes WHERE work_id = ?')
+      .bind(workId)
+      .first<{ createdAt: string }>();
+
+    if (!workNote?.createdAt) {
+      throw new Error(`Work note not found for workId: ${workId}`);
+    }
+
+    const year = this.buildYearFolderName(workNote.createdAt);
+    const rootFolderId = this.env.GDRIVE_ROOT_FOLDER_ID;
+
+    if (!rootFolderId) {
+      throw new Error('GDRIVE_ROOT_FOLDER_ID is required to create Drive folders.');
+    }
+
+    const yearFolder =
+      (await this.findFolderByNameInParent(userEmail, year, rootFolderId)) ??
+      (await this.createFolder(userEmail, year, rootFolderId));
+
     if (existing) {
+      await this.ensureFolderInParent(userEmail, existing.gdriveFolderId, yearFolder.id);
       return existing;
     }
 
-    // Create new folder in Google Drive
-    const folder = await this.createFolder(userEmail, workId);
+    const folder = await this.createFolder(userEmail, workId, yearFolder.id);
     const now = new Date().toISOString();
 
     // Store in DB
@@ -175,7 +262,7 @@ export class GoogleDriveService {
     body.set(closeBytes, offset);
 
     const response = await fetch(
-      `${DRIVE_UPLOAD_BASE}/files?uploadType=multipart&fields=id,name,mimeType,webViewLink,size`,
+      `${DRIVE_UPLOAD_BASE}/files?uploadType=multipart&fields=id,name,mimeType,webViewLink,size,parents`,
       {
         method: 'POST',
         headers: {
@@ -206,7 +293,7 @@ export class GoogleDriveService {
   ): Promise<DriveFile | null> {
     const accessToken = await this.getAccessToken(userEmail);
     const query = `appProperties has { key='${key}' and value='${value}' } and '${folderId}' in parents and trashed = false`;
-    const url = `${DRIVE_API_BASE}/files?fields=files(id,name,mimeType,webViewLink,size,appProperties)&q=${encodeURIComponent(query)}`;
+    const url = `${DRIVE_API_BASE}/files?fields=files(id,name,mimeType,webViewLink,size,appProperties,parents)&q=${encodeURIComponent(query)}`;
 
     const response = await fetch(url, {
       headers: {
@@ -257,7 +344,7 @@ export class GoogleDriveService {
     const accessToken = await this.getAccessToken(userEmail);
 
     const response = await fetch(
-      `${DRIVE_API_BASE}/files/${fileId}?fields=id,name,mimeType,webViewLink,size`,
+      `${DRIVE_API_BASE}/files/${fileId}?fields=id,name,mimeType,webViewLink,size,parents`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,

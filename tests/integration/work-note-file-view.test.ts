@@ -36,12 +36,13 @@ describe('Work Note File Preview Route', () => {
 
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const createdAt = '2023-05-01T00:00:00.000Z';
 
     // Seed minimal work note
     await testEnv.DB.prepare(
       `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
     )
-      .bind('WORK-123', '테스트 업무노트', '내용', now, now)
+      .bind('WORK-123', '테스트 업무노트', '내용', createdAt, now)
       .run();
 
     await testEnv.DB.prepare(
@@ -97,7 +98,7 @@ describe('Work Note File Preview Route', () => {
     global.fetch = fetchMock as typeof fetch;
 
     // Provide mock R2 binding for legacy streaming routes
-    setTestR2Bucket(new MockR2());
+    setTestR2Bucket(new MockR2() as unknown as typeof testEnv.R2_BUCKET);
   });
 
   afterEach(() => {

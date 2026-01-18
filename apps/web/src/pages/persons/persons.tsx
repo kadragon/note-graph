@@ -12,7 +12,6 @@ import {
   TableRow,
 } from '@web/components/ui/table';
 import { usePersons } from '@web/hooks/use-persons';
-import { getDepartmentColor } from '@web/lib/utils';
 import type { Person } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -33,17 +32,12 @@ export default function Persons() {
   // Get department filter from URL params
   const deptFilter = searchParams.get('dept');
 
-  const handleDeptClick = (deptName: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent row click
-    setSearchParams({ dept: deptName });
-  };
-
   const clearDeptFilter = () => {
     setSearchParams({});
   };
 
-  // Filter and sort persons
-  const sortedPersons = useMemo(() => {
+  // Filter and sort persons, grouped by department
+  const groupedPersons = useMemo(() => {
     const compareNullable = (a?: string | null, b?: string | null) => {
       if (a == null && b == null) return 0;
       if (a == null) return 1; // nulls last
@@ -54,7 +48,8 @@ export default function Persons() {
     // Apply department filter
     const filtered = deptFilter ? persons.filter((p) => p.currentDept === deptFilter) : persons;
 
-    return [...filtered].sort((a, b) => {
+    // Sort all persons
+    const sorted = [...filtered].sort((a, b) => {
       return (
         compareNullable(a.currentDept, b.currentDept) ||
         a.name.localeCompare(b.name, 'ko') ||
@@ -64,6 +59,22 @@ export default function Persons() {
         a.createdAt.localeCompare(b.createdAt)
       );
     });
+
+    // Group by department
+    const groups = new Map<string | null, Person[]>();
+    sorted.forEach((person) => {
+      const dept = person.currentDept || null;
+      if (!groups.has(dept)) {
+        groups.set(dept, []);
+      }
+      groups.get(dept)!.push(person);
+    });
+
+    return Array.from(groups.entries()).map(([dept, members]) => ({
+      dept: dept || '부서 미지정',
+      isDeptEmpty: !dept,
+      members,
+    }));
   }, [persons, deptFilter]);
 
   const handleRowClick = (person: Person) => {
@@ -121,65 +132,62 @@ export default function Persons() {
               <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>부서</TableHead>
-                  <TableHead>이름</TableHead>
-                  <TableHead>직책</TableHead>
-                  <TableHead>사번</TableHead>
-                  <TableHead>연락처</TableHead>
-                  <TableHead>생성일</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedPersons.map((person) => (
-                  <TableRow
-                    key={person.personId}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleRowClick(person)}
-                  >
-                    <TableCell>
-                      {person.currentDept ? (
-                        <Badge
-                          className={`${getDepartmentColor(person.currentDept)} cursor-pointer hover:opacity-80 transition-opacity`}
-                          onClick={(e) => {
-                            if (person.currentDept) handleDeptClick(person.currentDept, e);
-                          }}
+            <div className="space-y-6">
+              {groupedPersons.map((group) => (
+                <div key={group.dept} className="space-y-3">
+                  <div className="flex items-center gap-2 px-1">
+                    <h3 className="font-semibold text-sm">{group.dept}</h3>
+                    <span className="text-xs text-muted-foreground">
+                      ({group.members.length}명)
+                    </span>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30">
+                        <TableHead>이름</TableHead>
+                        <TableHead>직책</TableHead>
+                        <TableHead>사번</TableHead>
+                        <TableHead>연락처</TableHead>
+                        <TableHead>생성일</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.members.map((person) => (
+                        <TableRow
+                          key={person.personId}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleRowClick(person)}
                         >
-                          {person.currentDept}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-medium">{person.name}</TableCell>
-                    <TableCell>
-                      {person.currentPosition ? (
-                        <span className="text-sm">{person.currentPosition}</span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{person.personId}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {person.phoneExt ? (
-                        <span className="text-sm font-mono">{person.phoneExt}</span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {format(parseISO(person.createdAt), 'yyyy-MM-dd', {
-                        locale: ko,
-                      })}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                          <TableCell className="font-medium">{person.name}</TableCell>
+                          <TableCell>
+                            {person.currentPosition ? (
+                              <span className="text-sm">{person.currentPosition}</span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{person.personId}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {person.phoneExt ? (
+                              <span className="text-sm font-mono">{person.phoneExt}</span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {format(parseISO(person.createdAt), 'yyyy-MM-dd', {
+                              locale: ko,
+                            })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

@@ -24,12 +24,11 @@ describe('WorkNoteFileService', () => {
   let originalGdriveRootFolderId: string | undefined;
   const userEmail = 'tester@example.com';
 
-  const insertWorkNote = async (workId: string) => {
-    const now = new Date().toISOString();
+  const insertWorkNote = async (workId: string, createdAt = new Date().toISOString()) => {
     await baseEnv.DB.prepare(
       `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
     )
-      .bind(workId, '테스트 업무노트', '내용', now, now)
+      .bind(workId, '테스트 업무노트', '내용', createdAt, createdAt)
       .run();
   };
 
@@ -100,7 +99,7 @@ describe('WorkNoteFileService', () => {
     ]);
 
     r2 = new MockR2();
-    setTestR2Bucket(r2);
+    setTestR2Bucket(r2 as unknown as R2Bucket);
     testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
     testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
     testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
@@ -112,6 +111,21 @@ describe('WorkNoteFileService', () => {
       const url = typeof input === 'string' ? input : input.toString();
       const method = (init as RequestInit).method ?? 'GET';
 
+      if (url.startsWith(`${DRIVE_API_BASE}/files/`) && method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'FOLDER-1',
+            name: 'WORK-123',
+            mimeType: 'application/vnd.google-apps.folder',
+            webViewLink: 'https://drive.example/folder',
+            size: '0',
+            parents: ['FOLDER-OLD'],
+          }),
+        } as Response;
+      }
+
       if (url.startsWith(`${DRIVE_API_BASE}/files?`) && method === 'GET') {
         return {
           ok: true,
@@ -120,7 +134,27 @@ describe('WorkNoteFileService', () => {
         } as Response;
       }
 
+      if (url.includes('addParents=') && method === 'PATCH') {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => '',
+        } as Response;
+      }
+
       if (url.startsWith(`${DRIVE_API_BASE}/files`) && method === 'POST') {
+        if (url.includes('mimeType')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              id: 'FOLDER-YEAR-1',
+              name: '2023',
+              webViewLink: 'https://drive.example/year',
+            }),
+          } as Response;
+        }
+
         return {
           ok: true,
           status: 200,
@@ -173,7 +207,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('lists legacy R2 files even when Google Drive config is missing', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const fileId = 'FILE-R2-LEGACY';
     const r2Key = `work-notes/WORK-123/files/${fileId}`;
 
@@ -207,7 +241,7 @@ describe('WorkNoteFileService', () => {
 
   it('uploads PDF and stores record', async () => {
     // Arrange
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const file = new Blob(['PDF content'], { type: 'application/pdf' });
 
     // Act
@@ -238,7 +272,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('uploads HWP file successfully', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const file = new Blob(['HWP content'], { type: 'application/x-hwp' });
 
     const result = await service.uploadFile({
@@ -252,7 +286,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('uploads HWPX file when browser sends empty mime type', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const file = new Blob(['HWPX content']); // default type = '' in browser for unknown extensions
 
     const result = await service.uploadFile({
@@ -266,7 +300,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('uploads Excel file successfully', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const file = new Blob(['Excel content'], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
@@ -284,7 +318,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('uploads image file successfully', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const file = new Blob(['PNG data'], { type: 'image/png' });
 
     const result = await service.uploadFile({
@@ -298,7 +332,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('normalizes image/jpg mime to image/jpeg', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const file = new Blob(['JPG data'], { type: 'image/jpg' });
 
     const result = await service.uploadFile({
@@ -312,7 +346,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('rejects files exceeding 50MB limit', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const oversized = { size: 51 * 1024 * 1024, type: 'application/pdf' } as unknown as Blob;
 
     await expect(
@@ -326,7 +360,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('rejects unsupported file types', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const file = new Blob(['executable'], { type: 'application/x-msdownload' });
 
     await expect(
@@ -340,7 +374,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('lists files for work note', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
 
     // Upload two files
     await service.uploadFile({
@@ -367,7 +401,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('gets file by ID', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const uploaded = await service.uploadFile({
       workId: 'WORK-123',
       file: new Blob(['content'], { type: 'application/pdf' }),
@@ -388,7 +422,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('streams file from R2', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const fileId = 'FILE-R2-1';
     const r2Key = `work-notes/WORK-123/files/${fileId}`;
     const blob = new Blob(['file data'], { type: 'application/pdf' });
@@ -412,7 +446,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('streams file inline when requested (for browser preview)', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const fileId = 'FILE-R2-2';
     const r2Key = `work-notes/WORK-123/files/${fileId}`;
     const blob = new Blob(['file data'], { type: 'application/pdf' });
@@ -443,7 +477,7 @@ describe('WorkNoteFileService', () => {
     const fileId = 'FILE-R2-EXISTING';
     const r2Key = `work-notes/${workId}/files/${fileId}`;
 
-    await insertWorkNote(workId);
+    await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
     await insertLegacyR2File({
       workId,
       fileId,
@@ -512,7 +546,7 @@ describe('WorkNoteFileService', () => {
     const fileId = 'FILE-R2-FAIL';
     const r2Key = `work-notes/${workId}/files/${fileId}`;
 
-    await insertWorkNote(workId);
+    await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
     await insertLegacyR2File({
       workId,
       fileId,
@@ -556,7 +590,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('deletes file from R2 and DB', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const uploaded = await service.uploadFile({
       workId: 'WORK-123',
       file: new Blob(['data'], { type: 'application/pdf' }),
@@ -582,7 +616,7 @@ describe('WorkNoteFileService', () => {
   });
 
   it('deletes all files for work note', async () => {
-    await insertWorkNote('WORK-123');
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
 
     // Upload two files
     await service.uploadFile({
