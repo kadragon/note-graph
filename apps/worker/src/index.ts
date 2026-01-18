@@ -12,6 +12,7 @@ import { repositoriesMiddleware } from './middleware/repositories';
 import admin from './routes/admin';
 import aiDraft from './routes/ai-draft';
 import { authGoogle } from './routes/auth-google';
+import { calendar } from './routes/calendar';
 import departments from './routes/departments';
 import pdf from './routes/pdf';
 // Route imports
@@ -76,6 +77,7 @@ api.get('/', (c) => {
       admin: '/api/admin',
       statistics: '/api/statistics',
       authGoogle: '/api/auth/google',
+      calendar: '/api/calendar',
     },
   });
 });
@@ -97,6 +99,7 @@ api.route('/pdf-jobs', pdf);
 api.route('/admin', admin);
 api.route('/statistics', statistics);
 api.route('/auth/google', authGoogle);
+api.route('/calendar', calendar);
 
 // Mount API router to main app
 app.route('/', api);

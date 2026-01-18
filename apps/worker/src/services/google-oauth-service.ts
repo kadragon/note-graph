@@ -12,8 +12,11 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 
-// Only request access to files created by this app
-const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
+// Request access to files created by this app and read-only calendar access
+const SCOPES = [
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/calendar.readonly',
+];
 
 export interface OAuthTokens {
   accessToken: string;
