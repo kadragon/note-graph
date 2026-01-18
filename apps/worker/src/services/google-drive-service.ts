@@ -92,7 +92,9 @@ export class GoogleDriveService {
     parentId: string
   ): Promise<DriveFolder | null> {
     const accessToken = await this.getAccessToken(userEmail);
-    const query = `name = '${name}' and mimeType = 'application/vnd.google-apps.folder' and '${parentId}' in parents and trashed = false`;
+    const escapedName = name.replace(/'/g, "\\'");
+    const escapedParentId = parentId.replace(/'/g, "\\'");
+    const query = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.folder' and '${escapedParentId}' in parents and trashed = false`;
     const url = `${DRIVE_API_BASE}/files?fields=files(id,name,webViewLink,parents)&q=${encodeURIComponent(query)}`;
 
     const response = await fetch(url, {
@@ -136,7 +138,14 @@ export class GoogleDriveService {
     }
 
     const accessToken = await this.getAccessToken(userEmail);
-    const response = await fetch(`${DRIVE_API_BASE}/files/${folderId}?addParents=${parentId}`, {
+    const params = new URLSearchParams({ addParents: parentId });
+
+    const rootFolderId = this.env.GDRIVE_ROOT_FOLDER_ID;
+    if (rootFolderId && metadata.parents?.includes(rootFolderId)) {
+      params.append('removeParents', rootFolderId);
+    }
+
+    const response = await fetch(`${DRIVE_API_BASE}/files/${folderId}?${params.toString()}`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${accessToken}`,

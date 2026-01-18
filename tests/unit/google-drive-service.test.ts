@@ -1,7 +1,7 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import { GoogleDriveService } from '@worker/services/google-drive-service';
 import type { Env } from '@worker/types/env';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 class MockD1Database {
   queries: string[] = [];
@@ -48,6 +48,11 @@ class TestGoogleDriveService extends GoogleDriveService {
   createFolderCalls: Array<{ name: string; parentId?: string }> = [];
   ensureFolderCalls: Array<{ folderId: string; parentId: string }> = [];
   metadataCalls: string[] = [];
+  getOrCreateWorkNoteFolder = super.getOrCreateWorkNoteFolder;
+
+  constructor(env: Env, db: D1Database) {
+    super(env, db);
+  }
 
   async findFolderByNameInParent() {
     return null;
@@ -83,7 +88,113 @@ class TestGoogleDriveService extends GoogleDriveService {
   }
 }
 
+class DriveServiceHarness extends GoogleDriveService {
+  constructor(
+    env: Env,
+    db: D1Database,
+    private metadata: Awaited<ReturnType<GoogleDriveService['getFileMetadata']>>
+  ) {
+    super(env, db);
+  }
+
+  async getFileMetadata() {
+    return this.metadata;
+  }
+
+  async ensureFolderInParentForTest(userEmail: string, folderId: string, parentId: string) {
+    await (
+      this as unknown as { ensureFolderInParent: typeof this.ensureFolderInParent }
+    ).ensureFolderInParent(userEmail, folderId, parentId);
+  }
+}
+
 describe('GoogleDriveService', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(
+      GoogleDriveService.prototype as unknown as {
+        getAccessToken: (userEmail: string) => Promise<string>;
+      },
+      'getAccessToken'
+    ).mockResolvedValue('token');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : String(input);
+
+      if (url.includes('/files?fields=files')) {
+        return new Response(JSON.stringify({ files: [] }), { status: 200 });
+      }
+
+      return new Response('{}', { status: 200 });
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('escapes query values when searching for folders', async () => {
+    const env = {
+      GOOGLE_CLIENT_ID: 'client-id',
+      GOOGLE_CLIENT_SECRET: 'client-secret',
+      GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+      GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+    } as Env;
+    const service = new GoogleDriveService(env, {} as D1Database);
+
+    vi.spyOn(
+      service as unknown as { getAccessToken: (userEmail: string) => Promise<string> },
+      'getAccessToken'
+    ).mockResolvedValue('token');
+
+    const name = "2023' OR '1'='1";
+    const parentId = "parent'id";
+
+    await service.findFolderByNameInParent('tester@example.com', name, parentId);
+
+    const fetchSpy = globalThis.fetch as unknown as Mock;
+    const [url] = fetchSpy.mock.calls[0] ?? [];
+    const urlValue = typeof url === 'string' ? url : String(url);
+    const decodedQuery = decodeURIComponent(new URL(urlValue).searchParams.get('q') ?? '');
+    const escapedName = name.replace(/'/g, "\\'");
+    const escapedParentId = parentId.replace(/'/g, "\\'");
+
+    expect(decodedQuery).toContain(`name = '${escapedName}'`);
+    expect(decodedQuery).toContain(`'${escapedParentId}' in parents`);
+  });
+
+  it('removes the root parent when moving folders into year buckets', async () => {
+    const env = {
+      GOOGLE_CLIENT_ID: 'client-id',
+      GOOGLE_CLIENT_SECRET: 'client-secret',
+      GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+      GDRIVE_ROOT_FOLDER_ID: 'root-folder',
+    } as Env;
+    const metadata = {
+      id: 'folder-id',
+      name: 'WORK-123',
+      mimeType: 'application/vnd.google-apps.folder',
+      webViewLink: 'https://drive.example/folder',
+      size: '0',
+      parents: ['root-folder'],
+    };
+    const service = new DriveServiceHarness(env, {} as D1Database, metadata);
+
+    vi.spyOn(
+      service as unknown as { getAccessToken: (userEmail: string) => Promise<string> },
+      'getAccessToken'
+    ).mockResolvedValue('token');
+
+    await service.ensureFolderInParentForTest('tester@example.com', 'folder-id', 'year-folder');
+
+    const fetchSpy = globalThis.fetch as unknown as Mock;
+    const [url] = fetchSpy.mock.calls[0] ?? [];
+    const urlValue = typeof url === 'string' ? url : String(url);
+    const params = new URL(urlValue).searchParams;
+
+    expect(params.get('addParents')).toBe('year-folder');
+    expect(params.get('removeParents')).toBe('root-folder');
+  });
+
   it('uses INSERT OR IGNORE when persisting work note folders', async () => {
     const db = new MockD1Database('2023-01-01T00:00:00.000Z');
     const env = {
