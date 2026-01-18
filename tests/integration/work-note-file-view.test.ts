@@ -66,6 +66,22 @@ describe('Work Note File Preview Route', () => {
       const url = typeof input === 'string' ? input : input.toString();
       const method = (init as RequestInit).method ?? 'GET';
 
+      if (url.startsWith(`${DRIVE_API_BASE}/files?`) && method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ files: [] }),
+        } as Response;
+      }
+
+      if (url.includes('addParents=') && method === 'PATCH') {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => '',
+        } as Response;
+      }
+
       if (url.startsWith(`${DRIVE_API_BASE}/files`) && method === 'POST') {
         return {
           ok: true,
