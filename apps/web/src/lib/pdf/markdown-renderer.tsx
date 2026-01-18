@@ -1,16 +1,7 @@
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 import { marked, type Token, type Tokens } from 'marked';
 
-// Color palette (shared with main document)
-const colors = {
-  primary: '#3b82f6',
-  gray100: '#f3f4f6',
-  gray200: '#e5e7eb',
-  gray500: '#6b7280',
-  gray600: '#4b5563',
-  gray700: '#374151',
-  gray800: '#1f2937',
-};
+import { colors } from './styles';
 
 const styles = StyleSheet.create({
   // Block elements
@@ -158,8 +149,14 @@ function renderInlineTokens(tokens: Token[] | undefined): React.ReactNode[] {
   return tokens.map((token, index) => {
     const key = getTokenKey(token, index);
     switch (token.type) {
-      case 'text':
-        return <Text key={key}>{token.text}</Text>;
+      case 'text': {
+        // Handle nested tokens in text (e.g., **bold** inside list items)
+        const textToken = token as Tokens.Text;
+        if (textToken.tokens && textToken.tokens.length > 0) {
+          return <Text key={key}>{renderInlineTokens(textToken.tokens)}</Text>;
+        }
+        return <Text key={key}>{textToken.text}</Text>;
+      }
 
       case 'strong':
         return (
@@ -271,11 +268,16 @@ function renderBlockToken(token: Token, index: number): React.ReactNode {
       return (
         <View key={index} style={styles.blockquote}>
           <Text style={styles.blockquoteText}>
-            {blockquoteToken.tokens?.map((t) => {
+            {blockquoteToken.tokens?.flatMap((t, i) => {
               if (t.type === 'paragraph') {
-                return renderInlineTokens((t as Tokens.Paragraph).tokens);
+                const content = renderInlineTokens((t as Tokens.Paragraph).tokens);
+                // Add newline between paragraphs
+                if (i > 0) {
+                  return [<Text key={`br-${getTokenKey(t, i)}`}>{'\n\n'}</Text>, ...content];
+                }
+                return content;
               }
-              return null;
+              return [];
             })}
           </Text>
         </View>
