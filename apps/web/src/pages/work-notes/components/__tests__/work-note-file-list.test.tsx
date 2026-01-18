@@ -238,4 +238,67 @@ describe('WorkNoteFileList', () => {
     expect(writeTextSpy).toHaveBeenCalledWith(expectedPath);
     expect(mockToast).toHaveBeenCalledWith({ description: '로컬 경로가 복사되었습니다.' });
   });
+
+  it('shows "Open locally" button with notegraph:// link when local drive path is set', () => {
+    const files = [
+      createWorkNoteFile({
+        storageType: 'GDRIVE',
+        originalName: 'document.pdf',
+      }),
+    ];
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: { files, googleDriveConfigured: true },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    localStorageMock.getItem.mockReturnValue('C:/GoogleDrive');
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    const openLocallyButton = screen.getByRole('link', { name: '로컬에서 열기' });
+    expect(openLocallyButton).toBeInTheDocument();
+
+    // Expected URL: notegraph://open?path=C%3A%2FGoogleDrive%2FworkNote%2Fwork-1%2Fdocument.pdf
+    const expectedPath = 'C:/GoogleDrive/workNote/work-1/document.pdf';
+    const expectedUrl = `notegraph://open?path=${encodeURIComponent(expectedPath)}`;
+    expect(openLocallyButton).toHaveAttribute('href', expectedUrl);
+  });
+
+  it('does not show "Open locally" button when local drive path is not set', () => {
+    const files = [
+      createWorkNoteFile({
+        storageType: 'GDRIVE',
+        originalName: 'document.pdf',
+      }),
+    ];
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: { files, googleDriveConfigured: true },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    localStorageMock.getItem.mockReturnValue(null);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(screen.queryByRole('link', { name: '로컬에서 열기' })).not.toBeInTheDocument();
+  });
+
+  it('shows protocol handler installation info and download link in settings', () => {
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: { files: [], googleDriveConfigured: true },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    // Check for installation instruction text
+    expect(screen.getByText(/로컬에서 열기.*사용하려면/)).toBeInTheDocument();
+
+    // Check for download link to GitHub Releases
+    const downloadLink = screen.getByRole('link', { name: /다운로드/ });
+    expect(downloadLink).toHaveAttribute('href', 'https://github.com/kadragon/note-graph/releases');
+    expect(downloadLink).toHaveAttribute('target', '_blank');
+  });
 });

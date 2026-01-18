@@ -11,6 +11,11 @@ dist/
 .wrangler/
 /public/
 
+# notegraph-opener build artifacts
+tools/notegraph-opener/*.exe
+tools/notegraph-opener/*.zip
+tools/notegraph-opener/release/
+
 # Environment variables
 .env
 .env.local
@@ -32,6 +37,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+# notegraph-opener local logs (when APPDATA not set)
+tools/notegraph-opener/notegraph-opener/
 
 # TypeScript
 *.tsbuildinfo
