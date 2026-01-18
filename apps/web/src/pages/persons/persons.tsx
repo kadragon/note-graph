@@ -136,7 +136,18 @@ export default function Persons() {
               {groupedPersons.map((group) => (
                 <div key={group.dept} className="space-y-3">
                   <div className="flex items-center gap-2 px-1">
-                    <h3 className="font-semibold text-sm">{group.dept}</h3>
+                    <button
+                      type="button"
+                      className="font-semibold text-sm hover:underline cursor-pointer disabled:cursor-default disabled:no-underline"
+                      disabled={group.isDeptEmpty || !!deptFilter}
+                      onClick={() => {
+                        if (!group.isDeptEmpty && !deptFilter) {
+                          setSearchParams({ dept: group.dept });
+                        }
+                      }}
+                    >
+                      {group.dept}
+                    </button>
                     <span className="text-xs text-muted-foreground">
                       ({group.members.length}명)
                     </span>

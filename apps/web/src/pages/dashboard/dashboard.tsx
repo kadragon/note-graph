@@ -1,10 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { CheckSquare } from 'lucide-react';
+import { CalendarCard } from './components/calendar-card';
 import { TodoTabs } from './components/todo-tabs';
 
 export default function Dashboard() {
   return (
     <div className="flex-1 space-y-6 p-6">
+      {/* Calendar */}
+      <CalendarCard />
+
       {/* Todo List */}
       <Card className="border-l-4 border-l-primary">
         <CardHeader className="pb-3">

@@ -3,6 +3,7 @@ import type {
   AIGenerateDraftResponse,
   AssignWorkNoteRequest,
   BatchProcessResult,
+  CalendarEventsResponse,
   CreateDepartmentRequest,
   CreatePersonRequest,
   CreateProjectRequest,
@@ -866,6 +867,18 @@ export class APIClient {
     if (params.category) queryParams.set('category', params.category);
 
     return this.request<WorkNoteStatistics>(`/statistics?${queryParams.toString()}`);
+  }
+
+  // Calendar
+  getCalendarEvents(startDate: string, endDate: string) {
+    // Get browser's timezone offset (negate because getTimezoneOffset returns opposite sign)
+    const timezoneOffset = -new Date().getTimezoneOffset();
+    const params = new URLSearchParams({
+      startDate,
+      endDate,
+      timezoneOffset: timezoneOffset.toString(),
+    });
+    return this.request<CalendarEventsResponse>(`/calendar/events?${params.toString()}`);
   }
 }
 

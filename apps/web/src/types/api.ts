@@ -383,3 +383,17 @@ export interface StatisticsQueryParams {
   deptName?: string;
   category?: string;
 }
+
+// Calendar types
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: { dateTime?: string; date?: string };
+  end: { dateTime?: string; date?: string };
+  htmlLink: string;
+}
+
+export interface CalendarEventsResponse {
+  events: CalendarEvent[];
+}
