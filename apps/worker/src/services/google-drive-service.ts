@@ -49,6 +49,14 @@ export class GoogleDriveService {
   }
 
   /**
+   * Escape a value for use as a single-quoted literal in a Drive query string.
+   * Backslashes are escaped first, then single quotes.
+   */
+  private escapeQueryStringLiteral(value: string): string {
+    return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
+
+  /**
    * Create a folder in Google Drive
    */
   async createFolder(userEmail: string, name: string, parentId?: string): Promise<DriveFolder> {
@@ -92,8 +100,8 @@ export class GoogleDriveService {
     parentId: string
   ): Promise<DriveFolder | null> {
     const accessToken = await this.getAccessToken(userEmail);
-    const escapedName = name.replace(/'/g, "\\'");
-    const escapedParentId = parentId.replace(/'/g, "\\'");
+    const escapedName = this.escapeQueryStringLiteral(name);
+    const escapedParentId = this.escapeQueryStringLiteral(parentId);
     const query = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.folder' and '${escapedParentId}' in parents and trashed = false`;
     const url = `${DRIVE_API_BASE}/files?fields=files(id,name,webViewLink,parents)&q=${encodeURIComponent(query)}`;
 
