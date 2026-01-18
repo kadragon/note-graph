@@ -327,7 +327,14 @@ export class APIClient {
       await this.requestWithHeaders<GoogleDriveStatus>('/auth/google/status');
     const configuredHeader = headers.get('X-Google-Drive-Configured');
     const configured = configuredHeader !== 'false';
-    return { ...data, configured };
+    const calendarConnected = data.scope?.includes('calendar.readonly') ?? false;
+    return { ...data, configured, calendarConnected };
+  }
+
+  async disconnectGoogle() {
+    return this.request<void>('/auth/google/disconnect', {
+      method: 'POST',
+    });
   }
 
   // Work Notes

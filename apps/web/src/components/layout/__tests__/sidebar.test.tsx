@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { useSidebar } from '@web/contexts/sidebar-context';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
+import { API } from '@web/lib/api';
 import { render, screen } from '@web/test/setup';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,6 +18,12 @@ vi.mock('@web/contexts/sidebar-context', () => ({
 
 vi.mock('@web/hooks/use-work-notes', () => ({
   useGoogleDriveConfigStatus: vi.fn(),
+}));
+
+vi.mock('@web/lib/api', () => ({
+  API: {
+    disconnectGoogle: vi.fn(),
+  },
 }));
 
 describe('sidebar component', () => {
@@ -35,7 +42,7 @@ describe('sidebar component', () => {
 
     vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
       configured: true,
-      data: { connected: true },
+      data: { connected: true, calendarConnected: true },
       refetch: vi.fn(),
       isFetching: false,
     } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
@@ -146,7 +153,9 @@ describe('sidebar component', () => {
 
     expect(screen.getByTestId('drive-config-badge')).toHaveTextContent('환경 설정 완료');
     expect(screen.getByTestId('drive-connection-badge')).toHaveTextContent('Drive 연결됨');
-    expect(screen.getByTestId('drive-connect-button')).toHaveTextContent('연결 확인');
+    expect(screen.getByTestId('calendar-connection-badge')).toHaveTextContent('캘린더 연결됨');
+    expect(screen.getByTestId('google-connect-button')).toHaveTextContent('연결 확인');
+    expect(screen.getByTestId('google-disconnect-button')).toHaveTextContent('로그아웃');
   });
 
   it('renders configured but disconnected status', () => {
@@ -159,7 +168,7 @@ describe('sidebar component', () => {
 
     vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
       configured: true,
-      data: { connected: false },
+      data: { connected: false, calendarConnected: false },
       refetch: vi.fn(),
       isFetching: false,
     } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
@@ -168,7 +177,9 @@ describe('sidebar component', () => {
 
     expect(screen.getByTestId('drive-config-badge')).toHaveTextContent('환경 설정 완료');
     expect(screen.getByTestId('drive-connection-badge')).toHaveTextContent('Drive 미연결');
-    expect(screen.getByTestId('drive-connect-button')).toHaveTextContent('연결하기');
+    expect(screen.getByTestId('calendar-connection-badge')).toHaveTextContent('캘린더 미연결');
+    expect(screen.getByTestId('google-connect-button')).toHaveTextContent('연결하기');
+    expect(screen.getByTestId('google-disconnect-button')).toBeDisabled();
   });
 
   it('renders not configured status', () => {
@@ -181,7 +192,7 @@ describe('sidebar component', () => {
 
     vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
       configured: false,
-      data: { connected: false },
+      data: { connected: false, calendarConnected: false },
       refetch: vi.fn(),
       isFetching: false,
     } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
@@ -189,10 +200,44 @@ describe('sidebar component', () => {
     render(<Sidebar />);
 
     expect(screen.getByTestId('drive-config-badge')).toHaveTextContent('환경 설정 필요');
-    expect(screen.getByTestId('drive-connect-button')).toBeDisabled();
+    expect(screen.getByTestId('google-connect-button')).toBeDisabled();
+    expect(screen.getByTestId('google-disconnect-button')).toBeDisabled();
   });
 
   it('handles connect button click', async () => {
+    const user = userEvent.setup();
+    const refetch = vi
+      .fn()
+      .mockResolvedValue({ data: { connected: false, calendarConnected: false } });
+
+    vi.mocked(useQuery).mockReturnValue({
+      data: { email: 'test@example.com' },
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as unknown as ReturnType<typeof useQuery>);
+
+    vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
+      configured: true,
+      data: { connected: false, calendarConnected: false },
+      refetch,
+      isFetching: false,
+    } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
+
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, href: '' },
+    });
+
+    render(<Sidebar />);
+
+    await user.click(screen.getByTestId('google-connect-button'));
+
+    expect(refetch).toHaveBeenCalled();
+    expect(window.location.href).toBe('/api/auth/google/authorize');
+  });
+
+  it('handles disconnect button click', async () => {
     const user = userEvent.setup();
     const refetch = vi.fn().mockResolvedValue({ data: { connected: false } });
 
@@ -205,21 +250,16 @@ describe('sidebar component', () => {
 
     vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
       configured: true,
-      data: { connected: false },
+      data: { connected: true, calendarConnected: true },
       refetch,
       isFetching: false,
     } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
 
-    Object.defineProperty(window, 'location', {
-      writable: true,
-      value: { ...window.location, href: '' },
-    });
-
     render(<Sidebar />);
 
-    await user.click(screen.getByTestId('drive-connect-button'));
+    await user.click(screen.getByTestId('google-disconnect-button'));
 
+    expect(API.disconnectGoogle).toHaveBeenCalled();
     expect(refetch).toHaveBeenCalled();
-    expect(window.location.href).toBe('/api/auth/google/authorize');
   });
 });
