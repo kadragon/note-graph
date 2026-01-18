@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/car
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
 import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-notes';
 import type { WorkNoteWithStats } from '@web/types/api';
+import { startOfWeek } from 'date-fns';
 import { FileEdit, FileText, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CreateFromPDFDialog } from './components/create-from-pdf-dialog';
@@ -61,10 +62,7 @@ export default function WorkNotes() {
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(startOfToday);
-    const dayOfWeek = startOfWeek.getDay();
-    const diffToMonday = (dayOfWeek + 6) % 7;
-    startOfWeek.setDate(startOfWeek.getDate() - diffToMonday);
+    const startOfWeekDate = startOfWeek(now, { weekStartsOn: 1 });
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
     const isCompleted = (workNote: WorkNoteWithStats) =>
@@ -88,15 +86,11 @@ export default function WorkNotes() {
       .sort(sortWorkNotes);
 
     const completedAll = workNotes.filter(isCompleted).sort(sortWorkNotes);
-    const completedToday = completedAll
-      .filter((wn) => isInRange(getCompletedAt(wn), startOfToday))
-      .sort(sortWorkNotes);
-    const completedWeek = completedAll
-      .filter((wn) => isInRange(getCompletedAt(wn), startOfWeek))
-      .sort(sortWorkNotes);
-    const completedYear = completedAll
-      .filter((wn) => isInRange(getCompletedAt(wn), startOfYear))
-      .sort(sortWorkNotes);
+    const completedToday = completedAll.filter((wn) => isInRange(getCompletedAt(wn), startOfToday));
+    const completedWeek = completedAll.filter((wn) =>
+      isInRange(getCompletedAt(wn), startOfWeekDate)
+    );
+    const completedYear = completedAll.filter((wn) => isInRange(getCompletedAt(wn), startOfYear));
 
     return {
       activeWorkNotes: active,
