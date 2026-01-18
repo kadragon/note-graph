@@ -3,6 +3,7 @@ import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-no
 import { createWorkNoteWithStats, resetFactoryCounter } from '@web/test/factories';
 import { render, screen, waitFor, within } from '@web/test/setup';
 import type { WorkNoteWithStats } from '@web/types/api';
+import { startOfWeek } from 'date-fns';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import WorkNotes from '../work-notes';
@@ -65,6 +66,13 @@ describe('work-notes page', () => {
   });
 
   it('filters work notes into tabs and updates the list on tab change', async () => {
+    const now = new Date();
+    const today = now.toISOString();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekStartISO = weekStart.toISOString();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const previousYearDate = new Date(now.getFullYear() - 1, 11, 31).toISOString();
+
     const workNotes: WorkNoteWithStats[] = [
       createWorkNoteWithStats({
         id: 'work-active-1',
@@ -79,8 +87,24 @@ describe('work-notes page', () => {
         todoStats: { total: 2, completed: 0, remaining: 0, pending: 2 },
       }),
       createWorkNoteWithStats({
-        id: 'work-completed',
+        id: 'work-completed-today',
         todoStats: { total: 1, completed: 1, remaining: 0, pending: 0 },
+        latestCompletedAt: today,
+      }),
+      createWorkNoteWithStats({
+        id: 'work-completed-week',
+        todoStats: { total: 1, completed: 1, remaining: 0, pending: 0 },
+        latestCompletedAt: weekStartISO,
+      }),
+      createWorkNoteWithStats({
+        id: 'work-completed-year',
+        todoStats: { total: 1, completed: 1, remaining: 0, pending: 0 },
+        latestCompletedAt: monthStart,
+      }),
+      createWorkNoteWithStats({
+        id: 'work-completed-old',
+        todoStats: { total: 1, completed: 1, remaining: 0, pending: 0 },
+        latestCompletedAt: previousYearDate,
       }),
     ];
 
@@ -94,7 +118,10 @@ describe('work-notes page', () => {
 
     expect(screen.getByRole('tab', { name: /진행 중 \(2\)/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /대기중 \(1\)/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /완료됨 \(1\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /완료됨\(오늘\) \(1\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /완료됨\(이번주\) \(1\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /완료됨\(올해\) \(1\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /완료됨\(전체\) \(4\)/ })).toBeInTheDocument();
 
     const activePanel = screen.getByRole('tabpanel', { name: /진행 중/ });
     expect(within(activePanel).getByText('table-count: 2')).toBeInTheDocument();
@@ -103,9 +130,21 @@ describe('work-notes page', () => {
     const pendingPanel = screen.getByRole('tabpanel', { name: /대기중/ });
     expect(within(pendingPanel).getByText('table-count: 1')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: /완료됨 \(1\)/ }));
-    const completedPanel = screen.getByRole('tabpanel', { name: /완료됨/ });
-    expect(within(completedPanel).getByText('table-count: 1')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /완료됨\(오늘\) \(1\)/ }));
+    const completedTodayPanel = screen.getByRole('tabpanel', { name: /완료됨\(오늘\)/ });
+    expect(within(completedTodayPanel).getByText('table-count: 1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: /완료됨\(이번주\) \(1\)/ }));
+    const completedWeekPanel = screen.getByRole('tabpanel', { name: /완료됨\(이번주\)/ });
+    expect(within(completedWeekPanel).getByText('table-count: 1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: /완료됨\(올해\) \(1\)/ }));
+    const completedYearPanel = screen.getByRole('tabpanel', { name: /완료됨\(올해\)/ });
+    expect(within(completedYearPanel).getByText('table-count: 1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: /완료됨\(전체\) \(4\)/ }));
+    const completedAllPanel = screen.getByRole('tabpanel', { name: /완료됨\(전체\)/ });
+    expect(within(completedAllPanel).getByText('table-count: 4')).toBeInTheDocument();
   });
 
   it('confirms deletion and calls the delete mutation', async () => {
