@@ -131,3 +131,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - 2026-01-16: Added Google Drive status check UI in attachments with a manual refresh + re-auth flow and a dedicated test for the button behavior.
 - 2026-01-16: Moved Google Drive status UI from work note attachments to sidebar user section. Added `useGoogleDriveConfigStatus` hook and updated `API.getGoogleDriveStatus` to check for configuration header. Updated tests.
 - 2026-01-18: Added opener tests for command quoting and HandleURL flow by injecting stat/open helpers; ignored local notegraph-opener log output when APPDATA is missing.
+- 2026-01-18: Added GitHub Actions workflow to build and publish notegraph-opener Windows release zip on tag push or manual dispatch; ignored local notegraph-opener build artifacts.

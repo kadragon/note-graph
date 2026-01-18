@@ -11,6 +11,11 @@ dist/
 .wrangler/
 /public/
 
+# notegraph-opener build artifacts
+tools/notegraph-opener/*.exe
+tools/notegraph-opener/*.zip
+tools/notegraph-opener/release/
+
 # Environment variables
 .env
 .env.local
