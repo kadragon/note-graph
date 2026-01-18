@@ -33,6 +33,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# notegraph-opener local logs (when APPDATA not set)
+tools/notegraph-opener/handler/notegraph-opener/
+
 # TypeScript
 *.tsbuildinfo
 
