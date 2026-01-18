@@ -58,6 +58,9 @@ export function useWorkNotesWithStats() {
             );
 
             const latestTodoDate = getLatestTodoDate(todos);
+            // Find the most recent completion timestamp from completed todos.
+            // If all completed todos lack updatedAt, this returns null and the work note
+            // will only appear in the "All" completed tab, not time-filtered tabs.
             const latestCompletedAt = todos.reduce<string | null>((latest, todo) => {
               if (todo.status !== TODO_STATUS.COMPLETED) {
                 return latest;
