@@ -39,7 +39,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # notegraph-opener local logs (when APPDATA not set)
-tools/notegraph-opener/handler/notegraph-opener/
+tools/notegraph-opener/notegraph-opener/
 
 # TypeScript
 *.tsbuildinfo

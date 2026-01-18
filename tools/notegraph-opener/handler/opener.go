@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 var (
@@ -64,11 +63,4 @@ func buildOpenCommand(path string) *exec.Cmd {
 	// Without quotes, filenames like "R&D.pdf" would be misinterpreted by cmd
 	quotedPath := `"` + path + `"`
 	return exec.Command("cmd", "/c", "start", "", quotedPath)
-}
-
-// NormalizePath converts forward slashes to backslashes and cleans the path.
-func NormalizePath(path string) string {
-	// Convert forward slashes to backslashes for Windows
-	path = strings.ReplaceAll(path, "/", "\\")
-	return filepath.Clean(path)
 }

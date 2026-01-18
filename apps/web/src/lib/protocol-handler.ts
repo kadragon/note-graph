@@ -9,6 +9,7 @@
  * @returns A notegraph://open?path=... URL with the full path URL-encoded
  */
 export function buildLocalFileUrl(localDrivePath: string, relativePath: string): string {
-  const fullPath = `${localDrivePath}/${relativePath}`;
+  const basePath = localDrivePath.replace(/\\/g, '/');
+  const fullPath = `${basePath}/${relativePath}`;
   return `notegraph://open?path=${encodeURIComponent(fullPath)}`;
 }

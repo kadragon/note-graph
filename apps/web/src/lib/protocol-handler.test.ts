@@ -26,4 +26,10 @@ describe('buildLocalFileUrl', () => {
       'notegraph://open?path=C%3A%2FGoogleDrive%2FWORK-001%2F%EB%AC%B8%EC%84%9C.pdf'
     );
   });
+
+  it('should normalize backslashes in base path', () => {
+    const result = buildLocalFileUrl('C:\\Google Drive', 'WORK-001/document.pdf');
+
+    expect(result).toBe('notegraph://open?path=C%3A%2FGoogle%20Drive%2FWORK-001%2Fdocument.pdf');
+  });
 });

@@ -8,6 +8,8 @@ import (
 )
 
 func main() {
+	defer handler.CloseLog()
+
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: notegraph-opener <url>")
 		fmt.Println("Example: notegraph-opener notegraph://open?path=C:/test.txt")
