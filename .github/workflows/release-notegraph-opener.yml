@@ -2,13 +2,15 @@ name: Release notegraph-opener
 
 on:
   push:
-    tags:
-      - "notegraph-opener-v*"
+    branches:
+      - main
+    paths:
+      - "tools/notegraph-opener/**"
   workflow_dispatch:
     inputs:
       version:
-        description: "Release tag (e.g., notegraph-opener-v1.0.0)"
-        required: true
+        description: "Release tag (e.g., notegraph-opener-v1.0.0). Leave empty to auto-bump patch."
+        required: false
         type: string
 
 permissions:
@@ -20,23 +22,44 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.21"
 
-      - name: Build release package
-        working-directory: tools/notegraph-opener
-        shell: pwsh
-        run: ./build.ps1
-
       - name: Resolve version
         id: vars
         shell: pwsh
         run: |
-          $version = if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') { "${{ inputs.version }}" } else { $env:GITHUB_REF_NAME }
+          git fetch --tags --force
+          $inputVersion = "${{ inputs.version }}"
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $inputVersion) {
+            $version = $inputVersion
+          } else {
+            $latest = git tag -l "notegraph-opener-v*" --sort=-v:refname | Select-Object -First 1
+            if (-not $latest) {
+              $version = "notegraph-opener-v1.0.0"
+            } else {
+              $semver = $latest.Replace("notegraph-opener-v", "")
+              $parts = $semver.Split(".")
+              if ($parts.Length -lt 3) {
+                throw "Invalid tag format: $latest"
+              }
+              $major = [int]$parts[0]
+              $minor = [int]$parts[1]
+              $patch = [int]$parts[2] + 1
+              $version = "notegraph-opener-v$major.$minor.$patch"
+            }
+          }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Build release package
+        working-directory: tools/notegraph-opener
+        shell: pwsh
+        run: ./build.ps1
 
       - name: Rename release zip
         shell: pwsh
@@ -45,6 +68,20 @@ jobs:
           $src = "tools/notegraph-opener/notegraph-opener-windows.zip"
           $dst = "tools/notegraph-opener/notegraph-opener-$version-windows.zip"
           Move-Item $src $dst -Force
+
+      - name: Create tag
+        shell: pwsh
+        run: |
+          $version = "${{ steps.vars.outputs.version }}"
+          $existing = git rev-parse -q --verify "refs/tags/$version"
+          if (-not $existing) {
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag $version
+            git push origin $version
+          } else {
+            Write-Host "Tag already exists: $version"
+          }
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
