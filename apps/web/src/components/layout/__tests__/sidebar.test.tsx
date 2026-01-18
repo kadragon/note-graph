@@ -239,7 +239,9 @@ describe('sidebar component', () => {
 
   it('handles disconnect button click', async () => {
     const user = userEvent.setup();
-    const refetch = vi.fn().mockResolvedValue({ data: { connected: false } });
+    const refetch = vi
+      .fn()
+      .mockResolvedValue({ data: { connected: false, calendarConnected: false } });
 
     vi.mocked(useQuery).mockReturnValue({
       data: { email: 'test@example.com' },

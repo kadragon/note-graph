@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@web/components/ui/button';
 import { ScrollArea } from '@web/components/ui/scroll-area';
 import { useSidebar } from '@web/contexts/sidebar-context';
+import { toast } from '@web/hooks/use-toast';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
 import { cn } from '@web/lib/utils';
@@ -19,6 +20,7 @@ import {
   FileText,
   FolderKanban,
   LayoutDashboard,
+  LogOut,
   MessageSquare,
   Notebook,
   Search,
@@ -137,8 +139,16 @@ export default function Sidebar() {
   };
 
   const handleGoogleDisconnect = async () => {
-    await API.disconnectGoogle();
-    await refreshDriveStatus();
+    try {
+      await API.disconnectGoogle();
+      await refreshDriveStatus();
+    } catch {
+      toast({
+        title: '연결 해제 실패',
+        description: 'Google 연결 해제 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -290,7 +300,7 @@ export default function Sidebar() {
               title="Google OAuth 연결 해제"
               data-testid="google-disconnect-button"
             >
-              <ExternalLink className="h-3 w-3 mr-2" />
+              <LogOut className="h-3 w-3 mr-2" />
               로그아웃
             </Button>
           </div>
