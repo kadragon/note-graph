@@ -8,12 +8,11 @@ import { MockR2 } from '../test-setup';
 describe('migrateR2WorkNoteFiles', () => {
   const baseEnv = env as unknown as Env;
 
-  const insertWorkNote = async (workId: string) => {
-    const now = new Date().toISOString();
+  const insertWorkNote = async (workId: string, createdAt = new Date().toISOString()) => {
     await baseEnv.DB.prepare(
       'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
     )
-      .bind(workId, 'Test Work Note', 'Content', now, now)
+      .bind(workId, 'Test Work Note', 'Content', createdAt, createdAt)
       .run();
   };
 
@@ -32,7 +31,7 @@ describe('migrateR2WorkNoteFiles', () => {
     const uploadedBy = 'tester@example.com';
     const now = new Date().toISOString();
 
-    await insertWorkNote(workId);
+    await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
 
     await baseEnv.DB.prepare(
       `INSERT INTO work_note_files (
@@ -116,7 +115,7 @@ describe('migrateR2WorkNoteFiles', () => {
     const uploadedBy = 'tester@example.com';
     const now = new Date().toISOString();
 
-    await insertWorkNote(workId);
+    await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
     await baseEnv.DB.prepare(
       `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
        VALUES (?, ?, ?, ?)`
@@ -207,7 +206,7 @@ describe('migrateR2WorkNoteFiles', () => {
     const uploadedBy = 'tester@example.com';
     const now = new Date().toISOString();
 
-    await insertWorkNote(workId);
+    await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
     await baseEnv.DB.prepare(
       `INSERT INTO work_note_files (
         file_id, work_id, r2_key, original_name, file_type, file_size,

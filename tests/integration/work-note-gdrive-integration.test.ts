@@ -41,7 +41,7 @@ describe('Work Note Google Drive Integration', () => {
       testEnv.DB.prepare('DELETE FROM work_notes'),
     ]);
 
-    setTestR2Bucket(new MockR2());
+    setTestR2Bucket(new MockR2() as unknown as typeof testEnv.R2_BUCKET);
     testEnv.VECTORIZE = {
       query: vi.fn().mockResolvedValue({ matches: [] }),
       upsert: vi.fn(),
@@ -57,7 +57,7 @@ describe('Work Note Google Drive Integration', () => {
       `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?)`
     )
-      .bind(workId, 'Drive Test Note', '내용', now, now)
+      .bind(workId, 'Drive Test Note', '내용', '2023-05-01T00:00:00.000Z', now)
       .run();
 
     await testEnv.DB.prepare(
@@ -77,6 +77,7 @@ describe('Work Note Google Drive Integration', () => {
       )
       .run();
 
+    let folderCreateCount = 0;
     fetchMock = vi.fn().mockImplementation(async (input, init = {}) => {
       const url = typeof input === 'string' ? input : input.toString();
       const method = (init as RequestInit).method ?? 'GET';
@@ -90,6 +91,19 @@ describe('Work Note Google Drive Integration', () => {
       }
 
       if (url.startsWith(`${DRIVE_API_BASE}/files`) && method === 'POST') {
+        folderCreateCount += 1;
+        if (folderCreateCount === 1) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              id: 'FOLDER-YEAR-1',
+              name: '2023',
+              webViewLink: 'https://drive.example/year',
+            }),
+          } as Response;
+        }
+
         return {
           ok: true,
           status: 200,
