@@ -349,6 +349,52 @@ describe('GoogleCalendarService', () => {
       expect(events[1].id).toBe('event-later');
     });
 
+    it('returns events from successful calendars when some calendars fail with 403', async () => {
+      const env = createEnv({
+        GOOGLE_CALENDAR_IDS: 'good-cal,forbidden-cal',
+      });
+      const db = {} as D1Database;
+      const service = new GoogleCalendarService(env, db);
+
+      vi.spyOn(
+        service as unknown as { getAccessToken: (userEmail: string) => Promise<string> },
+        'getAccessToken'
+      ).mockResolvedValue('test-access-token');
+
+      const mockFetch = vi.spyOn(globalThis, 'fetch');
+      mockFetch.mockImplementation((url) => {
+        const urlStr = String(url);
+        if (urlStr.includes('good-cal')) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                items: [
+                  {
+                    id: 'good-event',
+                    summary: 'Good Event',
+                    start: { dateTime: '2026-01-20T09:00:00+09:00' },
+                    end: { dateTime: '2026-01-20T10:00:00+09:00' },
+                    htmlLink: 'https://calendar.google.com/event/1',
+                  },
+                ],
+              }),
+              { status: 200 }
+            )
+          );
+        } else if (urlStr.includes('forbidden-cal')) {
+          // 403 should be handled gracefully when other calendars succeed
+          return Promise.resolve(new Response('Forbidden', { status: 403 }));
+        }
+        return Promise.resolve(new Response('Not found', { status: 404 }));
+      });
+
+      const events = await service.getEvents('user@example.com', '2026-01-19', '2026-02-01');
+
+      // Should still return events from the successful calendar (graceful degradation)
+      expect(events).toHaveLength(1);
+      expect(events[0].id).toBe('good-event');
+    });
+
     it('returns events from successful calendars when some calendars fail with 404', async () => {
       const env = createEnv({
         GOOGLE_CALENDAR_IDS: 'good-cal,missing-cal',

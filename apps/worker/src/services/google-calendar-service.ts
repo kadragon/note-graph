@@ -89,11 +89,7 @@ export class GoogleCalendarService {
         successCount++;
         allEvents.push(...result.value);
       } else if (result.status === 'rejected') {
-        // Re-throw DomainErrors (e.g., 403 permission denied) as they require user action
-        if (result.reason instanceof DomainError) {
-          throw result.reason;
-        }
-        // Track other failures for potential error reporting
+        // Track all failures including DomainErrors for graceful degradation
         lastError =
           result.reason instanceof Error ? result.reason : new Error(String(result.reason));
       }
@@ -101,6 +97,10 @@ export class GoogleCalendarService {
 
     // If all calendars failed, throw an error
     if (successCount === 0 && results.length > 0) {
+      // Re-throw DomainError (e.g., 403) to allow proper error handling for user action
+      if (lastError instanceof DomainError) {
+        throw lastError;
+      }
       throw new Error(
         `Failed to fetch events from all calendars${lastError ? `: ${lastError.message}` : ''}`
       );
@@ -108,9 +108,23 @@ export class GoogleCalendarService {
 
     // Sort by start time using timestamps for correct timezone handling
     return allEvents.sort((a, b) => {
-      const aStart = a.start.dateTime ?? a.start.date ?? '';
-      const bStart = b.start.dateTime ?? b.start.date ?? '';
-      return new Date(aStart).getTime() - new Date(bStart).getTime();
+      const aStart = a.start.dateTime ?? a.start.date;
+      const bStart = b.start.dateTime ?? b.start.date;
+
+      // Handle missing start dates - move to end
+      if (!aStart && !bStart) return 0;
+      if (!aStart) return 1;
+      if (!bStart) return -1;
+
+      const aTime = new Date(aStart).getTime();
+      const bTime = new Date(bStart).getTime();
+
+      // Handle invalid dates (NaN) - move to end
+      if (isNaN(aTime) && isNaN(bTime)) return 0;
+      if (isNaN(aTime)) return 1;
+      if (isNaN(bTime)) return -1;
+
+      return aTime - bTime;
     });
   }
 
