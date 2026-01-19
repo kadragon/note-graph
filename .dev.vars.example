@@ -15,5 +15,10 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_REDIRECT_URI=https://example.test/oauth/callback
 GDRIVE_ROOT_FOLDER_ID=your-folder-id
 
+# Google Calendar (선택)
+# 쉼표로 구분된 캘린더 ID 목록. 미설정 시 primary(기본 캘린더)만 사용
+# 예: primary,work@group.calendar.google.com,team@group.calendar.google.com
+# GOOGLE_CALENDAR_IDS=primary
+
 # 기타 (선택)
 # OPENAI_API_KEY=your-openai-api-key

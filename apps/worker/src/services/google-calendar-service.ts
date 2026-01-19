@@ -30,9 +30,15 @@ interface CalendarEventsResponse {
 
 export class GoogleCalendarService {
   private oauthService: GoogleOAuthService;
+  private calendarIds: string[];
 
   constructor(env: Env, db: D1Database) {
     this.oauthService = new GoogleOAuthService(env, db);
+    // Parse calendar IDs from environment variable, defaulting to 'primary'
+    const parsed = env.GOOGLE_CALENDAR_IDS?.split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    this.calendarIds = parsed?.length ? parsed : ['primary'];
   }
 
   protected async getAccessToken(userEmail: string): Promise<string> {
@@ -40,7 +46,7 @@ export class GoogleCalendarService {
   }
 
   /**
-   * Fetch calendar events within a date range
+   * Fetch calendar events within a date range from all configured calendars
    * @param timezoneOffset - Timezone offset in minutes (e.g., 540 for KST +09:00)
    */
   async getEvents(
@@ -66,6 +72,68 @@ export class GoogleCalendarService {
     const timeMin = startUtc.toISOString();
     const timeMax = endUtc.toISOString();
 
+    // Fetch events from all calendars in parallel, tolerating individual calendar failures
+    const results = await Promise.allSettled(
+      this.calendarIds.map((calendarId) =>
+        this.fetchCalendarEvents(accessToken, calendarId, timeMin, timeMax)
+      )
+    );
+
+    // Collect events from successful calendars only
+    const allEvents: CalendarEvent[] = [];
+    let successCount = 0;
+    let lastError: Error | undefined;
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        successCount++;
+        allEvents.push(...result.value);
+      } else if (result.status === 'rejected') {
+        // Track all failures including DomainErrors for graceful degradation
+        lastError =
+          result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+      }
+    }
+
+    // If all calendars failed, throw an error
+    if (successCount === 0 && results.length > 0) {
+      // Re-throw DomainError (e.g., 403) to allow proper error handling for user action
+      if (lastError instanceof DomainError) {
+        throw lastError;
+      }
+      throw new Error(
+        `Failed to fetch events from all calendars${lastError ? `: ${lastError.message}` : ''}`
+      );
+    }
+
+    // Sort by start time using timestamps for correct timezone handling
+    return allEvents.sort((a, b) => {
+      const aStart = a.start.dateTime ?? a.start.date;
+      const bStart = b.start.dateTime ?? b.start.date;
+
+      // Handle missing start dates - move to end
+      if (!aStart && !bStart) return 0;
+      if (!aStart) return 1;
+      if (!bStart) return -1;
+
+      const aTime = new Date(aStart).getTime();
+      const bTime = new Date(bStart).getTime();
+
+      // Handle invalid dates (NaN) - move to end
+      if (isNaN(aTime) && isNaN(bTime)) return 0;
+      if (isNaN(aTime)) return 1;
+      if (isNaN(bTime)) return -1;
+
+      return aTime - bTime;
+    });
+  }
+
+  private async fetchCalendarEvents(
+    accessToken: string,
+    calendarId: string,
+    timeMin: string,
+    timeMax: string
+  ): Promise<CalendarEvent[]> {
     const params = new URLSearchParams({
       timeMin,
       timeMax,
@@ -73,7 +141,8 @@ export class GoogleCalendarService {
       orderBy: 'startTime',
     });
 
-    const url = `${GOOGLE_CALENDAR_API}/calendars/primary/events?${params.toString()}`;
+    const encodedCalendarId = encodeURIComponent(calendarId);
+    const url = `${GOOGLE_CALENDAR_API}/calendars/${encodedCalendarId}/events?${params.toString()}`;
 
     const response = await fetch(url, {
       headers: {
