@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@web/components/ui/button';
 import { ScrollArea } from '@web/components/ui/scroll-area';
 import { useSidebar } from '@web/contexts/sidebar-context';
+import { toast } from '@web/hooks/use-toast';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
 import { cn } from '@web/lib/utils';
@@ -10,6 +11,7 @@ import {
   BarChart3,
   BriefcaseBusiness,
   Building2,
+  Calendar,
   CheckCircle2,
   ChevronRight,
   Cloud,
@@ -18,6 +20,7 @@ import {
   FileText,
   FolderKanban,
   LayoutDashboard,
+  LogOut,
   MessageSquare,
   Notebook,
   Search,
@@ -126,6 +129,27 @@ export default function Sidebar() {
     isFetching: isDriveChecking,
   } = useGoogleDriveConfigStatus();
   const isDriveConnected = driveStatus?.connected ?? false;
+  const isCalendarConnected = driveStatus?.calendarConnected ?? false;
+
+  const handleGoogleReconnect = async () => {
+    const nextStatus = await refreshDriveStatus();
+    if (!nextStatus.data?.connected || !nextStatus.data?.calendarConnected) {
+      window.location.href = GOOGLE_AUTH_URL;
+    }
+  };
+
+  const handleGoogleDisconnect = async () => {
+    try {
+      await API.disconnectGoogle();
+      await refreshDriveStatus();
+    } catch {
+      toast({
+        title: '연결 해제 실패',
+        description: 'Google 연결 해제 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <aside
@@ -229,34 +253,57 @@ export default function Sidebar() {
               <Cloud className="h-3 w-3" />
               <span>{isDriveConnected ? 'Drive 연결됨' : 'Drive 미연결'}</span>
             </div>
+
+            <div
+              className={cn(
+                'flex items-center gap-2 text-xs',
+                isCalendarConnected ? 'text-emerald-600 font-medium' : 'text-amber-600'
+              )}
+              data-testid="calendar-connection-badge"
+            >
+              <Calendar className="h-3 w-3" />
+              <span>{isCalendarConnected ? '캘린더 연결됨' : '캘린더 미연결'}</span>
+            </div>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              'w-full justify-start h-7 text-xs',
-              isDriveConnected ? 'text-emerald-600 hover:text-emerald-700' : 'text-amber-600'
-            )}
-            onClick={async () => {
-              const nextStatus = await refreshDriveStatus();
-              if (!nextStatus.data?.connected) {
-                window.location.href = GOOGLE_AUTH_URL;
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                'w-full justify-start h-7 text-xs',
+                isDriveConnected && isCalendarConnected
+                  ? 'text-emerald-600 hover:text-emerald-700'
+                  : 'text-amber-600'
+              )}
+              onClick={handleGoogleReconnect}
+              disabled={!configured || isDriveChecking}
+              title={
+                !configured
+                  ? 'Google OAuth 설정이 필요합니다'
+                  : isDriveConnected && isCalendarConnected
+                    ? '연결 상태 확인'
+                    : 'Google OAuth 연결하기'
               }
-            }}
-            disabled={!configured || isDriveChecking}
-            title={
-              !configured
-                ? 'Google Drive 설정이 필요합니다'
-                : isDriveConnected
-                  ? '연결 상태 확인'
-                  : 'Google Drive 연결하기'
-            }
-            data-testid="drive-connect-button"
-          >
-            <ExternalLink className="h-3 w-3 mr-2" />
-            {isDriveConnected ? '연결 확인' : '연결하기'}
-          </Button>
+              data-testid="google-connect-button"
+            >
+              <ExternalLink className="h-3 w-3 mr-2" />
+              {isDriveConnected && isCalendarConnected ? '연결 확인' : '연결하기'}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start h-7 text-xs text-muted-foreground"
+              onClick={handleGoogleDisconnect}
+              disabled={!isDriveConnected && !isCalendarConnected}
+              title="Google OAuth 연결 해제"
+              data-testid="google-disconnect-button"
+            >
+              <LogOut className="h-3 w-3 mr-2" />
+              로그아웃
+            </Button>
+          </div>
         </div>
       </div>
     </aside>

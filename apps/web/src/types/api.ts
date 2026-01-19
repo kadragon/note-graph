@@ -372,6 +372,7 @@ export interface GoogleDriveStatus {
   connected: boolean;
   connectedAt?: string;
   scope?: string;
+  calendarConnected?: boolean;
 }
 
 export interface StatisticsQueryParams {
