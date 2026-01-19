@@ -139,34 +139,38 @@ export class RagService {
    *
    * Fetches work note details and extracts chunk text
    * Applies post-retrieval filtering for PERSON scope
+   * Uses batch fetch to avoid N+1 query pattern
    */
   private async buildContextSnippets(
     vectorResults: Array<{ id: string; score: number; metadata: Record<string, string> }>,
     filters: RagQueryFilters
   ): Promise<RagContextSnippet[]> {
+    // Apply person scope pre-filtering and parse work IDs
+    const filteredResults = vectorResults.filter((result) => {
+      if (filters.scope === 'person' && filters.personId) {
+        const personIds = result.metadata.person_ids?.split(',') || [];
+        return personIds.includes(filters.personId);
+      }
+      return true;
+    });
+
+    // Extract unique work IDs from chunk IDs
+    const workIds = filteredResults.map((result) => ChunkingService.parseChunkId(result.id)[0]);
+    const uniqueWorkIds = [...new Set(workIds)];
+
+    // Batch fetch all work notes in a single query
+    const workNotesMap = await this.fetchWorkNotesByIds(uniqueWorkIds);
+
     const snippets: RagContextSnippet[] = [];
 
-    for (const result of vectorResults) {
+    for (const result of filteredResults) {
       try {
-        // Apply person scope post-filtering
-        if (filters.scope === 'person' && filters.personId) {
-          const personIds = result.metadata.person_ids?.split(',') || [];
-          if (!personIds.includes(filters.personId)) {
-            continue; // Skip chunks not associated with this person
-          }
-        }
-
-        // Parse chunk ID to get work ID
         const [workId] = ChunkingService.parseChunkId(result.id);
-
-        // Fetch work note from D1
-        const workNote = await this.fetchWorkNote(workId);
+        const workNote = workNotesMap.get(workId);
         if (!workNote) {
           continue;
         }
 
-        // Extract chunk text from metadata or reconstruct
-        // For now, we'll use a snippet from the work note content
         const snippet = this.extractSnippet(workNote, result.metadata.chunk_index);
 
         snippets.push({
@@ -182,7 +186,6 @@ export class RagService {
         }
       } catch (error) {
         console.error('Error building context snippet:', error);
-        // Skip this chunk and continue
       }
     }
 
@@ -190,20 +193,30 @@ export class RagService {
   }
 
   /**
-   * Fetch work note by ID from D1
+   * Batch fetch work notes by IDs from D1
+   * Eliminates N+1 query pattern by fetching all notes in a single query
    */
-  private async fetchWorkNote(workId: string): Promise<WorkNote | null> {
-    const result = await this.db
+  private async fetchWorkNotesByIds(workIds: string[]): Promise<Map<string, WorkNote>> {
+    if (workIds.length === 0) {
+      return new Map();
+    }
+
+    const placeholders = workIds.map(() => '?').join(',');
+    const results = await this.db
       .prepare(
         `SELECT work_id as workId, title, content_raw as contentRaw,
                 category, created_at as createdAt, updated_at as updatedAt
          FROM work_notes
-         WHERE work_id = ?`
+         WHERE work_id IN (${placeholders})`
       )
-      .bind(workId)
-      .first<WorkNote>();
+      .bind(...workIds)
+      .all<WorkNote>();
 
-    return result || null;
+    const map = new Map<string, WorkNote>();
+    for (const note of results.results) {
+      map.set(note.workId, note);
+    }
+    return map;
   }
 
   /**

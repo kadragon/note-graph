@@ -114,11 +114,35 @@ export class EmbeddingProcessor {
         break;
       }
 
+      // Batch fetch all details upfront to avoid N+1 queries
+      const workIds = notes.map((wn) => wn.workId);
+      const detailsMap = await this.repository.findByIdsWithDetails(workIds);
+
       for (const workNote of notes) {
         result.processed++;
 
         try {
-          await this.embedWorkNote(workNote);
+          // Get pre-fetched details
+          const details = detailsMap.get(workNote.workId);
+
+          // Prepare chunks using batch-fetched details
+          const chunks = this.prepareWorkNoteChunksWithDetails(workNote, details);
+          const chunksToEmbed = chunks.map((chunk) => ({
+            id: chunk.id,
+            text: chunk.text,
+            metadata: chunk.metadata,
+          }));
+
+          // Upsert chunks into Vectorize
+          await this.upsertChunks(chunksToEmbed);
+
+          // Delete stale chunks (if this is a re-embed)
+          const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
+          await this.deleteStaleChunks(workNote.workId, newChunkIds);
+
+          // Update embedded_at timestamp
+          await this.repository.updateEmbeddedAt(workNote.workId);
+
           result.succeeded++;
 
           if (result.processed % 10 === 0) {
@@ -401,22 +425,34 @@ export class EmbeddingProcessor {
 
       await this.upsertChunks(chunksForVectorize);
 
-      // Update embedded_at for all work notes in this batch
-      for (const workId of workIds) {
-        try {
-          // Delete stale chunks
-          const newChunkIds = new Set(workNoteChunkMap.get(workId) || []);
-          await this.deleteStaleChunks(workId, newChunkIds);
+      // Update embedded_at for all work notes in this batch (in parallel)
+      const updatePromises = workIds.map(async (workId) => {
+        // Delete stale chunks
+        const newChunkIds = new Set(workNoteChunkMap.get(workId) || []);
+        await this.deleteStaleChunks(workId, newChunkIds);
 
-          // Update timestamp
-          await this.repository.updateEmbeddedAt(workId);
+        // Update timestamp
+        await this.repository.updateEmbeddedAt(workId);
+        return workId;
+      });
+
+      const results = await Promise.allSettled(updatePromises);
+
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const workId = workIds[i];
+        if (!result || !workId) continue;
+
+        batchResult.processed++;
+
+        if (result.status === 'fulfilled') {
           batchResult.succeeded++;
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+        } else {
+          const errorMessage =
+            result.reason instanceof Error ? result.reason.message : String(result.reason);
           batchResult.failed++;
           batchResult.errors.push({ workId, error: errorMessage });
         }
-        batchResult.processed++;
       }
     } catch (error) {
       // If batch embedding fails, mark all work notes as failed

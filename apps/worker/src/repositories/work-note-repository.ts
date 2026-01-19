@@ -22,9 +22,25 @@ import type {
 import { NotFoundError } from '../types/errors';
 
 const MAX_VERSIONS = 5;
+const D1_BATCH_LIMIT = 100;
 
 export class WorkNoteRepository {
   constructor(private db: D1Database) {}
+
+  /**
+   * Execute statements in batches to avoid D1 batch limit (100 statements)
+   * Chunks statements and executes sequentially
+   */
+  private async executeBatched(
+    statements: ReturnType<D1Database['prepare']>[]
+  ): Promise<void> {
+    if (statements.length === 0) return;
+
+    for (let i = 0; i < statements.length; i += D1_BATCH_LIMIT) {
+      const chunk = statements.slice(i, i + D1_BATCH_LIMIT);
+      await this.db.batch(chunk);
+    }
+  }
 
   /**
    * Generate work_id in format WORK-{ulid}
@@ -499,7 +515,7 @@ export class WorkNoteRepository {
       );
     }
 
-    await this.db.batch(statements);
+    await this.executeBatched(statements);
 
     // Return the created work note without extra DB roundtrip
     return {
@@ -717,12 +733,7 @@ export class WorkNoteRepository {
       }
     }
 
-    if (statements.length > 0) {
-      // Execute sequentially to avoid D1 batch corruption seen in tests (Trace: SPEC-worknote-1, TASK-044)
-      for (const stmt of statements) {
-        await stmt.run();
-      }
-    }
+    await this.executeBatched(statements);
 
     // Return the updated work note without extra DB roundtrip
     // Reset embeddedAt to null only if content changed (needs re-embedding)
