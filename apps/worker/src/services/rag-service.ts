@@ -201,15 +201,14 @@ export class RagService {
       return new Map();
     }
 
-    const placeholders = workIds.map(() => '?').join(',');
     const results = await this.db
       .prepare(
         `SELECT work_id as workId, title, content_raw as contentRaw,
                 category, created_at as createdAt, updated_at as updatedAt
          FROM work_notes
-         WHERE work_id IN (${placeholders})`
+         WHERE work_id IN (SELECT value FROM json_each(?))`
       )
-      .bind(...workIds)
+      .bind(JSON.stringify(workIds))
       .all<WorkNote>();
 
     const map = new Map<string, WorkNote>();
