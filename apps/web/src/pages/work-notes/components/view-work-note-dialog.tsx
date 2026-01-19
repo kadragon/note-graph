@@ -209,7 +209,7 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
           title: '이메일 양식을 복사했습니다.',
           description: `${assigneeName} 담당자용 메일 초안을 클립보드에 저장했어요.`,
         });
-      } catch (error) {
+      } catch (_error) {
         toast({
           variant: 'destructive',
           title: '복사에 실패했습니다.',

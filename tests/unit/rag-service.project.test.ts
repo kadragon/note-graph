@@ -10,6 +10,7 @@ interface TestRagService extends RagService {
   embeddingService: typeof mockEmbedding;
   callGPT: ReturnType<typeof vi.fn>;
   fetchWorkNote: ReturnType<typeof vi.fn>;
+  fetchWorkNotesByIds: ReturnType<typeof vi.fn>;
 }
 
 describe('RagService - PROJECT scope', () => {
@@ -56,12 +57,11 @@ describe('RagService - PROJECT scope', () => {
     ];
     mockVectorize.query.mockResolvedValue({ matches: vectorResults });
 
-    // Stub work note fetch
-    (service as TestRagService).fetchWorkNote = vi.fn().mockResolvedValue({
-      workId: 'WORK-1',
-      title: '프로젝트 노트',
-      contentRaw: '프로젝트 관련 내용',
-    });
+    // Stub batch work note fetch
+    const mockWorkNotes = new Map([
+      ['WORK-1', { workId: 'WORK-1', title: '프로젝트 노트', contentRaw: '프로젝트 관련 내용' }],
+    ]);
+    (service as TestRagService).fetchWorkNotesByIds = vi.fn().mockResolvedValue(mockWorkNotes);
 
     // Act
     const response = await service.query('무엇을 해야 하나요?', {
@@ -75,5 +75,42 @@ describe('RagService - PROJECT scope', () => {
     expect(response.contexts[0].workId).toBe('WORK-1');
     expect(response.contexts[0].score).toBeCloseTo(0.82);
     expect((service as TestRagService).callGPT).toHaveBeenCalledTimes(1);
+  });
+
+  it('batch fetches work notes instead of sequential N+1 queries', async () => {
+    // Arrange: 3 vector results pointing to 3 different work notes
+    const vectorResults = [
+      { id: 'WORK-A#chunk0', score: 0.9, metadata: { chunk_index: '0' } },
+      { id: 'WORK-B#chunk0', score: 0.85, metadata: { chunk_index: '0' } },
+      { id: 'WORK-C#chunk0', score: 0.8, metadata: { chunk_index: '0' } },
+    ];
+    mockVectorize.query.mockResolvedValue({ matches: vectorResults });
+
+    // Mock batch fetch - should be called once with all IDs
+    const mockWorkNotes = new Map([
+      ['WORK-A', { workId: 'WORK-A', title: 'Note A', contentRaw: 'Content A' }],
+      ['WORK-B', { workId: 'WORK-B', title: 'Note B', contentRaw: 'Content B' }],
+      ['WORK-C', { workId: 'WORK-C', title: 'Note C', contentRaw: 'Content C' }],
+    ]);
+    (service as TestRagService).fetchWorkNotesByIds = vi.fn().mockResolvedValue(mockWorkNotes);
+
+    // Act
+    const response = await service.query('검색 질문', {
+      scope: 'project',
+      projectId: 'PROJECT-1',
+      topK: 5,
+    });
+
+    // Assert: fetchWorkNotesByIds called once with all unique work IDs
+    expect((service as TestRagService).fetchWorkNotesByIds).toHaveBeenCalledTimes(1);
+    expect((service as TestRagService).fetchWorkNotesByIds).toHaveBeenCalledWith([
+      'WORK-A',
+      'WORK-B',
+      'WORK-C',
+    ]);
+
+    // Assert: all 3 contexts returned
+    expect(response.contexts).toHaveLength(3);
+    expect(response.contexts.map((c) => c.workId)).toEqual(['WORK-A', 'WORK-B', 'WORK-C']);
   });
 });

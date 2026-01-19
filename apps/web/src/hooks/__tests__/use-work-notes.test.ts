@@ -119,13 +119,13 @@ describe('useWorkNotesWithStats', () => {
 
     const data = result.current.data;
     expect(data).toHaveLength(1);
-    expect(data![0].todoStats).toEqual({
+    expect(data?.[0].todoStats).toEqual({
       total: 3,
       completed: 2,
       remaining: 1,
       pending: 0,
     });
-    expect(data![0].latestCompletedAt).toBe(now.toISOString());
+    expect(data?.[0].latestCompletedAt).toBe(now.toISOString());
   });
 
   it('calculates pending count for todos with future waitUntil', async () => {
@@ -150,7 +150,7 @@ describe('useWorkNotesWithStats', () => {
     });
 
     const data = result.current.data;
-    expect(data![0].todoStats).toEqual({
+    expect(data?.[0].todoStats).toEqual({
       total: 3,
       completed: 1,
       remaining: 1,
@@ -173,14 +173,14 @@ describe('useWorkNotesWithStats', () => {
     });
 
     const data = result.current.data;
-    expect(data![0].todoStats).toEqual({
+    expect(data?.[0].todoStats).toEqual({
       total: 0,
       completed: 0,
       remaining: 0,
       pending: 0,
     });
-    expect(data![0].latestTodoDate).toBeNull();
-    expect(data![0].latestCompletedAt).toBeNull();
+    expect(data?.[0].latestTodoDate).toBeNull();
+    expect(data?.[0].latestCompletedAt).toBeNull();
 
     consoleSpy.mockRestore();
   });
@@ -210,8 +210,8 @@ describe('useWorkNotesWithStats', () => {
     expect(API.getWorkNoteTodos).toHaveBeenCalledWith('work-2');
 
     const data = result.current.data;
-    expect(data![0].todoStats.completed).toBe(1);
-    expect(data![1].todoStats.remaining).toBe(2);
+    expect(data?.[0].todoStats.completed).toBe(1);
+    expect(data?.[1].todoStats.remaining).toBe(2);
   });
 });
 

@@ -31,9 +31,7 @@ export class WorkNoteRepository {
    * Execute statements in batches to avoid D1 batch limit (100 statements)
    * Chunks statements and executes sequentially
    */
-  private async executeBatched(
-    statements: ReturnType<D1Database['prepare']>[]
-  ): Promise<void> {
+  private async executeBatched(statements: ReturnType<D1Database['prepare']>[]): Promise<void> {
     if (statements.length === 0) return;
 
     for (let i = 0; i < statements.length; i += D1_BATCH_LIMIT) {

@@ -3,6 +3,7 @@
  * Work note management routes with integrated RAG support and file attachments
  */
 
+import type { WorkNoteFile } from '@shared/types/work-note';
 import { Hono } from 'hono';
 import { authMiddleware, getAuthUser } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
@@ -241,7 +242,7 @@ workNotes.post('/:workId/files/migrate', workNoteFileMiddleware, async (c) => {
  * GET /work-notes/:workId/files/:fileId - Get file metadata
  */
 workNotes.get('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
-  const file = c.get('file')!;
+  const file = c.get('file') as WorkNoteFile;
   return c.json(file);
 });
 
@@ -250,7 +251,7 @@ workNotes.get('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
  * For Google Drive files, redirects to the Drive view link
  */
 workNotes.get('/:workId/files/:fileId/download', workNoteFileMiddleware, async (c) => {
-  const file = c.get('file')!;
+  const file = c.get('file') as WorkNoteFile;
 
   // For Google Drive files, redirect to the Drive link
   if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
@@ -269,7 +270,7 @@ workNotes.get('/:workId/files/:fileId/download', workNoteFileMiddleware, async (
  * For Google Drive files, redirects to the Drive view link
  */
 workNotes.get('/:workId/files/:fileId/view', workNoteFileMiddleware, async (c) => {
-  const file = c.get('file')!;
+  const file = c.get('file') as WorkNoteFile;
 
   // For Google Drive files, redirect to the Drive link
   if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {

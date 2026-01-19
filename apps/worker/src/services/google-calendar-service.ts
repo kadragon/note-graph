@@ -120,9 +120,9 @@ export class GoogleCalendarService {
       const bTime = new Date(bStart).getTime();
 
       // Handle invalid dates (NaN) - move to end
-      if (isNaN(aTime) && isNaN(bTime)) return 0;
-      if (isNaN(aTime)) return 1;
-      if (isNaN(bTime)) return -1;
+      if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0;
+      if (Number.isNaN(aTime)) return 1;
+      if (Number.isNaN(bTime)) return -1;
 
       return aTime - bTime;
     });
@@ -170,8 +170,8 @@ export class GoogleCalendarService {
         id: item.id,
         summary: item.summary ?? '',
         description: item.description,
-        start: item.start!,
-        end: item.end!,
+        start: item.start as { dateTime?: string; date?: string },
+        end: item.end as { dateTime?: string; date?: string },
         htmlLink: item.htmlLink ?? '',
       }));
   }
