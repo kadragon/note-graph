@@ -312,6 +312,28 @@ describe('FtsSearchService', () => {
       expect(sqlCall).toContain('ORDER BY fts.rank DESC');
     });
 
+    it('should use CTE to filter FTS matches before joining work_notes', async () => {
+      const mockStmt = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({
+          success: true,
+          results: [],
+        }),
+      } as unknown as D1PreparedStatement;
+
+      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
+
+      await ftsService.search('업무');
+
+      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      // Should use CTE (WITH clause) to filter FTS results first
+      expect(sqlCall).toMatch(/WITH\s+fts_matches\s+AS/i);
+      // MATCH should be inside the CTE, not in the main WHERE clause
+      expect(sqlCall).toMatch(/fts_matches\s+AS\s*\(\s*SELECT.*MATCH/is);
+      // Main query should join from the CTE
+      expect(sqlCall).toMatch(/FROM\s+fts_matches\s+fts/i);
+    });
+
     it('should exclude fts_rank from returned work note', async () => {
       const mockResults = [
         {

@@ -1,3 +1,16 @@
+# 다중 캘린더 지원 구현 (GOOGLE_CALENDAR_IDS)
+
+환경 변수 `GOOGLE_CALENDAR_IDS`로 추가 캘린더를 설정할 수 있도록 합니다.
+
+## Behavioral Tests
+
+- [x] 환경 변수 없으면 primary 캘린더만 사용
+- [x] GOOGLE_CALENDAR_IDS 설정 시 해당 캘린더들에서 이벤트 가져오기
+- [x] 여러 캘린더 이벤트를 시작 시간순으로 정렬
+- [x] 일부 캘린더 실패해도 나머지 캘린더 이벤트는 반환
+
+---
+
 # Google Calendar 연동 구현 계획
 
 ## 개요
@@ -120,16 +133,16 @@ apps/web/src/
 ## Worker Performance (Critical Path)
 
 ### N+1 Query Patterns
-- [ ] RAG context: batch fetch work notes by IDs instead of sequential loop (RagService#L143-L187)
-- [ ] Embedding reindex: load all notes with details in one query, not one-by-one (EmbeddingProcessor#L117-L138)
+- [x] RAG context: batch fetch work notes by IDs instead of sequential loop (RagService#L143-L187)
+- [x] Embedding reindex: load all notes with details in one query, not one-by-one (EmbeddingProcessor#L117-L138)
 
 ### Sequential Database Operations
-- [ ] WorkNoteRepository.update: use db.batch() for INSERT/DELETE statements (WorkNoteRepository#L721-L725)
-- [ ] EmbeddingProcessor: parallelize note updates in batch reindexing (EmbeddingProcessor#L405-L420)
+- [x] WorkNoteRepository.update: use db.batch() for INSERT/DELETE statements (WorkNoteRepository#L721-L725)
+- [x] EmbeddingProcessor: parallelize note updates in batch reindexing (EmbeddingProcessor#L405-L420)
 
 ### FTS & Search Optimization
-- [ ] FtsSearchService: optimize FTS join strategy to filter before full table scan (FtsSearchService#L28-L41)
-- [ ] StatisticsRepository: replace `.map().join(',')` large IN clauses with CTEs or subqueries (StatisticsRepository#L156-L169)
+- [x] FtsSearchService: optimize FTS join strategy to filter before full table scan (FtsSearchService#L28-L41)
+- [x] StatisticsRepository: replace `.map().join(',')` large IN clauses with CTEs or subqueries (StatisticsRepository#L156-L169)
 
 ---
 

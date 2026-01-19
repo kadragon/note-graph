@@ -24,8 +24,12 @@ export class FtsSearchService {
     // unicode61 tokenizer handles Korean text well
     const ftsQuery = this.buildFtsQuery(query);
 
-    // Build SQL query with filters
+    // Build SQL query with CTE to filter FTS results first
+    // This optimizes join by limiting rows before full table scan
     let sql = `
+      WITH fts_matches AS (
+        SELECT rowid, rank FROM notes_fts WHERE notes_fts MATCH ?
+      )
       SELECT
         wn.work_id as workId,
         wn.title,
@@ -34,11 +38,11 @@ export class FtsSearchService {
         wn.created_at as createdAt,
         wn.updated_at as updatedAt,
         fts.rank as fts_rank
-      FROM notes_fts fts
+      FROM fts_matches fts
       INNER JOIN work_notes wn ON wn.rowid = fts.rowid
     `;
 
-    const conditions: string[] = [`notes_fts MATCH ?`];
+    const conditions: string[] = [];
     const params: unknown[] = [ftsQuery];
 
     // Apply filters
@@ -74,8 +78,10 @@ export class FtsSearchService {
       }
     }
 
-    // Add WHERE clause
-    sql += ` WHERE ${conditions.join(' AND ')}`;
+    // Add WHERE clause only if there are filter conditions
+    if (conditions.length > 0) {
+      sql += ` WHERE ${conditions.join(' AND ')}`;
+    }
 
     // Order by FTS rank (higher rank = better match)
     sql += ` ORDER BY fts.rank DESC`;

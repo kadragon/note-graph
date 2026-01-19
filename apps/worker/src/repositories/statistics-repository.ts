@@ -153,6 +153,7 @@ export class StatisticsRepository {
       return workNotes;
     }
 
+    // Use json_each to avoid dynamic IN clause construction for large lists
     const personsResult = await this.db
       .prepare(
         `SELECT
@@ -163,9 +164,9 @@ export class StatisticsRepository {
           wnp.role
          FROM work_note_person wnp
          INNER JOIN persons p ON wnp.person_id = p.person_id
-         WHERE wnp.work_id IN (${workNoteIds.map(() => '?').join(',')})`
+         WHERE wnp.work_id IN (SELECT value FROM json_each(?))`
       )
-      .bind(...workNoteIds)
+      .bind(JSON.stringify(workNoteIds))
       .all<AssignedPersonDetail>();
 
     // Map persons back to work notes
@@ -218,6 +219,7 @@ export class StatisticsRepository {
     const workNoteIds = workNotes.map((wn) => wn.workId);
 
     if (workNoteIds.length > 0) {
+      // Use json_each to avoid dynamic IN clause construction for large lists
       const categoriesResult = await this.db
         .prepare(
           `SELECT
@@ -226,9 +228,9 @@ export class StatisticsRepository {
             tc.name as categoryName
            FROM work_note_task_category wntc
            INNER JOIN task_categories tc ON wntc.category_id = tc.category_id
-           WHERE wntc.work_id IN (${workNoteIds.map(() => '?').join(',')})`
+           WHERE wntc.work_id IN (SELECT value FROM json_each(?))`
         )
-        .bind(...workNoteIds)
+        .bind(JSON.stringify(workNoteIds))
         .all<{ workId: string; categoryId: string; categoryName: string }>();
 
       // Build category map from work notes
