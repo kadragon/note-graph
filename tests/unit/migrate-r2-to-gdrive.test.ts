@@ -48,7 +48,7 @@ describe('migrateR2WorkNoteFiles', () => {
     });
 
     const drive = {
-      getOrCreateWorkNoteFolder: vi.fn(async (email: string, targetWorkId: string) => {
+      getOrCreateWorkNoteFolder: vi.fn(async (_email: string, targetWorkId: string) => {
         await baseEnv.DB.prepare(
           `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
            VALUES (?, ?, ?, ?)`
@@ -138,7 +138,7 @@ describe('migrateR2WorkNoteFiles', () => {
     });
 
     const drive = {
-      getOrCreateWorkNoteFolder: vi.fn(async (email: string, targetWorkId: string) => {
+      getOrCreateWorkNoteFolder: vi.fn(async (_email: string, targetWorkId: string) => {
         const existing = await baseEnv.DB.prepare(
           'SELECT gdrive_folder_id, gdrive_folder_link FROM work_note_gdrive_folders WHERE work_id = ?'
         )

@@ -65,7 +65,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
 
   constructor(r2: R2Bucket, db: D1Database, env?: Env) {
     super(r2, db);
-    if (env && env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GDRIVE_ROOT_FOLDER_ID) {
+    if (env?.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GDRIVE_ROOT_FOLDER_ID) {
       this.driveService = new GoogleDriveService(env, db);
     } else {
       this.driveService = null;
@@ -242,8 +242,8 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       files.results.map(async (row) => {
         try {
           if (row.storage_type === 'GDRIVE') {
-            if (shouldDeleteDriveFiles && row.gdrive_file_id && this.driveService) {
-              await this.driveService.deleteFile(userEmail!, row.gdrive_file_id);
+            if (shouldDeleteDriveFiles && row.gdrive_file_id && this.driveService && userEmail) {
+              await this.driveService.deleteFile(userEmail, row.gdrive_file_id);
             }
             return;
           }

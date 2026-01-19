@@ -120,7 +120,7 @@ describe('task-categories page', () => {
     const actionButtons = row ? row.querySelectorAll('button') : [];
     expect(actionButtons.length).toBeGreaterThanOrEqual(2);
 
-    await user.click(actionButtons[0]!);
+    await user.click(actionButtons[0]);
 
     expect(screen.getByTestId('edit-task-category-dialog')).toHaveAttribute('data-open', 'true');
     expect(screen.getByTestId('edit-task-category-dialog')).toHaveAttribute(
@@ -160,7 +160,7 @@ describe('task-categories page', () => {
     const actionButtons = row ? row.querySelectorAll('button') : [];
     expect(actionButtons.length).toBeGreaterThanOrEqual(2);
 
-    await user.click(actionButtons[1]!);
+    await user.click(actionButtons[1]);
 
     expect(screen.getByTestId('alert-dialog')).toHaveAttribute('data-open', 'true');
 

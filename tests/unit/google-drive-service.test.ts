@@ -50,10 +50,6 @@ class TestGoogleDriveService extends GoogleDriveService {
   metadataCalls: string[] = [];
   getOrCreateWorkNoteFolder = super.getOrCreateWorkNoteFolder;
 
-  constructor(env: Env, db: D1Database) {
-    super(env, db);
-  }
-
   async findFolderByNameInParent() {
     return null;
   }
