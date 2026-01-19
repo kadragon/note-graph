@@ -4,7 +4,7 @@
 import { env } from 'cloudflare:test';
 import { EmbeddingProcessor } from '@worker/services/embedding-processor';
 import type { Env } from '@worker/types/env';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface TestEmbeddingProcessor extends EmbeddingProcessor {
   repository: {
@@ -20,8 +20,11 @@ interface TestEmbeddingProcessor extends EmbeddingProcessor {
 describe('EmbeddingProcessor - batch fetch optimization', () => {
   const baseEnv = env as unknown as Env;
   let processor: EmbeddingProcessor;
+  // Save original DB reference to restore after tests that mock it
+  let originalDB: typeof baseEnv.DB;
 
   beforeEach(() => {
+    originalDB = baseEnv.DB;
     processor = new EmbeddingProcessor(baseEnv);
 
     // Mock repository methods
@@ -35,6 +38,13 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
     // Mock embedding/vectorize operations
     (processor as TestEmbeddingProcessor).upsertChunks = vi.fn().mockResolvedValue(undefined);
     (processor as TestEmbeddingProcessor).deleteStaleChunks = vi.fn().mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    // Restore original DB to prevent test pollution
+    if (originalDB) {
+      (baseEnv as { DB: typeof originalDB }).DB = originalDB;
+    }
   });
 
   it('reindexAll uses batch fetch instead of N+1 individual fetches', async () => {

@@ -4,7 +4,8 @@ import { env } from 'cloudflare:test';
 import type { D1Database } from '@cloudflare/workers-types';
 import { describe, expect, it } from 'vitest';
 
-const db = env.DB as D1Database;
+// Use a getter to defer DB access until test execution
+const getDb = () => env.DB as D1Database;
 
 interface TableInfoRow {
   cid: number;
@@ -35,17 +36,17 @@ interface ForeignKeyInfoRow {
 }
 
 async function getTableColumns(table: string): Promise<string[]> {
-  const { results } = await db.prepare(`PRAGMA table_info(${table});`).all<TableInfoRow>();
+  const { results } = await getDb().prepare(`PRAGMA table_info(${table});`).all<TableInfoRow>();
   return (results ?? []).map((row) => row.name);
 }
 
 async function getIndexNames(table: string): Promise<string[]> {
-  const { results } = await db.prepare(`PRAGMA index_list(${table});`).all<IndexInfoRow>();
+  const { results } = await getDb().prepare(`PRAGMA index_list(${table});`).all<IndexInfoRow>();
   return (results ?? []).map((row) => row.name);
 }
 
 async function getForeignKeys(table: string): Promise<Array<{ from: string; table: string }>> {
-  const { results } = await db
+  const { results } = await getDb()
     .prepare(`PRAGMA foreign_key_list(${table});`)
     .all<ForeignKeyInfoRow>();
   return (results ?? []).map((row) => ({
