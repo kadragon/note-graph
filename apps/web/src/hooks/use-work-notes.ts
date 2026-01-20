@@ -29,7 +29,7 @@ export function useWorkNotesWithStats() {
 
       const workIds = workNotes.map((workNote) => workNote.id);
       try {
-        const todos = await API.getTodos('remaining', undefined, workIds);
+        const todos = await API.getTodos('all', undefined, workIds);
         const todosByWorkId = new Map<string, typeof todos>();
         for (const todo of todos) {
           const workId = todo.workNoteId;

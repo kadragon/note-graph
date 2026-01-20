@@ -112,7 +112,7 @@ describe('useDownloadWorkNote', () => {
       await result.current.downloadWorkNote(workNote);
     });
 
-    expect(API.getTodos).toHaveBeenCalledWith('remaining', undefined, ['work-1']);
+    expect(API.getTodos).toHaveBeenCalledWith('all', undefined, ['work-1']);
     expect(URL.createObjectURL).toHaveBeenCalled();
     expect(mockClick).toHaveBeenCalled();
     expect(URL.revokeObjectURL).toHaveBeenCalled();

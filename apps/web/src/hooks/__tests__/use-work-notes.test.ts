@@ -120,7 +120,7 @@ describe('useWorkNotesWithStats', () => {
     });
 
     expect(API.getWorkNotes).toHaveBeenCalled();
-    expect(API.getTodos).toHaveBeenCalledWith('remaining', undefined, ['work-1']);
+    expect(API.getTodos).toHaveBeenCalledWith('all', undefined, ['work-1']);
 
     const data = result.current.data;
     expect(data).toHaveLength(1);
@@ -214,7 +214,7 @@ describe('useWorkNotesWithStats', () => {
     });
 
     expect(API.getTodos).toHaveBeenCalledTimes(1);
-    expect(API.getTodos).toHaveBeenCalledWith('remaining', undefined, ['work-1', 'work-2']);
+    expect(API.getTodos).toHaveBeenCalledWith('all', undefined, ['work-1', 'work-2']);
 
     const data = result.current.data;
     expect(data?.[0].todoStats.completed).toBe(1);
