@@ -585,6 +585,23 @@ describe('API.getTodos', () => {
     );
   });
 
+  it('includes workIds param when provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue([]),
+    });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.getTodos('remaining', undefined, ['work-1', 'work-2']);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/todos?view=remaining&workIds=work-1%2Cwork-2',
+      expect.any(Object)
+    );
+  });
+
   it('defaults view to today when not specified', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

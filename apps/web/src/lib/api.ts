@@ -588,11 +588,14 @@ export class APIClient {
   }
 
   // Todos
-  async getTodos(view: TodoView = 'today', year?: number) {
+  async getTodos(view: TodoView = 'today', year?: number, workIds?: string[]) {
     const params = new URLSearchParams();
     params.set('view', view);
     if (year) {
       params.set('year', year.toString());
+    }
+    if (workIds?.length) {
+      params.set('workIds', workIds.join(','));
     }
     const response = await this.request<BackendTodo[]>(`/todos?${params.toString()}`);
     return response.map(this.transformTodoFromBackend.bind(this));
@@ -610,12 +613,6 @@ export class APIClient {
     return this.request<void>(`/todos/${todoId}`, {
       method: 'DELETE',
     });
-  }
-
-  // Work Note Todos
-  async getWorkNoteTodos(workId: string) {
-    const response = await this.request<BackendTodo[]>(`/work-notes/${workId}/todos`);
-    return response.map(this.transformTodoFromBackend.bind(this));
   }
 
   async createWorkNoteTodo(workId: string, data: CreateTodoRequest) {

@@ -14,7 +14,7 @@ import { useDownloadWorkNote } from '../use-download-work-note';
 // Mock the API
 vi.mock('@web/lib/api', () => ({
   API: {
-    getWorkNoteTodos: vi.fn(),
+    getTodos: vi.fn(),
     downloadWorkNoteFile: vi.fn(),
   },
 }));
@@ -82,7 +82,7 @@ describe('useDownloadWorkNote', () => {
   });
 
   it('sets isDownloading to true while downloading', async () => {
-    vi.mocked(API.getWorkNoteTodos).mockResolvedValue([]);
+    vi.mocked(API.getTodos).mockResolvedValue([]);
     const workNote = createWorkNoteWithStats({ id: 'work-1', title: 'Test' });
 
     const { result } = renderHookWithClient(() => useDownloadWorkNote());
@@ -101,8 +101,8 @@ describe('useDownloadWorkNote', () => {
   });
 
   it('downloads PDF with generated filename', async () => {
-    const todos = [createTodo({ id: 'todo-1', title: 'Task 1' })];
-    vi.mocked(API.getWorkNoteTodos).mockResolvedValue(todos);
+    const todos = [createTodo({ id: 'todo-1', title: 'Task 1', workNoteId: 'work-1' })];
+    vi.mocked(API.getTodos).mockResolvedValue(todos);
 
     const workNote = createWorkNoteWithStats({ id: 'work-1', title: 'Test Note' });
 
@@ -112,14 +112,14 @@ describe('useDownloadWorkNote', () => {
       await result.current.downloadWorkNote(workNote);
     });
 
-    expect(API.getWorkNoteTodos).toHaveBeenCalledWith('work-1');
+    expect(API.getTodos).toHaveBeenCalledWith('remaining', undefined, ['work-1']);
     expect(URL.createObjectURL).toHaveBeenCalled();
     expect(mockClick).toHaveBeenCalled();
     expect(URL.revokeObjectURL).toHaveBeenCalled();
   });
 
   it('downloads attachments individually after PDF', async () => {
-    vi.mocked(API.getWorkNoteTodos).mockResolvedValue([]);
+    vi.mocked(API.getTodos).mockResolvedValue([]);
     vi.mocked(API.downloadWorkNoteFile).mockResolvedValue(
       new Blob(['file'], { type: 'application/pdf' })
     );
@@ -142,7 +142,7 @@ describe('useDownloadWorkNote', () => {
   });
 
   it('opens Google Drive attachments in a new tab', async () => {
-    vi.mocked(API.getWorkNoteTodos).mockResolvedValue([]);
+    vi.mocked(API.getTodos).mockResolvedValue([]);
 
     const files = [
       createWorkNoteFile({
@@ -167,7 +167,7 @@ describe('useDownloadWorkNote', () => {
   });
 
   it('shows success toast after download completes', async () => {
-    vi.mocked(API.getWorkNoteTodos).mockResolvedValue([]);
+    vi.mocked(API.getTodos).mockResolvedValue([]);
     const workNote = createWorkNoteWithStats({ id: 'work-1', title: 'Test' });
 
     const { result } = renderHookWithClient(() => useDownloadWorkNote());
@@ -183,7 +183,7 @@ describe('useDownloadWorkNote', () => {
   });
 
   it('shows toast with attachment count when files exist', async () => {
-    vi.mocked(API.getWorkNoteTodos).mockResolvedValue([]);
+    vi.mocked(API.getTodos).mockResolvedValue([]);
     vi.mocked(API.downloadWorkNoteFile).mockResolvedValue(new Blob(['file']));
 
     const files = [
@@ -204,7 +204,7 @@ describe('useDownloadWorkNote', () => {
   });
 
   it('shows open message when Google Drive attachments exist', async () => {
-    vi.mocked(API.getWorkNoteTodos).mockResolvedValue([]);
+    vi.mocked(API.getTodos).mockResolvedValue([]);
 
     const files = [
       createWorkNoteFile({
@@ -231,7 +231,7 @@ describe('useDownloadWorkNote', () => {
   });
 
   it('shows error toast when download fails', async () => {
-    vi.mocked(API.getWorkNoteTodos).mockRejectedValue(new Error('Network error'));
+    vi.mocked(API.getTodos).mockRejectedValue(new Error('Network error'));
     const workNote = createWorkNoteWithStats({ id: 'work-1', title: 'Test' });
 
     const { result } = renderHookWithClient(() => useDownloadWorkNote());

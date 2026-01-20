@@ -198,6 +198,13 @@ export class TodoRepository {
     const conditions: string[] = [];
     const params: (string | number)[] = [];
 
+    const workIds = query.workIds ?? [];
+    if (workIds.length > 0) {
+      const placeholders = workIds.map(() => '?').join(',');
+      conditions.push(`t.work_id IN (${placeholders})`);
+      params.push(...workIds);
+    }
+
     // Apply view filters
     switch (query.view) {
       case 'today':

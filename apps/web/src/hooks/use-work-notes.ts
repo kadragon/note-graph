@@ -23,77 +23,88 @@ export function useWorkNotesWithStats() {
     queryKey: ['work-notes-with-stats'],
     queryFn: async () => {
       const workNotes = await API.getWorkNotes();
+      if (workNotes.length === 0) {
+        return [] as WorkNoteWithStats[];
+      }
 
-      // Fetch todos for all work notes in parallel
-      const now = new Date();
-      const workNotesWithStats = await Promise.all(
-        workNotes.map(async (workNote) => {
-          try {
-            const todos = await API.getWorkNoteTodos(workNote.id);
-            const total = todos.length;
-            // 한 번의 순회로 모든 통계 계산
-            // Calculate tomorrow midnight for consistent wait_until comparison
-            const tomorrowMidnight = new Date(now);
-            tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
-            tomorrowMidnight.setHours(0, 0, 0, 0);
-
-            const { completed, pending, remaining } = todos.reduce(
-              (acc, todo) => {
-                if (todo.status === TODO_STATUS.COMPLETED) {
-                  acc.completed++;
-                } else {
-                  // 미완료 상태: waitUntil이 내일 이후면 pending, 아니면 remaining
-                  // 백엔드와 동일한 로직: waitUntil < tomorrowMidnight이면 remaining
-                  const hasFutureWaitUntil =
-                    todo.waitUntil && new Date(todo.waitUntil) >= tomorrowMidnight;
-                  if (hasFutureWaitUntil) {
-                    acc.pending++;
-                  } else {
-                    acc.remaining++;
-                  }
-                }
-                return acc;
-              },
-              { completed: 0, pending: 0, remaining: 0 }
-            );
-
-            const latestTodoDate = getLatestTodoDate(todos);
-            // Find the most recent completion timestamp from completed todos.
-            // If all completed todos lack updatedAt, this returns null and the work note
-            // will only appear in the "All" completed tab, not time-filtered tabs.
-            const latestCompletedAt = todos.reduce<string | null>((latest, todo) => {
-              if (todo.status !== TODO_STATUS.COMPLETED) {
-                return latest;
-              }
-              const candidate = todo.updatedAt;
-              if (!candidate) {
-                return latest;
-              }
-              return !latest || candidate > latest ? candidate : latest;
-            }, null);
-
-            return {
-              ...workNote,
-              todoStats: { total, completed, remaining, pending },
-              latestTodoDate,
-              latestCompletedAt,
-            } as WorkNoteWithStats;
-          } catch (error) {
-            // Log error for debugging
-            console.error(`Failed to fetch todos for work note ${workNote.id}:`, error);
-
-            // If there's an error fetching todos, return with zero stats
-            return {
-              ...workNote,
-              todoStats: { total: 0, completed: 0, remaining: 0, pending: 0 },
-              latestTodoDate: null,
-              latestCompletedAt: null,
-            } as WorkNoteWithStats;
+      const workIds = workNotes.map((workNote) => workNote.id);
+      try {
+        const todos = await API.getTodos('remaining', undefined, workIds);
+        const todosByWorkId = new Map<string, typeof todos>();
+        for (const todo of todos) {
+          const workId = todo.workNoteId;
+          if (!workId) {
+            continue;
           }
-        })
-      );
+          if (!todosByWorkId.has(workId)) {
+            todosByWorkId.set(workId, []);
+          }
+          todosByWorkId.get(workId)?.push(todo);
+        }
 
-      return workNotesWithStats;
+        const now = new Date();
+        return workNotes.map((workNote) => {
+          const workNoteTodos = todosByWorkId.get(workNote.id) ?? [];
+          const total = workNoteTodos.length;
+          // 한 번의 순회로 모든 통계 계산
+          // Calculate tomorrow midnight for consistent wait_until comparison
+          const tomorrowMidnight = new Date(now);
+          tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
+          tomorrowMidnight.setHours(0, 0, 0, 0);
+
+          const { completed, pending, remaining } = workNoteTodos.reduce(
+            (acc, todo) => {
+              if (todo.status === TODO_STATUS.COMPLETED) {
+                acc.completed++;
+              } else {
+                // 미완료 상태: waitUntil이 내일 이후면 pending, 아니면 remaining
+                // 백엔드와 동일한 로직: waitUntil < tomorrowMidnight이면 remaining
+                const hasFutureWaitUntil =
+                  todo.waitUntil && new Date(todo.waitUntil) >= tomorrowMidnight;
+                if (hasFutureWaitUntil) {
+                  acc.pending++;
+                } else {
+                  acc.remaining++;
+                }
+              }
+              return acc;
+            },
+            { completed: 0, pending: 0, remaining: 0 }
+          );
+
+          const latestTodoDate = getLatestTodoDate(workNoteTodos);
+          // Find the most recent completion timestamp from completed todos.
+          // If all completed todos lack updatedAt, this returns null and the work note
+          // will only appear in the "All" completed tab, not time-filtered tabs.
+          const latestCompletedAt = workNoteTodos.reduce<string | null>((latest, todo) => {
+            if (todo.status !== TODO_STATUS.COMPLETED) {
+              return latest;
+            }
+            const candidate = todo.updatedAt;
+            if (!candidate) {
+              return latest;
+            }
+            return !latest || candidate > latest ? candidate : latest;
+          }, null);
+
+          return {
+            ...workNote,
+            todoStats: { total, completed, remaining, pending },
+            latestTodoDate,
+            latestCompletedAt,
+          } as WorkNoteWithStats;
+        });
+      } catch (error) {
+        // Log error for debugging
+        console.error('Failed to fetch todos for work notes:', error);
+
+        return workNotes.map((workNote) => ({
+          ...workNote,
+          todoStats: { total: 0, completed: 0, remaining: 0, pending: 0 },
+          latestTodoDate: null,
+          latestCompletedAt: null,
+        })) as WorkNoteWithStats[];
+      }
     },
   });
 }

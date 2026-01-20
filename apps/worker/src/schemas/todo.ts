@@ -84,6 +84,18 @@ export const listTodosQuerySchema = z.object({
   view: z.enum(['today', 'week', 'month', 'remaining', 'completed', 'backlog']).default('today'),
   status: todoStatusSchema.optional(),
   year: z.coerce.number().int().min(2000).max(2100).optional(),
+  workIds: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value
+        ? value
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : []
+    )
+    .default([]),
 });
 
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;

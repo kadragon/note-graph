@@ -149,7 +149,7 @@ apps/web/src/
 ## Web Performance (User-Facing)
 
 ### API Call Waterfall
-- [ ] useWorkNotesWithStats: batch fetch todos (single API call instead of N+1) (useWorkNotesWithStats#L21-L94)
+- [x] useWorkNotesWithStats: batch fetch todos (single API call instead of N+1) (useWorkNotesWithStats#L21-L94)
 - [ ] ViewWorkNoteDialog: deduplicate list/detail fetches via React Query cache (ViewWorkNoteDialog#L137-L149)
 
 ### React Query Integration
