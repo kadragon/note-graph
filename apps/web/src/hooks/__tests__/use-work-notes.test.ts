@@ -25,7 +25,7 @@ import {
 vi.mock('@web/lib/api', () => ({
   API: {
     getWorkNotes: vi.fn(),
-    getWorkNoteTodos: vi.fn(),
+    getTodos: vi.fn(),
     createWorkNote: vi.fn(),
     updateWorkNote: vi.fn(),
     deleteWorkNote: vi.fn(),
@@ -99,14 +99,19 @@ describe('useWorkNotesWithStats', () => {
 
     const now = new Date();
     const todos = [
-      createTodo({ status: TODO_STATUS.COMPLETED, updatedAt: now.toISOString() }),
+      createTodo({
+        status: TODO_STATUS.COMPLETED,
+        updatedAt: now.toISOString(),
+        workNoteId: 'work-1',
+      }),
       createTodo({
         status: TODO_STATUS.COMPLETED,
         updatedAt: new Date(now.getTime() - 3600000).toISOString(),
+        workNoteId: 'work-1',
       }),
-      createTodo({ status: TODO_STATUS.IN_PROGRESS }),
+      createTodo({ status: TODO_STATUS.IN_PROGRESS, workNoteId: 'work-1' }),
     ];
-    vi.mocked(API.getWorkNoteTodos).mockResolvedValue(todos);
+    vi.mocked(API.getTodos).mockResolvedValue(todos);
 
     const { result } = renderHookWithClient(() => useWorkNotesWithStats());
 
@@ -115,7 +120,7 @@ describe('useWorkNotesWithStats', () => {
     });
 
     expect(API.getWorkNotes).toHaveBeenCalled();
-    expect(API.getWorkNoteTodos).toHaveBeenCalledWith('work-1');
+    expect(API.getTodos).toHaveBeenCalledWith('all', undefined, ['work-1']);
 
     const data = result.current.data;
     expect(data).toHaveLength(1);
@@ -137,11 +142,15 @@ describe('useWorkNotesWithStats', () => {
     futureDate.setDate(futureDate.getDate() + 2);
 
     const todos = [
-      createTodo({ status: TODO_STATUS.IN_PROGRESS, waitUntil: futureDate.toISOString() }),
-      createTodo({ status: TODO_STATUS.IN_PROGRESS }), // No waitUntil - should be remaining
-      createTodo({ status: TODO_STATUS.COMPLETED }),
+      createTodo({
+        status: TODO_STATUS.IN_PROGRESS,
+        waitUntil: futureDate.toISOString(),
+        workNoteId: 'work-1',
+      }),
+      createTodo({ status: TODO_STATUS.IN_PROGRESS, workNoteId: 'work-1' }), // No waitUntil - should be remaining
+      createTodo({ status: TODO_STATUS.COMPLETED, workNoteId: 'work-1' }),
     ];
-    vi.mocked(API.getWorkNoteTodos).mockResolvedValue(todos);
+    vi.mocked(API.getTodos).mockResolvedValue(todos);
 
     const { result } = renderHookWithClient(() => useWorkNotesWithStats());
 
@@ -161,7 +170,7 @@ describe('useWorkNotesWithStats', () => {
   it('returns zero stats when fetching todos fails for a work note', async () => {
     const workNote = createWorkNote({ id: 'work-1' });
     vi.mocked(API.getWorkNotes).mockResolvedValue([workNote]);
-    vi.mocked(API.getWorkNoteTodos).mockRejectedValue(new Error('Failed to fetch'));
+    vi.mocked(API.getTodos).mockRejectedValue(new Error('Failed to fetch'));
 
     // Suppress console.error for this test
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -185,19 +194,18 @@ describe('useWorkNotesWithStats', () => {
     consoleSpy.mockRestore();
   });
 
-  it('fetches todos for multiple work notes in parallel', async () => {
+  it('fetches todos for multiple work notes in a single batch call', async () => {
     const workNotes = [
       createWorkNote({ id: 'work-1', title: 'Work Note 1' }),
       createWorkNote({ id: 'work-2', title: 'Work Note 2' }),
     ];
     vi.mocked(API.getWorkNotes).mockResolvedValue(workNotes);
 
-    vi.mocked(API.getWorkNoteTodos)
-      .mockResolvedValueOnce([createTodo({ status: TODO_STATUS.COMPLETED })])
-      .mockResolvedValueOnce([
-        createTodo({ status: TODO_STATUS.IN_PROGRESS }),
-        createTodo({ status: TODO_STATUS.IN_PROGRESS }),
-      ]);
+    vi.mocked(API.getTodos).mockResolvedValue([
+      createTodo({ status: TODO_STATUS.COMPLETED, workNoteId: 'work-1' }),
+      createTodo({ status: TODO_STATUS.IN_PROGRESS, workNoteId: 'work-2' }),
+      createTodo({ status: TODO_STATUS.IN_PROGRESS, workNoteId: 'work-2' }),
+    ]);
 
     const { result } = renderHookWithClient(() => useWorkNotesWithStats());
 
@@ -205,9 +213,8 @@ describe('useWorkNotesWithStats', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(API.getWorkNoteTodos).toHaveBeenCalledTimes(2);
-    expect(API.getWorkNoteTodos).toHaveBeenCalledWith('work-1');
-    expect(API.getWorkNoteTodos).toHaveBeenCalledWith('work-2');
+    expect(API.getTodos).toHaveBeenCalledTimes(1);
+    expect(API.getTodos).toHaveBeenCalledWith('all', undefined, ['work-1', 'work-2']);
 
     const data = result.current.data;
     expect(data?.[0].todoStats.completed).toBe(1);

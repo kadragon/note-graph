@@ -32,7 +32,7 @@ export function useDownloadWorkNote() {
 
       try {
         // 1. Fetch todos for this work note
-        const todos = await API.getWorkNoteTodos(workNote.id);
+        const todos = await API.getTodos('all', undefined, [workNote.id]);
 
         // 2. Generate and download PDF
         const pdfBlob = await generateWorkNotePDF(workNote, todos);

@@ -136,7 +136,7 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
   // Fetch todos for this work note
   const { data: todos = [], isLoading: todosLoading } = useQuery({
     queryKey: ['work-note-todos', workNote?.id],
-    queryFn: () => (workNote ? API.getWorkNoteTodos(workNote.id) : Promise.resolve([])),
+    queryFn: () => (workNote ? API.getTodos('all', undefined, [workNote.id]) : Promise.resolve([])),
     enabled: !!workNote && open,
   });
 

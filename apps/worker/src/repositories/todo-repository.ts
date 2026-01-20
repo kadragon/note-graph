@@ -198,6 +198,13 @@ export class TodoRepository {
     const conditions: string[] = [];
     const params: (string | number)[] = [];
 
+    // Use json_each to avoid SQLite's 999 parameter limit for large workIds arrays
+    const workIds = query.workIds ?? [];
+    if (workIds.length > 0) {
+      conditions.push(`t.work_id IN (SELECT value FROM json_each(?))`);
+      params.push(JSON.stringify(workIds));
+    }
+
     // Apply view filters
     switch (query.view) {
       case 'today':
@@ -240,6 +247,11 @@ export class TodoRepository {
         // All completed todos (no year restriction)
         conditions.push(`t.status = ?`);
         params.push('완료');
+        break;
+      }
+
+      case 'all': {
+        // All todos without status or date filtering (for work note stats)
         break;
       }
 
