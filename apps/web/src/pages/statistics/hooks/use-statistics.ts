@@ -34,6 +34,10 @@ export function useStatistics(options: UseStatisticsOptions = {}) {
   });
 
   // Map error to string for backward compatibility
+  // Log full error for debugging (message may not contain all details)
+  if (query.error) {
+    console.error('Failed to fetch statistics:', query.error);
+  }
   const error = query.error instanceof Error ? query.error.message : null;
 
   return {

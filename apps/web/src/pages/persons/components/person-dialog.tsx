@@ -88,13 +88,14 @@ function formReducer(state: FormState, action: FormAction): FormState {
     case 'RESET':
       return initialFormState;
     case 'LOAD_INITIAL':
+      // Note: errors are cleared by the useEffect on dialog open, not here
       return {
+        ...state,
         name: action.data.name,
         personId: action.data.personId,
-        phoneExt: action.data.phoneExt || '',
-        currentDept: action.data.currentDept || '',
-        currentPosition: action.data.currentPosition || '',
-        errors: {},
+        phoneExt: action.data.phoneExt ?? '',
+        currentDept: action.data.currentDept ?? '',
+        currentPosition: action.data.currentPosition ?? '',
       };
     default:
       return state;

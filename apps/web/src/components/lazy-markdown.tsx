@@ -1,5 +1,4 @@
 // Lazy-loaded markdown component for bundle size optimization
-// Trace: plan.md - Bundle Size optimization
 
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';

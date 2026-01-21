@@ -84,7 +84,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
   - Google Drive integration backend: OAuth service, Drive service, repository, routes, file service updates (Phase 2-4).
   - TASK-MIGRATE-001/002/003: Jest + Miniflare migration phases 1-3 (parallel run with Vitest).
   - TASK-0070/0071: PDF draft auto-attach flow clarifications and fix.
-- plan.md cleanup: removed completed Google Calendar implementation tasks (multi-calendar support, OAuth scope expansion, Calendar service/API, hooks, UI, dashboard integration, and bug fixes) and worker/web performance items already finished.
+- plan.md cleanup: archived completed Google Calendar and performance tasks.
 - Full historical details are in git history and prior session notes.
 
 ## Known Issues / Tech Debt

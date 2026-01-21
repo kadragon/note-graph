@@ -692,11 +692,13 @@ describe('useGoogleDriveStatus', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    // The query should be fresh (not stale) immediately after fetching
+    // Verify query state reflects successful fetch with caching
     const queryState = queryClient.getQueryState(['google-drive-status']);
     expect(queryState?.isInvalidated).toBe(false);
+    expect(queryState?.dataUpdatedAt).toBeGreaterThan(0);
 
-    // staleTime should be configured (query won't refetch immediately)
+    // isStale=false confirms staleTime is configured and active
+    // (React Query doesn't expose staleTime directly on query state)
     expect(result.current.isStale).toBe(false);
   });
 
