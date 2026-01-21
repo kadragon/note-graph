@@ -20,7 +20,9 @@ vi.mock('@web/pages/dashboard/components/edit-todo-dialog', () => ({
 }));
 
 vi.mock('@web/pages/work-notes/components/work-note-file-list', () => ({
-  WorkNoteFileList: () => <div data-testid="work-note-file-list" />,
+  WorkNoteFileList: ({ workNoteCreatedAt }: { workNoteCreatedAt: string }) => (
+    <div data-testid="work-note-file-list" data-created-at={workNoteCreatedAt} />
+  ),
 }));
 
 vi.mock('@web/pages/work-notes/components/recurring-todo-group', () => ({

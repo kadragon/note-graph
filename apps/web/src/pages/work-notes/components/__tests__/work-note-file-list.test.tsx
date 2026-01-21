@@ -129,7 +129,7 @@ describe('WorkNoteFileList', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
-    render(<WorkNoteFileList workId="work-1" />);
+    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
 
     const fileLink = screen.getByRole('link', { name: 'drive-file.pdf' });
     expect(fileLink).toHaveAttribute('href', driveLink);
@@ -155,7 +155,7 @@ describe('WorkNoteFileList', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
-    render(<WorkNoteFileList workId="work-1" />);
+    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
 
     expect(screen.getByText('Cloudflare R2')).toBeInTheDocument();
     expect(
@@ -197,7 +197,7 @@ describe('WorkNoteFileList', () => {
       isPending: false,
     } as unknown as ReturnType<typeof useMigrateWorkNoteFiles>);
 
-    render(<WorkNoteFileList workId="work-1" />);
+    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
 
     await user.click(screen.getByRole('button', { name: 'R2 파일 Google Drive로 옮기기' }));
 
@@ -223,7 +223,7 @@ describe('WorkNoteFileList', () => {
     // Setup local storage with a path
     localStorageMock.getItem.mockReturnValue('C:\\Users\\Drive');
 
-    render(<WorkNoteFileList workId="work-1" />);
+    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
 
     expect(localStorageMock.getItem).toHaveBeenCalledWith(STORAGE_KEYS.LOCAL_DRIVE_PATH);
 
@@ -232,9 +232,9 @@ describe('WorkNoteFileList', () => {
     // Click copy button
     await user.click(screen.getByRole('button', { name: '로컬 경로 복사' }));
 
-    // Expected path: C:\Users\Drive\workNote\work-1\report_2025.pdf
+    // Expected path: C:\Users\Drive\workNote\2025\work-1\report_2025.pdf
     // Note: sanitization replaces / with _
-    const expectedPath = 'C:\\Users\\Drive\\workNote\\work-1\\report_2025.pdf';
+    const expectedPath = 'C:\\Users\\Drive\\workNote\\2025\\work-1\\report_2025.pdf';
     expect(writeTextSpy).toHaveBeenCalledWith(expectedPath);
     expect(mockToast).toHaveBeenCalledWith({ description: '로컬 경로가 복사되었습니다.' });
   });
@@ -254,13 +254,13 @@ describe('WorkNoteFileList', () => {
 
     localStorageMock.getItem.mockReturnValue('C:/GoogleDrive');
 
-    render(<WorkNoteFileList workId="work-1" />);
+    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
 
     const openLocallyButton = screen.getByRole('link', { name: '로컬에서 열기' });
     expect(openLocallyButton).toBeInTheDocument();
 
-    // Expected URL: notegraph://open?path=C%3A%2FGoogleDrive%2FworkNote%2Fwork-1%2Fdocument.pdf
-    const expectedPath = 'C:/GoogleDrive/workNote/work-1/document.pdf';
+    // Expected URL: notegraph://open?path=C%3A%2FGoogleDrive%2FworkNote%2F2025%2Fwork-1%2Fdocument.pdf
+    const expectedPath = 'C:/GoogleDrive/workNote/2025/work-1/document.pdf';
     const expectedUrl = `notegraph://open?path=${encodeURIComponent(expectedPath)}`;
     expect(openLocallyButton).toHaveAttribute('href', expectedUrl);
   });
@@ -280,7 +280,7 @@ describe('WorkNoteFileList', () => {
 
     localStorageMock.getItem.mockReturnValue(null);
 
-    render(<WorkNoteFileList workId="work-1" />);
+    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
 
     expect(screen.queryByRole('link', { name: '로컬에서 열기' })).not.toBeInTheDocument();
   });
@@ -291,7 +291,7 @@ describe('WorkNoteFileList', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
-    render(<WorkNoteFileList workId="work-1" />);
+    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
 
     // Check for installation instruction text
     expect(screen.getByText(/로컬에서 열기.*사용하려면/)).toBeInTheDocument();
