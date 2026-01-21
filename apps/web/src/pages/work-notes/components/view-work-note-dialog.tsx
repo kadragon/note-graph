@@ -640,7 +640,10 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
 
             {/* Files Section */}
             <div className="border-t pt-4">
-              <WorkNoteFileList workId={currentWorkNote.id} />
+              <WorkNoteFileList
+                workId={currentWorkNote.id}
+                workNoteCreatedAt={currentWorkNote.createdAt}
+              />
             </div>
 
             {/* Edit Actions */}

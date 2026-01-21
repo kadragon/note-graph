@@ -41,11 +41,12 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
 
 interface WorkNoteFileListProps {
   workId: string;
+  workNoteCreatedAt: string;
 }
 
 function formatFileSize(bytes: number): string {
@@ -74,7 +75,7 @@ function getDriveLink(file: WorkNoteFile): string | null {
   return file.gdriveWebViewLink ?? null;
 }
 
-export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
+export function WorkNoteFileList({ workId, workNoteCreatedAt }: WorkNoteFileListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [fileToDelete, setFileToDelete] = useState<WorkNoteFile | null>(null);
@@ -117,13 +118,26 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
     localStorage.setItem(STORAGE_KEYS.LOCAL_DRIVE_PATH, path);
   };
 
+  const workNoteYear = useMemo(() => {
+    const date = new Date(workNoteCreatedAt);
+    if (isNaN(date.getTime())) {
+      console.error(`Invalid workNoteCreatedAt date string: ${workNoteCreatedAt}`);
+      return 'unknown-year';
+    }
+    return date.getUTCFullYear().toString();
+  }, [workNoteCreatedAt]);
+
+  const getLocalRelativePath = (file: WorkNoteFile) => {
+    const sanitizedName = file.originalName.replace(/[/\\]/g, '_');
+    return `workNote/${workNoteYear}/${workId}/${sanitizedName}`;
+  };
+
   const getLocalFilePath = (file: WorkNoteFile) => {
     if (!localDrivePath) return null;
     const sep = localDrivePath.includes('\\') ? '\\' : '/';
     const cleanPath = localDrivePath.replace(/[/\\]$/, '');
-    // Sanitize filename: replace / and \ with _ to avoid path traversal confusion
-    const sanitizedName = file.originalName.replace(/[/\\]/g, '_');
-    return `${cleanPath}${sep}workNote${sep}${workId}${sep}${sanitizedName}`;
+    const relativePath = getLocalRelativePath(file).replace(/\//g, sep);
+    return `${cleanPath}${sep}${relativePath}`;
   };
 
   const copyLocalPath = async (file: WorkNoteFile) => {
@@ -398,12 +412,7 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
                         className="h-8 w-8 p-0"
                         title="로컬에서 열기"
                       >
-                        <a
-                          href={buildLocalFileUrl(
-                            localDrivePath,
-                            `workNote/${workId}/${file.originalName.replace(/[/\\]/g, '_')}`
-                          )}
-                        >
+                        <a href={buildLocalFileUrl(localDrivePath, getLocalRelativePath(file))}>
                           <FolderOpen className="h-4 w-4" />
                           <span className="sr-only">로컬에서 열기</span>
                         </a>
