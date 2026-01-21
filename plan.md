@@ -38,7 +38,7 @@
 - [x] Split `apps/web/src/hooks/__tests__/use-persons.test.ts` (609 lines) into query, mutations, errors.
 
 ### Document Test Improvements
-- [ ] Create `TEST_STRUCTURE.md`: inventory of all test files, coverage by file, architectural insights.
+- [x] Create `TEST_STRUCTURE.md`: inventory of all test files, coverage by file, architectural insights.
 
 ## Summary (Test Consolidation Complete)
 
