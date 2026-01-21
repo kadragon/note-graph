@@ -37,23 +37,22 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
   // Group events by date
   const dayEventsMap = new Map<string, CalendarEvent[]>();
   events.forEach((event) => {
+    const addEventToDay = (date: Date) => {
+      const dateKey = format(date, 'yyyy-MM-dd');
+      const existing = dayEventsMap.get(dateKey) || [];
+      dayEventsMap.set(dateKey, [...existing, event]);
+    };
+
     const eventStartDate = getEventStartDate(event);
     if (isAllDayEvent(event)) {
       const eventEndDate = getEventEndDate(event);
       const inclusiveEndDate = subDays(eventEndDate, 1);
       const rangeEndDate = inclusiveEndDate < eventStartDate ? eventStartDate : inclusiveEndDate;
 
-      eachDayOfInterval({ start: eventStartDate, end: rangeEndDate }).forEach((date) => {
-        const dateKey = format(date, 'yyyy-MM-dd');
-        const existing = dayEventsMap.get(dateKey) || [];
-        dayEventsMap.set(dateKey, [...existing, event]);
-      });
-      return;
+      eachDayOfInterval({ start: eventStartDate, end: rangeEndDate }).forEach(addEventToDay);
+    } else {
+      addEventToDay(eventStartDate);
     }
-
-    const dateKey = format(eventStartDate, 'yyyy-MM-dd');
-    const existing = dayEventsMap.get(dateKey) || [];
-    dayEventsMap.set(dateKey, [...existing, event]);
   });
 
   // Create day events array
@@ -71,7 +70,7 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
   return (
     <div className="overflow-hidden rounded-lg border">
       {/* Header - Day names */}
-      <div className="grid grid-cols-7 border-b bg-muted/50">
+      <div className="grid grid-cols-7 border-b bg-muted/50" data-testid="weekday-headers">
         {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
           <div
             key={day}
