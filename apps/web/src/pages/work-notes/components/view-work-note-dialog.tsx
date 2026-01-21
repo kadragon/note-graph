@@ -140,13 +140,16 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
 
   // Fetch detailed work note (includes references)
   // Use placeholderData to show list data immediately while fetching detail
-  const { data: currentWorkNote } = useQuery({
+  const { data: detailedWorkNote } = useQuery({
     queryKey: ['work-note-detail', workNote?.id],
     queryFn: () => (workNote ? API.getWorkNote(workNote.id) : Promise.resolve(null)),
     enabled: !!workNote && open,
     staleTime: 30_000,
     placeholderData: workNote ?? undefined,
   });
+
+  // Fallback to list workNote when detail fetch fails (network error, etc.)
+  const currentWorkNote = detailedWorkNote ?? workNote;
 
   // For editing: show active categories + already selected inactive categories
   const editableCategories = useMemo(() => {
