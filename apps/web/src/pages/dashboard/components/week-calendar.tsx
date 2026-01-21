@@ -1,7 +1,7 @@
-import { getEventStartDate, isAllDayEvent } from '@web/hooks/use-calendar';
+import { getEventEndDate, getEventStartDate, isAllDayEvent } from '@web/hooks/use-calendar';
 import { cn } from '@web/lib/utils';
 import type { CalendarEvent } from '@web/types/api';
-import { addDays, eachDayOfInterval, format, isToday, startOfWeek } from 'date-fns';
+import { addDays, eachDayOfInterval, format, isToday, startOfWeek, subDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { ExternalLink } from 'lucide-react';
 
@@ -28,7 +28,7 @@ function formatEventTime(event: CalendarEvent): string {
 
 export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps) {
   // Start from the beginning of the current week
-  const weekStart = startOfWeek(startDate, { weekStartsOn: 1 }); // Monday start
+  const weekStart = startOfWeek(startDate, { weekStartsOn: 0 }); // Sunday start
   const endDate = addDays(weekStart, weeks * 7 - 1);
 
   // Generate all days in the range
@@ -37,10 +37,22 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
   // Group events by date
   const dayEventsMap = new Map<string, CalendarEvent[]>();
   events.forEach((event) => {
-    const eventDate = getEventStartDate(event);
-    const dateKey = format(eventDate, 'yyyy-MM-dd');
-    const existing = dayEventsMap.get(dateKey) || [];
-    dayEventsMap.set(dateKey, [...existing, event]);
+    const addEventToDay = (date: Date) => {
+      const dateKey = format(date, 'yyyy-MM-dd');
+      const existing = dayEventsMap.get(dateKey) || [];
+      dayEventsMap.set(dateKey, [...existing, event]);
+    };
+
+    const eventStartDate = getEventStartDate(event);
+    if (isAllDayEvent(event)) {
+      const eventEndDate = getEventEndDate(event);
+      const inclusiveEndDate = subDays(eventEndDate, 1);
+      const rangeEndDate = inclusiveEndDate < eventStartDate ? eventStartDate : inclusiveEndDate;
+
+      eachDayOfInterval({ start: eventStartDate, end: rangeEndDate }).forEach(addEventToDay);
+    } else {
+      addEventToDay(eventStartDate);
+    }
   });
 
   // Create day events array
@@ -58,14 +70,14 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
   return (
     <div className="overflow-hidden rounded-lg border">
       {/* Header - Day names */}
-      <div className="grid grid-cols-7 border-b bg-muted/50">
-        {['월', '화', '수', '목', '금', '토', '일'].map((day, index) => (
+      <div className="grid grid-cols-7 border-b bg-muted/50" data-testid="weekday-headers">
+        {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
           <div
             key={day}
             className={cn(
               'py-2 text-center text-sm font-medium',
-              index === 5 && 'text-blue-600',
-              index === 6 && 'text-red-600'
+              index === 6 && 'text-blue-600',
+              index === 0 && 'text-red-600'
             )}
           >
             {day}
@@ -80,9 +92,9 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
             <DayCell
               key={day.date.toISOString()}
               day={day}
-              isWeekend={dayIndex >= 5}
-              isSaturday={dayIndex === 5}
-              isSunday={dayIndex === 6}
+              isWeekend={dayIndex === 0 || dayIndex === 6}
+              isSaturday={dayIndex === 6}
+              isSunday={dayIndex === 0}
             />
           ))}
         </div>
