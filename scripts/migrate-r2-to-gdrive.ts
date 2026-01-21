@@ -99,7 +99,7 @@ export async function migrateR2WorkNoteFiles(options: MigrationOptions): Promise
   let migratedCount = 0;
 
   for (const [workId, group] of grouped) {
-    const folder = await drive.getOrCreateWorkNoteFolder(userEmail, workId);
+    let folder: DriveFolderRecord | null = null;
 
     for (const file of group) {
       if (!file.r2_key) {
@@ -111,6 +111,10 @@ export async function migrateR2WorkNoteFiles(options: MigrationOptions): Promise
       if (!object) {
         logger.warn(`Skipping file ${file.file_id}: R2 object not found.`);
         continue;
+      }
+
+      if (!folder) {
+        folder = await drive.getOrCreateWorkNoteFolder(userEmail, workId);
       }
 
       const blob = await r2ObjectToBlob(object, file.file_type);

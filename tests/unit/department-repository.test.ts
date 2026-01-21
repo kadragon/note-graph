@@ -115,6 +115,15 @@ describe('DepartmentRepository', () => {
       expect(result.some((d) => d.deptName.includes('개발'))).toBe(true);
     });
 
+    it('should return only matching departments for a query', async () => {
+      // Act
+      const result = await repository.findAll('기획');
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].deptName).toBe('기획팀');
+    });
+
     it('should handle partial name search', async () => {
       // Act
       const result = await repository.findAll('기획');
