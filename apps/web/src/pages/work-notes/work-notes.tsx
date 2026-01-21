@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/car
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
 import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-notes';
 import type { WorkNoteWithStats } from '@web/types/api';
-import { startOfWeek } from 'date-fns';
 import { FileEdit, FileText, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CreateFromPDFDialog } from './components/create-from-pdf-dialog';
@@ -21,7 +20,7 @@ import { CreateFromTextDialog } from './components/create-from-text-dialog';
 import { CreateWorkNoteDialog } from './components/create-work-note-dialog';
 import { ViewWorkNoteDialog } from './components/view-work-note-dialog';
 import { type SortDirection, type SortKey, WorkNotesTable } from './components/work-notes-table';
-import { createWorkNotesComparator } from './lib/sort-work-notes';
+import { filterWorkNotes } from './lib/filter-work-notes';
 
 type WorkNoteTab =
   | 'active'
@@ -63,53 +62,10 @@ export default function WorkNotes() {
     completedWeekWorkNotes,
     completedYearWorkNotes,
     completedAllWorkNotes,
-  } = useMemo(() => {
-    const sortWorkNotes = createWorkNotesComparator(sortKey, sortDirection);
-
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeekDate = startOfWeek(now, { weekStartsOn: 1 });
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-
-    const isCompleted = (workNote: WorkNoteWithStats) =>
-      workNote.todoStats.total > 0 &&
-      workNote.todoStats.remaining === 0 &&
-      workNote.todoStats.pending === 0;
-
-    const getCompletedAt = (workNote: WorkNoteWithStats) =>
-      workNote.latestCompletedAt ? new Date(workNote.latestCompletedAt) : null;
-
-    const isInRange = (completedAt: Date | null, start: Date, end?: Date) =>
-      Boolean(completedAt && completedAt >= start && (!end || completedAt < end));
-
-    // 진행 중: 할일이 없거나 현재 활성화된 할일이 있는 업무노트
-    const active = workNotes
-      .filter((wn) => wn.todoStats.total === 0 || wn.todoStats.remaining > 0)
-      .sort(sortWorkNotes);
-    // 대기중: 남은 할일이 없고 대기 중인 할일만 있는 업무노트
-    const pending = workNotes
-      .filter((wn) => wn.todoStats.remaining === 0 && wn.todoStats.pending > 0)
-      .sort(sortWorkNotes);
-
-    const completedAll = workNotes.filter(isCompleted).sort(sortWorkNotes);
-    // Exclusive ranges: today only, week excluding today, year excluding week
-    const completedToday = completedAll.filter((wn) => isInRange(getCompletedAt(wn), startOfToday));
-    const completedWeek = completedAll.filter((wn) =>
-      isInRange(getCompletedAt(wn), startOfWeekDate, startOfToday)
-    );
-    const completedYear = completedAll.filter((wn) =>
-      isInRange(getCompletedAt(wn), startOfYear, startOfWeekDate)
-    );
-
-    return {
-      activeWorkNotes: active,
-      pendingWorkNotes: pending,
-      completedTodayWorkNotes: completedToday,
-      completedWeekWorkNotes: completedWeek,
-      completedYearWorkNotes: completedYear,
-      completedAllWorkNotes: completedAll,
-    };
-  }, [workNotes, sortKey, sortDirection]);
+  } = useMemo(
+    () => filterWorkNotes(workNotes, sortKey, sortDirection),
+    [workNotes, sortKey, sortDirection]
+  );
 
   // Update selectedWorkNote when workNotes data changes (after edit/update)
   useEffect(() => {

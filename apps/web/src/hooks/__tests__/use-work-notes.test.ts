@@ -14,6 +14,7 @@ import {
   useCreateWorkNote,
   useDeleteWorkNote,
   useDeleteWorkNoteFile,
+  useGoogleDriveStatus,
   useMigrateWorkNoteFiles,
   useUpdateWorkNote,
   useUploadWorkNoteFile,
@@ -33,6 +34,7 @@ vi.mock('@web/lib/api', () => ({
     uploadWorkNoteFile: vi.fn(),
     deleteWorkNoteFile: vi.fn(),
     migrateWorkNoteFiles: vi.fn(),
+    getGoogleDriveStatus: vi.fn(),
   },
 }));
 
@@ -650,5 +652,64 @@ describe('useMigrateWorkNoteFiles', () => {
       title: '성공',
       description: '마이그레이션 완료: 이동 2개 · 건너뜀 0개 · 실패 0개',
     });
+  });
+});
+
+describe('useGoogleDriveStatus', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetFactoryCounter();
+  });
+
+  it('fetches Google Drive status successfully', async () => {
+    const mockStatus = {
+      connected: true,
+      configured: true,
+      calendarConnected: false,
+      connectedAt: '2026-01-15T10:00:00Z',
+    };
+    vi.mocked(API.getGoogleDriveStatus).mockResolvedValue(mockStatus);
+
+    const { result } = renderHookWithClient(() => useGoogleDriveStatus());
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(API.getGoogleDriveStatus).toHaveBeenCalled();
+    expect(result.current.data).toEqual(mockStatus);
+  });
+
+  it('has staleTime configured for caching', async () => {
+    const mockStatus = { connected: true, configured: true, calendarConnected: false };
+    vi.mocked(API.getGoogleDriveStatus).mockResolvedValue(mockStatus);
+
+    const queryClient = createTestQueryClient();
+
+    const { result } = renderHookWithClient(() => useGoogleDriveStatus(), { queryClient });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    // The query should be fresh (not stale) immediately after fetching
+    const queryState = queryClient.getQueryState(['google-drive-status']);
+    expect(queryState?.isInvalidated).toBe(false);
+
+    // staleTime should be configured (query won't refetch immediately)
+    expect(result.current.isStale).toBe(false);
+  });
+
+  it('does not retry on failure', async () => {
+    vi.mocked(API.getGoogleDriveStatus).mockRejectedValue(new Error('Auth error'));
+
+    const { result } = renderHookWithClient(() => useGoogleDriveStatus());
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    // Should only be called once (no retries)
+    expect(API.getGoogleDriveStatus).toHaveBeenCalledTimes(1);
   });
 });
