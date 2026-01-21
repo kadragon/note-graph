@@ -335,6 +335,27 @@ describe('ViewWorkNoteDialog', () => {
     expect(mockGetWorkNote).toHaveBeenCalledTimes(1); // Still 1, not 2
   });
 
+  it('passes workNoteCreatedAt to WorkNoteFileList', async () => {
+    const createdAt = '2024-06-15T10:30:00.000Z';
+    const workNote = createWorkNote({
+      title: '테스트 업무노트',
+      content: '내용',
+      createdAt,
+    });
+
+    mockGetWorkNote.mockResolvedValue(workNote);
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    const fileList = screen.getByTestId('work-note-file-list');
+    expect(fileList).toHaveAttribute('data-created-at', createdAt);
+  });
+
   it('renders markdown content through lazy-loaded component', async () => {
     const workNote = createWorkNote({
       title: '마크다운 테스트',

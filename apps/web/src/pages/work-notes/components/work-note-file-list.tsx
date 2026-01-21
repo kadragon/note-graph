@@ -41,7 +41,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
 
 interface WorkNoteFileListProps {
@@ -118,11 +118,18 @@ export function WorkNoteFileList({ workId, workNoteCreatedAt }: WorkNoteFileList
     localStorage.setItem(STORAGE_KEYS.LOCAL_DRIVE_PATH, path);
   };
 
-  const getWorkNoteYear = () => new Date(workNoteCreatedAt).getUTCFullYear().toString();
+  const workNoteYear = useMemo(() => {
+    const date = new Date(workNoteCreatedAt);
+    if (isNaN(date.getTime())) {
+      console.error(`Invalid workNoteCreatedAt date string: ${workNoteCreatedAt}`);
+      return 'unknown-year';
+    }
+    return date.getUTCFullYear().toString();
+  }, [workNoteCreatedAt]);
 
   const getLocalRelativePath = (file: WorkNoteFile) => {
     const sanitizedName = file.originalName.replace(/[/\\]/g, '_');
-    return `workNote/${getWorkNoteYear()}/${workId}/${sanitizedName}`;
+    return `workNote/${workNoteYear}/${workId}/${sanitizedName}`;
   };
 
   const getLocalFilePath = (file: WorkNoteFile) => {
