@@ -100,6 +100,8 @@ describe('statistics page', () => {
         ],
       },
       isLoading: false,
+      isSuccess: true,
+      isError: false,
       error: null,
       refetch: vi.fn(),
     });
@@ -126,6 +128,8 @@ describe('statistics page', () => {
       },
       statistics: null,
       isLoading: false,
+      isSuccess: false,
+      isError: false,
       error: null,
       refetch: vi.fn(),
     });

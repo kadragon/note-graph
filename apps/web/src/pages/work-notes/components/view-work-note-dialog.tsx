@@ -47,19 +47,17 @@ import type {
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Copy, Edit2, Save, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { groupRecurringTodos } from './group-recurring-todos';
+
+// Lazy load markdown component for bundle size optimization
+const LazyMarkdown = lazy(() =>
+  import('@web/components/lazy-markdown').then((mod) => ({ default: mod.LazyMarkdown }))
+);
+
 import { RecurringTodoGroup } from './recurring-todo-group';
 import { TodoListItem } from './todo-list-item';
 import { WorkNoteFileList } from './work-note-file-list';
-
-// Markdown plugin configurations
-const remarkPlugins = [remarkGfm];
-const rehypePlugins = [rehypeSanitize, rehypeHighlight];
 
 // Constants for styling (same as EditTodoDialog)
 const SELECT_CLASS_NAME =
@@ -141,14 +139,17 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
   });
 
   // Fetch detailed work note (includes references)
+  // Use placeholderData to show list data immediately while fetching detail
   const { data: detailedWorkNote } = useQuery({
     queryKey: ['work-note-detail', workNote?.id],
     queryFn: () => (workNote ? API.getWorkNote(workNote.id) : Promise.resolve(null)),
     enabled: !!workNote && open,
     staleTime: 30_000,
+    placeholderData: workNote ?? undefined,
   });
 
-  const currentWorkNote = detailedWorkNote || workNote;
+  // Fallback to list workNote when detail fetch fails (network error, etc.)
+  const currentWorkNote = detailedWorkNote ?? workNote;
 
   // For editing: show active categories + already selected inactive categories
   const editableCategories = useMemo(() => {
@@ -606,10 +607,11 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
                 <div
                   className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800"
                   data-color-mode={colorMode}
+                  data-testid="lazy-markdown"
                 >
-                  <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
-                    {currentWorkNote.content}
-                  </ReactMarkdown>
+                  <Suspense fallback={<div className="text-muted-foreground">로딩 중...</div>}>
+                    <LazyMarkdown>{currentWorkNote.content}</LazyMarkdown>
+                  </Suspense>
                 </div>
               )}
             </div>

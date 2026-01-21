@@ -35,7 +35,7 @@ import type { Person } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Check, ChevronsUpDown, History, Loader2, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 
 interface PersonDialogProps {
   open: boolean;
@@ -52,17 +52,65 @@ interface ValidationErrors {
   currentPosition?: string;
 }
 
+interface FormState {
+  name: string;
+  personId: string;
+  phoneExt: string;
+  currentDept: string;
+  currentPosition: string;
+  errors: ValidationErrors;
+}
+
+type FormAction =
+  | { type: 'SET_FIELD'; field: keyof Omit<FormState, 'errors'>; value: string }
+  | { type: 'SET_ERRORS'; errors: ValidationErrors }
+  | { type: 'CLEAR_FIELD_ERROR'; field: keyof ValidationErrors }
+  | { type: 'RESET' }
+  | { type: 'LOAD_INITIAL'; data: Person };
+
+const initialFormState: FormState = {
+  name: '',
+  personId: '',
+  phoneExt: '',
+  currentDept: '',
+  currentPosition: '',
+  errors: {},
+};
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.value };
+    case 'SET_ERRORS':
+      return { ...state, errors: action.errors };
+    case 'CLEAR_FIELD_ERROR':
+      return { ...state, errors: { ...state.errors, [action.field]: undefined } };
+    case 'RESET':
+      return initialFormState;
+    case 'LOAD_INITIAL':
+      // Note: errors are cleared by the useEffect on dialog open, not here
+      return {
+        ...state,
+        name: action.data.name,
+        personId: action.data.personId,
+        phoneExt: action.data.phoneExt ?? '',
+        currentDept: action.data.currentDept ?? '',
+        currentPosition: action.data.currentPosition ?? '',
+      };
+    default:
+      return state;
+  }
+}
+
 export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDialogProps) {
-  const [name, setName] = useState('');
-  const [personId, setPersonId] = useState('');
-  const [phoneExt, setPhoneExt] = useState('');
-  const [currentDept, setCurrentDept] = useState('');
-  const [currentPosition, setCurrentPosition] = useState('');
+  const [form, dispatch] = useReducer(formReducer, initialFormState);
+  const { name, personId, phoneExt, currentDept, currentPosition, errors } = form;
+
+  // UI state (independent of form data)
   const [deptOpen, setDeptOpen] = useState(false);
   const [deptSearch, setDeptSearch] = useState('');
   const [newDeptName, setNewDeptName] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [errors, setErrors] = useState<ValidationErrors>({});
 
   const isEditMode = mode === 'edit';
 
@@ -87,30 +135,20 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
   // Reset errors when dialog opens or closes
   useEffect(() => {
     if (open) {
-      setErrors({});
+      dispatch({ type: 'SET_ERRORS', errors: {} });
     }
   }, [open]);
 
   // Pre-fill form fields in edit mode
   useEffect(() => {
     if (isEditMode && initialData) {
-      setName(initialData.name);
-      setPersonId(initialData.personId);
-      setPhoneExt(initialData.phoneExt || '');
-      setCurrentDept(initialData.currentDept || '');
-      setCurrentPosition(initialData.currentPosition || '');
+      dispatch({ type: 'LOAD_INITIAL', data: initialData });
       setDeptSearch('');
-      setErrors({});
     } else if (!isEditMode && open) {
       // Reset form in create mode when dialog opens
-      setName('');
-      setPersonId('');
-      setPhoneExt('');
-      setCurrentDept('');
-      setCurrentPosition('');
+      dispatch({ type: 'RESET' });
       setDeptSearch('');
       setHistoryOpen(false);
-      setErrors({});
     }
   }, [isEditMode, initialData, open]);
 
@@ -153,7 +191,7 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
       newErrors.currentPosition = '직책은 100자 이하여야 합니다';
     }
 
-    setErrors(newErrors);
+    dispatch({ type: 'SET_ERRORS', errors: newErrors });
     return Object.keys(newErrors).length === 0;
   };
 
@@ -189,13 +227,8 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
       }
 
       // Reset form, errors and close dialog on success
-      setName('');
-      setPersonId('');
-      setPhoneExt('');
-      setCurrentDept('');
-      setCurrentPosition('');
+      dispatch({ type: 'RESET' });
       setHistoryOpen(false);
-      setErrors({});
       onOpenChange(false);
     } catch {
       // Error handled by mutation hook (toast notification)
@@ -207,7 +240,7 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
 
     try {
       const dept = await createDeptMutation.mutateAsync(toCreateDepartmentRequest(newDeptName));
-      setCurrentDept(dept.deptName);
+      dispatch({ type: 'SET_FIELD', field: 'currentDept', value: dept.deptName });
       setNewDeptName('');
       setDeptOpen(false);
       setDeptSearch('');
@@ -234,10 +267,9 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
                 id="name"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value);
-                  // Clear error when user starts typing
+                  dispatch({ type: 'SET_FIELD', field: 'name', value: e.target.value });
                   if (errors.name) {
-                    setErrors((prev) => ({ ...prev, name: undefined }));
+                    dispatch({ type: 'CLEAR_FIELD_ERROR', field: 'name' });
                   }
                 }}
                 placeholder="이름을 입력하세요"
@@ -252,10 +284,9 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
                 id="personId"
                 value={personId}
                 onChange={(e) => {
-                  setPersonId(e.target.value);
-                  // Clear error when user starts typing
+                  dispatch({ type: 'SET_FIELD', field: 'personId', value: e.target.value });
                   if (errors.personId) {
-                    setErrors((prev) => ({ ...prev, personId: undefined }));
+                    dispatch({ type: 'CLEAR_FIELD_ERROR', field: 'personId' });
                   }
                 }}
                 placeholder="6자리 사번"
@@ -275,9 +306,9 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
                 id="phoneExt"
                 value={phoneExt}
                 onChange={(e) => {
-                  setPhoneExt(e.target.value);
+                  dispatch({ type: 'SET_FIELD', field: 'phoneExt', value: e.target.value });
                   if (errors.phoneExt) {
-                    setErrors((prev) => ({ ...prev, phoneExt: undefined }));
+                    dispatch({ type: 'CLEAR_FIELD_ERROR', field: 'phoneExt' });
                   }
                 }}
                 placeholder="연락처 (예: 3346, 043-230-3346)"
@@ -375,15 +406,15 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
                             key={dept.deptName}
                             value={dept.deptName}
                             onSelect={() => {
-                              setCurrentDept(dept.deptName);
+                              dispatch({
+                                type: 'SET_FIELD',
+                                field: 'currentDept',
+                                value: dept.deptName,
+                              });
                               setDeptOpen(false);
                               setDeptSearch('');
-                              // Clear error when user selects a dept
                               if (errors.currentDept) {
-                                setErrors((prev) => ({
-                                  ...prev,
-                                  currentDept: undefined,
-                                }));
+                                dispatch({ type: 'CLEAR_FIELD_ERROR', field: 'currentDept' });
                               }
                             }}
                           >
@@ -412,13 +443,9 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
                 id="currentPosition"
                 value={currentPosition}
                 onChange={(e) => {
-                  setCurrentPosition(e.target.value);
-                  // Clear error when user starts typing
+                  dispatch({ type: 'SET_FIELD', field: 'currentPosition', value: e.target.value });
                   if (errors.currentPosition) {
-                    setErrors((prev) => ({
-                      ...prev,
-                      currentPosition: undefined,
-                    }));
+                    dispatch({ type: 'CLEAR_FIELD_ERROR', field: 'currentPosition' });
                   }
                 }}
                 placeholder="예: 팀장, 대리, 과장"
@@ -500,7 +527,7 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
               type="button"
               variant="outline"
               onClick={() => {
-                setErrors({});
+                dispatch({ type: 'SET_ERRORS', errors: {} });
                 onOpenChange(false);
               }}
               disabled={mutation.isPending}
