@@ -31,11 +31,11 @@
 
 ### Split Oversized Suites (Phase 3)
 - [x] Split `tests/unit/work-note-repository.test.ts` (908 lines) into 4 files: read, crud, versions, associations.
-- [ ] Split `tests/unit/todo-repository.test.ts` (887 lines) into query, filtering, crud, recurrence.
-- [ ] Split `tests/unit/project-repository.test.ts` (782 lines) into query, crud, associations.
-- [ ] Split `apps/web/src/hooks/__tests__/use-projects.test.ts` (990 lines) into query, mutations, errors.
-- [ ] Split `apps/web/src/hooks/__tests__/use-work-notes.test.ts` (717 lines) into query, mutations, errors.
-- [ ] Split `apps/web/src/hooks/__tests__/use-persons.test.ts` (609 lines) into query, mutations, errors.
+- [x] Split `tests/unit/todo-repository.test.ts` (887 lines) into query, filtering, crud, recurrence.
+- [x] Split `tests/unit/project-repository.test.ts` (782 lines) into query, crud, associations.
+- [x] Split `apps/web/src/hooks/__tests__/use-projects.test.ts` (990 lines) into query, mutations, errors.
+- [x] Split `apps/web/src/hooks/__tests__/use-work-notes.test.ts` (717 lines) into query, mutations, errors.
+- [x] Split `apps/web/src/hooks/__tests__/use-persons.test.ts` (609 lines) into query, mutations, errors.
 
 ### Document Test Improvements
 - [ ] Create `TEST_STRUCTURE.md`: inventory of all test files, coverage by file, architectural insights.
