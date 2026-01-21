@@ -1,17 +1,13 @@
 // Trace: TASK-016
-// Basic API integration tests
-// Demonstrates testing infrastructure for Cloudflare Workers
+// Basic API integration tests for core system routes.
 
 import { env, SELF } from 'cloudflare:test';
 import type { Env } from '@worker/types/env';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-describe('API Integration Tests', () => {
-  beforeAll(async () => {
-    // Initialize test database if needed
-    // Bindings are provided by @cloudflare/vitest-pool-workers
-  });
+import { authFetch } from '../test-setup';
 
+describe('System API Routes', () => {
   describe('Health Check', () => {
     it('should return 200 for /health endpoint', async () => {
       const response = await SELF.fetch('http://localhost/health');
@@ -51,11 +47,7 @@ describe('API Integration Tests', () => {
     });
 
     it('should accept authenticated requests with Cloudflare Access headers', async () => {
-      const response = await SELF.fetch('http://localhost/api/me', {
-        headers: {
-          'Cf-Access-Authenticated-User-Email': 'test@example.com',
-        },
-      });
+      const response = await authFetch('/api/me');
 
       expect(response.status).toBe(200);
 
@@ -76,11 +68,7 @@ describe('API Integration Tests', () => {
       testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-root-folder';
 
       try {
-        const response = await SELF.fetch('http://localhost/api/auth/google/status', {
-          headers: {
-            'Cf-Access-Authenticated-User-Email': 'test@example.com',
-          },
-        });
+        const response = await authFetch('/api/auth/google/status');
 
         expect(response.status).toBe(200);
         expect(response.headers.get('X-Google-Drive-Configured')).toBe('true');

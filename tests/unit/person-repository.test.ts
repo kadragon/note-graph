@@ -316,6 +316,33 @@ describe('PersonRepository', () => {
       const history = await repository.getDepartmentHistory('123456');
       expect(history.length).toBe(0);
     });
+
+    it('should auto-create department when importing person', async () => {
+      // Arrange
+      const importRepository = new PersonRepository(testEnv.DB, {
+        autoCreateDepartment: true,
+      });
+      const deptName = '신규부서';
+
+      // Act
+      const result = await importRepository.create({
+        personId: '999001',
+        name: '김신규',
+        currentDept: deptName,
+      });
+
+      // Assert
+      expect(result.currentDept).toBe(deptName);
+
+      const department = await testEnv.DB.prepare(
+        'SELECT dept_name as deptName, is_active as isActive FROM departments WHERE dept_name = ?'
+      )
+        .bind(deptName)
+        .first<{ deptName: string; isActive: number }>();
+      expect(department).not.toBeNull();
+      expect(department?.deptName).toBe(deptName);
+      expect(department?.isActive).toBe(1);
+    });
   });
 
   describe('update()', () => {

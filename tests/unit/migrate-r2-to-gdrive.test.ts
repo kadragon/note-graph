@@ -249,6 +249,40 @@ describe('migrateR2WorkNoteFiles', () => {
       gdrive_file_id: null,
     });
   });
+
+  it('does not create Drive folders when all R2 objects are missing', async () => {
+    const workId = 'WORK-890';
+    const fileId = 'FILE-4';
+    const r2Key = `work-notes/${workId}/files/${fileId}`;
+    const uploadedBy = 'tester@example.com';
+    const now = new Date().toISOString();
+
+    await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
+    await baseEnv.DB.prepare(
+      `INSERT INTO work_note_files (
+        file_id, work_id, r2_key, original_name, file_type, file_size,
+        uploaded_by, uploaded_at, storage_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(fileId, workId, r2Key, 'missing.pdf', 'application/pdf', 0, uploadedBy, now, 'R2')
+      .run();
+
+    const r2 = new MockR2();
+    const drive = {
+      getOrCreateWorkNoteFolder: vi.fn(),
+      uploadFile: vi.fn(),
+    };
+
+    const migrated = await migrateR2WorkNoteFiles({
+      db: baseEnv.DB,
+      r2: r2 as unknown as R2Bucket,
+      drive,
+      userEmail: uploadedBy,
+    });
+
+    expect(migrated).toBe(0);
+    expect(drive.getOrCreateWorkNoteFolder).not.toHaveBeenCalled();
+  });
 });
 
 describe('runMigrationCli', () => {
