@@ -18,7 +18,7 @@
 - [x] PersonDialog: consolidate 10+ useState fields into a single form reducer (PersonDialog#L56-L65)
 
 ### Bundle Size
-- [ ] ViewWorkNoteDialog: lazy-load react-markdown + rehype/remark plugins (ViewWorkNoteDialog#L51-L62)
+- [x] ViewWorkNoteDialog: lazy-load react-markdown + rehype/remark plugins (ViewWorkNoteDialog#L51-L62)
 
 ---
 

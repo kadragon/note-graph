@@ -200,6 +200,7 @@ export function useGoogleDriveStatus() {
     queryKey: ['google-drive-status'],
     queryFn: () => API.getGoogleDriveStatus(),
     retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes - status rarely changes
   });
 }
 
