@@ -122,7 +122,6 @@
 - `apps/web/src/lib/mappers/department.test.ts`
 - `apps/web/src/lib/pdf/generate-work-note-pdf.test.ts`
 - `apps/web/src/lib/pdf/markdown-renderer.test.tsx`
-- `apps/web/src/lib/protocol-handler.test.ts`
 - `apps/web/src/lib/utils.test.ts`
 - `apps/web/src/test/pwa-config.test.ts`
 - `apps/web/src/test/setup.test.tsx`
@@ -132,7 +131,7 @@
 - API route coverage: integration tests for REST endpoints, file handling, project associations, and error mapping.
 - Frontend hooks: query/mutation hooks validated for data, cache invalidation, and error toasts.
 - UI flows: page-level tests for dashboards, CRUD screens, and modal behaviors.
-- Utilities: frontend helpers (date utils, mappers, PDFs, protocol handler, PWA setup).
+- Utilities: frontend helpers (date utils, mappers, PDFs, PWA setup).
 
 ## Architectural Insights
 - Worker tests emphasize repository pattern and service boundaries with targeted integration coverage for route wiring.

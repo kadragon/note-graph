@@ -11,10 +11,7 @@ import {
   AlertDialogTitle,
 } from '@web/components/ui/alert-dialog';
 import { Button } from '@web/components/ui/button';
-import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@web/components/ui/popover';
-import { STORAGE_KEYS } from '@web/constants/storage';
 import { useToast } from '@web/hooks/use-toast';
 import {
   downloadWorkNoteFile,
@@ -25,28 +22,23 @@ import {
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
-import { buildLocalFileUrl } from '@web/lib/protocol-handler';
 import type { WorkNoteFile, WorkNoteFileMigrationResult } from '@web/types/api';
 import {
   ArrowRightLeft,
   Cloud,
-  Copy,
   Database,
   Download,
   ExternalLink,
   Eye,
   FileIcon,
-  FolderOpen,
-  Settings,
   Trash2,
   Upload,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
 
 interface WorkNoteFileListProps {
   workId: string;
-  workNoteCreatedAt: string;
 }
 
 function formatFileSize(bytes: number): string {
@@ -75,12 +67,11 @@ function getDriveLink(file: WorkNoteFile): string | null {
   return file.gdriveWebViewLink ?? null;
 }
 
-export function WorkNoteFileList({ workId, workNoteCreatedAt }: WorkNoteFileListProps) {
+export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [fileToDelete, setFileToDelete] = useState<WorkNoteFile | null>(null);
   const [migrationResult, setMigrationResult] = useState<WorkNoteFileMigrationResult | null>(null);
-  const [localDrivePath, setLocalDrivePath] = useState('');
   const { toast } = useToast();
 
   const { data, isLoading } = useWorkNoteFiles(workId);
@@ -93,68 +84,6 @@ export function WorkNoteFileList({ workId, workNoteCreatedAt }: WorkNoteFileList
   const isDriveConnected = driveStatus?.connected ?? false;
 
   const hasLegacyR2Files = files.some((file) => file.storageType === 'R2');
-
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.LOCAL_DRIVE_PATH);
-    if (saved) {
-      setLocalDrivePath(saved);
-    }
-
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEYS.LOCAL_DRIVE_PATH && event.newValue) {
-        setLocalDrivePath(event.newValue);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  const handleLocalDrivePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const path = e.target.value;
-    setLocalDrivePath(path);
-    localStorage.setItem(STORAGE_KEYS.LOCAL_DRIVE_PATH, path);
-  };
-
-  const workNoteYear = useMemo(() => {
-    const date = new Date(workNoteCreatedAt);
-    if (isNaN(date.getTime())) {
-      console.error(`Invalid workNoteCreatedAt date string: ${workNoteCreatedAt}`);
-      return 'unknown-year';
-    }
-    return date.getUTCFullYear().toString();
-  }, [workNoteCreatedAt]);
-
-  const getLocalRelativePath = (file: WorkNoteFile) => {
-    const sanitizedName = file.originalName.replace(/[/\\]/g, '_');
-    return `workNote/${workNoteYear}/${workId}/${sanitizedName}`;
-  };
-
-  const getLocalFilePath = (file: WorkNoteFile) => {
-    if (!localDrivePath) return null;
-    const sep = localDrivePath.includes('\\') ? '\\' : '/';
-    const cleanPath = localDrivePath.replace(/[/\\]$/, '');
-    const relativePath = getLocalRelativePath(file).replace(/\//g, sep);
-    return `${cleanPath}${sep}${relativePath}`;
-  };
-
-  const copyLocalPath = async (file: WorkNoteFile) => {
-    const path = getLocalFilePath(file);
-    if (path) {
-      try {
-        await navigator.clipboard.writeText(path);
-        toast({ description: '로컬 경로가 복사되었습니다.' });
-      } catch (error) {
-        console.error('Failed to copy path:', error);
-        toast({
-          variant: 'destructive',
-          description: '클립보드에 복사할 수 없습니다.',
-        });
-      }
-    }
-  };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
@@ -226,47 +155,6 @@ export function WorkNoteFileList({ workId, workNoteCreatedAt }: WorkNoteFileList
         <Label className="text-base font-semibold">첨부파일</Label>
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium leading-none">로컬 Google Drive 설정</h4>
-                    <p className="text-sm text-muted-foreground">
-                      로컬 동기화 경로를 설정하면 파일 경로를 쉽게 복사할 수 있습니다.
-                    </p>
-                    <div className="grid gap-2">
-                      <Label htmlFor="local-path">로컬 경로</Label>
-                      <Input
-                        id="local-path"
-                        value={localDrivePath}
-                        onChange={handleLocalDrivePathChange}
-                        placeholder="예: C:\Users\Name\Google Drive"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2 border-t pt-4">
-                    <h4 className="font-medium leading-none">프로토콜 핸들러</h4>
-                    <p className="text-sm text-muted-foreground">
-                      로컬에서 열기 버튼을 사용하려면 프로토콜 핸들러를 설치하세요.
-                    </p>
-                    <a
-                      href="https://github.com/kadragon/note-graph/releases"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                    >
-                      <Download className="h-3 w-3" />
-                      다운로드 (GitHub Releases)
-                    </a>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
             {hasLegacyR2Files && (
               <Button
                 type="button"
@@ -391,33 +279,6 @@ export function WorkNoteFileList({ workId, workNoteCreatedAt }: WorkNoteFileList
                     <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                       오늘 업로드
                     </span>
-                  )}
-                  {isDriveFile && localDrivePath && (
-                    <>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyLocalPath(file)}
-                        className="h-8 w-8 p-0"
-                        title="로컬 경로 복사"
-                      >
-                        <Copy className="h-4 w-4" />
-                        <span className="sr-only">로컬 경로 복사</span>
-                      </Button>
-                      <Button
-                        asChild
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        title="로컬에서 열기"
-                      >
-                        <a href={buildLocalFileUrl(localDrivePath, getLocalRelativePath(file))}>
-                          <FolderOpen className="h-4 w-4" />
-                          <span className="sr-only">로컬에서 열기</span>
-                        </a>
-                      </Button>
-                    </>
                   )}
                   {driveLink && (
                     <Button
