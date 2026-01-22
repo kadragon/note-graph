@@ -20,9 +20,7 @@ vi.mock('@web/pages/dashboard/components/edit-todo-dialog', () => ({
 }));
 
 vi.mock('@web/pages/work-notes/components/work-note-file-list', () => ({
-  WorkNoteFileList: ({ workNoteCreatedAt }: { workNoteCreatedAt: string }) => (
-    <div data-testid="work-note-file-list" data-created-at={workNoteCreatedAt} />
-  ),
+  WorkNoteFileList: () => <div data-testid="work-note-file-list" />,
 }));
 
 vi.mock('@web/pages/work-notes/components/recurring-todo-group', () => ({
@@ -334,28 +332,6 @@ describe('ViewWorkNoteDialog', () => {
     await screen.findByText('캐시된 참조');
     expect(mockGetWorkNote).toHaveBeenCalledTimes(1); // Still 1, not 2
   });
-
-  it('passes workNoteCreatedAt to WorkNoteFileList', async () => {
-    const createdAt = '2024-06-15T10:30:00.000Z';
-    const workNote = createWorkNote({
-      title: '테스트 업무노트',
-      content: '내용',
-      createdAt,
-    });
-
-    mockGetWorkNote.mockResolvedValue(workNote);
-
-    vi.mocked(useTaskCategories).mockReturnValue({
-      data: [],
-      isLoading: false,
-    } as unknown as ReturnType<typeof useTaskCategories>);
-
-    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
-
-    const fileList = screen.getByTestId('work-note-file-list');
-    expect(fileList).toHaveAttribute('data-created-at', createdAt);
-  });
-
   it('renders markdown content through lazy-loaded component', async () => {
     const workNote = createWorkNote({
       title: '마크다운 테스트',

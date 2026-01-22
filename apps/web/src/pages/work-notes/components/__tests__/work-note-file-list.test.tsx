@@ -89,7 +89,7 @@ describe('WorkNoteFileList', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
-    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
+    render(<WorkNoteFileList workId="work-1" />);
 
     const fileLink = screen.getByRole('link', { name: 'drive-file.pdf' });
     expect(fileLink).toHaveAttribute('href', driveLink);
@@ -115,7 +115,7 @@ describe('WorkNoteFileList', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
-    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
+    render(<WorkNoteFileList workId="work-1" />);
 
     expect(screen.getByText('Cloudflare R2')).toBeInTheDocument();
     expect(
@@ -157,7 +157,7 @@ describe('WorkNoteFileList', () => {
       isPending: false,
     } as unknown as ReturnType<typeof useMigrateWorkNoteFiles>);
 
-    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
+    render(<WorkNoteFileList workId="work-1" />);
 
     await user.click(screen.getByRole('button', { name: 'R2 파일 Google Drive로 옮기기' }));
 

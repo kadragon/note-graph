@@ -39,7 +39,6 @@ import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-uti
 
 interface WorkNoteFileListProps {
   workId: string;
-  workNoteCreatedAt: string;
 }
 
 function formatFileSize(bytes: number): string {
@@ -68,10 +67,7 @@ function getDriveLink(file: WorkNoteFile): string | null {
   return file.gdriveWebViewLink ?? null;
 }
 
-export function WorkNoteFileList({
-  workId,
-  workNoteCreatedAt: _workNoteCreatedAt,
-}: WorkNoteFileListProps) {
+export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [fileToDelete, setFileToDelete] = useState<WorkNoteFile | null>(null);
