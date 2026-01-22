@@ -358,18 +358,17 @@ describe('WorkNoteRepository - CRUD operations', () => {
 
     it('should update updatedAt timestamp', async () => {
       // Arrange
-      const originalNote = await repository.findById(existingWorkId);
-      const originalUpdatedAt = originalNote?.updatedAt;
-
-      // Wait a moment to ensure timestamp difference
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      const forcedUpdatedAt = '2000-01-01T00:00:00.000Z';
+      await testEnv.DB.prepare('UPDATE work_notes SET updated_at = ? WHERE work_id = ?')
+        .bind(forcedUpdatedAt, existingWorkId)
+        .run();
 
       // Act
       await repository.update(existingWorkId, { title: 'New Title' });
 
       // Assert
       const updatedNote = await repository.findById(existingWorkId);
-      expect(updatedNote?.updatedAt).not.toBe(originalUpdatedAt);
+      expect(updatedNote?.updatedAt).not.toBe(forcedUpdatedAt);
     });
 
     it('should handle empty persons array', async () => {

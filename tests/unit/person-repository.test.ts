@@ -492,17 +492,17 @@ describe('PersonRepository', () => {
 
     it('should update updatedAt timestamp', async () => {
       // Arrange
-      const original = await repository.findById(existingPersonId);
-
-      // Wait to ensure timestamp difference
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      const forcedUpdatedAt = '2000-01-01T00:00:00.000Z';
+      await testEnv.DB.prepare('UPDATE persons SET updated_at = ? WHERE person_id = ?')
+        .bind(forcedUpdatedAt, existingPersonId)
+        .run();
 
       // Act
       await repository.update(existingPersonId, { name: 'New Name' });
 
       // Assert
       const updated = await repository.findById(existingPersonId);
-      expect(updated?.updatedAt).not.toBe(original?.updatedAt);
+      expect(updated?.updatedAt).not.toBe(forcedUpdatedAt);
     });
   });
 

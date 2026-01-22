@@ -5,9 +5,43 @@ import { env } from 'cloudflare:test';
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { CreateTodoInput } from '@worker/schemas/todo';
 import type { Env } from '@worker/types/env';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const REAL_DATE = Date;
+const BASE_NOW = new REAL_DATE('2025-01-10T12:00:00.000Z');
+
+const useFixedDate = () => {
+  class MockDate extends REAL_DATE {
+    constructor(...args: unknown[]) {
+      if (args.length === 0) {
+        super(BASE_NOW.getTime());
+        return;
+      }
+      // @ts-expect-error allow variadic Date constructor args
+      super(...args);
+    }
+
+    static now() {
+      return BASE_NOW.getTime();
+    }
+  }
+
+  // @ts-expect-error override global Date for deterministic tests
+  globalThis.Date = MockDate;
+};
+
+const restoreDate = () => {
+  globalThis.Date = REAL_DATE;
+};
+
+beforeAll(() => {
+  useFixedDate();
+});
+
+afterAll(() => {
+  restoreDate();
+});
 
 describe('TodoRepository - Recurrence Logic', () => {
   let repository: TodoRepository;
@@ -24,7 +58,7 @@ describe('TodoRepository - Recurrence Logic', () => {
 
     // Create a test work note
     testWorkId = 'WORK-TEST-001';
-    const now = new Date().toISOString();
+    const now = BASE_NOW.toISOString();
     await testEnv.DB.prepare(
       'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
     )
@@ -35,7 +69,7 @@ describe('TodoRepository - Recurrence Logic', () => {
   describe('update() - Recurrence Logic', () => {
     it('should create new todo instance when completing daily recurring todo (DUE_DATE)', async () => {
       // Arrange - create a daily recurring todo
-      const dueDate = new Date();
+      const dueDate = new Date(BASE_NOW.getTime());
       dueDate.setDate(dueDate.getDate() + 1);
 
       const input: CreateTodoInput = {
@@ -68,7 +102,7 @@ describe('TodoRepository - Recurrence Logic', () => {
 
     it('should create new todo instance when completing weekly recurring todo', async () => {
       // Arrange
-      const dueDate = new Date();
+      const dueDate = new Date(BASE_NOW.getTime());
       dueDate.setDate(dueDate.getDate() + 7);
 
       const input: CreateTodoInput = {
@@ -99,7 +133,7 @@ describe('TodoRepository - Recurrence Logic', () => {
 
     it('should create new todo instance when completing monthly recurring todo', async () => {
       // Arrange
-      const dueDate = new Date();
+      const dueDate = new Date(BASE_NOW.getTime());
       dueDate.setMonth(dueDate.getMonth() + 1);
 
       const input: CreateTodoInput = {
@@ -124,7 +158,7 @@ describe('TodoRepository - Recurrence Logic', () => {
 
     it('should use completion date for COMPLETION_DATE recurrence type', async () => {
       // Arrange
-      const pastDueDate = new Date();
+      const pastDueDate = new Date(BASE_NOW.getTime());
       pastDueDate.setDate(pastDueDate.getDate() - 7); // Due a week ago
 
       const input: CreateTodoInput = {
@@ -137,7 +171,7 @@ describe('TodoRepository - Recurrence Logic', () => {
       const created = await repository.create(testWorkId, input);
 
       // Act - complete today (late)
-      const completionDate = new Date();
+      const completionDate = new Date(BASE_NOW.getTime());
       await repository.update(created.todoId, { status: '완료' });
 
       // Assert
@@ -179,7 +213,7 @@ describe('TodoRepository - Recurrence Logic', () => {
         title: 'Task',
         repeatRule: 'DAILY',
         recurrenceType: 'DUE_DATE',
-        dueDate: new Date().toISOString(),
+        dueDate: new Date(BASE_NOW.getTime()).toISOString(),
       };
 
       const created = await repository.create(testWorkId, input);
@@ -197,9 +231,9 @@ describe('TodoRepository - Recurrence Logic', () => {
 
     it('should copy next due_date to wait_until for new recurring instance', async () => {
       // Arrange
-      const dueDate = new Date();
+      const dueDate = new Date(BASE_NOW.getTime());
       dueDate.setDate(dueDate.getDate() + 1);
-      const waitUntil = new Date();
+      const waitUntil = new Date(BASE_NOW.getTime());
 
       const input: CreateTodoInput = {
         title: 'Daily Task',
@@ -226,7 +260,7 @@ describe('TodoRepository - Recurrence Logic', () => {
       // Arrange
       const input: CreateTodoInput = {
         title: 'Weekly Task',
-        dueDate: new Date().toISOString(),
+        dueDate: new Date(BASE_NOW.getTime()).toISOString(),
         repeatRule: 'WEEKLY',
         recurrenceType: 'COMPLETION_DATE',
       };

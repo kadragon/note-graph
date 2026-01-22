@@ -23,7 +23,42 @@ import {
   startOfYear,
   subWeeks,
 } from 'date-fns';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+const REAL_DATE = Date;
+const FIXED_NOW = new REAL_DATE('2025-01-15T12:00:00.000Z');
+
+const useFixedDate = () => {
+  class MockDate extends REAL_DATE {
+    constructor(...args: unknown[]) {
+      if (args.length === 0) {
+        super(FIXED_NOW.getTime());
+        return;
+      }
+      // @ts-expect-error allow variadic Date constructor args
+      super(...args);
+    }
+
+    static now() {
+      return FIXED_NOW.getTime();
+    }
+  }
+
+  // @ts-expect-error override global Date for deterministic tests
+  globalThis.Date = MockDate;
+};
+
+const restoreDate = () => {
+  globalThis.Date = REAL_DATE;
+};
+
+beforeAll(() => {
+  useFixedDate();
+});
+
+afterAll(() => {
+  restoreDate();
+});
 
 describe('Date Utils - getStatisticsPeriodRange', () => {
   describe('this-week period', () => {

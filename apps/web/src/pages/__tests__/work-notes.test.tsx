@@ -4,7 +4,7 @@ import { createWorkNoteWithStats, resetFactoryCounter } from '@web/test/factorie
 import { render, screen, waitFor, within } from '@web/test/setup';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { startOfWeek } from 'date-fns';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import WorkNotes from '../work-notes';
 
@@ -57,6 +57,41 @@ vi.mock('../work-notes/components/view-work-note-dialog', () => ({
 }));
 
 describe('work-notes page', () => {
+  const REAL_DATE = Date;
+  const FIXED_NOW = new REAL_DATE(2025, 0, 15, 12, 0, 0);
+
+  const useFixedDate = () => {
+    class MockDate extends REAL_DATE {
+      constructor(...args: unknown[]) {
+        if (args.length === 0) {
+          super(FIXED_NOW.getTime());
+          return;
+        }
+        // @ts-expect-error allow variadic Date constructor args
+        super(...args);
+      }
+
+      static now() {
+        return FIXED_NOW.getTime();
+      }
+    }
+
+    // @ts-expect-error override global Date for deterministic tests
+    globalThis.Date = MockDate;
+  };
+
+  const restoreDate = () => {
+    globalThis.Date = REAL_DATE;
+  };
+
+  beforeAll(() => {
+    useFixedDate();
+  });
+
+  afterAll(() => {
+    restoreDate();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     resetFactoryCounter();
