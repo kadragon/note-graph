@@ -76,8 +76,7 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
             key={day}
             className={cn(
               'py-2 text-center text-sm font-medium',
-              index === 6 && 'text-blue-600',
-              index === 0 && 'text-red-600'
+              (index === 0 || index === 6) && 'text-red-600'
             )}
           >
             {day}
@@ -93,8 +92,6 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
               key={day.date.toISOString()}
               day={day}
               isWeekend={dayIndex === 0 || dayIndex === 6}
-              isSaturday={dayIndex === 6}
-              isSunday={dayIndex === 0}
             />
           ))}
         </div>
@@ -106,11 +103,9 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
 interface DayCellProps {
   day: DayEvents;
   isWeekend: boolean;
-  isSaturday: boolean;
-  isSunday: boolean;
 }
 
-function DayCell({ day, isSaturday, isSunday }: DayCellProps) {
+function DayCell({ day, isWeekend }: DayCellProps) {
   const today = isToday(day.date);
   const maxVisibleEvents = 2;
   const visibleEvents = day.events.slice(0, maxVisibleEvents);
@@ -124,8 +119,7 @@ function DayCell({ day, isSaturday, isSunday }: DayCellProps) {
           className={cn(
             'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs',
             today && 'bg-primary text-primary-foreground font-bold',
-            !today && isSaturday && 'text-blue-600',
-            !today && isSunday && 'text-red-600'
+            !today && isWeekend && 'text-red-600'
           )}
         >
           {format(day.date, 'd')}
