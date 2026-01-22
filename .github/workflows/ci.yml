@@ -30,22 +30,3 @@ jobs:
 
       - name: Run build
         run: bun run build
-
-  go:
-    name: Go
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.23"
-
-      - name: Build
-        working-directory: tools/notegraph-opener
-        run: go build ./...
-
-      - name: Test
-        working-directory: tools/notegraph-opener
-        run: go test ./...

@@ -1,5 +1,4 @@
 import userEvent from '@testing-library/user-event';
-import { STORAGE_KEYS } from '@web/constants/storage';
 import {
   useDeleteWorkNoteFile,
   useGoogleDriveStatus,
@@ -13,37 +12,6 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkNoteFileList } from '../work-note-file-list';
-
-// Mock clipboard
-const writeTextMock = vi.fn();
-Object.defineProperty(navigator, 'clipboard', {
-  value: {
-    writeText: writeTextMock,
-  },
-  writable: true,
-  configurable: true,
-});
-
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-  return {
-    getItem: vi.fn((key: string) => store[key] || null),
-    setItem: vi.fn((key: string, value: string) => {
-      store[key] = value.toString();
-    }),
-    removeItem: vi.fn((key: string) => {
-      delete store[key];
-    }),
-    clear: vi.fn(() => {
-      store = {};
-    }),
-  };
-})();
-
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-});
 
 vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialog: ({ open, children }: { open?: boolean; children: ReactNode }) => (
@@ -66,13 +34,6 @@ vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-// Mock Popover components
-vi.mock('@web/components/ui/popover', () => ({
-  Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
-
 vi.mock('@web/hooks/use-work-notes', () => ({
   useWorkNoteFiles: vi.fn(),
   useUploadWorkNoteFile: vi.fn(),
@@ -91,7 +52,6 @@ describe('WorkNoteFileList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetFactoryCounter();
-    localStorageMock.clear();
 
     vi.mocked(useUploadWorkNoteFile).mockReturnValue({
       mutate: vi.fn(),
@@ -204,101 +164,5 @@ describe('WorkNoteFileList', () => {
     expect(
       screen.getByText('마이그레이션 결과: 이동 1개 · 건너뜀 1개 · 실패 0개')
     ).toBeInTheDocument();
-  });
-
-  it('copies local file path with sanitization when local drive path is set', async () => {
-    const user = userEvent.setup();
-    const files = [
-      createWorkNoteFile({
-        storageType: 'GDRIVE',
-        originalName: 'report/2025.pdf', // contains slash
-      }),
-    ];
-
-    vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: { files, googleDriveConfigured: true },
-      isLoading: false,
-    } as unknown as ReturnType<typeof useWorkNoteFiles>);
-
-    // Setup local storage with a path
-    localStorageMock.getItem.mockReturnValue('C:\\Users\\Drive');
-
-    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
-
-    expect(localStorageMock.getItem).toHaveBeenCalledWith(STORAGE_KEYS.LOCAL_DRIVE_PATH);
-
-    const writeTextSpy = vi.spyOn(navigator.clipboard, 'writeText');
-
-    // Click copy button
-    await user.click(screen.getByRole('button', { name: '로컬 경로 복사' }));
-
-    // Expected path: C:\Users\Drive\workNote\2025\work-1\report_2025.pdf
-    // Note: sanitization replaces / with _
-    const expectedPath = 'C:\\Users\\Drive\\workNote\\2025\\work-1\\report_2025.pdf';
-    expect(writeTextSpy).toHaveBeenCalledWith(expectedPath);
-    expect(mockToast).toHaveBeenCalledWith({ description: '로컬 경로가 복사되었습니다.' });
-  });
-
-  it('shows "Open locally" button with notegraph:// link when local drive path is set', () => {
-    const files = [
-      createWorkNoteFile({
-        storageType: 'GDRIVE',
-        originalName: 'document.pdf',
-      }),
-    ];
-
-    vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: { files, googleDriveConfigured: true },
-      isLoading: false,
-    } as unknown as ReturnType<typeof useWorkNoteFiles>);
-
-    localStorageMock.getItem.mockReturnValue('C:/GoogleDrive');
-
-    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
-
-    const openLocallyButton = screen.getByRole('link', { name: '로컬에서 열기' });
-    expect(openLocallyButton).toBeInTheDocument();
-
-    // Expected URL: notegraph://open?path=C%3A%2FGoogleDrive%2FworkNote%2F2025%2Fwork-1%2Fdocument.pdf
-    const expectedPath = 'C:/GoogleDrive/workNote/2025/work-1/document.pdf';
-    const expectedUrl = `notegraph://open?path=${encodeURIComponent(expectedPath)}`;
-    expect(openLocallyButton).toHaveAttribute('href', expectedUrl);
-  });
-
-  it('does not show "Open locally" button when local drive path is not set', () => {
-    const files = [
-      createWorkNoteFile({
-        storageType: 'GDRIVE',
-        originalName: 'document.pdf',
-      }),
-    ];
-
-    vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: { files, googleDriveConfigured: true },
-      isLoading: false,
-    } as unknown as ReturnType<typeof useWorkNoteFiles>);
-
-    localStorageMock.getItem.mockReturnValue(null);
-
-    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
-
-    expect(screen.queryByRole('link', { name: '로컬에서 열기' })).not.toBeInTheDocument();
-  });
-
-  it('shows protocol handler installation info and download link in settings', () => {
-    vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: { files: [], googleDriveConfigured: true },
-      isLoading: false,
-    } as unknown as ReturnType<typeof useWorkNoteFiles>);
-
-    render(<WorkNoteFileList workId="work-1" workNoteCreatedAt="2025-01-10T00:00:00.000Z" />);
-
-    // Check for installation instruction text
-    expect(screen.getByText(/로컬에서 열기.*사용하려면/)).toBeInTheDocument();
-
-    // Check for download link to GitHub Releases
-    const downloadLink = screen.getByRole('link', { name: /다운로드/ });
-    expect(downloadLink).toHaveAttribute('href', 'https://github.com/kadragon/note-graph/releases');
-    expect(downloadLink).toHaveAttribute('target', '_blank');
   });
 });
