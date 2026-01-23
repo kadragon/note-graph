@@ -27,6 +27,12 @@ describe('pwaOptions navigateFallbackDenylist', () => {
   });
 });
 
+describe('pwaOptions registerType', () => {
+  it('uses prompt registration to surface update prompts', () => {
+    expect(pwaOptions.registerType).toBe('prompt');
+  });
+});
+
 describe('pwaOptions runtimeCaching', () => {
   it('uses NetworkOnly for /api requests', () => {
     const runtimeCaching = pwaOptions.workbox?.runtimeCaching ?? [];
