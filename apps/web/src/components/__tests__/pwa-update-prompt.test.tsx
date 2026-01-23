@@ -9,12 +9,13 @@ const mockUpdateServiceWorker = vi.fn();
 const mockRegistrationUpdate = vi.fn();
 
 let capturedOptions: RegisterSWOptions | undefined;
+let currentNeedRefresh = true;
 
 vi.mock('virtual:pwa-register/react', () => ({
   useRegisterSW: (options?: RegisterSWOptions) => {
     capturedOptions = options;
     return {
-      needRefresh: [true, vi.fn()],
+      needRefresh: [currentNeedRefresh, vi.fn()],
       offlineReady: [false, vi.fn()],
       updateServiceWorker: mockUpdateServiceWorker,
     };
@@ -26,6 +27,7 @@ describe('pwa update prompt', () => {
     mockUpdateServiceWorker.mockClear();
     mockRegistrationUpdate.mockClear();
     capturedOptions = undefined;
+    currentNeedRefresh = true;
     vi.useRealTimers();
   });
 
@@ -93,5 +95,12 @@ describe('pwa update prompt', () => {
     });
 
     expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not render when no update is needed', () => {
+    currentNeedRefresh = false;
+    const { container } = render(<PwaUpdatePrompt />);
+
+    expect(container).toBeEmptyDOMElement();
   });
 });
