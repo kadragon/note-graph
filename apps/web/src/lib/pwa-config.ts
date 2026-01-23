@@ -41,17 +41,7 @@ export const pwaOptions: Partial<VitePWAOptions> = {
     runtimeCaching: [
       {
         urlPattern: ({ url }) => url.pathname.startsWith('/api'),
-        handler: 'NetworkFirst',
-        options: {
-          cacheName: 'api-cache',
-          expiration: {
-            maxEntries: 100,
-            maxAgeSeconds: 60 * 60 * 24, // 1 day
-          },
-          cacheableResponse: {
-            statuses: [0, 200],
-          },
-        },
+        handler: 'NetworkOnly',
       },
     ],
   },

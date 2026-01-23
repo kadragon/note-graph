@@ -3,6 +3,7 @@ import { SidebarProvider, useSidebar } from '@web/contexts/sidebar-context';
 import { cn } from '@web/lib/utils';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
+import PwaUpdatePrompt from '../pwa-update-prompt';
 import Header from './header';
 import Sidebar from './sidebar';
 
@@ -47,6 +48,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
         )}
       >
         <Header />
+        <PwaUpdatePrompt />
         <main className="flex-1 overflow-auto">
           <div className="h-full">{children}</div>
         </main>

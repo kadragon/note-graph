@@ -1,6 +1,3 @@
 /// <reference types="vite/client" />
-
-declare module '*.css' {
-  const content: Record<string, string>;
-  export default content;
-}
+/// <reference types="vite-plugin-pwa/client" />
+/// <reference types="vite-plugin-pwa/react" />
