@@ -69,4 +69,29 @@ describe('pwa update prompt', () => {
 
     expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
   });
+
+  it('checks for updates when the document becomes visible again', async () => {
+    render(<PwaUpdatePrompt />);
+
+    const registration = {
+      update: mockRegistrationUpdate,
+    } as unknown as ServiceWorkerRegistration;
+
+    await act(() => {
+      capturedOptions?.onRegisteredSW?.('/sw.js', registration);
+    });
+
+    expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
+
+    await act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
+  });
 });

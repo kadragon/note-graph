@@ -22,7 +22,17 @@ export default function PwaUpdatePrompt() {
     const intervalId = window.setInterval(() => {
       void registration.update();
     }, UPDATE_CHECK_INTERVAL_MS);
-    return () => window.clearInterval(intervalId);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void registration.update();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [registration]);
 
   if (!needRefresh) return null;
