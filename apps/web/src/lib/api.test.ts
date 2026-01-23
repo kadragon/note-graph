@@ -60,6 +60,20 @@ describe('API.getDepartments', () => {
       expect.objectContaining({ signal: controller.signal })
     );
   });
+
+  it('uses base endpoint when no params are provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue([]),
+    });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.getDepartments();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/departments', expect.any(Object));
+  });
 });
 
 describe('API.getWorkNotes', () => {

@@ -60,8 +60,8 @@
 - [x] Add repository-level test that department search returns matches for a query (prerequisite to removing integration test).
 - [x] Add person import coverage in repository/API tests that validates imported records (prerequisite to merging `tests/person.test.ts`).
 - [x] Sidebar: when Google Drive is not configured, show "환경 설정 필요" and disable connect/disconnect buttons.
-- [ ] WorkNotesTable: renders empty state message when no work notes are available.
-- [ ] API.getDepartments: uses `/api/departments` with no query string when no params are provided.
+- [x] WorkNotesTable: renders empty state message when no work notes are available.
+- [x] API.getDepartments: uses `/api/departments` with no query string when no params are provided.
 
 ## Structural Cleanup (after tests are green)
 - Remove `tests/departments.test.ts` once repository search coverage is confirmed.
