@@ -26,3 +26,21 @@ describe('pwaOptions navigateFallbackDenylist', () => {
     expect(matchesDenylist(path)).toBe(false);
   });
 });
+
+describe('pwaOptions runtimeCaching', () => {
+  it('uses NetworkOnly for /api requests', () => {
+    const runtimeCaching = pwaOptions.workbox?.runtimeCaching ?? [];
+    const apiRule = runtimeCaching.find((rule) => {
+      if (typeof rule.urlPattern !== 'function') return false;
+      const matchOptions: Parameters<typeof rule.urlPattern>[0] = {
+        url: new URL('https://example.com/api/work-notes'),
+        request: new Request('https://example.com/api/work-notes'),
+        event: {} as Parameters<typeof rule.urlPattern>[0]['event'],
+        sameOrigin: true,
+      };
+      return rule.urlPattern(matchOptions);
+    });
+
+    expect(apiRule?.handler).toBe('NetworkOnly');
+  });
+});

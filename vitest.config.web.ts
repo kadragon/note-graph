@@ -9,6 +9,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './apps/web/src'),
       '@web': path.resolve(__dirname, './apps/web/src'),
       '@shared': path.resolve(__dirname, './packages/shared'),
+      'virtual:pwa-register/react': path.resolve(
+        __dirname,
+        './apps/web/src/test/mocks/pwa-register-react.ts'
+      ),
     },
   },
   test: {
