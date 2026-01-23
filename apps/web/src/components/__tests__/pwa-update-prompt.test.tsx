@@ -1,7 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { act, render, screen } from '@web/test/setup';
 import type { RegisterSWOptions } from 'vite-plugin-pwa/types';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import PwaUpdatePrompt from '../pwa-update-prompt';
 
@@ -22,6 +22,13 @@ vi.mock('virtual:pwa-register/react', () => ({
 }));
 
 describe('pwa update prompt', () => {
+  beforeEach(() => {
+    mockUpdateServiceWorker.mockClear();
+    mockRegistrationUpdate.mockClear();
+    capturedOptions = undefined;
+    vi.useRealTimers();
+  });
+
   it('checks for updates and prompts the user to apply the update', async () => {
     render(<PwaUpdatePrompt />);
 
@@ -40,5 +47,26 @@ describe('pwa update prompt', () => {
     await user.click(screen.getByRole('button', { name: '업데이트' }));
 
     expect(mockUpdateServiceWorker).toHaveBeenCalledTimes(1);
+  });
+
+  it('checks for updates every hour after registration', async () => {
+    vi.useFakeTimers();
+    render(<PwaUpdatePrompt />);
+
+    const registration = {
+      update: mockRegistrationUpdate,
+    } as unknown as ServiceWorkerRegistration;
+
+    await act(() => {
+      capturedOptions?.onRegisteredSW?.('/sw.js', registration);
+    });
+
+    expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
+
+    await act(() => {
+      vi.advanceTimersByTime(60 * 60 * 1000);
+    });
+
+    expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
   });
 });
