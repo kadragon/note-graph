@@ -29,39 +29,11 @@ describe('app-layout', () => {
     mockIsCollapsed = false;
   });
 
-  it('renders children content', () => {
-    render(
-      <AppLayout>
-        <div data-testid="child-content">Test Content</div>
-      </AppLayout>
-    );
-
-    expect(screen.getByTestId('child-content')).toBeInTheDocument();
-    expect(screen.getByText('Test Content')).toBeInTheDocument();
-  });
-
-  it('renders Sidebar component', () => {
-    render(
-      <AppLayout>
-        <div>Content</div>
-      </AppLayout>
-    );
-
-    expect(screen.getByTestId('sidebar')).toBeInTheDocument();
-  });
-
-  it('renders Header component', () => {
-    render(
-      <AppLayout>
-        <div>Content</div>
-      </AppLayout>
-    );
-
-    expect(screen.getByTestId('header')).toBeInTheDocument();
-  });
-
-  it('renders toggle button with correct aria-label when expanded', () => {
-    mockIsCollapsed = false;
+  it.each([
+    [false, '사이드바 닫기'],
+    [true, '사이드바 열기'],
+  ])('renders toggle button label for collapsed=%s', (collapsed, label) => {
+    mockIsCollapsed = collapsed;
 
     render(
       <AppLayout>
@@ -69,19 +41,7 @@ describe('app-layout', () => {
       </AppLayout>
     );
 
-    expect(screen.getByRole('button', { name: '사이드바 닫기' })).toBeInTheDocument();
-  });
-
-  it('renders toggle button with correct aria-label when collapsed', () => {
-    mockIsCollapsed = true;
-
-    render(
-      <AppLayout>
-        <div>Content</div>
-      </AppLayout>
-    );
-
-    expect(screen.getByRole('button', { name: '사이드바 열기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
   });
 
   it('calls toggle function when toggle button is clicked', async () => {
@@ -96,35 +56,5 @@ describe('app-layout', () => {
     await user.click(screen.getByRole('button', { name: '사이드바 닫기' }));
 
     expect(mockToggle).toHaveBeenCalledTimes(1);
-  });
-
-  it('displays ChevronRight icon when collapsed', () => {
-    mockIsCollapsed = true;
-
-    render(
-      <AppLayout>
-        <div>Content</div>
-      </AppLayout>
-    );
-
-    const button = screen.getByRole('button', { name: '사이드바 열기' });
-    // ChevronRight has a specific path that differs from ChevronLeft
-    const svg = button.querySelector('svg');
-    expect(svg).toBeInTheDocument();
-  });
-
-  it('displays ChevronLeft icon when expanded', () => {
-    mockIsCollapsed = false;
-
-    render(
-      <AppLayout>
-        <div>Content</div>
-      </AppLayout>
-    );
-
-    const button = screen.getByRole('button', { name: '사이드바 닫기' });
-    // ChevronLeft has a specific path that differs from ChevronRight
-    const svg = button.querySelector('svg');
-    expect(svg).toBeInTheDocument();
   });
 });

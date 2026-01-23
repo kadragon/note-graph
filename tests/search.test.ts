@@ -347,7 +347,7 @@ describe('Search Functionality', () => {
       it('should apply limit after merging', () => {
         const results = Array.from({ length: 20 }, (_, i) => ({
           workId: `WORK-${i}`,
-          score: Math.random(),
+          score: 1 / (i + 1),
         }));
 
         const limit = 10;

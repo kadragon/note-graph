@@ -4,9 +4,43 @@
 import { env } from 'cloudflare:test';
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { Env } from '@worker/types/env';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const REAL_DATE = Date;
+const BASE_NOW = new REAL_DATE('2025-01-10T12:00:00.000Z');
+
+const useFixedDate = () => {
+  class MockDate extends REAL_DATE {
+    constructor(...args: unknown[]) {
+      if (args.length === 0) {
+        super(BASE_NOW.getTime());
+        return;
+      }
+      // @ts-expect-error allow variadic Date constructor args
+      super(...args);
+    }
+
+    static now() {
+      return BASE_NOW.getTime();
+    }
+  }
+
+  // @ts-expect-error override global Date for deterministic tests
+  globalThis.Date = MockDate;
+};
+
+const restoreDate = () => {
+  globalThis.Date = REAL_DATE;
+};
+
+beforeAll(() => {
+  useFixedDate();
+});
+
+afterAll(() => {
+  restoreDate();
+});
 
 describe('TodoRepository - Filtering and Views', () => {
   let repository: TodoRepository;
@@ -23,7 +57,7 @@ describe('TodoRepository - Filtering and Views', () => {
 
     // Create a test work note
     testWorkId = 'WORK-TEST-001';
-    const now = new Date().toISOString();
+    const now = BASE_NOW.toISOString();
     await testEnv.DB.prepare(
       'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
     )
@@ -33,7 +67,7 @@ describe('TodoRepository - Filtering and Views', () => {
 
   describe('findAll()', () => {
     beforeEach(async () => {
-      const now = new Date();
+      const now = new Date(BASE_NOW.getTime());
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       const tomorrow = new Date(now);
@@ -217,7 +251,7 @@ describe('TodoRepository - Filtering and Views', () => {
 
     it('should exclude todo with wait_until in the near future', async () => {
       // Arrange
-      const now = new Date();
+      const now = new Date(BASE_NOW.getTime());
       const nearFuture = new Date(now.getTime() + 3600000); // 1 hour later
 
       await testEnv.DB.prepare(

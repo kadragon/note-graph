@@ -1,11 +1,15 @@
 // Trace: SPEC-todo-2, TASK-053, TEST-todo-ux-3, TEST-todo-ux-5, TEST-todo-ux-6
 import { groupRecurringTodos } from '@web/pages/work-notes/components/group-recurring-todos';
 import type { Todo } from '@web/types/api';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('groupRecurringTodos', () => {
+  let nextId = 1;
+  beforeEach(() => {
+    nextId = 1;
+  });
   const createTodo = (overrides: Partial<Todo>): Todo => ({
-    id: `todo-${Math.random()}`,
+    id: `todo-${nextId++}`,
     title: 'Test Todo',
     status: '진행중',
     createdAt: '2025-12-01T00:00:00Z',

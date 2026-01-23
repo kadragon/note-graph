@@ -130,94 +130,101 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
   });
 
   it('processBatch updates all work notes in parallel via Promise.allSettled', async () => {
-    // Arrange: Track timing to verify parallel execution
-    const callOrder: string[] = [];
-    const delays = { 'WORK-A': 50, 'WORK-B': 30, 'WORK-C': 10 };
+    vi.useFakeTimers();
+    try {
+      // Arrange: Track timing to verify parallel execution
+      const callOrder: string[] = [];
+      const delays = { 'WORK-A': 50, 'WORK-B': 30, 'WORK-C': 10 };
 
-    // Mock deleteStaleChunks with varying delays
-    (processor as TestEmbeddingProcessor).deleteStaleChunks = vi
-      .fn()
-      .mockImplementation(async (workId: string) => {
-        await new Promise((resolve) =>
-          setTimeout(resolve, delays[workId as keyof typeof delays] || 0)
-        );
-        callOrder.push(`delete-${workId}`);
-      });
+      // Mock deleteStaleChunks with varying delays
+      (processor as TestEmbeddingProcessor).deleteStaleChunks = vi
+        .fn()
+        .mockImplementation(async (workId: string) => {
+          await new Promise((resolve) =>
+            setTimeout(resolve, delays[workId as keyof typeof delays] || 0)
+          );
+          callOrder.push(`delete-${workId}`);
+        });
 
-    // Mock updateEmbeddedAt with immediate resolution
-    (processor as TestEmbeddingProcessor).repository.updateEmbeddedAt = vi
-      .fn()
-      .mockImplementation(async (workId: string) => {
-        callOrder.push(`update-${workId}`);
-      });
+      // Mock updateEmbeddedAt with immediate resolution
+      (processor as TestEmbeddingProcessor).repository.updateEmbeddedAt = vi
+        .fn()
+        .mockImplementation(async (workId: string) => {
+          callOrder.push(`update-${workId}`);
+        });
 
-    // Create a chunk map for 3 work notes
-    const workNoteChunkMap = new Map<string, string[]>([
-      ['WORK-A', ['WORK-A#chunk0']],
-      ['WORK-B', ['WORK-B#chunk0']],
-      ['WORK-C', ['WORK-C#chunk0']],
-    ]);
+      // Create a chunk map for 3 work notes
+      const workNoteChunkMap = new Map<string, string[]>([
+        ['WORK-A', ['WORK-A#chunk0']],
+        ['WORK-B', ['WORK-B#chunk0']],
+        ['WORK-C', ['WORK-C#chunk0']],
+      ]);
 
-    const chunks = [
-      {
-        id: 'WORK-A#chunk0',
-        text: 'Content A',
-        metadata: {
-          work_id: 'WORK-A',
-          scope: 'WORK',
-          chunk_index: 0,
-          created_at_bucket: '2024-01-01',
+      const chunks = [
+        {
+          id: 'WORK-A#chunk0',
+          text: 'Content A',
+          metadata: {
+            work_id: 'WORK-A',
+            scope: 'WORK',
+            chunk_index: 0,
+            created_at_bucket: '2024-01-01',
+          },
+          workId: 'WORK-A',
         },
-        workId: 'WORK-A',
-      },
-      {
-        id: 'WORK-B#chunk0',
-        text: 'Content B',
-        metadata: {
-          work_id: 'WORK-B',
-          scope: 'WORK',
-          chunk_index: 0,
-          created_at_bucket: '2024-01-02',
+        {
+          id: 'WORK-B#chunk0',
+          text: 'Content B',
+          metadata: {
+            work_id: 'WORK-B',
+            scope: 'WORK',
+            chunk_index: 0,
+            created_at_bucket: '2024-01-02',
+          },
+          workId: 'WORK-B',
         },
-        workId: 'WORK-B',
-      },
-      {
-        id: 'WORK-C#chunk0',
-        text: 'Content C',
-        metadata: {
-          work_id: 'WORK-C',
-          scope: 'WORK',
-          chunk_index: 0,
-          created_at_bucket: '2024-01-03',
+        {
+          id: 'WORK-C#chunk0',
+          text: 'Content C',
+          metadata: {
+            work_id: 'WORK-C',
+            scope: 'WORK',
+            chunk_index: 0,
+            created_at_bucket: '2024-01-03',
+          },
+          workId: 'WORK-C',
         },
-        workId: 'WORK-C',
-      },
-    ];
+      ];
 
-    // Act - call processBatch directly
-    const processBatch = (
-      processor as unknown as {
-        processBatch: (typeof processor)['processBatch' & keyof typeof processor];
-      }
-    ).processBatch.bind(processor);
-    const result = await processBatch(chunks, workNoteChunkMap);
+      // Act - call processBatch directly
+      const processBatch = (
+        processor as unknown as {
+          processBatch: (typeof processor)['processBatch' & keyof typeof processor];
+        }
+      ).processBatch.bind(processor);
+      const resultPromise = processBatch(chunks, workNoteChunkMap);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
 
-    // Assert: All work notes processed
-    expect(result.succeeded).toBe(3);
-    expect(result.failed).toBe(0);
+      // Assert: All work notes processed
+      expect(result.succeeded).toBe(3);
+      expect(result.failed).toBe(0);
 
-    // Assert: All deleteStaleChunks called
-    expect((processor as TestEmbeddingProcessor).deleteStaleChunks).toHaveBeenCalledTimes(3);
+      // Assert: All deleteStaleChunks called
+      expect((processor as TestEmbeddingProcessor).deleteStaleChunks).toHaveBeenCalledTimes(3);
 
-    // Assert: All updateEmbeddedAt called
-    expect((processor as TestEmbeddingProcessor).repository.updateEmbeddedAt).toHaveBeenCalledTimes(
-      3
-    );
+      // Assert: All updateEmbeddedAt called
+      expect(
+        (processor as TestEmbeddingProcessor).repository.updateEmbeddedAt
+      ).toHaveBeenCalledTimes(3);
 
-    // Assert: If parallel, WORK-C (shortest delay) should complete first
-    // In sequential mode: order would be A, B, C
-    // In parallel mode: order should be C, B, A (by delay time)
-    const deleteOrder = callOrder.filter((c) => c.startsWith('delete-'));
-    expect(deleteOrder).toEqual(['delete-WORK-C', 'delete-WORK-B', 'delete-WORK-A']);
+      // Assert: If parallel, WORK-C (shortest delay) should complete first
+      // In sequential mode: order would be A, B, C
+      // In parallel mode: order should be C, B, A (by delay time)
+      const deleteOrder = callOrder.filter((c) => c.startsWith('delete-'));
+      expect(deleteOrder).toEqual(['delete-WORK-C', 'delete-WORK-B', 'delete-WORK-A']);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
