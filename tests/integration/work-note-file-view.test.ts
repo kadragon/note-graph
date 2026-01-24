@@ -1,5 +1,5 @@
 // Trace: SPEC-worknote-attachments-1, TASK-066
-// Integration tests for work note file preview route (Google Drive)
+// Integration tests for work note file upload route (Google Drive)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,7 +8,7 @@ import { authFetch, MockR2, setTestR2Bucket, testEnv } from '../test-setup';
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
-describe('Work Note File Preview Route', () => {
+describe('Work Note File Upload Route', () => {
   let originalFetch: typeof global.fetch;
   let originalGoogleClientId: string | undefined;
   let originalGoogleClientSecret: string | undefined;
@@ -125,7 +125,7 @@ describe('Work Note File Preview Route', () => {
     testEnv.GDRIVE_ROOT_FOLDER_ID = originalGdriveRootFolderId as string;
   });
 
-  it('redirects preview and download to Google Drive links', async () => {
+  it('uploads file to Google Drive and returns DriveFileListItem', async () => {
     // Upload
     const form = new FormData();
     form.append('file', new Blob(['hello pdf'], { type: 'application/pdf' }), 'hello.pdf');
@@ -136,29 +136,35 @@ describe('Work Note File Preview Route', () => {
     });
 
     expect(uploadRes.status).toBe(201);
+
+    // New response format: DriveFileListItem
     const uploaded = (await uploadRes.json()) as {
-      fileId: string;
-      storageType: string;
-      gdriveWebViewLink: string | null;
+      id: string;
+      name: string;
+      mimeType: string;
+      webViewLink: string;
+      size: number;
+      modifiedTime: string;
     };
-    expect(uploaded.storageType).toBe('GDRIVE');
-    expect(uploaded.gdriveWebViewLink).toBe('https://drive.example/file');
+
+    expect(uploaded.id).toBe('GFILE-1');
+    expect(uploaded.name).toBe('hello.pdf');
+    expect(uploaded.mimeType).toBe('application/pdf');
+    expect(uploaded.webViewLink).toBe('https://drive.example/file');
     expect(fetchMock).toHaveBeenCalled();
 
-    // View (inline) -> redirect to Drive
-    const viewRes = await authFetch(
-      `http://localhost/api/work-notes/WORK-123/files/${uploaded.fileId}/view`,
-      { redirect: 'manual' }
-    );
-    expect(viewRes.status).toBe(302);
-    expect(viewRes.headers.get('Location')).toBe('https://drive.example/file');
+    // Verify no DB record was created (Drive folder is source of truth)
+    const dbFiles = await testEnv.DB.prepare('SELECT * FROM work_note_files WHERE work_id = ?')
+      .bind('WORK-123')
+      .all();
+    expect(dbFiles.results).toHaveLength(0);
 
-    // Download (attachment) -> redirect to Drive
-    const downloadRes = await authFetch(
-      `http://localhost/api/work-notes/WORK-123/files/${uploaded.fileId}/download`,
-      { redirect: 'manual' }
-    );
-    expect(downloadRes.status).toBe(302);
-    expect(downloadRes.headers.get('Location')).toBe('https://drive.example/file');
+    // Verify Drive folder record was created
+    const folderRecord = await testEnv.DB.prepare(
+      'SELECT * FROM work_note_gdrive_folders WHERE work_id = ?'
+    )
+      .bind('WORK-123')
+      .first();
+    expect(folderRecord).toBeTruthy();
   });
 });

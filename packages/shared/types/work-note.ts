@@ -89,6 +89,30 @@ export interface WorkNoteFileMigrationResult {
 }
 
 /**
+ * Google Drive file info returned from folder listing (Drive API files.list)
+ */
+export interface DriveFileListItem {
+  id: string; // Drive file ID
+  name: string; // File name
+  mimeType: string; // MIME type
+  webViewLink: string; // Drive web viewer URL
+  size: number; // File size in bytes
+  modifiedTime: string; // Last modified time (ISO 8601)
+}
+
+/**
+ * Response format for work note files list endpoint
+ * Uses Drive folder as source of truth instead of DB tracking
+ */
+export interface WorkNoteFilesListResponse {
+  files: DriveFileListItem[]; // Files from Drive folder
+  driveFolderId: string | null; // Drive folder ID (null if not created yet)
+  driveFolderLink: string | null; // Drive folder web link
+  googleDriveConfigured: boolean; // Whether Drive OAuth is configured
+  hasLegacyFiles: boolean; // Whether R2 legacy files exist (for migration prompt)
+}
+
+/**
  * Detailed work note with associations
  */
 export interface WorkNoteDetail extends WorkNote {

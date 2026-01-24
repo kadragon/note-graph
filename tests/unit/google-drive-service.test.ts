@@ -245,4 +245,88 @@ describe('GoogleDriveService', () => {
       { name: 'WORK-123', parentId: 'FOLDER-1' },
     ]);
   });
+
+  describe('listFilesInFolder', () => {
+    it('lists files in a folder with correct query parameters', async () => {
+      const env = {
+        GOOGLE_CLIENT_ID: 'client-id',
+        GOOGLE_CLIENT_SECRET: 'client-secret',
+        GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+        GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+      } as Env;
+      const service = new GoogleDriveService(env, {} as D1Database);
+
+      const mockFiles = [
+        {
+          id: 'file-1',
+          name: 'document.pdf',
+          mimeType: 'application/pdf',
+          webViewLink: 'https://drive.google.com/file/d/file-1/view',
+          size: '1024',
+          modifiedTime: '2024-01-15T10:00:00.000Z',
+        },
+        {
+          id: 'file-2',
+          name: 'image.png',
+          mimeType: 'image/png',
+          webViewLink: 'https://drive.google.com/file/d/file-2/view',
+          size: '2048',
+          modifiedTime: '2024-01-16T12:00:00.000Z',
+        },
+      ];
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ files: mockFiles }), { status: 200 })
+      );
+
+      const result = await service.listFilesInFolder('test@example.com', 'folder-123');
+
+      expect(result).toEqual(mockFiles);
+
+      const fetchSpy = globalThis.fetch as unknown as Mock;
+      const [url] = fetchSpy.mock.calls[0] ?? [];
+      const urlValue = typeof url === 'string' ? url : String(url);
+      const decodedQuery = decodeURIComponent(new URL(urlValue).searchParams.get('q') ?? '');
+
+      expect(decodedQuery).toContain("'folder-123' in parents");
+      expect(decodedQuery).toContain('trashed = false');
+      expect(decodedQuery).not.toContain('mimeType');
+    });
+
+    it('returns empty array when folder has no files', async () => {
+      const env = {
+        GOOGLE_CLIENT_ID: 'client-id',
+        GOOGLE_CLIENT_SECRET: 'client-secret',
+        GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+        GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+      } as Env;
+      const service = new GoogleDriveService(env, {} as D1Database);
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ files: [] }), { status: 200 })
+      );
+
+      const result = await service.listFilesInFolder('test@example.com', 'empty-folder');
+
+      expect(result).toEqual([]);
+    });
+
+    it('throws error on API failure', async () => {
+      const env = {
+        GOOGLE_CLIENT_ID: 'client-id',
+        GOOGLE_CLIENT_SECRET: 'client-secret',
+        GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+        GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+      } as Env;
+      const service = new GoogleDriveService(env, {} as D1Database);
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response('Not Found', { status: 404 })
+      );
+
+      await expect(service.listFilesInFolder('test@example.com', 'invalid-folder')).rejects.toThrow(
+        'Failed to list files in folder'
+      );
+    });
+  });
 });

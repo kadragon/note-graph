@@ -3,9 +3,10 @@ import { TODO_STATUS } from '@web/constants/todo-status';
 import { API } from '@web/lib/api';
 import type {
   CreateWorkNoteRequest,
+  DriveFileListItem,
   UpdateWorkNoteRequest,
-  WorkNoteFile,
   WorkNoteFileMigrationResult,
+  WorkNoteFilesListResponse,
   WorkNoteWithStats,
 } from '@web/types/api';
 import { getLatestTodoDate } from './get-latest-todo-date';
@@ -190,7 +191,13 @@ export function useWorkNoteFiles(workId: string | null) {
     queryFn: () =>
       workId
         ? API.getWorkNoteFiles(workId)
-        : Promise.resolve({ files: [], googleDriveConfigured: true }),
+        : Promise.resolve({
+            files: [],
+            driveFolderId: null,
+            driveFolderLink: null,
+            googleDriveConfigured: true,
+            hasLegacyFiles: false,
+          } as WorkNoteFilesListResponse),
     enabled: !!workId,
   });
 }
@@ -292,19 +299,10 @@ export function useMigrateWorkNoteFiles() {
   });
 }
 
-export async function downloadWorkNoteFile(workId: string, file: WorkNoteFile) {
-  if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
-    return file.gdriveWebViewLink;
-  }
-
-  const blob = await API.downloadWorkNoteFile(workId, file.fileId);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = file.originalName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  return null;
+/**
+ * Get download link for a work note file
+ * For Drive files, returns the webViewLink directly
+ */
+export function downloadWorkNoteFile(file: DriveFileListItem): string {
+  return file.webViewLink;
 }

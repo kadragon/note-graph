@@ -20,6 +20,7 @@ export interface DriveFile {
   mimeType: string;
   webViewLink: string;
   size: string;
+  modifiedTime?: string;
   appProperties?: Record<string, string>;
   parents?: string[];
 }
@@ -325,6 +326,34 @@ export class GoogleDriveService {
 
     const data = (await response.json()) as { files?: DriveFile[] };
     return data.files?.[0] ?? null;
+  }
+
+  /**
+   * List all files in a Google Drive folder (non-recursive)
+   * Returns files sorted by modifiedTime descending
+   */
+  async listFilesInFolder(userEmail: string, folderId: string): Promise<DriveFile[]> {
+    const accessToken = await this.getAccessToken(userEmail);
+    const escapedFolderId = this.escapeQueryStringLiteral(folderId);
+    const query = `'${escapedFolderId}' in parents and trashed = false`;
+    const fields = 'files(id,name,mimeType,webViewLink,size,modifiedTime)';
+    const orderBy = 'modifiedTime desc';
+
+    const url = `${DRIVE_API_BASE}/files?fields=${encodeURIComponent(fields)}&q=${encodeURIComponent(query)}&orderBy=${encodeURIComponent(orderBy)}`;
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to list files in folder: ${error}`);
+    }
+
+    const data = (await response.json()) as { files?: DriveFile[] };
+    return data.files ?? [];
   }
 
   /**

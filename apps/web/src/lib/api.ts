@@ -13,6 +13,7 @@ import type {
   CustomIntervalUnit,
   Department,
   DepartmentSearchResult,
+  DriveFileListItem,
   EmbeddingStats,
   GoogleDriveStatus,
   ImportPersonFromTextRequest,
@@ -49,7 +50,7 @@ import type {
   WorkNote,
   WorkNoteFile,
   WorkNoteFileMigrationResult,
-  WorkNoteFilesResponse,
+  WorkNoteFilesListResponse,
   WorkNoteStatistics,
 } from '@web/types/api';
 
@@ -394,20 +395,12 @@ export class APIClient {
   }
 
   // Work note file operations
-  async getWorkNoteFiles(workId: string) {
-    const { data, headers } = await this.requestWithHeaders<WorkNoteFile[]>(
-      `/work-notes/${workId}/files`
-    );
-    const configuredHeader = headers.get('X-Google-Drive-Configured');
-    const googleDriveConfigured = configuredHeader !== 'false';
-    return {
-      files: data,
-      googleDriveConfigured,
-    } satisfies WorkNoteFilesResponse;
+  async getWorkNoteFiles(workId: string): Promise<WorkNoteFilesListResponse> {
+    return this.request<WorkNoteFilesListResponse>(`/work-notes/${workId}/files`);
   }
 
-  async uploadWorkNoteFile(workId: string, file: File) {
-    return this.uploadFile<WorkNoteFile>(`/work-notes/${workId}/files`, file);
+  async uploadWorkNoteFile(workId: string, file: File): Promise<DriveFileListItem> {
+    return this.uploadFile<DriveFileListItem>(`/work-notes/${workId}/files`, file);
   }
 
   async migrateWorkNoteFiles(workId: string) {

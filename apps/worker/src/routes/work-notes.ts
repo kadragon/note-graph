@@ -160,7 +160,8 @@ workNotes.post('/:workId/todos', bodyValidator(createTodoSchema), async (c) => {
 });
 
 /**
- * POST /work-notes/:workId/files - Upload file to work note
+ * POST /work-notes/:workId/files - Upload file to work note (Google Drive)
+ * Uses Drive folder as source of truth - no individual DB tracking
  */
 workNotes.post('/:workId/files', async (c) => {
   const workId = c.req.param('workId');
@@ -187,9 +188,9 @@ workNotes.post('/:workId/files', async (c) => {
   // Get R2 bucket
   const r2Bucket = getR2Bucket(c.env);
 
-  // Upload file using service (now uses Google Drive)
+  // Upload file using service - returns DriveFileListItem (no DB tracking)
   const fileService = new WorkNoteFileService(r2Bucket, c.env.DB, c.env);
-  const uploadedFile = await fileService.uploadFile({
+  const uploadedFile = await fileService.uploadFileToDrive({
     workId,
     file: fileData,
     originalName: fileData.name,
@@ -200,20 +201,19 @@ workNotes.post('/:workId/files', async (c) => {
 });
 
 /**
- * GET /work-notes/:workId/files - List work note files
+ * GET /work-notes/:workId/files - List work note files from Google Drive folder
+ * Returns files directly from Drive folder (source of truth)
  */
 workNotes.get('/:workId/files', workNoteFileMiddleware, async (c) => {
   const { workId } = c.req.param();
   if (!workId) {
     return c.json({ error: 'workId is required' }, 400);
   }
+  const user = getAuthUser(c);
   const fileService = c.get('fileService');
-  const files = await fileService.listFiles(workId);
+  const result = await fileService.listFilesFromDrive(workId, user.email);
 
-  const driveConfigured = c.get('driveConfigured');
-  c.header('X-Google-Drive-Configured', driveConfigured ? 'true' : 'false');
-
-  return c.json(files);
+  return c.json(result);
 });
 
 /**
@@ -285,17 +285,21 @@ workNotes.get('/:workId/files/:fileId/view', workNoteFileMiddleware, async (c) =
 });
 
 /**
- * DELETE /work-notes/:workId/files/:fileId - Delete file
+ * DELETE /work-notes/:workId/files/:fileId - Delete file from Google Drive
+ * fileId is the Drive file ID (not FILE- prefixed)
+ * No DB lookup needed - deletes directly from Drive
  */
-workNotes.delete('/:workId/files/:fileId', workNoteFileMiddleware, async (c) => {
+workNotes.delete('/:workId/files/:fileId', async (c) => {
   const { fileId } = c.req.param();
   if (!fileId) {
     return c.json({ error: 'fileId is required' }, 400);
   }
   const user = getAuthUser(c);
-  const fileService = c.get('fileService');
 
-  await fileService.deleteFile(fileId, user.email);
+  const r2Bucket = getR2Bucket(c.env);
+  const fileService = new WorkNoteFileService(r2Bucket, c.env.DB, c.env);
+
+  await fileService.deleteDriveFile(fileId, user.email);
 
   return c.body(null, 204);
 });

@@ -658,4 +658,170 @@ describe('WorkNoteFileService', () => {
       .all<Record<string, unknown>>();
     expect(rowsAfterCascade.results).toHaveLength(0);
   });
+
+  describe('uploadFileToDrive', () => {
+    it('uploads file to Drive and returns DriveFileListItem without DB record', async () => {
+      await insertWorkNote('WORK-UPLOAD', '2023-05-01T00:00:00.000Z');
+      const file = new Blob(['PDF content'], { type: 'application/pdf' });
+
+      const result = await service.uploadFileToDrive({
+        workId: 'WORK-UPLOAD',
+        file,
+        originalName: 'document.pdf',
+        uploadedBy: userEmail,
+      });
+
+      // Assert - DriveFileListItem format
+      expect(result.id).toBe('GFILE-1');
+      expect(result.name).toBe('document.pdf');
+      expect(result.mimeType).toBe('application/pdf');
+      expect(result.webViewLink).toBe('https://drive.example/file');
+      expect(result.size).toBe(file.size);
+      expect(result.modifiedTime).toBeDefined();
+
+      // Assert - No DB record created
+      const rows = await baseEnv.DB.prepare('SELECT file_id FROM work_note_files WHERE work_id = ?')
+        .bind('WORK-UPLOAD')
+        .all<Record<string, unknown>>();
+      expect(rows.results).toHaveLength(0);
+
+      // Assert - Drive folder record created
+      const folder = await baseEnv.DB.prepare(
+        'SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?'
+      )
+        .bind('WORK-UPLOAD')
+        .first<Record<string, unknown>>();
+      expect(folder?.gdrive_folder_id).toBe('FOLDER-1');
+    });
+  });
+
+  describe('deleteDriveFile', () => {
+    it('deletes file from Drive by Drive file ID', async () => {
+      await service.deleteDriveFile('GFILE-TO-DELETE', userEmail);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${DRIVE_API_BASE}/files/GFILE-TO-DELETE`,
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+  });
+
+  describe('listFilesFromDrive', () => {
+    it('lists files directly from Drive folder', async () => {
+      await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
+
+      // Create Drive folder record
+      await baseEnv.DB.prepare(
+        `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
+         VALUES (?, ?, ?, ?)`
+      )
+        .bind('WORK-123', 'FOLDER-123', 'https://drive.google.com/folder', new Date().toISOString())
+        .run();
+
+      const mockDriveFiles = [
+        {
+          id: 'file-1',
+          name: 'document.pdf',
+          mimeType: 'application/pdf',
+          webViewLink: 'https://drive.google.com/file/d/file-1/view',
+          size: '1024',
+          modifiedTime: '2024-01-15T10:00:00.000Z',
+        },
+        {
+          id: 'file-2',
+          name: 'image.png',
+          mimeType: 'image/png',
+          webViewLink: 'https://drive.google.com/file/d/file-2/view',
+          size: '2048',
+          modifiedTime: '2024-01-16T12:00:00.000Z',
+        },
+      ];
+
+      fetchMock.mockImplementation(async (input, init = {}) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        const method = (init as RequestInit).method ?? 'GET';
+
+        // Check if this is a list files request (URL-encoded 'in parents')
+        if (url.includes('/files?') && url.includes('in%20parents') && method === 'GET') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ files: mockDriveFiles }),
+          } as Response;
+        }
+
+        return defaultFetchMockImplementation(input, init);
+      });
+
+      const result = await service.listFilesFromDrive('WORK-123', userEmail);
+
+      expect(result.googleDriveConfigured).toBe(true);
+      expect(result.driveFolderId).toBe('FOLDER-123');
+      expect(result.driveFolderLink).toBe('https://drive.google.com/folder');
+      expect(result.hasLegacyFiles).toBe(false);
+      expect(result.files).toHaveLength(2);
+      expect(result.files[0]).toEqual({
+        id: 'file-1',
+        name: 'document.pdf',
+        mimeType: 'application/pdf',
+        webViewLink: 'https://drive.google.com/file/d/file-1/view',
+        size: 1024,
+        modifiedTime: '2024-01-15T10:00:00.000Z',
+      });
+    });
+
+    it('returns empty files when no Drive folder exists', async () => {
+      await insertWorkNote('WORK-456', '2023-05-01T00:00:00.000Z');
+
+      const result = await service.listFilesFromDrive('WORK-456', userEmail);
+
+      expect(result.googleDriveConfigured).toBe(true);
+      expect(result.driveFolderId).toBeNull();
+      expect(result.driveFolderLink).toBeNull();
+      expect(result.hasLegacyFiles).toBe(false);
+      expect(result.files).toEqual([]);
+    });
+
+    it('sets hasLegacyFiles when R2 files exist', async () => {
+      await insertWorkNote('WORK-789', '2023-05-01T00:00:00.000Z');
+
+      // Insert legacy R2 file
+      await insertLegacyR2File({
+        workId: 'WORK-789',
+        fileId: 'FILE-LEGACY',
+        r2Key: 'work-notes/WORK-789/files/FILE-LEGACY',
+        originalName: 'legacy.pdf',
+        fileType: 'application/pdf',
+        fileSize: 100,
+      });
+
+      const result = await service.listFilesFromDrive('WORK-789', userEmail);
+
+      expect(result.hasLegacyFiles).toBe(true);
+      expect(result.files).toEqual([]);
+    });
+
+    it('returns unconfigured when Google Drive env vars missing', async () => {
+      const envWithoutGoogle = {
+        ...baseEnv,
+        GOOGLE_CLIENT_ID: '',
+        GOOGLE_CLIENT_SECRET: '',
+        GDRIVE_ROOT_FOLDER_ID: '',
+      } as Env;
+
+      const noGoogleService = new WorkNoteFileService(
+        r2 as unknown as R2Bucket,
+        baseEnv.DB,
+        envWithoutGoogle
+      );
+
+      await insertWorkNote('WORK-NOGOOGLE', '2023-05-01T00:00:00.000Z');
+
+      const result = await noGoogleService.listFilesFromDrive('WORK-NOGOOGLE', userEmail);
+
+      expect(result.googleDriveConfigured).toBe(false);
+      expect(result.driveFolderId).toBeNull();
+      expect(result.files).toEqual([]);
+    });
+  });
 });

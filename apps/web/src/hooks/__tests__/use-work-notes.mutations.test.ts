@@ -1,6 +1,6 @@
 import { act, waitFor } from '@testing-library/react';
 import { API } from '@web/lib/api';
-import { createWorkNote, createWorkNoteFile, resetFactoryCounter } from '@web/test/factories';
+import { createDriveFileListItem, createWorkNote, resetFactoryCounter } from '@web/test/factories';
 import { createTestQueryClient, renderHookWithClient } from '@web/test/setup';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -182,7 +182,7 @@ describe('useUploadWorkNoteFile', () => {
   });
 
   it('uploads file successfully', async () => {
-    const uploadedFile = createWorkNoteFile({ fileId: 'new-file', originalName: 'uploaded.pdf' });
+    const uploadedFile = createDriveFileListItem({ id: 'new-file', name: 'uploaded.pdf' });
     vi.mocked(API.uploadWorkNoteFile).mockResolvedValue(uploadedFile);
 
     const mockFile = new File(['test content'], 'test.pdf', { type: 'application/pdf' });
@@ -205,7 +205,7 @@ describe('useUploadWorkNoteFile', () => {
   });
 
   it('invalidates work-note-files and work-note-detail queries on success', async () => {
-    const uploadedFile = createWorkNoteFile({ fileId: 'new-file' });
+    const uploadedFile = createDriveFileListItem({ id: 'new-file' });
     vi.mocked(API.uploadWorkNoteFile).mockResolvedValue(uploadedFile);
 
     const mockFile = new File(['test content'], 'test.pdf', { type: 'application/pdf' });

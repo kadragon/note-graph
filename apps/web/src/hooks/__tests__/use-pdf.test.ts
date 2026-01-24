@@ -1,6 +1,6 @@
 import { act, waitFor } from '@testing-library/react';
 import { API } from '@web/lib/api';
-import { createWorkNote, createWorkNoteFile, resetFactoryCounter } from '@web/test/factories';
+import { createDriveFileListItem, createWorkNote, resetFactoryCounter } from '@web/test/factories';
 import { createTestQueryClient, renderHookWithClient } from '@web/test/setup';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -173,7 +173,7 @@ describe('useSavePDFDraft', () => {
   it('creates a work note, attaches a PDF, and invalidates related queries', async () => {
     const workNote = createWorkNote({ id: 'work-1' });
     vi.mocked(API.createWorkNote).mockResolvedValue(workNote);
-    vi.mocked(API.uploadWorkNoteFile).mockResolvedValue(createWorkNoteFile({ workId: 'work-1' }));
+    vi.mocked(API.uploadWorkNoteFile).mockResolvedValue(createDriveFileListItem());
 
     const queryClient = createTestQueryClient();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');

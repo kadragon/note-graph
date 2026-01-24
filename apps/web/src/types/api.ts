@@ -32,11 +32,22 @@ import type {
   StatisticsPeriod,
 } from '@shared/types/statistics';
 import type { TaskCategory } from '@shared/types/task-category';
-import type { WorkNoteFile, WorkNoteFileMigrationResult } from '@shared/types/work-note';
+import type {
+  DriveFileListItem,
+  WorkNoteFile,
+  WorkNoteFileMigrationResult,
+  WorkNoteFilesListResponse,
+} from '@shared/types/work-note';
 
 export type { Department, TaskCategory };
 export type { EmploymentStatus, Person, PersonDeptHistory };
-export type { WorkNoteFile, WorkNoteFileMigrationResult };
+export type {
+  DriveFileListItem,
+  WorkNoteFile,
+  WorkNoteFileMigrationResult,
+  WorkNoteFilesListResponse,
+};
+// Legacy response type (deprecated - use WorkNoteFilesListResponse)
 export interface WorkNoteFilesResponse {
   files: WorkNoteFile[];
   googleDriveConfigured: boolean;

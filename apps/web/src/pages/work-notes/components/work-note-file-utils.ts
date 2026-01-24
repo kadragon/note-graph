@@ -1,28 +1,28 @@
 // Trace: SPEC-worknote-attachments-1, TASK-063
-import type { WorkNoteFile } from '@web/types/api';
+import type { DriveFileListItem } from '@web/types/api';
 
 /**
- * Sort files by uploadedAt descending (newest first).
- * Ties are broken deterministically by fileId ascending.
+ * Sort files by modifiedTime descending (newest first).
+ * Ties are broken deterministically by id ascending.
  */
-export function sortFilesByUploadedAtDesc(files: WorkNoteFile[]): WorkNoteFile[] {
+export function sortFilesByModifiedTimeDesc(files: DriveFileListItem[]): DriveFileListItem[] {
   return [...files].sort((a, b) => {
-    const timeDiff = new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+    const timeDiff = new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime();
     if (timeDiff !== 0) return timeDiff;
-    return a.fileId.localeCompare(b.fileId);
+    return a.id.localeCompare(b.id);
   });
 }
 
 /**
- * Check if a file was uploaded on the current local day.
+ * Check if a file was modified on the current local day.
  */
-export function isUploadedToday(uploadedAt: string): boolean {
-  const uploaded = new Date(uploadedAt);
+export function isModifiedToday(modifiedTime: string): boolean {
+  const modified = new Date(modifiedTime);
   const now = new Date();
 
   return (
-    uploaded.getFullYear() === now.getFullYear() &&
-    uploaded.getMonth() === now.getMonth() &&
-    uploaded.getDate() === now.getDate()
+    modified.getFullYear() === now.getFullYear() &&
+    modified.getMonth() === now.getMonth() &&
+    modified.getDate() === now.getDate()
   );
 }
