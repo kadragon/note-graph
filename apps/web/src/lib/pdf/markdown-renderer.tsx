@@ -141,6 +141,15 @@ function getTokenKey(token: Token, index: number): string {
 }
 
 /**
+ * Check if a token should be rendered as a nested block (outside the list item text)
+ */
+function isNestedBlockToken(token: Token): boolean {
+  return ['list', 'blockquote', 'code', 'heading', 'hr', 'table', 'html', 'paragraph'].includes(
+    token.type
+  );
+}
+
+/**
  * Render inline tokens (bold, italic, code, links, etc.)
  */
 function renderInlineTokens(tokens: Token[] | undefined): React.ReactNode[] {
@@ -241,12 +250,34 @@ function renderBlockToken(token: Token, index: number): React.ReactNode {
         <View key={index} style={styles.list}>
           {listToken.items.map((item, itemIndex) => {
             const itemKey = `list-item-${itemIndex}-${item.raw?.slice(0, 20) || ''}`;
+
+            // Split tokens into inline content (text) and nested blocks (lists, etc.)
+            const { inlineTokens, nestedTokens } = item.tokens.reduce(
+              (acc, t) => {
+                if (isNestedBlockToken(t)) {
+                  acc.nestedTokens.push(t);
+                } else {
+                  acc.inlineTokens.push(t);
+                }
+                return acc;
+              },
+              { inlineTokens: [] as Token[], nestedTokens: [] as Token[] }
+            );
+
             return (
-              <View key={itemKey} style={styles.listItem}>
-                <Text style={listToken.ordered ? styles.listNumber : styles.listBullet}>
-                  {listToken.ordered ? `${itemIndex + 1}.` : '\u2022'}
-                </Text>
-                <Text style={styles.listContent}>{renderInlineTokens(item.tokens)}</Text>
+              <View key={itemKey}>
+                <View style={styles.listItem}>
+                  <Text style={listToken.ordered ? styles.listNumber : styles.listBullet}>
+                    {listToken.ordered ? `${itemIndex + 1}.` : '\u2022'}
+                  </Text>
+                  <Text style={styles.listContent}>{renderInlineTokens(inlineTokens)}</Text>
+                </View>
+                {/* Render nested blocks (like sub-lists) below the item text */}
+                {nestedTokens.length > 0 && (
+                  <View style={{ paddingLeft: 10 }}>
+                    {nestedTokens.map((t, i) => renderBlockToken(t, i))}
+                  </View>
+                )}
               </View>
             );
           })}

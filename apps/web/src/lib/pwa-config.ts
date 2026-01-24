@@ -1,7 +1,7 @@
 import type { VitePWAOptions } from 'vite-plugin-pwa';
 
 export const pwaOptions: Partial<VitePWAOptions> = {
-  registerType: 'autoUpdate',
+  registerType: 'prompt',
   includeAssets: ['favicon.ico', 'favicon.svg'],
   manifest: {
     name: '업무노트 관리 시스템',
