@@ -144,7 +144,9 @@ function getTokenKey(token: Token, index: number): string {
  * Check if a token should be rendered as a nested block (outside the list item text)
  */
 function isNestedBlockToken(token: Token): boolean {
-  return ['list', 'blockquote', 'code', 'heading', 'hr', 'table', 'html'].includes(token.type);
+  return ['list', 'blockquote', 'code', 'heading', 'hr', 'table', 'html', 'paragraph'].includes(
+    token.type
+  );
 }
 
 /**
@@ -163,16 +165,6 @@ function renderInlineTokens(tokens: Token[] | undefined): React.ReactNode[] {
           return <Text key={key}>{renderInlineTokens(textToken.tokens)}</Text>;
         }
         return <Text key={key}>{textToken.text}</Text>;
-      }
-
-      case 'paragraph': {
-        const paragraphToken = token as Tokens.Paragraph;
-        return (
-          <Text key={key}>
-            {renderInlineTokens(paragraphToken.tokens)}
-            {'\n'}
-          </Text>
-        );
       }
 
       case 'strong':
@@ -260,8 +252,17 @@ function renderBlockToken(token: Token, index: number): React.ReactNode {
             const itemKey = `list-item-${itemIndex}-${item.raw?.slice(0, 20) || ''}`;
 
             // Split tokens into inline content (text) and nested blocks (lists, etc.)
-            const inlineTokens = item.tokens.filter((t) => !isNestedBlockToken(t));
-            const nestedTokens = item.tokens.filter((t) => isNestedBlockToken(t));
+            const { inlineTokens, nestedTokens } = item.tokens.reduce(
+              (acc, t) => {
+                if (isNestedBlockToken(t)) {
+                  acc.nestedTokens.push(t);
+                } else {
+                  acc.inlineTokens.push(t);
+                }
+                return acc;
+              },
+              { inlineTokens: [] as Token[], nestedTokens: [] as Token[] }
+            );
 
             return (
               <View key={itemKey}>
