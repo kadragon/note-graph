@@ -87,12 +87,18 @@ interface ViewWorkNoteDialogProps {
   workNote: WorkNote | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  loading?: boolean;
 }
 
 // Helper function to get today's date in YYYY-MM-DD format
 const getTodayString = (): string => new Date().toISOString().split('T')[0];
 
-export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNoteDialogProps) {
+export function ViewWorkNoteDialog({
+  workNote,
+  open,
+  onOpenChange,
+  loading = false,
+}: ViewWorkNoteDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
@@ -389,7 +395,26 @@ export function ViewWorkNoteDialog({ workNote, open, onOpenChange }: ViewWorkNot
     setIsEditing(false);
   };
 
-  if (!currentWorkNote) return null;
+  // Show loading state when data is being fetched
+  if (loading || !currentWorkNote) {
+    if (!open) return null;
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">업무노트</DialogTitle>
+            <DialogDescription className="sr-only">업무 노트 로딩 중</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <p className="text-sm text-muted-foreground">로딩 중...</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <>

@@ -36,9 +36,8 @@ export function TodoTabs() {
 
   // Fetch work note when a todo is clicked
   const { data: selectedWorkNote } = useQuery({
-    queryKey: ['work-note', selectedWorkNoteId],
-    queryFn: () =>
-      selectedWorkNoteId ? API.getWorkNote(selectedWorkNoteId) : Promise.resolve(null),
+    queryKey: ['work-note-detail', selectedWorkNoteId],
+    queryFn: () => API.getWorkNote(selectedWorkNoteId!),
     enabled: !!selectedWorkNoteId,
   });
 
