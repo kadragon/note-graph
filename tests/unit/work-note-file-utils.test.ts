@@ -1,87 +1,87 @@
 // Trace: SPEC-worknote-attachments-1, TASK-063
 
 import {
-  isUploadedToday,
-  sortFilesByUploadedAtDesc,
+  isModifiedToday,
+  sortFilesByModifiedTimeDesc,
 } from '@web/pages/work-notes/components/work-note-file-utils';
-import type { WorkNoteFile } from '@web/types/api';
+import type { DriveFileListItem } from '@web/types/api';
 import { describe, expect, it } from 'vitest';
 
-describe('sortFilesByUploadedAtDesc', () => {
-  it('sorts files by uploadedAt descending (newest first)', () => {
-    const files: WorkNoteFile[] = [
+describe('sortFilesByModifiedTimeDesc', () => {
+  it('sorts files by modifiedTime descending (newest first)', () => {
+    const files: DriveFileListItem[] = [
       {
-        fileId: 'B',
-        workId: 'W',
-        originalName: 'second.pdf',
-        fileType: 'application/pdf',
-        fileSize: 1000,
-        uploadedAt: '2024-01-02T10:00:00Z',
+        id: 'B',
+        name: 'second.pdf',
+        mimeType: 'application/pdf',
+        webViewLink: 'https://drive.google.com/file/B',
+        size: 1000,
+        modifiedTime: '2024-01-02T10:00:00Z',
       },
       {
-        fileId: 'A',
-        workId: 'W',
-        originalName: 'first.pdf',
-        fileType: 'application/pdf',
-        fileSize: 500,
-        uploadedAt: '2024-01-03T09:00:00Z',
+        id: 'A',
+        name: 'first.pdf',
+        mimeType: 'application/pdf',
+        webViewLink: 'https://drive.google.com/file/A',
+        size: 500,
+        modifiedTime: '2024-01-03T09:00:00Z',
       },
       {
-        fileId: 'C',
-        workId: 'W',
-        originalName: 'third.pdf',
-        fileType: 'application/pdf',
-        fileSize: 1500,
-        uploadedAt: '2023-12-31T23:00:00Z',
-      },
-    ];
-
-    const sorted = sortFilesByUploadedAtDesc(files);
-
-    expect(sorted.map((file) => file.fileId)).toEqual(['A', 'B', 'C']);
-  });
-
-  it('keeps deterministic order when uploadedAt is identical', () => {
-    const files: WorkNoteFile[] = [
-      {
-        fileId: 'C',
-        workId: 'W',
-        originalName: 'third.pdf',
-        fileType: 'application/pdf',
-        fileSize: 1500,
-        uploadedAt: '2024-01-03T09:00:00Z',
-      },
-      {
-        fileId: 'A',
-        workId: 'W',
-        originalName: 'first.pdf',
-        fileType: 'application/pdf',
-        fileSize: 500,
-        uploadedAt: '2024-01-03T09:00:00Z',
-      },
-      {
-        fileId: 'B',
-        workId: 'W',
-        originalName: 'second.pdf',
-        fileType: 'application/pdf',
-        fileSize: 1000,
-        uploadedAt: '2024-01-03T09:00:00Z',
+        id: 'C',
+        name: 'third.pdf',
+        mimeType: 'application/pdf',
+        webViewLink: 'https://drive.google.com/file/C',
+        size: 1500,
+        modifiedTime: '2023-12-31T23:00:00Z',
       },
     ];
 
-    const sorted = sortFilesByUploadedAtDesc(files);
+    const sorted = sortFilesByModifiedTimeDesc(files);
 
-    expect(sorted.map((file) => file.fileId)).toEqual(['A', 'B', 'C']);
+    expect(sorted.map((file) => file.id)).toEqual(['A', 'B', 'C']);
   });
 
-  it('detects files uploaded today', () => {
+  it('keeps deterministic order when modifiedTime is identical', () => {
+    const files: DriveFileListItem[] = [
+      {
+        id: 'C',
+        name: 'third.pdf',
+        mimeType: 'application/pdf',
+        webViewLink: 'https://drive.google.com/file/C',
+        size: 1500,
+        modifiedTime: '2024-01-03T09:00:00Z',
+      },
+      {
+        id: 'A',
+        name: 'first.pdf',
+        mimeType: 'application/pdf',
+        webViewLink: 'https://drive.google.com/file/A',
+        size: 500,
+        modifiedTime: '2024-01-03T09:00:00Z',
+      },
+      {
+        id: 'B',
+        name: 'second.pdf',
+        mimeType: 'application/pdf',
+        webViewLink: 'https://drive.google.com/file/B',
+        size: 1000,
+        modifiedTime: '2024-01-03T09:00:00Z',
+      },
+    ];
+
+    const sorted = sortFilesByModifiedTimeDesc(files);
+
+    expect(sorted.map((file) => file.id)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('detects files modified today', () => {
     const today = new Date();
     const iso = today.toISOString();
 
-    expect(isUploadedToday(iso)).toBe(true);
+    expect(isModifiedToday(iso)).toBe(true);
   });
 
-  it('detects files not uploaded today', () => {
-    expect(isUploadedToday('2024-01-01T00:00:00Z')).toBe(false);
+  it('detects files not modified today', () => {
+    expect(isModifiedToday('2024-01-01T00:00:00Z')).toBe(false);
   });
 });

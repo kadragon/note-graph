@@ -6,7 +6,7 @@ import {
   useUploadWorkNoteFile,
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
-import { createWorkNoteFile, resetFactoryCounter } from '@web/test/factories';
+import { createDriveFileListItem, resetFactoryCounter } from '@web/test/factories';
 import { render, screen } from '@web/test/setup';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -39,7 +39,7 @@ vi.mock('@web/hooks/use-work-notes', () => ({
   useUploadWorkNoteFile: vi.fn(),
   useDeleteWorkNoteFile: vi.fn(),
   useMigrateWorkNoteFiles: vi.fn(),
-  downloadWorkNoteFile: vi.fn(),
+  downloadWorkNoteFile: vi.fn((file) => file.webViewLink),
   useGoogleDriveStatus: vi.fn(),
 }));
 
@@ -73,19 +73,24 @@ describe('WorkNoteFileList', () => {
     } as unknown as ReturnType<typeof useGoogleDriveStatus>);
   });
 
-  it('renders Google Drive link and button for Drive files', () => {
+  it('renders Drive file list with links', () => {
     const driveLink = 'https://drive.google.com/file/d/drive-file/view';
     const files = [
-      createWorkNoteFile({
-        storageType: 'GDRIVE',
-        gdriveWebViewLink: driveLink,
-        originalName: 'drive-file.pdf',
-        r2Key: undefined,
+      createDriveFileListItem({
+        id: 'drive-file',
+        name: 'drive-file.pdf',
+        webViewLink: driveLink,
       }),
     ];
 
     vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: { files, googleDriveConfigured: true },
+      data: {
+        files,
+        driveFolderId: 'folder-123',
+        driveFolderLink: 'https://drive.google.com/folder',
+        googleDriveConfigured: true,
+        hasLegacyFiles: false,
+      },
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
@@ -95,45 +100,84 @@ describe('WorkNoteFileList', () => {
     expect(fileLink).toHaveAttribute('href', driveLink);
     expect(fileLink).toHaveAttribute('target', '_blank');
 
-    const driveButton = screen.getByRole('link', { name: 'Google Drive에서 열기' });
-    expect(driveButton).toHaveAttribute('href', driveLink);
-    expect(driveButton).toHaveAttribute('target', '_blank');
-
-    expect(screen.getByTestId('drive-icon')).toBeInTheDocument();
+    const driveButtons = screen.getAllByRole('link', { name: 'Google Drive에서 열기' });
+    expect(driveButtons[0]).toHaveAttribute('href', driveLink);
+    expect(driveButtons[0]).toHaveAttribute('target', '_blank');
   });
 
-  it('renders R2 badge and migration button for legacy R2 files', () => {
-    const files = [
-      createWorkNoteFile({
-        storageType: 'R2',
-        originalName: 'legacy.pdf',
-      }),
-    ];
+  it('renders Drive folder button when folder exists', () => {
+    const files = [createDriveFileListItem()];
+    const folderLink = 'https://drive.google.com/folder/123';
 
     vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: { files, googleDriveConfigured: true },
+      data: {
+        files,
+        driveFolderId: 'folder-123',
+        driveFolderLink: folderLink,
+        googleDriveConfigured: true,
+        hasLegacyFiles: false,
+      },
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
     render(<WorkNoteFileList workId="work-1" />);
 
-    expect(screen.getByText('Cloudflare R2')).toBeInTheDocument();
+    const folderButton = screen.getByRole('link', { name: /Drive 폴더 열기/i });
+    expect(folderButton).toHaveAttribute('href', folderLink);
+    expect(folderButton).toHaveAttribute('target', '_blank');
+  });
+
+  it('renders migration button when hasLegacyFiles is true', () => {
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: {
+        files: [],
+        driveFolderId: null,
+        driveFolderLink: null,
+        googleDriveConfigured: true,
+        hasLegacyFiles: true,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
     expect(
       screen.getByRole('button', { name: 'R2 파일 Google Drive로 옮기기' })
     ).toBeInTheDocument();
   });
 
-  it('shows migration result summary after moving R2 files', async () => {
-    const user = userEvent.setup();
-    const files = [
-      createWorkNoteFile({
-        storageType: 'R2',
-        originalName: 'legacy.pdf',
-      }),
-    ];
+  it('disables upload when Google Drive is not configured', () => {
+    vi.mocked(useGoogleDriveStatus).mockReturnValue({
+      data: { connected: false },
+    } as unknown as ReturnType<typeof useGoogleDriveStatus>);
 
     vi.mocked(useWorkNoteFiles).mockReturnValue({
-      data: { files, googleDriveConfigured: true },
+      data: {
+        files: [],
+        driveFolderId: null,
+        driveFolderLink: null,
+        googleDriveConfigured: false,
+        hasLegacyFiles: false,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(screen.getByRole('button', { name: '파일 업로드' })).toBeDisabled();
+  });
+
+  it('shows migration result summary after moving R2 files', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: {
+        files: [],
+        driveFolderId: null,
+        driveFolderLink: null,
+        googleDriveConfigured: true,
+        hasLegacyFiles: true,
+      },
       isLoading: false,
     } as unknown as ReturnType<typeof useWorkNoteFiles>);
 
@@ -164,5 +208,53 @@ describe('WorkNoteFileList', () => {
     expect(
       screen.getByText('마이그레이션 결과: 이동 1개 · 건너뜀 1개 · 실패 0개')
     ).toBeInTheDocument();
+  });
+
+  it('shows empty state when no files', () => {
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: {
+        files: [],
+        driveFolderId: null,
+        driveFolderLink: null,
+        googleDriveConfigured: true,
+        hasLegacyFiles: false,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(screen.getByText('첨부된 파일이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('does not show empty state when legacy files exist', () => {
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: {
+        files: [],
+        driveFolderId: null,
+        driveFolderLink: null,
+        googleDriveConfigured: true,
+        hasLegacyFiles: true,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(screen.queryByText('첨부된 파일이 없습니다.')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('R2에 저장된 기존 파일이 있습니다. 위의 버튼으로 Google Drive로 옮겨주세요.')
+    ).toBeInTheDocument();
+  });
+
+  it('shows loading state', () => {
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(screen.getByText('로딩 중...')).toBeInTheDocument();
   });
 });

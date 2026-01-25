@@ -5,6 +5,7 @@
 
 import type {
   Department,
+  DriveFileListItem,
   Person,
   Project,
   ProjectDetail,
@@ -216,7 +217,25 @@ export function createSearchResult(overrides: Partial<SearchResult> = {}): Searc
 }
 
 /**
- * Create a mock WorkNoteFile
+ * Create a mock DriveFileListItem (for Drive folder listing)
+ */
+export function createDriveFileListItem(
+  overrides: Partial<DriveFileListItem> = {}
+): DriveFileListItem {
+  const fileId = generateId('GFILE');
+  return {
+    id: fileId,
+    name: 'test-file.pdf',
+    mimeType: 'application/pdf',
+    webViewLink: `https://drive.google.com/file/d/${fileId}/view`,
+    size: 1024,
+    modifiedTime: generateTimestamp(),
+    ...overrides,
+  };
+}
+
+/**
+ * Create a mock WorkNoteFile (legacy - for migration testing)
  */
 export function createWorkNoteFile(overrides: Partial<WorkNoteFile> = {}): WorkNoteFile {
   const fileId = generateId('FILE');

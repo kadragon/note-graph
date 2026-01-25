@@ -5,9 +5,11 @@
  */
 
 import type {
+  DriveFileListItem,
   WorkNoteFile,
   WorkNoteFileMigrationResult,
   WorkNoteFileStorageType,
+  WorkNoteFilesListResponse,
 } from '@shared/types/work-note';
 import { nanoid } from 'nanoid';
 import type { Env } from '../types/env';
@@ -402,6 +404,114 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
 
   isDriveConfigured(): boolean {
     return !!this.driveService;
+  }
+
+  /**
+   * Upload file to Google Drive without creating DB record
+   * Uses Drive folder as source of truth - no individual file tracking
+   * Returns DriveFileListItem format for consistency with folder listing
+   */
+  async uploadFileToDrive(params: UploadFileParams): Promise<DriveFileListItem> {
+    const { workId, file, originalName, uploadedBy } = params;
+
+    this.validateFileSize(file);
+
+    const resolvedFileType = this.resolveFileType(originalName, file.type);
+    const driveService = this.requireDriveService();
+
+    // Get or create Google Drive folder for this work note
+    const folder = await driveService.getOrCreateWorkNoteFolder(uploadedBy, workId);
+
+    // Upload to Google Drive (no appProperties needed since we don't track in DB)
+    const driveFile = await driveService.uploadFile(
+      uploadedBy,
+      folder.gdriveFolderId,
+      file,
+      originalName,
+      resolvedFileType
+    );
+
+    // Return DriveFileListItem format
+    return {
+      id: driveFile.id,
+      name: driveFile.name,
+      mimeType: driveFile.mimeType,
+      webViewLink: driveFile.webViewLink,
+      size: file.size,
+      modifiedTime: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Delete file from Google Drive by Drive file ID
+   * Does not require DB lookup - deletes directly from Drive
+   */
+  async deleteDriveFile(driveFileId: string, userEmail: string): Promise<void> {
+    const driveService = this.requireDriveService();
+    await driveService.deleteFile(userEmail, driveFileId);
+  }
+
+  /**
+   * List files directly from Google Drive folder (source of truth)
+   * Does not use DB tracking - queries Drive folder content directly
+   */
+  async listFilesFromDrive(workId: string, userEmail: string): Promise<WorkNoteFilesListResponse> {
+    const googleDriveConfigured = this.isDriveConfigured();
+
+    // Get existing Drive folder from DB (if any)
+    const folderRecord = await this.db
+      .prepare(
+        `SELECT gdrive_folder_id as gdriveFolderId, gdrive_folder_link as gdriveFolderLink
+         FROM work_note_gdrive_folders WHERE work_id = ?`
+      )
+      .bind(workId)
+      .first<{ gdriveFolderId: string; gdriveFolderLink: string }>();
+
+    // Check for legacy R2 files
+    const legacyCount = await this.db
+      .prepare(
+        `SELECT COUNT(*) as count FROM work_note_files
+         WHERE work_id = ? AND storage_type = 'R2' AND deleted_at IS NULL`
+      )
+      .bind(workId)
+      .first<{ count: number }>();
+
+    const hasLegacyFiles = (legacyCount?.count ?? 0) > 0;
+
+    // If no Drive folder or Drive not configured, return empty list
+    if (!folderRecord || !googleDriveConfigured || !this.driveService) {
+      return {
+        files: [],
+        driveFolderId: folderRecord?.gdriveFolderId ?? null,
+        driveFolderLink: folderRecord?.gdriveFolderLink ?? null,
+        googleDriveConfigured,
+        hasLegacyFiles,
+      };
+    }
+
+    // List files from Drive folder
+    const driveFiles = await this.driveService.listFilesInFolder(
+      userEmail,
+      folderRecord.gdriveFolderId
+    );
+
+    // Map to DriveFileListItem format (convert size from string to number)
+    const files: DriveFileListItem[] = driveFiles.map((f) => ({
+      id: f.id,
+      name: f.name,
+      mimeType: f.mimeType,
+      webViewLink: f.webViewLink,
+      size: parseInt(f.size, 10) || 0,
+      modifiedTime: f.modifiedTime ?? new Date(0).toISOString(),
+    }));
+
+    return {
+      files,
+      driveFolderId: folderRecord.gdriveFolderId,
+      driveFolderLink: folderRecord.gdriveFolderLink,
+      googleDriveConfigured,
+      hasLegacyFiles,
+    };
   }
 
   private requireDriveService(): GoogleDriveService {

@@ -2,9 +2,9 @@ import { waitFor } from '@testing-library/react';
 import { TODO_STATUS } from '@web/constants/todo-status';
 import { API } from '@web/lib/api';
 import {
+  createDriveFileListItem,
   createTodo,
   createWorkNote,
-  createWorkNoteFile,
   resetFactoryCounter,
 } from '@web/test/factories';
 import { createTestQueryClient, renderHookWithClient } from '@web/test/setup';
@@ -174,10 +174,16 @@ describe('useWorkNoteFiles', () => {
 
   it('fetches files for a work note', async () => {
     const mockFiles = [
-      createWorkNoteFile({ fileId: 'file-1', originalName: 'file1.pdf' }),
-      createWorkNoteFile({ fileId: 'file-2', originalName: 'file2.jpg' }),
+      createDriveFileListItem({ id: 'file-1', name: 'file1.pdf' }),
+      createDriveFileListItem({ id: 'file-2', name: 'file2.jpg' }),
     ];
-    const response = { files: mockFiles, googleDriveConfigured: true };
+    const response = {
+      files: mockFiles,
+      driveFolderId: 'folder-1',
+      driveFolderLink: 'https://drive.google.com/folder',
+      googleDriveConfigured: true,
+      hasLegacyFiles: false,
+    };
     vi.mocked(API.getWorkNoteFiles).mockResolvedValue(response);
 
     const { result } = renderHookWithClient(() => useWorkNoteFiles('work-1'));

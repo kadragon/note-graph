@@ -14,28 +14,16 @@ import { Button } from '@web/components/ui/button';
 import { Label } from '@web/components/ui/label';
 import { useToast } from '@web/hooks/use-toast';
 import {
-  downloadWorkNoteFile,
   useDeleteWorkNoteFile,
   useGoogleDriveStatus,
   useMigrateWorkNoteFiles,
   useUploadWorkNoteFile,
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
-import { API } from '@web/lib/api';
-import type { WorkNoteFile, WorkNoteFileMigrationResult } from '@web/types/api';
-import {
-  ArrowRightLeft,
-  Cloud,
-  Database,
-  Download,
-  ExternalLink,
-  Eye,
-  FileIcon,
-  Trash2,
-  Upload,
-} from 'lucide-react';
+import type { DriveFileListItem, WorkNoteFileMigrationResult } from '@web/types/api';
+import { ArrowRightLeft, ExternalLink, FileIcon, FolderOpen, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { isUploadedToday, sortFilesByUploadedAtDesc } from './work-note-file-utils';
+import { isModifiedToday, sortFilesByModifiedTimeDesc } from './work-note-file-utils';
 
 interface WorkNoteFileListProps {
   workId: string;
@@ -47,30 +35,10 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const PREVIEWABLE_TYPES = new Set([
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/gif',
-  'image/webp',
-]);
-
-/**
- * Check if file can be previewed in browser (PDF and images only)
- */
-function isPreviewable(fileType: string): boolean {
-  return PREVIEWABLE_TYPES.has(fileType.toLowerCase());
-}
-
-function getDriveLink(file: WorkNoteFile): string | null {
-  if (file.storageType !== 'GDRIVE') return null;
-  return file.gdriveWebViewLink ?? null;
-}
-
 export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
-  const [fileToDelete, setFileToDelete] = useState<WorkNoteFile | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<DriveFileListItem | null>(null);
   const [migrationResult, setMigrationResult] = useState<WorkNoteFileMigrationResult | null>(null);
   const { toast } = useToast();
 
@@ -79,11 +47,13 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const uploadMutation = useUploadWorkNoteFile();
   const deleteMutation = useDeleteWorkNoteFile();
   const migrateMutation = useMigrateWorkNoteFiles();
-  const files = data?.files ?? [];
-  const googleDriveConfigured = data?.googleDriveConfigured ?? false;
-  const isDriveConnected = driveStatus?.connected ?? false;
 
-  const hasLegacyR2Files = files.some((file) => file.storageType === 'R2');
+  const files = data?.files ?? [];
+  const driveFolderLink = data?.driveFolderLink ?? null;
+  const googleDriveConfigured = data?.googleDriveConfigured ?? false;
+  const hasLegacyFiles = data?.hasLegacyFiles ?? false;
+  const isDriveConnected = driveStatus?.connected ?? false;
+  const isUploadDisabled = uploadingFiles.length > 0 || !googleDriveConfigured;
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
@@ -121,30 +91,10 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
     }
   };
 
-  const handleDownload = async (file: WorkNoteFile) => {
-    try {
-      const driveLink = await downloadWorkNoteFile(workId, file);
-      if (driveLink) {
-        window.open(driveLink, '_blank', 'noopener,noreferrer');
-      }
-    } catch (error) {
-      console.error('Download failed:', error);
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error instanceof Error ? error.message : '파일을 다운로드할 수 없습니다.',
-      });
-    }
-  };
-
-  const handlePreview = (file: WorkNoteFile) => {
-    const viewUrl = API.getWorkNoteFileViewUrl(workId, file.fileId);
-    window.open(viewUrl, '_blank', 'noopener,noreferrer');
-  };
-
   const handleDeleteConfirm = () => {
     if (fileToDelete) {
-      deleteMutation.mutate({ workId, fileId: fileToDelete.fileId });
+      // Use Drive file ID directly (not FILE- prefixed)
+      deleteMutation.mutate({ workId, fileId: fileToDelete.id });
       setFileToDelete(null);
     }
   };
@@ -155,7 +105,15 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
         <Label className="text-base font-semibold">첨부파일</Label>
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-2">
-            {hasLegacyR2Files && (
+            {driveFolderLink && (
+              <Button asChild type="button" variant="outline" size="sm">
+                <a href={driveFolderLink} target="_blank" rel="noopener noreferrer">
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Drive 폴더 열기
+                </a>
+              </Button>
+            )}
+            {hasLegacyFiles && (
               <Button
                 type="button"
                 variant="outline"
@@ -180,14 +138,14 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
               onChange={handleFileSelect}
               className="hidden"
               accept=".pdf,.hwp,.hwpx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
-              disabled={uploadingFiles.length > 0}
+              disabled={isUploadDisabled}
             />
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingFiles.length > 0}
+              disabled={isUploadDisabled}
             >
               <Upload className="h-4 w-4 mr-2" />
               {uploadingFiles.length > 0 ? '업로드 중...' : '파일 업로드'}
@@ -226,117 +184,72 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">로딩 중...</p>
+      ) : files.length === 0 && hasLegacyFiles ? (
+        <p className="text-sm text-muted-foreground">
+          R2에 저장된 기존 파일이 있습니다. 위의 버튼으로 Google Drive로 옮겨주세요.
+        </p>
       ) : files.length === 0 ? (
         <p className="text-sm text-muted-foreground">첨부된 파일이 없습니다.</p>
       ) : (
         <div className="space-y-2">
-          {sortFilesByUploadedAtDesc(files).map((file) => {
-            const driveLink = getDriveLink(file);
-            const isDriveFile = file.storageType === 'GDRIVE';
-            const isR2File = file.storageType === 'R2';
-            return (
-              <div
-                key={file.fileId}
-                className="flex items-center gap-2 rounded-md border border-border p-3 hover:bg-accent/50 transition-colors"
-              >
-                <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  {driveLink ? (
-                    <a
-                      href={driveLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium truncate hover:underline"
-                    >
-                      {file.originalName}
-                    </a>
-                  ) : (
-                    <p className="text-sm font-medium truncate">{file.originalName}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {formatFileSize(file.fileSize)} •{' '}
-                    {new Date(file.uploadedAt).toLocaleDateString('ko-KR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {isDriveFile && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
-                      <Cloud data-testid="drive-icon" className="h-3 w-3" />
-                      Google Drive
-                    </span>
-                  )}
-                  {isR2File && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-                      <Database className="h-3 w-3" />
-                      Cloudflare R2
-                    </span>
-                  )}
-                  {isUploadedToday(file.uploadedAt) && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                      오늘 업로드
-                    </span>
-                  )}
-                  {driveLink && (
-                    <Button
-                      asChild
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      title="Google Drive에서 열기"
-                    >
-                      <a href={driveLink} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                        <span className="sr-only">Google Drive에서 열기</span>
-                      </a>
-                    </Button>
-                  )}
-                  <div className="flex items-center gap-1">
-                    {isPreviewable(file.fileType) && !isDriveFile && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handlePreview(file)}
-                        className="h-8 w-8 p-0"
-                        title="바로보기"
-                      >
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">바로보기</span>
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDownload(file)}
-                      className="h-8 w-8 p-0"
-                      title="다운로드"
-                    >
-                      <Download className="h-4 w-4" />
-                      <span className="sr-only">다운로드</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFileToDelete(file)}
-                      disabled={deleteMutation.isPending}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      title="삭제"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">삭제</span>
-                    </Button>
-                  </div>
-                </div>
+          {sortFilesByModifiedTimeDesc(files).map((file) => (
+            <div
+              key={file.id}
+              className="flex items-center gap-2 rounded-md border border-border p-3 hover:bg-accent/50 transition-colors"
+            >
+              <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <a
+                  href={file.webViewLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium truncate hover:underline block"
+                >
+                  {file.name}
+                </a>
+                <p className="text-xs text-muted-foreground">
+                  {formatFileSize(file.size)} •{' '}
+                  {new Date(file.modifiedTime).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </p>
               </div>
-            );
-          })}
+              <div className="flex items-center gap-2">
+                {isModifiedToday(file.modifiedTime) && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                    오늘 수정
+                  </span>
+                )}
+                <Button
+                  asChild
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title="Google Drive에서 열기"
+                >
+                  <a href={file.webViewLink} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4" />
+                    <span className="sr-only">Google Drive에서 열기</span>
+                  </a>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFileToDelete(file)}
+                  disabled={deleteMutation.isPending}
+                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                  title="삭제"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="sr-only">삭제</span>
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

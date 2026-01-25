@@ -11,6 +11,8 @@
 - [x] PWA 업데이트 체크가 1시간 간격으로 반복 호출된다
 - [x] PWA가 백그라운드에서 돌아올 때 visibilitychange로 업데이트를 즉시 확인한다
 - [x] 업데이트가 필요하지 않으면 PWA 업데이트 배너를 렌더링하지 않는다
+- [x] WorkNoteFileList: Google Drive 미설정 상태에서는 업로드를 차단한다
+- [x] WorkNoteFileList: 레거시 파일이 있을 때 빈 상태 메시지를 표시하지 않는다
 
 ## Structural Cleanup (after tests are green)
 - Remove `tests/departments.test.ts` once repository search coverage is confirmed.
