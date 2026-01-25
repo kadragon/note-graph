@@ -16,7 +16,6 @@ import { NotFoundError } from '../types/errors';
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
-const SIMILARITY_SCORE_THRESHOLD = 0.7;
 
 type Variables = {
   activeCategoryNames: string[];
@@ -84,8 +83,7 @@ app.post(
     const workNoteService = new WorkNoteService(c.env);
     const similarNotes = await workNoteService.findSimilarNotes(
       body.inputText,
-      SIMILAR_NOTES_TOP_K,
-      SIMILARITY_SCORE_THRESHOLD
+      SIMILAR_NOTES_TOP_K
     );
 
     // Generate AI draft with similar notes as context

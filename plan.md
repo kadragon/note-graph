@@ -13,6 +13,7 @@
 - [x] 업데이트가 필요하지 않으면 PWA 업데이트 배너를 렌더링하지 않는다
 - [x] WorkNoteFileList: Google Drive 미설정 상태에서는 업로드를 차단한다
 - [x] WorkNoteFileList: 레거시 파일이 있을 때 빈 상태 메시지를 표시하지 않는다
+- [x] WorkNoteService.findSimilarNotes는 scoreThreshold 미만만 존재하면 결과를 반환하지 않는다
 
 ## Structural Cleanup (after tests are green)
 - Remove `tests/departments.test.ts` once repository search coverage is confirmed.

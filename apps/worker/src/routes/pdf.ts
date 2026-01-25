@@ -20,7 +20,6 @@ import { BadRequestError, NotFoundError } from '../types/errors.js';
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const SIMILAR_NOTES_TOP_K = 3;
-const SIMILARITY_SCORE_THRESHOLD = 0.5;
 
 /**
  * Parse draft JSON and extract draft and references
@@ -151,11 +150,7 @@ pdf.post('/', async (c) => {
     extractionService.validatePdfBuffer(pdfBuffer);
     const extractedText = await extractionService.extractText(pdfBuffer);
     const workNoteService = new WorkNoteService(c.env);
-    const similarNotes = await workNoteService.findSimilarNotes(
-      extractedText,
-      SIMILAR_NOTES_TOP_K,
-      SIMILARITY_SCORE_THRESHOLD
-    );
+    const similarNotes = await workNoteService.findSimilarNotes(extractedText, SIMILAR_NOTES_TOP_K);
     const draft =
       similarNotes.length > 0
         ? await aiDraftService.generateDraftFromTextWithContext(extractedText, similarNotes, {
