@@ -239,12 +239,20 @@ export default function Search() {
 
   const totalCount = workNotes.length + persons.length + departments.length;
 
-  const { data: selectedWorkNote } = useQuery({
-    queryKey: ['search-work-note', selectedWorkNoteId],
-    queryFn: () =>
-      selectedWorkNoteId ? API.getWorkNote(selectedWorkNoteId) : Promise.resolve(null),
+  const {
+    data: selectedWorkNote,
+    isLoading: isWorkNoteLoading,
+    isFetching: isWorkNoteFetching,
+  } = useQuery({
+    queryKey: ['work-note-detail', selectedWorkNoteId],
+    queryFn: () => API.getWorkNote(selectedWorkNoteId!),
     enabled: !!selectedWorkNoteId,
+    staleTime: 30_000, // Cache for 30 seconds to avoid refetching on repeated views
   });
+
+  // Show loading when fetching a different work note than currently displayed
+  const isLoadingWorkNote =
+    isWorkNoteLoading || (isWorkNoteFetching && selectedWorkNote?.id !== selectedWorkNoteId);
 
   const handleWorkNoteSelect = (workNoteId: string) => {
     setSelectedWorkNoteId(workNoteId);
@@ -327,6 +335,7 @@ export default function Search() {
         workNote={selectedWorkNote || null}
         open={isDialogOpen}
         onOpenChange={handleDialogOpenChange}
+        loading={isLoadingWorkNote}
       />
     </div>
   );

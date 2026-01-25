@@ -44,9 +44,8 @@ export default function Statistics() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: selectedWorkNote } = useQuery({
-    queryKey: ['statistics-work-note', selectedWorkNoteId],
-    queryFn: () =>
-      selectedWorkNoteId ? API.getWorkNote(selectedWorkNoteId) : Promise.resolve(null),
+    queryKey: ['work-note-detail', selectedWorkNoteId],
+    queryFn: () => API.getWorkNote(selectedWorkNoteId!),
     enabled: !!selectedWorkNoteId,
   });
 

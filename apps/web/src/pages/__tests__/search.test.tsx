@@ -18,11 +18,20 @@ vi.mock('@web/lib/api', () => ({
 }));
 
 vi.mock('@web/pages/work-notes/components/view-work-note-dialog', () => ({
-  ViewWorkNoteDialog: ({ open, workNote }: { open: boolean; workNote: { id?: string } | null }) => (
+  ViewWorkNoteDialog: ({
+    open,
+    workNote,
+    loading,
+  }: {
+    open: boolean;
+    workNote: { id?: string } | null;
+    loading?: boolean;
+  }) => (
     <div
       data-testid="work-note-dialog"
       data-open={open ? 'true' : 'false'}
       data-work-id={workNote?.id ?? ''}
+      data-loading={loading ? 'true' : 'false'}
     />
   ),
 }));
@@ -164,5 +173,52 @@ describe('search page', () => {
     });
 
     expect(screen.getByTestId('work-note-dialog')).toHaveAttribute('data-open', 'true');
+    expect(screen.getByTestId('work-note-dialog')).toHaveAttribute('data-work-id', 'work-1');
+  });
+
+  it('shows loading state while fetching work note details', async () => {
+    const setSearchParams = vi.fn();
+    vi.mocked(useSearchParams).mockReturnValue([new URLSearchParams('q=테스트'), setSearchParams]);
+
+    vi.mocked(useSearch).mockReturnValue({
+      mutate: vi.fn(),
+      isSuccess: true,
+      isPending: false,
+      data: {
+        query: '테스트',
+        workNotes: [
+          {
+            id: 'work-1',
+            title: '업무노트 결과',
+            category: '일반',
+            score: 0.9,
+            source: 'hybrid',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        persons: [],
+        departments: [],
+      },
+    } as unknown as ReturnType<typeof useSearch>);
+
+    // Simulate a slow API response that never resolves during this test
+    vi.mocked(API.getWorkNote).mockImplementation(
+      () => new Promise(() => {}) // Never resolves - stays in loading state
+    );
+
+    const user = userEvent.setup();
+    render(<Search />);
+
+    await waitFor(() => {
+      expect(screen.getByText('업무노트 결과')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('업무노트 결과'));
+
+    // Dialog should be open and in loading state
+    await waitFor(() => {
+      expect(screen.getByTestId('work-note-dialog')).toHaveAttribute('data-open', 'true');
+      expect(screen.getByTestId('work-note-dialog')).toHaveAttribute('data-loading', 'true');
+    });
   });
 });
