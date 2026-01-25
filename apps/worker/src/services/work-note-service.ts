@@ -377,13 +377,8 @@ export class WorkNoteService {
       }));
 
       // Filter by similarity threshold and extract work IDs
-      let relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);
+      const relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);
 
-      // Guarantee at least 1 result if vector search returned any matches
-      const topResult = similarResults[0];
-      if (relevantResults.length === 0 && topResult) {
-        relevantResults = [topResult]; // Already sorted by score descending
-      }
       const workIdScores = new Map<string, number>();
       const workIds = [
         ...new Set(

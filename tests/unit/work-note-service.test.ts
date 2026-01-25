@@ -80,6 +80,34 @@ describe('WorkNoteService.findSimilarNotes', () => {
     expect(mockFindTodosByWorkIds).toHaveBeenCalledWith(['WORK-1']);
   });
 
+  it('returns no results when all matches are below scoreThreshold', async () => {
+    const service = new WorkNoteService(dummyEnv);
+
+    const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
+    const mockQuery = vi.fn().mockResolvedValue({
+      matches: [
+        { id: 'WORK-1#chunk0', score: 0.2, metadata: {} },
+        { id: 'WORK-2#chunk1', score: 0.1, metadata: {} },
+      ],
+    });
+
+    const mockFindByIds = vi.fn().mockResolvedValue([]);
+    const mockFindTodosByWorkIds = vi.fn().mockResolvedValue(new Map());
+
+    (service as unknown as { vectorizeService: unknown }).vectorizeService = { query: mockQuery };
+    (service as unknown as { embeddingService: unknown }).embeddingService = { embed: mockEmbed };
+    (service as unknown as { repository: unknown }).repository = {
+      findByIds: mockFindByIds,
+      findTodosByWorkIds: mockFindTodosByWorkIds,
+    } as unknown;
+
+    const result = await service.findSimilarNotes('관련 없는 텍스트', 3, 0.7);
+
+    expect(result).toEqual([]);
+    expect(mockFindByIds).not.toHaveBeenCalled();
+    expect(mockFindTodosByWorkIds).not.toHaveBeenCalled();
+  });
+
   it('includes todos in similar notes results', async () => {
     const service = new WorkNoteService(dummyEnv);
 
