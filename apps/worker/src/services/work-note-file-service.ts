@@ -502,7 +502,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       mimeType: f.mimeType,
       webViewLink: f.webViewLink,
       size: parseInt(f.size, 10) || 0,
-      modifiedTime: f.modifiedTime ?? '',
+      modifiedTime: f.modifiedTime ?? new Date(0).toISOString(),
     }));
 
     return {

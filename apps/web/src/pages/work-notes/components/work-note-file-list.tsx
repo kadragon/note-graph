@@ -14,7 +14,6 @@ import { Button } from '@web/components/ui/button';
 import { Label } from '@web/components/ui/label';
 import { useToast } from '@web/hooks/use-toast';
 import {
-  downloadWorkNoteFile,
   useDeleteWorkNoteFile,
   useGoogleDriveStatus,
   useMigrateWorkNoteFiles,
@@ -90,11 +89,6 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
-
-  const handleDownload = (file: DriveFileListItem) => {
-    const link = downloadWorkNoteFile(file);
-    window.open(link, '_blank', 'noopener,noreferrer');
   };
 
   const handleDeleteConfirm = () => {
@@ -241,31 +235,18 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
                     <span className="sr-only">Google Drive에서 열기</span>
                   </a>
                 </Button>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownload(file)}
-                    className="h-8 w-8 p-0"
-                    title="Drive에서 열기"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    <span className="sr-only">Drive에서 열기</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setFileToDelete(file)}
-                    disabled={deleteMutation.isPending}
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                    title="삭제"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">삭제</span>
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFileToDelete(file)}
+                  disabled={deleteMutation.isPending}
+                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                  title="삭제"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="sr-only">삭제</span>
+                </Button>
               </div>
             </div>
           ))}
