@@ -1,5 +1,6 @@
 // Trace: SPEC-search-ui-1, TASK-068
 
+import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
@@ -13,6 +14,8 @@ import {
   TableRow,
 } from '@web/components/ui/table';
 import { useSearch } from '@web/hooks/use-search';
+import { API } from '@web/lib/api';
+import { ViewWorkNoteDialog } from '@web/pages/work-notes/components/view-work-note-dialog';
 import type { DepartmentSearchResult, PersonSearchResult, SearchResult } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -64,9 +67,10 @@ function SearchResultsSection({
 
 interface WorkNotesTableProps {
   workNotes: SearchResult[];
+  onSelect?: (workNoteId: string) => void;
 }
 
-function WorkNotesTable({ workNotes }: WorkNotesTableProps) {
+function WorkNotesTable({ workNotes, onSelect }: WorkNotesTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -80,7 +84,11 @@ function WorkNotesTable({ workNotes }: WorkNotesTableProps) {
       </TableHeader>
       <TableBody>
         {workNotes.map((result) => (
-          <TableRow key={result.id}>
+          <TableRow
+            key={result.id}
+            className={onSelect ? 'cursor-pointer hover:bg-muted/50' : undefined}
+            onClick={() => onSelect?.(result.id)}
+          >
             <TableCell className="font-medium">{result.title}</TableCell>
             <TableCell>
               <Badge variant="secondary">{result.category}</Badge>
@@ -191,6 +199,8 @@ export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchMutation = useSearch();
   const lastSearchedQueryRef = useRef<string | null>(null);
+  const [selectedWorkNoteId, setSelectedWorkNoteId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Get query from URL params (source of truth)
   const urlQuery = normalizeSearchQuery(searchParams.get('q'));
@@ -228,6 +238,25 @@ export default function Search() {
   const departments = results?.departments || [];
 
   const totalCount = workNotes.length + persons.length + departments.length;
+
+  const { data: selectedWorkNote } = useQuery({
+    queryKey: ['search-work-note', selectedWorkNoteId],
+    queryFn: () =>
+      selectedWorkNoteId ? API.getWorkNote(selectedWorkNoteId) : Promise.resolve(null),
+    enabled: !!selectedWorkNoteId,
+  });
+
+  const handleWorkNoteSelect = (workNoteId: string) => {
+    setSelectedWorkNoteId(workNoteId);
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setSelectedWorkNoteId(null);
+    }
+  };
 
   return (
     <div className="page-container">
@@ -267,7 +296,7 @@ export default function Search() {
             emptyMessage="검색된 업무노트가 없습니다."
             isEmpty={workNotes.length === 0}
           >
-            <WorkNotesTable workNotes={workNotes} />
+            <WorkNotesTable workNotes={workNotes} onSelect={handleWorkNoteSelect} />
           </SearchResultsSection>
 
           <SearchResultsSection
@@ -293,6 +322,12 @@ export default function Search() {
           </SearchResultsSection>
         </div>
       )}
+
+      <ViewWorkNoteDialog
+        workNote={selectedWorkNote || null}
+        open={isDialogOpen}
+        onOpenChange={handleDialogOpenChange}
+      />
     </div>
   );
 }
