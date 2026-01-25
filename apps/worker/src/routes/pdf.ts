@@ -20,7 +20,7 @@ import { BadRequestError, NotFoundError } from '../types/errors.js';
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const SIMILAR_NOTES_TOP_K = 3;
-const SIMILARITY_SCORE_THRESHOLD = 0.5;
+const SIMILARITY_SCORE_THRESHOLD = 0.4;
 
 /**
  * Parse draft JSON and extract draft and references

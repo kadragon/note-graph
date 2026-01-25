@@ -16,7 +16,7 @@ import { NotFoundError } from '../types/errors';
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
-const SIMILARITY_SCORE_THRESHOLD = 0.7;
+const SIMILARITY_SCORE_THRESHOLD = 0.4;
 
 type Variables = {
   activeCategoryNames: string[];

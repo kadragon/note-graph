@@ -361,7 +361,7 @@ export class WorkNoteService {
   async findSimilarNotes(
     inputText: string,
     topK: number = 3,
-    scoreThreshold: number = 0.7
+    scoreThreshold: number = 0.4
   ): Promise<SimilarWorkNoteReference[]> {
     try {
       // Search for similar work notes
@@ -377,7 +377,13 @@ export class WorkNoteService {
       }));
 
       // Filter by similarity threshold and extract work IDs
-      const relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);
+      let relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);
+
+      // Guarantee at least 1 result if vector search returned any matches
+      const topResult = similarResults[0];
+      if (relevantResults.length === 0 && topResult) {
+        relevantResults = [topResult]; // Already sorted by score descending
+      }
       const workIdScores = new Map<string, number>();
       const workIds = [
         ...new Set(
