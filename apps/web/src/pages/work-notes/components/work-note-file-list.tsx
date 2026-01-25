@@ -54,6 +54,7 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
   const googleDriveConfigured = data?.googleDriveConfigured ?? false;
   const hasLegacyFiles = data?.hasLegacyFiles ?? false;
   const isDriveConnected = driveStatus?.connected ?? false;
+  const isUploadDisabled = uploadingFiles.length > 0 || !googleDriveConfigured;
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
@@ -143,14 +144,14 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
               onChange={handleFileSelect}
               className="hidden"
               accept=".pdf,.hwp,.hwpx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
-              disabled={uploadingFiles.length > 0}
+              disabled={isUploadDisabled}
             />
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingFiles.length > 0}
+              disabled={isUploadDisabled}
             >
               <Upload className="h-4 w-4 mr-2" />
               {uploadingFiles.length > 0 ? '업로드 중...' : '파일 업로드'}
@@ -189,6 +190,10 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">로딩 중...</p>
+      ) : files.length === 0 && hasLegacyFiles ? (
+        <p className="text-sm text-muted-foreground">
+          R2에 저장된 기존 파일이 있습니다. 위의 버튼으로 Google Drive로 옮겨주세요.
+        </p>
       ) : files.length === 0 ? (
         <p className="text-sm text-muted-foreground">첨부된 파일이 없습니다.</p>
       ) : (

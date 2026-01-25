@@ -146,6 +146,27 @@ describe('WorkNoteFileList', () => {
     ).toBeInTheDocument();
   });
 
+  it('disables upload when Google Drive is not configured', () => {
+    vi.mocked(useGoogleDriveStatus).mockReturnValue({
+      data: { connected: false },
+    } as unknown as ReturnType<typeof useGoogleDriveStatus>);
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: {
+        files: [],
+        driveFolderId: null,
+        driveFolderLink: null,
+        googleDriveConfigured: false,
+        hasLegacyFiles: false,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(screen.getByRole('button', { name: '파일 업로드' })).toBeDisabled();
+  });
+
   it('shows migration result summary after moving R2 files', async () => {
     const user = userEvent.setup();
 
@@ -204,6 +225,26 @@ describe('WorkNoteFileList', () => {
     render(<WorkNoteFileList workId="work-1" />);
 
     expect(screen.getByText('첨부된 파일이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('does not show empty state when legacy files exist', () => {
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: {
+        files: [],
+        driveFolderId: null,
+        driveFolderLink: null,
+        googleDriveConfigured: true,
+        hasLegacyFiles: true,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(screen.queryByText('첨부된 파일이 없습니다.')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('R2에 저장된 기존 파일이 있습니다. 위의 버튼으로 Google Drive로 옮겨주세요.')
+    ).toBeInTheDocument();
   });
 
   it('shows loading state', () => {
