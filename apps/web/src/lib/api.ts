@@ -160,14 +160,12 @@ class CFAccessTokenRefresher {
         response.status === 302 ||
         response.status === 301
       );
-    } catch (error) {
-      // AbortError means timeout - server didn't respond in time
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return false;
-      }
-      // Other errors (network down, DNS failure, etc.) - still try redirect
-      // because the redirect will fail gracefully at CF Access login page
-      return true;
+    } catch {
+      // With mode: 'no-cors', any error means the server is genuinely unreachable:
+      // - AbortError: timeout (server didn't respond in time)
+      // - TypeError: DNS failure, connection refused, network down
+      // Return false to show "server unreachable" state and avoid redirect loops
+      return false;
     }
   }
 
