@@ -104,6 +104,24 @@ describe('formatPersonBadge', () => {
 
     expect(formatPersonBadge(person)).toBe('박철수/444444/043-555-0000');
   });
+
+  it("returns 'dept/name' when personId is undefined (backward compat)", () => {
+    const person = {
+      name: '홍길동',
+      currentDept: '개발팀',
+      currentPosition: null,
+    };
+
+    expect(formatPersonBadge(person)).toBe('개발팀/홍길동');
+  });
+
+  it("returns 'name' when only name is provided (minimal input)", () => {
+    const person = {
+      name: '최민수',
+    };
+
+    expect(formatPersonBadge(person)).toBe('최민수');
+  });
 });
 
 describe('getDepartmentColor', () => {

@@ -1,5 +1,4 @@
 import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
-import { formatPersonBadge } from '@web/lib/utils';
 import type { Todo, WorkNoteWithStats } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 
@@ -269,20 +268,22 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
             <View style={styles.section}>
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>담당자</Text>
-                {workNote.persons.map((person) => (
-                  <View key={person.personId} style={styles.personItem}>
-                    <View style={styles.personBullet} />
-                    <Text style={styles.personName}>
-                      {formatPersonBadge({
-                        name: person.personName,
-                        personId: person.personId,
-                        phoneExt: person.phoneExt,
-                        currentDept: person.currentDept,
-                        currentPosition: person.currentPosition,
-                      })}
-                    </Text>
-                  </View>
-                ))}
+                {workNote.persons.map((person) => {
+                  const orgParts = [person.currentDept, person.currentPosition].filter(Boolean);
+                  const contactParts = [person.personId, person.phoneExt].filter(Boolean);
+                  return (
+                    <View key={person.personId} style={styles.personItem}>
+                      <View style={styles.personBullet} />
+                      <Text style={styles.personName}>{person.personName}</Text>
+                      {orgParts.length > 0 && (
+                        <Text style={styles.personDept}> ({orgParts.join('/')})</Text>
+                      )}
+                      {contactParts.length > 0 && (
+                        <Text style={styles.personDept}> · {contactParts.join(' · ')}</Text>
+                      )}
+                    </View>
+                  );
+                })}
               </View>
             </View>
           )}

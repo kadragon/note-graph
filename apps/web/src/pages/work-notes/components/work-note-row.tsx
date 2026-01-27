@@ -2,7 +2,6 @@ import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { TableCell, TableRow } from '@web/components/ui/table';
 import { useDownloadWorkNote } from '@web/hooks/use-download-work-note';
-import { formatPersonBadge } from '@web/lib/utils';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -114,19 +113,23 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
       <TableCell>
         {workNote.persons && workNote.persons.length > 0 ? (
           <div className="flex flex-col gap-1">
-            {workNote.persons.map((person) => (
-              <div key={person.personId} className="text-sm">
-                <span className="font-medium">
-                  {formatPersonBadge({
-                    name: person.personName,
-                    personId: person.personId,
-                    phoneExt: person.phoneExt,
-                    currentDept: person.currentDept,
-                    currentPosition: person.currentPosition,
-                  })}
-                </span>
-              </div>
-            ))}
+            {workNote.persons.map((person) => {
+              const orgParts = [person.currentDept, person.currentPosition].filter(Boolean);
+              const contactParts = [person.personId, person.phoneExt].filter(Boolean);
+              return (
+                <div key={person.personId} className="text-sm">
+                  <span className="font-medium">{person.personName}</span>
+                  {orgParts.length > 0 && (
+                    <span className="text-muted-foreground ml-1">({orgParts.join('/')})</span>
+                  )}
+                  {contactParts.length > 0 && (
+                    <span className="text-muted-foreground text-xs ml-1">
+                      · {contactParts.join(' · ')}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <span className="text-muted-foreground text-sm">-</span>
