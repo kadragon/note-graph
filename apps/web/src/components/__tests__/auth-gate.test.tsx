@@ -176,4 +176,31 @@ describe('AuthGate', () => {
     // Verify retry button is present
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
   });
+
+  it('triggers redirect on CORS error (CF Access expired) when online', async () => {
+    // CORS error occurs when CF Access token expired and server responds with redirect
+    const corsError = new TypeError('Failed to fetch');
+    vi.mocked(API.getMe).mockRejectedValue(corsError);
+    vi.mocked(cfTokenRefresher.isNetworkError).mockReturnValue(true);
+    vi.mocked(cfTokenRefresher.isOnline).mockReturnValue(true);
+    // forceAuthRedirect returns true when origin is reachable (even via no-cors opaque response)
+    vi.mocked(cfTokenRefresher.forceAuthRedirect).mockResolvedValue(true);
+
+    renderWithProviders(
+      <AuthGate>
+        <div>Protected Content</div>
+      </AuthGate>
+    );
+
+    await waitFor(
+      () => {
+        expect(cfTokenRefresher.forceAuthRedirect).toHaveBeenCalled();
+      },
+      { timeout: 3000 }
+    );
+
+    // Should show redirecting message, not error
+    expect(screen.getByText('로그인 페이지로 이동 중...')).toBeInTheDocument();
+    expect(screen.queryByText('서버에 연결할 수 없습니다.')).not.toBeInTheDocument();
+  });
 });

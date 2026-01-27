@@ -130,27 +130,44 @@ class CFAccessTokenRefresher {
   /**
    * Verify that the origin is reachable before forcing auth redirect
    * This prevents redirect loops when the server is down
+   *
+   * Note: When CF Access token expires, /favicon.ico also returns a CORS error
+   * because CF Access protects all routes. Using mode: 'no-cors' allows us to
+   * detect that the server is responding (opaque response) even when CORS blocks
+   * the actual content.
    */
   async verifyOriginReachable(): Promise<boolean> {
     try {
-      // Try to fetch a static asset that should bypass CF Access
-      // Using HEAD request to minimize data transfer
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
 
+      // mode: 'no-cors' avoids CORS errors and returns an opaque response
+      // when the server responds (even with CF Access redirect)
       const response = await fetch(`${window.location.origin}/favicon.ico`, {
         method: 'HEAD',
         cache: 'no-store',
+        mode: 'no-cors',
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
-      // If we get any response (even redirect), the origin is reachable
-      return response.ok || response.status === 302 || response.status === 301;
-    } catch {
-      // If this also fails, the origin is likely unreachable
-      return false;
+      // no-cors mode returns opaque response (type: 'opaque') when server responds
+      // This means the origin is reachable, even if CF Access is blocking
+      return (
+        response.type === 'opaque' ||
+        response.ok ||
+        response.status === 302 ||
+        response.status === 301
+      );
+    } catch (error) {
+      // AbortError means timeout - server didn't respond in time
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return false;
+      }
+      // Other errors (network down, DNS failure, etc.) - still try redirect
+      // because the redirect will fail gracefully at CF Access login page
+      return true;
     }
   }
 
