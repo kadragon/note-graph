@@ -152,14 +152,11 @@ class CFAccessTokenRefresher {
 
       clearTimeout(timeoutId);
 
-      // no-cors mode returns opaque response (type: 'opaque') when server responds
-      // This means the origin is reachable, even if CF Access is blocking
-      return (
-        response.type === 'opaque' ||
-        response.ok ||
-        response.status === 302 ||
-        response.status === 301
-      );
+      // If fetch resolves, the server is reachable. Any response (200, 404,
+      // or opaque from CF Access redirect) confirms the origin is live.
+      // The catch block handles genuine network errors.
+      void response;
+      return true;
     } catch {
       // With mode: 'no-cors', any error means the server is genuinely unreachable:
       // - AbortError: timeout (server didn't respond in time)
