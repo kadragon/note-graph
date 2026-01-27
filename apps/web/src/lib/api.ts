@@ -64,11 +64,13 @@ import type {
  */
 class CFAccessTokenRefresher {
   private isRefreshing = false;
-  private refreshPromise: Promise<void> | null = null;
+  private refreshPromise: Promise<boolean> | null = null;
   private lastRefreshTime = 0;
+  private consecutiveFailures = 0;
   private static readonly REFRESH_COOLDOWN_MS = 5000; // 5 seconds cooldown
   private static readonly COOKIE_SET_DELAY_MS = 1000; // Time for CF Access to set cookie
   private static readonly REFRESH_TIMEOUT_MS = 5000; // Fallback timeout
+  private static readonly MAX_CONSECUTIVE_FAILURES = 2; // Max retries before redirect
 
   /**
    * Check if an error is likely a CF Access CORS error
@@ -87,15 +89,50 @@ class CFAccessTokenRefresher {
   }
 
   /**
-   * Refresh CF Access token using hidden iframe
-   * Returns a promise that resolves when refresh is complete
+   * Check if we've exceeded retry attempts and should redirect to login
    */
-  async refreshToken(): Promise<void> {
+  shouldRedirectToLogin(): boolean {
+    return this.consecutiveFailures >= CFAccessTokenRefresher.MAX_CONSECUTIVE_FAILURES;
+  }
+
+  /**
+   * Force redirect to trigger Cloudflare Access login
+   * Clears service worker cache to ensure fresh auth flow
+   */
+  async forceAuthRedirect(): Promise<void> {
+    // Unregister service worker to clear cached SPA
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((r) => r.unregister()));
+    }
+
+    // Clear caches
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((name) => caches.delete(name)));
+    }
+
+    // Force full page reload to trigger CF Access
+    window.location.href = `${window.location.origin}/?auth_redirect=1`;
+  }
+
+  /**
+   * Record a successful API call (resets failure counter)
+   */
+  recordSuccess(): void {
+    this.consecutiveFailures = 0;
+  }
+
+  /**
+   * Refresh CF Access token using hidden iframe
+   * Returns true if refresh might have succeeded, false if it definitely failed
+   */
+  async refreshToken(): Promise<boolean> {
     const now = Date.now();
 
     // Prevent rapid refresh attempts
     if (now - this.lastRefreshTime < CFAccessTokenRefresher.REFRESH_COOLDOWN_MS) {
-      return;
+      return false;
     }
 
     // If already refreshing, return the existing promise
@@ -106,31 +143,44 @@ class CFAccessTokenRefresher {
     this.isRefreshing = true;
     this.lastRefreshTime = now;
 
-    this.refreshPromise = new Promise<void>((resolve) => {
+    this.refreshPromise = new Promise<boolean>((resolve) => {
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       iframe.src = `${window.location.origin}/`;
 
-      const finalCleanup = () => {
+      let resolved = false;
+
+      const finalCleanup = (success: boolean) => {
+        if (resolved) return;
+        resolved = true;
+
         if (iframe.parentNode) {
           iframe.parentNode.removeChild(iframe);
         }
         this.isRefreshing = false;
         this.refreshPromise = null;
-        resolve();
+
+        if (!success) {
+          this.consecutiveFailures++;
+        }
+
+        resolve(success);
       };
 
-      const fallbackTimeoutId = setTimeout(finalCleanup, CFAccessTokenRefresher.REFRESH_TIMEOUT_MS);
+      const fallbackTimeoutId = setTimeout(
+        () => finalCleanup(false),
+        CFAccessTokenRefresher.REFRESH_TIMEOUT_MS
+      );
 
       iframe.onload = () => {
         clearTimeout(fallbackTimeoutId);
         // Give CF Access time to set the cookie
-        setTimeout(finalCleanup, CFAccessTokenRefresher.COOKIE_SET_DELAY_MS);
+        setTimeout(() => finalCleanup(true), CFAccessTokenRefresher.COOKIE_SET_DELAY_MS);
       };
 
       iframe.onerror = () => {
         clearTimeout(fallbackTimeoutId);
-        finalCleanup();
+        finalCleanup(false);
       };
 
       document.body.appendChild(iframe);
@@ -230,15 +280,27 @@ export class APIClient {
         throw new Error(error.message || `HTTP ${response.status}`);
       }
 
+      // Success - reset failure counter
+      cfTokenRefresher.recordSuccess();
+
       if (response.status === 204) {
         return { data: null as T, headers: response.headers };
       }
 
       return { data: (await response.json()) as T, headers: response.headers };
     } catch (error) {
-      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
-        await cfTokenRefresher.refreshToken();
-        return this.requestWithHeaders<T>(endpoint, options, true);
+      if (cfTokenRefresher.isCFAccessError(error)) {
+        // Check if we've exceeded retry attempts
+        if (cfTokenRefresher.shouldRedirectToLogin()) {
+          await cfTokenRefresher.forceAuthRedirect();
+          // This line won't be reached due to redirect
+          throw error;
+        }
+
+        if (!isRetry) {
+          await cfTokenRefresher.refreshToken();
+          return this.requestWithHeaders<T>(endpoint, options, true);
+        }
       }
       throw error;
     }
@@ -280,12 +342,21 @@ export class APIClient {
         throw new Error(error.message || `HTTP ${response.status}`);
       }
 
+      // Success - reset failure counter
+      cfTokenRefresher.recordSuccess();
+
       return response.json() as Promise<T>;
     } catch (error) {
-      // Handle CF Access CORS errors by refreshing token and retrying once
-      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
-        await cfTokenRefresher.refreshToken();
-        return this.uploadFile<T>(endpoint, file, metadata, true);
+      if (cfTokenRefresher.isCFAccessError(error)) {
+        if (cfTokenRefresher.shouldRedirectToLogin()) {
+          await cfTokenRefresher.forceAuthRedirect();
+          throw error;
+        }
+
+        if (!isRetry) {
+          await cfTokenRefresher.refreshToken();
+          return this.uploadFile<T>(endpoint, file, metadata, true);
+        }
       }
       throw error;
     }
@@ -306,12 +377,21 @@ export class APIClient {
         throw new Error(`파일 다운로드 실패: ${response.status}`);
       }
 
+      // Success - reset failure counter
+      cfTokenRefresher.recordSuccess();
+
       return response.blob();
     } catch (error) {
-      // Handle CF Access CORS errors by refreshing token and retrying once
-      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
-        await cfTokenRefresher.refreshToken();
-        return this._downloadFile(endpoint, true);
+      if (cfTokenRefresher.isCFAccessError(error)) {
+        if (cfTokenRefresher.shouldRedirectToLogin()) {
+          await cfTokenRefresher.forceAuthRedirect();
+          throw error;
+        }
+
+        if (!isRetry) {
+          await cfTokenRefresher.refreshToken();
+          return this._downloadFile(endpoint, true);
+        }
       }
       throw error;
     }
