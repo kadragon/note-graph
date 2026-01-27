@@ -13,6 +13,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkNoteFileList } from '../work-note-file-list';
 
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
+
 vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialog: ({ open, children }: { open?: boolean; children: ReactNode }) => (
     <div data-testid="alert-dialog" data-open={open ? 'true' : 'false'}>
@@ -34,6 +52,16 @@ vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
+vi.mock('@web/components/ui/dialog', () => ({
+  Dialog: ({ open, children }: { open?: boolean; children: ReactNode }) =>
+    open ? <div data-testid="path-dialog">{children}</div> : null,
+  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
 vi.mock('@web/hooks/use-work-notes', () => ({
   useWorkNoteFiles: vi.fn(),
   useUploadWorkNoteFile: vi.fn(),
@@ -52,6 +80,7 @@ describe('WorkNoteFileList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetFactoryCounter();
+    localStorage.clear();
 
     vi.mocked(useUploadWorkNoteFile).mockReturnValue({
       mutate: vi.fn(),
@@ -105,15 +134,33 @@ describe('WorkNoteFileList', () => {
     expect(driveButtons[0]).toHaveAttribute('target', '_blank');
   });
 
-  it('renders Drive folder button when folder exists', () => {
+  it('renders folder path copy button when folder exists and createdAt is provided', () => {
     const files = [createDriveFileListItem()];
-    const folderLink = 'https://drive.google.com/folder/123';
 
     vi.mocked(useWorkNoteFiles).mockReturnValue({
       data: {
         files,
         driveFolderId: 'folder-123',
-        driveFolderLink: folderLink,
+        driveFolderLink: 'https://drive.google.com/folder/123',
+        googleDriveConfigured: true,
+        hasLegacyFiles: false,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" createdAt="2026-03-15T10:00:00Z" />);
+
+    expect(screen.getByRole('button', { name: /폴더 경로 복사/i })).toBeInTheDocument();
+  });
+
+  it('does not render folder path copy button when createdAt is not provided', () => {
+    const files = [createDriveFileListItem()];
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: {
+        files,
+        driveFolderId: 'folder-123',
+        driveFolderLink: 'https://drive.google.com/folder/123',
         googleDriveConfigured: true,
         hasLegacyFiles: false,
       },
@@ -122,9 +169,7 @@ describe('WorkNoteFileList', () => {
 
     render(<WorkNoteFileList workId="work-1" />);
 
-    const folderButton = screen.getByRole('link', { name: /Drive 폴더 열기/i });
-    expect(folderButton).toHaveAttribute('href', folderLink);
-    expect(folderButton).toHaveAttribute('target', '_blank');
+    expect(screen.queryByRole('button', { name: /폴더 경로 복사/i })).not.toBeInTheDocument();
   });
 
   it('renders migration button when hasLegacyFiles is true', () => {
@@ -256,5 +301,151 @@ describe('WorkNoteFileList', () => {
     render(<WorkNoteFileList workId="work-1" />);
 
     expect(screen.getByText('로딩 중...')).toBeInTheDocument();
+  });
+
+  describe('local folder path copy', () => {
+    const createdAt = '2026-03-15T10:00:00Z';
+
+    beforeEach(() => {
+      vi.mocked(useWorkNoteFiles).mockReturnValue({
+        data: {
+          files: [createDriveFileListItem()],
+          driveFolderId: 'folder-123',
+          driveFolderLink: 'https://drive.google.com/folder/123',
+          googleDriveConfigured: true,
+          hasLegacyFiles: false,
+        },
+        isLoading: false,
+      } as unknown as ReturnType<typeof useWorkNoteFiles>);
+    });
+
+    it('shows path dialog when clicking folder button without local path configured', async () => {
+      const user = userEvent.setup();
+
+      render(<WorkNoteFileList workId="WORK-abc123" createdAt={createdAt} />);
+
+      await user.click(screen.getByRole('button', { name: /폴더 경로 복사/i }));
+
+      expect(screen.getByTestId('path-dialog')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/예: d:\\drive\\/i)).toBeInTheDocument();
+    });
+
+    it('copies local path to clipboard when path is configured', async () => {
+      const user = userEvent.setup();
+      localStorage.setItem('local-drive-path', 'd:\\drive\\');
+
+      render(<WorkNoteFileList workId="WORK-abc123" createdAt={createdAt} />);
+
+      await user.click(screen.getByRole('button', { name: /폴더 경로 복사/i }));
+
+      // Verify the toast message contains the correctly constructed path
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '경로가 복사되었습니다',
+          description: 'd:\\drive\\2026\\WORK-abc123',
+        })
+      );
+    });
+
+    it('persists local path to localStorage when saved in dialog', async () => {
+      const user = userEvent.setup();
+
+      render(<WorkNoteFileList workId="WORK-abc123" createdAt={createdAt} />);
+
+      await user.click(screen.getByRole('button', { name: /폴더 경로 복사/i }));
+
+      const input = screen.getByPlaceholderText(/예: d:\\drive\\/i);
+      await user.clear(input);
+      await user.type(input, 'd:\\my-drive\\');
+
+      await user.click(screen.getByRole('button', { name: /저장 후 복사/i }));
+
+      expect(localStorage.getItem('local-drive-path')).toBe('d:\\my-drive\\');
+      // Verify the toast message contains the correctly constructed path
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '경로가 복사되었습니다',
+          description: 'd:\\my-drive\\2026\\WORK-abc123',
+        })
+      );
+    });
+
+    it('opens settings dialog when clicking settings button', async () => {
+      const user = userEvent.setup();
+      localStorage.setItem('local-drive-path', 'd:\\drive\\');
+
+      render(<WorkNoteFileList workId="WORK-abc123" createdAt={createdAt} />);
+
+      await user.click(screen.getByRole('button', { name: /경로 설정/i }));
+
+      expect(screen.getByTestId('path-dialog')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('d:\\drive\\')).toBeInTheDocument();
+    });
+
+    it('constructs path using year from createdAt', async () => {
+      const user = userEvent.setup();
+      localStorage.setItem('local-drive-path', 'd:\\drive\\');
+
+      // Test with 2025 createdAt
+      render(<WorkNoteFileList workId="WORK-xyz789" createdAt="2025-06-20T14:30:00Z" />);
+
+      await user.click(screen.getByRole('button', { name: /폴더 경로 복사/i }));
+
+      // Verify the toast message contains the correctly constructed path with 2025
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: 'd:\\drive\\2025\\WORK-xyz789',
+        })
+      );
+    });
+
+    it('handles trailing backslash in local path', async () => {
+      const user = userEvent.setup();
+      localStorage.setItem('local-drive-path', 'd:\\drive'); // No trailing backslash
+
+      render(<WorkNoteFileList workId="WORK-abc123" createdAt={createdAt} />);
+
+      await user.click(screen.getByRole('button', { name: /폴더 경로 복사/i }));
+
+      // Should still produce correct path (no double backslash)
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: 'd:\\drive\\2026\\WORK-abc123',
+        })
+      );
+    });
+
+    it('handles Unix-style paths for macOS/Linux', async () => {
+      const user = userEvent.setup();
+      localStorage.setItem('local-drive-path', '/Users/me/Drive');
+
+      render(<WorkNoteFileList workId="WORK-abc123" createdAt={createdAt} />);
+
+      await user.click(screen.getByRole('button', { name: /폴더 경로 복사/i }));
+
+      // Should use forward slashes for Unix paths
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: '/Users/me/Drive/2026/WORK-abc123',
+        })
+      );
+    });
+
+    it('shows Drive fallback link in dialog', async () => {
+      const user = userEvent.setup();
+
+      render(<WorkNoteFileList workId="WORK-abc123" createdAt={createdAt} />);
+
+      await user.click(screen.getByRole('button', { name: /폴더 경로 복사/i }));
+
+      const dialog = screen.getByTestId('path-dialog');
+      const fallbackLink = dialog.querySelector('a[href="https://drive.google.com/folder/123"]');
+      expect(fallbackLink).toBeInTheDocument();
+      expect(fallbackLink).toHaveTextContent('Drive에서 열기');
+    });
+
+    // Note: Clipboard error handling test is skipped because jsdom's clipboard implementation
+    // doesn't support mocking failures properly. The error handling code path is verified
+    // through code review and manual testing.
   });
 });
