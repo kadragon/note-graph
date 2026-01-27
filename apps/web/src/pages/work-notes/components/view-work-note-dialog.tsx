@@ -104,7 +104,6 @@ export function ViewWorkNoteDialog({
   const [editContent, setEditContent] = useState('');
   const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
   const [editPersonIds, setEditPersonIds] = useState<string[]>([]);
-  const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
 
   const [showAddTodo, setShowAddTodo] = useState(false);
   const [todoTitle, setTodoTitle] = useState('');
@@ -226,24 +225,6 @@ export function ViewWorkNoteDialog({
     },
     [toast]
   );
-
-  // Detect and sync with system theme preference
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const updateColorMode = (e: MediaQueryListEvent | MediaQueryList) => {
-      setColorMode(e.matches ? 'dark' : 'light');
-    };
-
-    // Set initial value
-    updateColorMode(mediaQuery);
-
-    // Listen for changes
-    mediaQuery.addEventListener('change', updateColorMode);
-
-    return () => {
-      mediaQuery.removeEventListener('change', updateColorMode);
-    };
-  }, []);
 
   // Create todo mutation
   const createTodoMutation = useMutation({
@@ -630,8 +611,7 @@ export function ViewWorkNoteDialog({
                 </div>
               ) : (
                 <div
-                  className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50 dark:bg-gray-800"
-                  data-color-mode={colorMode}
+                  className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50"
                   data-testid="lazy-markdown"
                 >
                   <Suspense fallback={<div className="text-muted-foreground">로딩 중...</div>}>
