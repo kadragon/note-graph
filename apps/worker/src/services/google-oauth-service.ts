@@ -119,8 +119,14 @@ export class GoogleOAuthService {
 
     if (!response.ok) {
       const errorText = await response.text();
+      let errorJson: { error?: string } | undefined;
+      try {
+        errorJson = JSON.parse(errorText) as { error?: string };
+      } catch {
+        // Not a JSON response.
+      }
       // Check for invalid_grant error (token expired or revoked)
-      if (errorText.includes('invalid_grant')) {
+      if (errorJson?.error === 'invalid_grant') {
         throw new DomainError(
           'Google 인증이 만료되었습니다. 다시 연결해 주세요.',
           'GOOGLE_TOKEN_EXPIRED',
