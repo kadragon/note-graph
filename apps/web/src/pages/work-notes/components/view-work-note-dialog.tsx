@@ -665,7 +665,7 @@ export function ViewWorkNoteDialog({
 
             {/* Files Section */}
             <div className="border-t pt-4">
-              <WorkNoteFileList workId={currentWorkNote.id} />
+              <WorkNoteFileList workId={currentWorkNote.id} createdAt={currentWorkNote.createdAt} />
             </div>
 
             {/* Edit Actions */}

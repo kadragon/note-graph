@@ -11,6 +11,15 @@ import {
   AlertDialogTitle,
 } from '@web/components/ui/alert-dialog';
 import { Button } from '@web/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@web/components/ui/dialog';
+import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { useToast } from '@web/hooks/use-toast';
 import {
@@ -21,12 +30,29 @@ import {
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
 import type { DriveFileListItem, WorkNoteFileMigrationResult } from '@web/types/api';
-import { ArrowRightLeft, ExternalLink, FileIcon, FolderOpen, Trash2, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
+import {
+  ArrowRightLeft,
+  ExternalLink,
+  FileIcon,
+  FolderOpen,
+  Settings,
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { isModifiedToday, sortFilesByModifiedTimeDesc } from './work-note-file-utils';
+
+const LOCAL_DRIVE_PATH_KEY = 'local-drive-path';
+
+function buildLocalPath(localRootPath: string, createdAt: string, workId: string): string {
+  const year = new Date(createdAt).getUTCFullYear().toString();
+  const root = localRootPath.replace(/\\$/, '');
+  return `${root}\\${year}\\${workId}`;
+}
 
 interface WorkNoteFileListProps {
   workId: string;
+  createdAt?: string;
 }
 
 function formatFileSize(bytes: number): string {
@@ -35,12 +61,28 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
+export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [fileToDelete, setFileToDelete] = useState<DriveFileListItem | null>(null);
   const [migrationResult, setMigrationResult] = useState<WorkNoteFileMigrationResult | null>(null);
+  const [localDrivePath, setLocalDrivePath] = useState<string>('');
+  const [showPathDialog, setShowPathDialog] = useState(false);
+  const [inputPath, setInputPath] = useState('');
   const { toast } = useToast();
+
+  // Load local drive path from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LOCAL_DRIVE_PATH_KEY);
+      if (stored) {
+        setLocalDrivePath(stored);
+        setInputPath(stored);
+      }
+    } catch {
+      // Storage unavailable (private mode, etc.) - continue without persistence
+    }
+  }, []);
 
   const { data, isLoading } = useWorkNoteFiles(workId);
   const { data: driveStatus } = useGoogleDriveStatus();
@@ -99,19 +141,85 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
     }
   };
 
+  const handleFolderPathClick = async () => {
+    if (!createdAt) return;
+
+    if (!localDrivePath) {
+      setShowPathDialog(true);
+      return;
+    }
+
+    await copyPathToClipboard(localDrivePath);
+  };
+
+  const copyPathToClipboard = async (path: string) => {
+    if (!createdAt) return;
+
+    const fullPath = buildLocalPath(path, createdAt, workId);
+    try {
+      await navigator.clipboard.writeText(fullPath);
+      toast({
+        title: '경로가 복사되었습니다',
+        description: fullPath,
+      });
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: '복사 실패',
+        description: '클립보드에 복사할 수 없습니다.',
+      });
+    }
+  };
+
+  const handleSaveAndCopy = async () => {
+    if (!inputPath.trim()) return;
+
+    try {
+      localStorage.setItem(LOCAL_DRIVE_PATH_KEY, inputPath);
+    } catch {
+      // Storage unavailable - path won't persist but copy still works
+    }
+    setLocalDrivePath(inputPath);
+    setShowPathDialog(false);
+    await copyPathToClipboard(inputPath);
+  };
+
+  const handleOpenPathSettings = () => {
+    setInputPath(localDrivePath);
+    setShowPathDialog(true);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <Label className="text-base font-semibold">첨부파일</Label>
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-2">
-            {driveFolderLink && (
-              <Button asChild type="button" variant="outline" size="sm">
-                <a href={driveFolderLink} target="_blank" rel="noopener noreferrer">
+            {driveFolderLink && createdAt && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleFolderPathClick()}
+                >
                   <FolderOpen className="h-4 w-4 mr-2" />
-                  Drive 폴더 열기
-                </a>
-              </Button>
+                  폴더 경로 복사
+                </Button>
+                {localDrivePath && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleOpenPathSettings}
+                    className="h-8 w-8 p-0"
+                    title="경로 설정"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="sr-only">경로 설정</span>
+                  </Button>
+                )}
+              </>
             )}
             {hasLegacyFiles && (
               <Button
@@ -272,6 +380,32 @@ export function WorkNoteFileList({ workId }: WorkNoteFileListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showPathDialog} onOpenChange={setShowPathDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>로컬 Drive 경로 설정</DialogTitle>
+            <DialogDescription>
+              Google Drive가 동기화된 로컬 폴더의 루트 경로를 입력하세요.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="예: d:\drive\"
+            value={inputPath}
+            onChange={(e) => setInputPath(e.target.value)}
+          />
+          <DialogFooter>
+            {driveFolderLink && (
+              <Button asChild variant="outline">
+                <a href={driveFolderLink} target="_blank" rel="noopener noreferrer">
+                  Drive에서 열기
+                </a>
+              </Button>
+            )}
+            <Button onClick={() => void handleSaveAndCopy()}>저장 후 복사</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
