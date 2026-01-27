@@ -1,15 +1,20 @@
 import userEvent from '@testing-library/user-event';
+import { reloadApp } from '@web/lib/pwa-reload';
 import { act, render, screen } from '@web/test/setup';
 import type { RegisterSWOptions } from 'vite-plugin-pwa/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import PwaUpdatePrompt from '../pwa-update-prompt';
 
-const mockUpdateServiceWorker = vi.fn();
+const mockUpdateServiceWorker = vi.fn().mockResolvedValue(undefined);
 const mockRegistrationUpdate = vi.fn();
 
 let capturedOptions: RegisterSWOptions | undefined;
 let currentNeedRefresh = true;
+
+vi.mock('@web/lib/pwa-reload', () => ({
+  reloadApp: vi.fn(),
+}));
 
 vi.mock('virtual:pwa-register/react', () => ({
   useRegisterSW: (options?: RegisterSWOptions) => {
@@ -24,7 +29,9 @@ vi.mock('virtual:pwa-register/react', () => ({
 
 describe('pwa update prompt', () => {
   beforeEach(() => {
-    mockUpdateServiceWorker.mockClear();
+    vi.mocked(reloadApp).mockReset();
+    mockUpdateServiceWorker.mockReset();
+    mockUpdateServiceWorker.mockResolvedValue(undefined);
     mockRegistrationUpdate.mockClear();
     capturedOptions = undefined;
     currentNeedRefresh = true;
@@ -49,6 +56,49 @@ describe('pwa update prompt', () => {
     await user.click(screen.getByRole('button', { name: '업데이트' }));
 
     expect(mockUpdateServiceWorker).toHaveBeenCalledTimes(1);
+    expect(reloadApp).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads after the update service worker promise resolves', async () => {
+    let resolveUpdate: (() => void) | undefined;
+    mockUpdateServiceWorker.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveUpdate = resolve;
+        })
+    );
+
+    render(<PwaUpdatePrompt />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '업데이트' }));
+
+    expect(mockUpdateServiceWorker).toHaveBeenCalledTimes(1);
+    expect(reloadApp).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveUpdate?.();
+      await Promise.resolve();
+    });
+
+    expect(reloadApp).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs an error when the update service worker rejects', async () => {
+    const error = new Error('update failed');
+    mockUpdateServiceWorker.mockRejectedValueOnce(error);
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<PwaUpdatePrompt />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '업데이트' }));
+
+    expect(mockUpdateServiceWorker).toHaveBeenCalledTimes(1);
+    expect(reloadApp).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to update service worker:', error);
+
+    consoleSpy.mockRestore();
   });
 
   it('checks for updates every hour after registration', async () => {
