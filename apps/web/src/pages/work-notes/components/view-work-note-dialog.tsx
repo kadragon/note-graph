@@ -545,6 +545,8 @@ export function ViewWorkNoteDialog({
                         <Badge variant="outline">
                           {formatPersonBadge({
                             name: person.personName,
+                            personId: person.personId,
+                            phoneExt: person.phoneExt,
                             currentDept: person.currentDept,
                             currentPosition: person.currentPosition,
                           })}

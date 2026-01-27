@@ -57,44 +57,52 @@ describe('formatDateWithYear', () => {
 });
 
 describe('formatPersonBadge', () => {
-  it("returns 'dept/position/name' when all present", () => {
+  it("returns 'dept/position/name/id/phone' when all present", () => {
     const person = {
       name: '홍길동',
       currentDept: '개발팀',
       currentPosition: '팀장',
+      personId: '111111',
+      phoneExt: '043-123-4567',
     };
 
-    expect(formatPersonBadge(person)).toBe('개발팀/팀장/홍길동');
+    expect(formatPersonBadge(person)).toBe('개발팀/팀장/홍길동/111111/043-123-4567');
   });
 
-  it("returns 'dept/name' when no position", () => {
+  it("returns 'dept/name/id' when no position and phone", () => {
     const person = {
       name: '김철수',
       currentDept: '기획팀',
       currentPosition: null,
+      personId: '222222',
+      phoneExt: null,
     };
 
-    expect(formatPersonBadge(person)).toBe('기획팀/김철수');
+    expect(formatPersonBadge(person)).toBe('기획팀/김철수/222222');
   });
 
-  it("returns 'name' when no dept", () => {
+  it("returns 'name/id/phone' when no dept", () => {
     const person = {
       name: '이영희',
       currentDept: null,
       currentPosition: null,
+      personId: '333333',
+      phoneExt: '043-987-6543',
     };
 
-    expect(formatPersonBadge(person)).toBe('이영희');
+    expect(formatPersonBadge(person)).toBe('이영희/333333/043-987-6543');
   });
 
-  it("returns 'name' when position but no dept (position ignored)", () => {
+  it("returns 'name/id/phone' when position but no dept (position ignored)", () => {
     const person = {
       name: '박철수',
       currentDept: null,
       currentPosition: '팀장',
+      personId: '444444',
+      phoneExt: '043-555-0000',
     };
 
-    expect(formatPersonBadge(person)).toBe('박철수');
+    expect(formatPersonBadge(person)).toBe('박철수/444444/043-555-0000');
   });
 });
 

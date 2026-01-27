@@ -1,4 +1,5 @@
 import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { formatPersonBadge } from '@web/lib/utils';
 import type { Todo, WorkNoteWithStats } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 
@@ -271,10 +272,15 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
                 {workNote.persons.map((person) => (
                   <View key={person.personId} style={styles.personItem}>
                     <View style={styles.personBullet} />
-                    <Text style={styles.personName}>{person.personName}</Text>
-                    {person.currentDept && (
-                      <Text style={styles.personDept}> ({person.currentDept})</Text>
-                    )}
+                    <Text style={styles.personName}>
+                      {formatPersonBadge({
+                        name: person.personName,
+                        personId: person.personId,
+                        phoneExt: person.phoneExt,
+                        currentDept: person.currentDept,
+                        currentPosition: person.currentPosition,
+                      })}
+                    </Text>
                   </View>
                 ))}
               </View>

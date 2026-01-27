@@ -288,6 +288,7 @@ interface BackendWorkNote {
     role: 'OWNER' | 'RELATED';
     currentDept?: string | null;
     currentPosition?: string | null;
+    phoneExt?: string | null;
   }>;
   relatedWorkNotes?: Array<{
     relatedWorkId: string;

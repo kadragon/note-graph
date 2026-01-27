@@ -2,6 +2,7 @@ import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { TableCell, TableRow } from '@web/components/ui/table';
 import { useDownloadWorkNote } from '@web/hooks/use-download-work-note';
+import { formatPersonBadge } from '@web/lib/utils';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -115,10 +116,15 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
           <div className="flex flex-col gap-1">
             {workNote.persons.map((person) => (
               <div key={person.personId} className="text-sm">
-                <span className="font-medium">{person.personName}</span>
-                {person.currentDept && (
-                  <span className="text-muted-foreground ml-1">({person.currentDept})</span>
-                )}
+                <span className="font-medium">
+                  {formatPersonBadge({
+                    name: person.personName,
+                    personId: person.personId,
+                    phoneExt: person.phoneExt,
+                    currentDept: person.currentDept,
+                    currentPosition: person.currentPosition,
+                  })}
+                </span>
               </div>
             ))}
           </div>

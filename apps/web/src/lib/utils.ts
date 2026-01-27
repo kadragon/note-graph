@@ -36,29 +36,31 @@ export function formatDateWithYear(dateString: string): string {
 
 /**
  * Format person display text based on available fields
- * Priority: dept/position/name > dept/name > name
+ * Priority: dept/position/name/personId/phone > dept/name/personId/phone > name/personId/phone
  *
  * Note: Position is only displayed when department is also present.
  * This prevents orphaned position displays like "팀장/홍길동" without context.
  *
- * @param person - Person object with name, currentDept, currentPosition
- * @returns Formatted string: dept/position/name or dept/name or name
+ * @param person - Person object with name, personId, phoneExt, currentDept, currentPosition
+ * @returns Formatted string: dept/position/name/personId/phone or dept/name/personId/phone or name/personId/phone
  *
  * @example
- * formatPersonBadge({ name: '홍길동', currentDept: '개발팀', currentPosition: '팀장' })
- * // returns '개발팀/팀장/홍길동'
+ * formatPersonBadge({ name: '홍길동', currentDept: '개발팀', currentPosition: '팀장', personId: '111111', phoneExt: '043-123-4567' })
+ * // returns '개발팀/팀장/홍길동/111111/043-123-4567'
  *
- * formatPersonBadge({ name: '김철수', currentDept: '기획팀', currentPosition: null })
- * // returns '기획팀/김철수'
+ * formatPersonBadge({ name: '김철수', currentDept: '기획팀', currentPosition: null, personId: '222222' })
+ * // returns '기획팀/김철수/222222'
  *
- * formatPersonBadge({ name: '이영희', currentDept: null, currentPosition: null })
- * // returns '이영희'
+ * formatPersonBadge({ name: '이영희', currentDept: null, currentPosition: null, personId: '333333', phoneExt: '043-987-6543' })
+ * // returns '이영희/333333/043-987-6543'
  *
- * formatPersonBadge({ name: '박철수', currentDept: null, currentPosition: '팀장' })
- * // returns '박철수' (position without dept is ignored)
+ * formatPersonBadge({ name: '박철수', currentDept: null, currentPosition: '팀장', personId: '444444', phoneExt: '043-555-0000' })
+ * // returns '박철수/444444/043-555-0000' (position without dept is ignored)
  */
 export function formatPersonBadge(person: {
   name: string;
+  personId?: string | null;
+  phoneExt?: string | null;
   currentDept?: string | null;
   currentPosition?: string | null;
 }): string {
@@ -75,6 +77,14 @@ export function formatPersonBadge(person: {
   }
 
   parts.push(person.name);
+
+  if (person.personId) {
+    parts.push(person.personId);
+  }
+
+  if (person.phoneExt) {
+    parts.push(person.phoneExt);
+  }
 
   return parts.join('/');
 }
