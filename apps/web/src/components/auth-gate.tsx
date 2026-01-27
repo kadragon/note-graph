@@ -26,7 +26,13 @@ export function AuthGate({ children }: AuthGateProps) {
     refetch,
   } = useQuery({
     queryKey: ['auth-check'],
-    queryFn: () => API.getMe(),
+    queryFn: async () => {
+      const user = await API.getMe();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      return user;
+    },
     retry: 1,
     staleTime: 60 * 1000, // 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes
@@ -159,14 +165,5 @@ export function AuthGate({ children }: AuthGateProps) {
   }
 
   // Authenticated - render children
-  if (authState === 'authenticated' && user) {
-    return <>{children}</>;
-  }
-
-  // Fallback loading state
-  return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-background">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    </div>
-  );
+  return <>{children}</>;
 }

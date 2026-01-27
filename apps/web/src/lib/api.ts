@@ -299,6 +299,29 @@ interface BackendTodo {
 export class APIClient {
   private baseURL = '/api';
 
+  /**
+   * Handle CF Access errors with retry logic
+   * Returns the retry result if retried, otherwise throws the error
+   */
+  private async handleCFAccessError<T>(
+    error: unknown,
+    isRetry: boolean,
+    retryFn: () => Promise<T>
+  ): Promise<T> {
+    if (cfTokenRefresher.isCFAccessError(error)) {
+      if (cfTokenRefresher.shouldRedirectToLogin()) {
+        await cfTokenRefresher.forceAuthRedirect();
+        throw error;
+      }
+
+      if (!isRetry) {
+        await cfTokenRefresher.refreshToken();
+        return retryFn();
+      }
+    }
+    throw error;
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -344,20 +367,9 @@ export class APIClient {
 
       return { data: (await response.json()) as T, headers: response.headers };
     } catch (error) {
-      if (cfTokenRefresher.isCFAccessError(error)) {
-        // Check if we've exceeded retry attempts
-        if (cfTokenRefresher.shouldRedirectToLogin()) {
-          await cfTokenRefresher.forceAuthRedirect();
-          // This line won't be reached due to redirect
-          throw error;
-        }
-
-        if (!isRetry) {
-          await cfTokenRefresher.refreshToken();
-          return this.requestWithHeaders<T>(endpoint, options, true);
-        }
-      }
-      throw error;
+      return this.handleCFAccessError(error, isRetry, () =>
+        this.requestWithHeaders<T>(endpoint, options, true)
+      );
     }
   }
 
@@ -402,18 +414,9 @@ export class APIClient {
 
       return response.json() as Promise<T>;
     } catch (error) {
-      if (cfTokenRefresher.isCFAccessError(error)) {
-        if (cfTokenRefresher.shouldRedirectToLogin()) {
-          await cfTokenRefresher.forceAuthRedirect();
-          throw error;
-        }
-
-        if (!isRetry) {
-          await cfTokenRefresher.refreshToken();
-          return this.uploadFile<T>(endpoint, file, metadata, true);
-        }
-      }
-      throw error;
+      return this.handleCFAccessError(error, isRetry, () =>
+        this.uploadFile<T>(endpoint, file, metadata, true)
+      );
     }
   }
 
@@ -437,18 +440,7 @@ export class APIClient {
 
       return response.blob();
     } catch (error) {
-      if (cfTokenRefresher.isCFAccessError(error)) {
-        if (cfTokenRefresher.shouldRedirectToLogin()) {
-          await cfTokenRefresher.forceAuthRedirect();
-          throw error;
-        }
-
-        if (!isRetry) {
-          await cfTokenRefresher.refreshToken();
-          return this._downloadFile(endpoint, true);
-        }
-      }
-      throw error;
+      return this.handleCFAccessError(error, isRetry, () => this._downloadFile(endpoint, true));
     }
   }
 
