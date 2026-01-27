@@ -12,6 +12,8 @@ vi.mock('@web/lib/api', async () => {
       getMe: vi.fn(),
     },
     cfTokenRefresher: {
+      isOnline: vi.fn(() => true),
+      isNetworkError: vi.fn(),
       isCFAccessError: vi.fn(),
       forceAuthRedirect: vi.fn(),
     },
@@ -37,6 +39,7 @@ function renderWithProviders(ui: React.ReactElement) {
 describe('AuthGate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(cfTokenRefresher.isOnline).mockReturnValue(true);
   });
 
   it('shows loading state while checking auth', () => {
@@ -66,11 +69,12 @@ describe('AuthGate', () => {
     });
   });
 
-  it('triggers redirect on CF Access error', async () => {
+  it('triggers redirect on CF Access error when online and origin reachable', async () => {
     const cfError = new TypeError('Failed to fetch');
     vi.mocked(API.getMe).mockRejectedValue(cfError);
-    vi.mocked(cfTokenRefresher.isCFAccessError).mockReturnValue(true);
-    vi.mocked(cfTokenRefresher.forceAuthRedirect).mockResolvedValue();
+    vi.mocked(cfTokenRefresher.isNetworkError).mockReturnValue(true);
+    vi.mocked(cfTokenRefresher.isOnline).mockReturnValue(true);
+    vi.mocked(cfTokenRefresher.forceAuthRedirect).mockResolvedValue(true);
 
     renderWithProviders(
       <AuthGate>
@@ -84,11 +88,15 @@ describe('AuthGate', () => {
       },
       { timeout: 3000 }
     );
+
+    expect(screen.getByText('로그인 페이지로 이동 중...')).toBeInTheDocument();
   });
 
-  it('shows error state on non-CF Access error', async () => {
-    vi.mocked(API.getMe).mockRejectedValue(new Error('Server error'));
-    vi.mocked(cfTokenRefresher.isCFAccessError).mockReturnValue(false);
+  it('shows offline state when browser is offline', async () => {
+    const cfError = new TypeError('Failed to fetch');
+    vi.mocked(API.getMe).mockRejectedValue(cfError);
+    vi.mocked(cfTokenRefresher.isNetworkError).mockReturnValue(true);
+    vi.mocked(cfTokenRefresher.isOnline).mockReturnValue(false);
 
     renderWithProviders(
       <AuthGate>
@@ -98,11 +106,74 @@ describe('AuthGate', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByText('인증 확인 중 오류가 발생했습니다.')).toBeInTheDocument();
+        expect(screen.getByText('인터넷 연결이 끊어졌습니다.')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
+
+    expect(cfTokenRefresher.forceAuthRedirect).not.toHaveBeenCalled();
+  });
+
+  it('shows error state when origin is not reachable', async () => {
+    const cfError = new TypeError('Failed to fetch');
+    vi.mocked(API.getMe).mockRejectedValue(cfError);
+    vi.mocked(cfTokenRefresher.isNetworkError).mockReturnValue(true);
+    vi.mocked(cfTokenRefresher.isOnline).mockReturnValue(true);
+    vi.mocked(cfTokenRefresher.forceAuthRedirect).mockResolvedValue(false); // Origin not reachable
+
+    renderWithProviders(
+      <AuthGate>
+        <div>Protected Content</div>
+      </AuthGate>
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('서버에 연결할 수 없습니다.')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
+  });
+
+  it('shows error state on non-network error', async () => {
+    vi.mocked(API.getMe).mockRejectedValue(new Error('Server error'));
+    vi.mocked(cfTokenRefresher.isNetworkError).mockReturnValue(false);
+
+    renderWithProviders(
+      <AuthGate>
+        <div>Protected Content</div>
+      </AuthGate>
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('서버에 연결할 수 없습니다.')).toBeInTheDocument();
       },
       { timeout: 3000 }
     );
 
     expect(screen.getByText('다시 시도')).toBeInTheDocument();
+  });
+
+  it('shows retry button in error state that can be clicked', async () => {
+    vi.mocked(API.getMe).mockRejectedValue(new Error('Server error'));
+    vi.mocked(cfTokenRefresher.isNetworkError).mockReturnValue(false);
+
+    renderWithProviders(
+      <AuthGate>
+        <div>Protected Content</div>
+      </AuthGate>
+    );
+
+    // Wait for error state to appear
+    await waitFor(
+      () => {
+        expect(screen.getByText('서버에 연결할 수 없습니다.')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
+
+    // Verify retry button is present
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
   });
 });

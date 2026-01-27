@@ -73,33 +73,87 @@ class CFAccessTokenRefresher {
   private static readonly MAX_CONSECUTIVE_FAILURES = 2; // Max retries before redirect
 
   /**
-   * Check if an error is likely a CF Access CORS error
+   * Check if browser is online
+   */
+  isOnline(): boolean {
+    return navigator.onLine;
+  }
+
+  /**
+   * Check if an error is a generic network error (offline, server unreachable)
+   */
+  isNetworkError(error: unknown): boolean {
+    if (!(error instanceof TypeError)) {
+      return false;
+    }
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('failed to fetch') || message.includes('network') || message.includes('cors')
+    );
+  }
+
+  /**
+   * Check if an error is likely a CF Access CORS error (not a generic network issue)
+   * Returns true only if we're online and getting network errors (likely CF Access redirect)
    */
   isCFAccessError(error: unknown): boolean {
-    if (error instanceof TypeError) {
-      // Network errors from CORS failures are TypeError
-      const message = error.message.toLowerCase();
-      return (
-        message.includes('failed to fetch') ||
-        message.includes('network') ||
-        message.includes('cors')
-      );
+    // If offline, it's not a CF Access error - it's a network connectivity issue
+    if (!this.isOnline()) {
+      return false;
     }
-    return false;
+    return this.isNetworkError(error);
   }
 
   /**
    * Check if we've exceeded retry attempts and should redirect to login
    */
   shouldRedirectToLogin(): boolean {
-    return this.consecutiveFailures >= CFAccessTokenRefresher.MAX_CONSECUTIVE_FAILURES;
+    // Only redirect if online - offline users should see network error, not login redirect
+    return (
+      this.isOnline() && this.consecutiveFailures >= CFAccessTokenRefresher.MAX_CONSECUTIVE_FAILURES
+    );
+  }
+
+  /**
+   * Verify that the origin is reachable before forcing auth redirect
+   * This prevents redirect loops when the server is down
+   */
+  async verifyOriginReachable(): Promise<boolean> {
+    try {
+      // Try to fetch a static asset that should bypass CF Access
+      // Using HEAD request to minimize data transfer
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      const response = await fetch(`${window.location.origin}/favicon.ico`, {
+        method: 'HEAD',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      // If we get any response (even redirect), the origin is reachable
+      return response.ok || response.status === 302 || response.status === 301;
+    } catch {
+      // If this also fails, the origin is likely unreachable
+      return false;
+    }
   }
 
   /**
    * Force redirect to trigger Cloudflare Access login
    * Clears service worker cache to ensure fresh auth flow
+   * Only redirects if we can confirm origin is reachable
    */
-  async forceAuthRedirect(): Promise<void> {
+  async forceAuthRedirect(): Promise<boolean> {
+    // Verify origin is reachable to avoid redirect loop on network outage
+    const originReachable = await this.verifyOriginReachable();
+    if (!originReachable) {
+      // Origin not reachable - this is a network issue, not CF Access
+      return false;
+    }
+
     // Unregister service worker to clear cached SPA
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
@@ -114,6 +168,7 @@ class CFAccessTokenRefresher {
 
     // Force full page reload to trigger CF Access
     window.location.href = `${window.location.origin}/?auth_redirect=1`;
+    return true;
   }
 
   /**
