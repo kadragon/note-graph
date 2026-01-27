@@ -80,7 +80,7 @@ export class WorkNoteRepository {
         .prepare(
           `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
                   wnp.role, p.name as personName, p.current_dept as currentDept,
-                  p.current_position as currentPosition
+                  p.current_position as currentPosition, p.phone_ext as phoneExt
            FROM work_note_person wnp
            INNER JOIN persons p ON wnp.person_id = p.person_id
            WHERE wnp.work_id = ?`
@@ -216,7 +216,7 @@ export class WorkNoteRepository {
       .prepare(
         `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
                 wnp.role, p.name as personName, p.current_dept as currentDept,
-                p.current_position as currentPosition
+                p.current_position as currentPosition, p.phone_ext as phoneExt
          FROM work_note_person wnp
          INNER JOIN persons p ON wnp.person_id = p.person_id
          WHERE wnp.work_id IN (${placeholders})`
@@ -238,6 +238,7 @@ export class WorkNoteRepository {
         personName: person.personName,
         currentDept: person.currentDept,
         currentPosition: person.currentPosition,
+        phoneExt: person.phoneExt,
       });
     }
 
@@ -350,7 +351,7 @@ export class WorkNoteRepository {
       .prepare(
         `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
                 wnp.role, p.name as personName, p.current_dept as currentDept,
-                p.current_position as currentPosition
+                p.current_position as currentPosition, p.phone_ext as phoneExt
          FROM work_note_person wnp
          INNER JOIN persons p ON wnp.person_id = p.person_id
          WHERE wnp.work_id IN (${placeholders})`
@@ -386,6 +387,7 @@ export class WorkNoteRepository {
         personName: person.personName,
         currentDept: person.currentDept,
         currentPosition: person.currentPosition,
+        phoneExt: person.phoneExt,
       });
     }
 

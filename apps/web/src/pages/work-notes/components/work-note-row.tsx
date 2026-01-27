@@ -113,14 +113,23 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
       <TableCell>
         {workNote.persons && workNote.persons.length > 0 ? (
           <div className="flex flex-col gap-1">
-            {workNote.persons.map((person) => (
-              <div key={person.personId} className="text-sm">
-                <span className="font-medium">{person.personName}</span>
-                {person.currentDept && (
-                  <span className="text-muted-foreground ml-1">({person.currentDept})</span>
-                )}
-              </div>
-            ))}
+            {workNote.persons.map((person) => {
+              const orgParts = [person.currentDept, person.currentPosition].filter(Boolean);
+              const contactParts = [person.personId, person.phoneExt].filter(Boolean);
+              return (
+                <div key={person.personId} className="text-sm">
+                  <span className="font-medium">{person.personName}</span>
+                  {orgParts.length > 0 && (
+                    <span className="text-muted-foreground ml-1">({orgParts.join('/')})</span>
+                  )}
+                  {contactParts.length > 0 && (
+                    <span className="text-muted-foreground text-xs ml-1">
+                      · {contactParts.join(' · ')}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <span className="text-muted-foreground text-sm">-</span>

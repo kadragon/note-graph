@@ -268,15 +268,22 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
             <View style={styles.section}>
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>담당자</Text>
-                {workNote.persons.map((person) => (
-                  <View key={person.personId} style={styles.personItem}>
-                    <View style={styles.personBullet} />
-                    <Text style={styles.personName}>{person.personName}</Text>
-                    {person.currentDept && (
-                      <Text style={styles.personDept}> ({person.currentDept})</Text>
-                    )}
-                  </View>
-                ))}
+                {workNote.persons.map((person) => {
+                  const orgParts = [person.currentDept, person.currentPosition].filter(Boolean);
+                  const contactParts = [person.personId, person.phoneExt].filter(Boolean);
+                  return (
+                    <View key={person.personId} style={styles.personItem}>
+                      <View style={styles.personBullet} />
+                      <Text style={styles.personName}>{person.personName}</Text>
+                      {orgParts.length > 0 && (
+                        <Text style={styles.personDept}> ({orgParts.join('/')})</Text>
+                      )}
+                      {contactParts.length > 0 && (
+                        <Text style={styles.personDept}> · {contactParts.join(' · ')}</Text>
+                      )}
+                    </View>
+                  );
+                })}
               </View>
             </View>
           )}
