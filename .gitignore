@@ -57,3 +57,8 @@ wrangler.toml.backup
 
 # Serena
 .serena/
+
+# Local agent/config folders
+.agents/
+.claude/
+.codex/

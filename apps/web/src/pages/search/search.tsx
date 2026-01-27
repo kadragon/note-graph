@@ -245,7 +245,10 @@ export default function Search() {
     isFetching: isWorkNoteFetching,
   } = useQuery({
     queryKey: ['work-note-detail', selectedWorkNoteId],
-    queryFn: () => API.getWorkNote(selectedWorkNoteId!),
+    queryFn: () =>
+      selectedWorkNoteId
+        ? API.getWorkNote(selectedWorkNoteId)
+        : Promise.reject(new Error('No work note')),
     enabled: !!selectedWorkNoteId,
     staleTime: 30_000, // Cache for 30 seconds to avoid refetching on repeated views
   });
