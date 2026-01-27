@@ -81,6 +81,47 @@ describe('Calendar API Routes', () => {
       expect(data.message).toContain('calendar');
     });
 
+    it('should return 401 with GOOGLE_TOKEN_EXPIRED when refresh token is invalid', async () => {
+      // Setup: Add OAuth token with expired access token (to trigger refresh)
+      await testEnv.DB.prepare(`
+        INSERT INTO google_oauth_tokens (
+          user_email, access_token, refresh_token, token_type, expires_at, scope
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `)
+        .bind(
+          'test@example.com',
+          'expired-access-token',
+          'invalid-refresh-token',
+          'Bearer',
+          new Date(Date.now() - 3600000).toISOString(), // Expired 1 hour ago
+          'https://www.googleapis.com/auth/calendar.readonly'
+        )
+        .run();
+
+      // Mock fetch to return invalid_grant error from Google OAuth token endpoint
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        const url = typeof input === 'string' ? input : String(input);
+        if (url.includes('oauth2.googleapis.com/token')) {
+          return new Response(
+            JSON.stringify({
+              error: 'invalid_grant',
+              error_description: 'Token has been expired or revoked.',
+            }),
+            { status: 400 }
+          );
+        }
+        return new Response('Not Found', { status: 404 });
+      });
+
+      const response = await authFetch(
+        '/api/calendar/events?startDate=2026-01-19&endDate=2026-02-01'
+      );
+
+      expect(response.status).toBe(401);
+      const data = await response.json();
+      expect(data.code).toBe('GOOGLE_TOKEN_EXPIRED');
+    });
+
     it('should return 400 with GOOGLE_NOT_CONNECTED when Calendar API returns 403', async () => {
       // Setup: Add OAuth token with calendar scope
       await testEnv.DB.prepare(`

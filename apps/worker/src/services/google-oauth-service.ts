@@ -7,6 +7,7 @@ import {
   type GoogleOAuthToken,
 } from '../repositories/google-oauth-repository';
 import type { Env } from '../types/env';
+import { DomainError } from '../types/errors';
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -117,8 +118,22 @@ export class GoogleOAuthService {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to refresh access token: ${error}`);
+      const errorText = await response.text();
+      let errorJson: { error?: string } | undefined;
+      try {
+        errorJson = JSON.parse(errorText) as { error?: string };
+      } catch {
+        // Not a JSON response.
+      }
+      // Check for invalid_grant error (token expired or revoked)
+      if (errorJson?.error === 'invalid_grant') {
+        throw new DomainError(
+          'Google 인증이 만료되었습니다. 다시 연결해 주세요.',
+          'GOOGLE_TOKEN_EXPIRED',
+          401
+        );
+      }
+      throw new Error(`Failed to refresh access token: ${errorText}`);
     }
 
     const data = (await response.json()) as {

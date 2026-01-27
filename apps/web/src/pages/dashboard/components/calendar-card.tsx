@@ -2,6 +2,7 @@ import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { useCalendarEvents } from '@web/hooks/use-calendar';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
+import { ApiError } from '@web/lib/api';
 import { addDays, format, startOfWeek } from 'date-fns';
 import { Calendar, ExternalLink, Loader2 } from 'lucide-react';
 import { WeekCalendar } from './week-calendar';
@@ -81,7 +82,11 @@ export function CalendarCard() {
     );
   }
 
-  // Error state
+  // Error state - check if token expired and needs re-auth
+  const apiError = error instanceof ApiError ? error : null;
+  const isTokenExpired =
+    apiError?.code === 'GOOGLE_TOKEN_EXPIRED' || apiError?.code === 'GOOGLE_NOT_CONNECTED';
+
   if (isError) {
     return (
       <Card className="border-l-4 border-l-blue-500">
@@ -93,9 +98,24 @@ export function CalendarCard() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-sm text-destructive">
-              {error?.message || '캘린더를 불러올 수 없습니다'}
-            </p>
+            {isTokenExpired ? (
+              <>
+                <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Google 인증이 만료되었습니다. 다시 연결해 주세요.
+                </p>
+                <Button asChild variant="outline" size="sm">
+                  <a href={GOOGLE_AUTH_URL}>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    다시 연결하기
+                  </a>
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm text-destructive">
+                {error?.message || '캘린더를 불러올 수 없습니다'}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
