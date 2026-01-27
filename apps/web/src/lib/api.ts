@@ -57,6 +57,19 @@ import type {
 // Trace: SPEC-worknote-attachments-1, TASK-066
 
 /**
+ * Custom API error with code for handling specific error types
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly code?: string
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/**
  * Cloudflare Access token refresh utility
  * When CF Access token expires, API calls fail with CORS errors
  * because CF returns a redirect without CORS headers.
@@ -354,8 +367,8 @@ export class APIClient {
       if (!response.ok) {
         const error = (await response.json().catch(() => ({
           message: '알 수 없는 오류가 발생했습니다',
-        }))) as { message?: string };
-        throw new Error(error.message || `HTTP ${response.status}`);
+        }))) as { message?: string; code?: string };
+        throw new ApiError(error.message || `HTTP ${response.status}`, error.code);
       }
 
       // Success - reset failure counter
