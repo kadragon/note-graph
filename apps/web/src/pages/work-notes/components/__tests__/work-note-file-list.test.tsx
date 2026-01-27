@@ -415,6 +415,22 @@ describe('WorkNoteFileList', () => {
       );
     });
 
+    it('handles Unix-style paths for macOS/Linux', async () => {
+      const user = userEvent.setup();
+      localStorage.setItem('local-drive-path', '/Users/me/Drive');
+
+      render(<WorkNoteFileList workId="WORK-abc123" createdAt={createdAt} />);
+
+      await user.click(screen.getByRole('button', { name: /폴더 경로 복사/i }));
+
+      // Should use forward slashes for Unix paths
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: '/Users/me/Drive/2026/WORK-abc123',
+        })
+      );
+    });
+
     it('shows Drive fallback link in dialog', async () => {
       const user = userEvent.setup();
 

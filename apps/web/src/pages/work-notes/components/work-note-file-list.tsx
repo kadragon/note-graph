@@ -46,8 +46,9 @@ const LOCAL_DRIVE_PATH_KEY = 'local-drive-path';
 
 function buildLocalPath(localRootPath: string, createdAt: string, workId: string): string {
   const year = new Date(createdAt).getUTCFullYear().toString();
-  const root = localRootPath.replace(/\\$/, '');
-  return `${root}\\${year}\\${workId}`;
+  const separator = localRootPath.includes('\\') ? '\\' : '/';
+  const root = localRootPath.replace(/[\\/]$/, '');
+  return [root, year, workId].join(separator);
 }
 
 interface WorkNoteFileListProps {
