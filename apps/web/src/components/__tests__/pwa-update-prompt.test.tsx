@@ -84,6 +84,23 @@ describe('pwa update prompt', () => {
     expect(reloadApp).toHaveBeenCalledTimes(1);
   });
 
+  it('logs an error when the update service worker rejects', async () => {
+    const error = new Error('update failed');
+    mockUpdateServiceWorker.mockRejectedValueOnce(error);
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<PwaUpdatePrompt />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '업데이트' }));
+
+    expect(mockUpdateServiceWorker).toHaveBeenCalledTimes(1);
+    expect(reloadApp).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to update service worker:', error);
+
+    consoleSpy.mockRestore();
+  });
+
   it('checks for updates every hour after registration', async () => {
     vi.useFakeTimers();
     render(<PwaUpdatePrompt />);

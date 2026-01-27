@@ -43,7 +43,9 @@ export default function PwaUpdatePrompt() {
       .then(() => {
         reloadApp();
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error('Failed to update service worker:', error);
+      });
   };
 
   return (
