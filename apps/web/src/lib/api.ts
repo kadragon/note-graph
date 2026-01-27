@@ -130,26 +130,38 @@ class CFAccessTokenRefresher {
   /**
    * Verify that the origin is reachable before forcing auth redirect
    * This prevents redirect loops when the server is down
+   *
+   * Note: When CF Access token expires, /favicon.ico also returns a CORS error
+   * because CF Access protects all routes. Using mode: 'no-cors' allows us to
+   * detect that the server is responding (opaque response) even when CORS blocks
+   * the actual content.
    */
   async verifyOriginReachable(): Promise<boolean> {
     try {
-      // Try to fetch a static asset that should bypass CF Access
-      // Using HEAD request to minimize data transfer
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
 
+      // mode: 'no-cors' avoids CORS errors and returns an opaque response
+      // when the server responds (even with CF Access redirect)
       const response = await fetch(`${window.location.origin}/favicon.ico`, {
         method: 'HEAD',
         cache: 'no-store',
+        mode: 'no-cors',
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
-      // If we get any response (even redirect), the origin is reachable
-      return response.ok || response.status === 302 || response.status === 301;
+      // If fetch resolves, the server is reachable. Any response (200, 404,
+      // or opaque from CF Access redirect) confirms the origin is live.
+      // The catch block handles genuine network errors.
+      void response;
+      return true;
     } catch {
-      // If this also fails, the origin is likely unreachable
+      // With mode: 'no-cors', any error means the server is genuinely unreachable:
+      // - AbortError: timeout (server didn't respond in time)
+      // - TypeError: DNS failure, connection refused, network down
+      // Return false to show "server unreachable" state and avoid redirect loops
       return false;
     }
   }
