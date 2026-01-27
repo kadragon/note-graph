@@ -64,38 +64,130 @@ import type {
  */
 class CFAccessTokenRefresher {
   private isRefreshing = false;
-  private refreshPromise: Promise<void> | null = null;
+  private refreshPromise: Promise<boolean> | null = null;
   private lastRefreshTime = 0;
+  private consecutiveFailures = 0;
   private static readonly REFRESH_COOLDOWN_MS = 5000; // 5 seconds cooldown
   private static readonly COOKIE_SET_DELAY_MS = 1000; // Time for CF Access to set cookie
   private static readonly REFRESH_TIMEOUT_MS = 5000; // Fallback timeout
+  private static readonly MAX_CONSECUTIVE_FAILURES = 2; // Max retries before redirect
 
   /**
-   * Check if an error is likely a CF Access CORS error
+   * Check if browser is online
+   */
+  isOnline(): boolean {
+    return navigator.onLine;
+  }
+
+  /**
+   * Check if an error is a generic network error (offline, server unreachable)
+   */
+  isNetworkError(error: unknown): boolean {
+    if (!(error instanceof TypeError)) {
+      return false;
+    }
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('failed to fetch') || message.includes('network') || message.includes('cors')
+    );
+  }
+
+  /**
+   * Check if an error is likely a CF Access CORS error (not a generic network issue)
+   * Returns true only if we're online and getting network errors (likely CF Access redirect)
    */
   isCFAccessError(error: unknown): boolean {
-    if (error instanceof TypeError) {
-      // Network errors from CORS failures are TypeError
-      const message = error.message.toLowerCase();
-      return (
-        message.includes('failed to fetch') ||
-        message.includes('network') ||
-        message.includes('cors')
-      );
+    // If offline, it's not a CF Access error - it's a network connectivity issue
+    if (!this.isOnline()) {
+      return false;
     }
-    return false;
+    return this.isNetworkError(error);
+  }
+
+  /**
+   * Check if we've exceeded retry attempts and should redirect to login
+   */
+  shouldRedirectToLogin(): boolean {
+    // Only redirect if online - offline users should see network error, not login redirect
+    return (
+      this.isOnline() && this.consecutiveFailures >= CFAccessTokenRefresher.MAX_CONSECUTIVE_FAILURES
+    );
+  }
+
+  /**
+   * Verify that the origin is reachable before forcing auth redirect
+   * This prevents redirect loops when the server is down
+   */
+  async verifyOriginReachable(): Promise<boolean> {
+    try {
+      // Try to fetch a static asset that should bypass CF Access
+      // Using HEAD request to minimize data transfer
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      const response = await fetch(`${window.location.origin}/favicon.ico`, {
+        method: 'HEAD',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      // If we get any response (even redirect), the origin is reachable
+      return response.ok || response.status === 302 || response.status === 301;
+    } catch {
+      // If this also fails, the origin is likely unreachable
+      return false;
+    }
+  }
+
+  /**
+   * Force redirect to trigger Cloudflare Access login
+   * Clears service worker cache to ensure fresh auth flow
+   * Only redirects if we can confirm origin is reachable
+   */
+  async forceAuthRedirect(): Promise<boolean> {
+    // Verify origin is reachable to avoid redirect loop on network outage
+    const originReachable = await this.verifyOriginReachable();
+    if (!originReachable) {
+      // Origin not reachable - this is a network issue, not CF Access
+      return false;
+    }
+
+    // Unregister service worker to clear cached SPA
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((r) => r.unregister()));
+    }
+
+    // Clear caches
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((name) => caches.delete(name)));
+    }
+
+    // Force full page reload to trigger CF Access
+    window.location.href = `${window.location.origin}/?auth_redirect=1`;
+    return true;
+  }
+
+  /**
+   * Record a successful API call (resets failure counter)
+   */
+  recordSuccess(): void {
+    this.consecutiveFailures = 0;
   }
 
   /**
    * Refresh CF Access token using hidden iframe
-   * Returns a promise that resolves when refresh is complete
+   * Returns true if refresh might have succeeded, false if it definitely failed
    */
-  async refreshToken(): Promise<void> {
+  async refreshToken(): Promise<boolean> {
     const now = Date.now();
 
     // Prevent rapid refresh attempts
     if (now - this.lastRefreshTime < CFAccessTokenRefresher.REFRESH_COOLDOWN_MS) {
-      return;
+      return false;
     }
 
     // If already refreshing, return the existing promise
@@ -106,31 +198,44 @@ class CFAccessTokenRefresher {
     this.isRefreshing = true;
     this.lastRefreshTime = now;
 
-    this.refreshPromise = new Promise<void>((resolve) => {
+    this.refreshPromise = new Promise<boolean>((resolve) => {
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       iframe.src = `${window.location.origin}/`;
 
-      const finalCleanup = () => {
+      let resolved = false;
+
+      const finalCleanup = (success: boolean) => {
+        if (resolved) return;
+        resolved = true;
+
         if (iframe.parentNode) {
           iframe.parentNode.removeChild(iframe);
         }
         this.isRefreshing = false;
         this.refreshPromise = null;
-        resolve();
+
+        if (!success) {
+          this.consecutiveFailures++;
+        }
+
+        resolve(success);
       };
 
-      const fallbackTimeoutId = setTimeout(finalCleanup, CFAccessTokenRefresher.REFRESH_TIMEOUT_MS);
+      const fallbackTimeoutId = setTimeout(
+        () => finalCleanup(false),
+        CFAccessTokenRefresher.REFRESH_TIMEOUT_MS
+      );
 
       iframe.onload = () => {
         clearTimeout(fallbackTimeoutId);
         // Give CF Access time to set the cookie
-        setTimeout(finalCleanup, CFAccessTokenRefresher.COOKIE_SET_DELAY_MS);
+        setTimeout(() => finalCleanup(true), CFAccessTokenRefresher.COOKIE_SET_DELAY_MS);
       };
 
       iframe.onerror = () => {
         clearTimeout(fallbackTimeoutId);
-        finalCleanup();
+        finalCleanup(false);
       };
 
       document.body.appendChild(iframe);
@@ -194,6 +299,29 @@ interface BackendTodo {
 export class APIClient {
   private baseURL = '/api';
 
+  /**
+   * Handle CF Access errors with retry logic
+   * Returns the retry result if retried, otherwise throws the error
+   */
+  private async handleCFAccessError<T>(
+    error: unknown,
+    isRetry: boolean,
+    retryFn: () => Promise<T>
+  ): Promise<T> {
+    if (cfTokenRefresher.isCFAccessError(error)) {
+      if (cfTokenRefresher.shouldRedirectToLogin()) {
+        await cfTokenRefresher.forceAuthRedirect();
+        throw error;
+      }
+
+      if (!isRetry) {
+        await cfTokenRefresher.refreshToken();
+        return retryFn();
+      }
+    }
+    throw error;
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -230,17 +358,18 @@ export class APIClient {
         throw new Error(error.message || `HTTP ${response.status}`);
       }
 
+      // Success - reset failure counter
+      cfTokenRefresher.recordSuccess();
+
       if (response.status === 204) {
         return { data: null as T, headers: response.headers };
       }
 
       return { data: (await response.json()) as T, headers: response.headers };
     } catch (error) {
-      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
-        await cfTokenRefresher.refreshToken();
-        return this.requestWithHeaders<T>(endpoint, options, true);
-      }
-      throw error;
+      return this.handleCFAccessError(error, isRetry, () =>
+        this.requestWithHeaders<T>(endpoint, options, true)
+      );
     }
   }
 
@@ -280,14 +409,14 @@ export class APIClient {
         throw new Error(error.message || `HTTP ${response.status}`);
       }
 
+      // Success - reset failure counter
+      cfTokenRefresher.recordSuccess();
+
       return response.json() as Promise<T>;
     } catch (error) {
-      // Handle CF Access CORS errors by refreshing token and retrying once
-      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
-        await cfTokenRefresher.refreshToken();
-        return this.uploadFile<T>(endpoint, file, metadata, true);
-      }
-      throw error;
+      return this.handleCFAccessError(error, isRetry, () =>
+        this.uploadFile<T>(endpoint, file, metadata, true)
+      );
     }
   }
 
@@ -306,14 +435,12 @@ export class APIClient {
         throw new Error(`파일 다운로드 실패: ${response.status}`);
       }
 
+      // Success - reset failure counter
+      cfTokenRefresher.recordSuccess();
+
       return response.blob();
     } catch (error) {
-      // Handle CF Access CORS errors by refreshing token and retrying once
-      if (!isRetry && cfTokenRefresher.isCFAccessError(error)) {
-        await cfTokenRefresher.refreshToken();
-        return this._downloadFile(endpoint, true);
-      }
-      throw error;
+      return this.handleCFAccessError(error, isRetry, () => this._downloadFile(endpoint, true));
     }
   }
 
