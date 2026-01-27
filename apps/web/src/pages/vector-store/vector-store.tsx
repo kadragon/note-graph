@@ -215,13 +215,13 @@ export default function VectorStore() {
           </div>
 
           {(stats?.pending ?? 0) > 0 && (
-            <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
+            <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg">
               <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                <p className="font-medium text-yellow-800">
                   {stats?.pending}개의 업무노트가 임베딩 대기 중입니다
                 </p>
-                <p className="text-yellow-700 dark:text-yellow-300 mt-1">
+                <p className="text-yellow-700 mt-1">
                   "미완료 임베딩 처리" 버튼을 클릭하여 벡터 스토어에 저장하세요.
                 </p>
               </div>
@@ -229,13 +229,11 @@ export default function VectorStore() {
           )}
 
           {stats && stats.pending === 0 && stats.total > 0 && (
-            <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+            <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
               <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-green-800 dark:text-green-200">
-                  모든 업무노트가 벡터화되었습니다
-                </p>
-                <p className="text-green-700 dark:text-green-300 mt-1">
+                <p className="font-medium text-green-800">모든 업무노트가 벡터화되었습니다</p>
+                <p className="text-green-700 mt-1">
                   AI 검색 및 챗봇에서 모든 업무노트를 활용할 수 있습니다.
                 </p>
               </div>

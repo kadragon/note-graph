@@ -231,7 +231,7 @@ describe('ViewWorkNoteDialog', () => {
     expect(screen.getByText('(비활성)')).toBeInTheDocument();
   });
 
-  it('sets markdown color mode from system preference', () => {
+  it('renders markdown without dark mode attributes', () => {
     const workNote = createWorkNote({
       title: '업무노트',
       content: '마크다운 내용',
@@ -245,7 +245,7 @@ describe('ViewWorkNoteDialog', () => {
     const markdownText = screen.getByText('마크다운 내용');
     const markdownContainer = markdownText.closest('div');
 
-    expect(markdownContainer).toHaveAttribute('data-color-mode', 'light');
+    expect(markdownContainer).not.toHaveAttribute('data-color-mode');
   });
 
   it('uses placeholderData from list cache to show work note immediately', async () => {

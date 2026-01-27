@@ -45,7 +45,10 @@ export default function Statistics() {
 
   const { data: selectedWorkNote } = useQuery({
     queryKey: ['work-note-detail', selectedWorkNoteId],
-    queryFn: () => API.getWorkNote(selectedWorkNoteId!),
+    queryFn: () =>
+      selectedWorkNoteId
+        ? API.getWorkNote(selectedWorkNoteId)
+        : Promise.reject(new Error('No work note')),
     enabled: !!selectedWorkNoteId,
   });
 
