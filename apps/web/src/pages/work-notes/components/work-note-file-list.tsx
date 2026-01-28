@@ -35,6 +35,7 @@ import {
   ExternalLink,
   FileIcon,
   FolderOpen,
+  Loader2,
   Settings,
   Trash2,
   Upload,
@@ -200,26 +201,26 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
               <>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={() => void handleFolderPathClick()}
+                  onClick={handleOpenPathSettings}
+                  className="h-8 w-8 p-0"
+                  title="경로 설정"
                 >
-                  <FolderOpen className="h-4 w-4 mr-2" />
-                  폴더 경로 복사
+                  <Settings className="h-4 w-4" />
+                  <span className="sr-only">경로 설정</span>
                 </Button>
-                {localDrivePath && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleOpenPathSettings}
-                    className="h-8 w-8 p-0"
-                    title="경로 설정"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span className="sr-only">경로 설정</span>
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => void handleFolderPathClick()}
+                  title="폴더 경로 복사"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                  <span className="sr-only">폴더 경로 복사</span>
+                </Button>
               </>
             )}
             {hasLegacyFiles && (
@@ -251,13 +252,21 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
             />
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
+              className="h-8 w-8 p-0"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploadDisabled}
+              title={uploadingFiles.length > 0 ? '업로드 중...' : '파일 업로드'}
             >
-              <Upload className="h-4 w-4 mr-2" />
-              {uploadingFiles.length > 0 ? '업로드 중...' : '파일 업로드'}
+              {uploadingFiles.length > 0 ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              <span className="sr-only">
+                {uploadingFiles.length > 0 ? '업로드 중...' : '파일 업로드'}
+              </span>
             </Button>
           </div>
           {migrateMutation.isPending && (

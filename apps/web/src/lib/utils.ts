@@ -82,8 +82,9 @@ export function formatPersonBadge(person: {
     parts.push(person.personId);
   }
 
-  if (person.phoneExt) {
-    parts.push(person.phoneExt);
+  const formattedPhone = formatPhoneExt(person.phoneExt);
+  if (formattedPhone) {
+    parts.push(formattedPhone);
   }
 
   return parts.join('/');
@@ -153,4 +154,27 @@ export function preserveLineBreaksForMarkdown(text: string): string {
  */
 export function toUTCISOString(dateString: string): string {
   return new Date(`${dateString}T00:00:00.000Z`).toISOString();
+}
+
+/**
+ * Format phone extension by stripping the common 043-230- prefix
+ * This is specific to the organization's phone system
+ *
+ * @param phone - Phone number string
+ * @returns Extension number without prefix, or full number if prefix doesn't match, or null if empty
+ *
+ * @example
+ * formatPhoneExt('043-230-3346')
+ * // returns '3346'
+ *
+ * formatPhoneExt('043-123-4567')
+ * // returns '043-123-4567'
+ *
+ * formatPhoneExt(null)
+ * // returns null
+ */
+export function formatPhoneExt(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const prefix = '043-230-';
+  return phone.startsWith(prefix) ? phone.slice(prefix.length) : phone;
 }

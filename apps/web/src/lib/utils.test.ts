@@ -6,6 +6,7 @@ import {
   cn,
   formatDateWithYear,
   formatPersonBadge,
+  formatPhoneExt,
   getDepartmentColor,
   preserveLineBreaksForMarkdown,
   toUTCISOString,
@@ -122,6 +123,26 @@ describe('formatPersonBadge', () => {
 
     expect(formatPersonBadge(person)).toBe('최민수');
   });
+
+  it('strips 043-230- prefix from phoneExt', () => {
+    const person = {
+      name: '홍길동',
+      personId: '111111',
+      phoneExt: '043-230-3346',
+    };
+
+    expect(formatPersonBadge(person)).toBe('홍길동/111111/3346');
+  });
+
+  it('preserves non-matching phone prefixes', () => {
+    const person = {
+      name: '홍길동',
+      personId: '111111',
+      phoneExt: '043-123-4567',
+    };
+
+    expect(formatPersonBadge(person)).toBe('홍길동/111111/043-123-4567');
+  });
 });
 
 describe('getDepartmentColor', () => {
@@ -177,6 +198,28 @@ describe('preserveLineBreaksForMarkdown', () => {
     const expected = 'Line 1  \nLine 2  \nLine 3';
 
     expect(preserveLineBreaksForMarkdown(input)).toBe(expected);
+  });
+});
+
+describe('formatPhoneExt', () => {
+  it('strips 043-230- prefix from phone number', () => {
+    expect(formatPhoneExt('043-230-3346')).toBe('3346');
+  });
+
+  it('returns full number when prefix does not match', () => {
+    expect(formatPhoneExt('043-123-4567')).toBe('043-123-4567');
+  });
+
+  it('returns null for null input', () => {
+    expect(formatPhoneExt(null)).toBeNull();
+  });
+
+  it('returns null for undefined input', () => {
+    expect(formatPhoneExt(undefined)).toBeNull();
+  });
+
+  it('returns null for empty string', () => {
+    expect(formatPhoneExt('')).toBeNull();
   });
 });
 
