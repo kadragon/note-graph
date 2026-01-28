@@ -49,15 +49,15 @@ export default function WorkNotes() {
   // Handle ?id=xxx query param to auto-open work note
   const workNoteIdFromUrl = searchParams.get('id');
   useEffect(() => {
-    if (workNoteIdFromUrl && workNotes.length > 0) {
+    if (workNoteIdFromUrl && !isLoading) {
       const workNote = workNotes.find((wn) => wn.id === workNoteIdFromUrl);
       if (workNote) {
         setSelectedWorkNote(workNote);
         setViewDialogOpen(true);
-        setSearchParams({}, { replace: true }); // Clear query param after opening
       }
+      setSearchParams({}, { replace: true });
     }
-  }, [workNoteIdFromUrl, workNotes, setSearchParams]);
+  }, [workNoteIdFromUrl, isLoading, workNotes, setSearchParams]);
   const deleteMutation = useDeleteWorkNote();
 
   const handleSort = (key: SortKey) => {
