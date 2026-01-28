@@ -15,6 +15,7 @@ import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-no
 import type { WorkNoteWithStats } from '@web/types/api';
 import { FileEdit, FileText, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CreateFromPDFDialog } from './components/create-from-pdf-dialog';
 import { CreateFromTextDialog } from './components/create-from-text-dialog';
 import { CreateWorkNoteDialog } from './components/create-work-note-dialog';
@@ -41,8 +42,22 @@ export default function WorkNotes() {
   const [activeTab, setActiveTab] = useState<WorkNoteTab>('active');
   const [sortKey, setSortKey] = useState<SortKey>('category');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: workNotes = [], isLoading } = useWorkNotesWithStats();
+
+  // Handle ?id=xxx query param to auto-open work note
+  const workNoteIdFromUrl = searchParams.get('id');
+  useEffect(() => {
+    if (workNoteIdFromUrl && !isLoading) {
+      const workNote = workNotes.find((wn) => wn.id === workNoteIdFromUrl);
+      if (workNote) {
+        setSelectedWorkNote(workNote);
+        setViewDialogOpen(true);
+      }
+      setSearchParams({}, { replace: true });
+    }
+  }, [workNoteIdFromUrl, isLoading, workNotes, setSearchParams]);
   const deleteMutation = useDeleteWorkNote();
 
   const handleSort = (key: SortKey) => {

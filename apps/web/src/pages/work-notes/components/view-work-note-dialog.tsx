@@ -629,15 +629,15 @@ export function ViewWorkNoteDialog({
               {currentWorkNote.relatedWorkNotes && currentWorkNote.relatedWorkNotes.length > 0 ? (
                 <div className="space-y-2">
                   {currentWorkNote.relatedWorkNotes.map((ref) => (
-                    <div
+                    <a
                       key={ref.relatedWorkId}
-                      className="flex items-center justify-between border rounded-md p-3"
+                      href={`/work-notes?id=${ref.relatedWorkId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between border rounded-md p-3 hover:bg-muted/50 transition-colors cursor-pointer"
                     >
-                      <div>
-                        <p className="font-medium">{ref.relatedWorkTitle || ref.relatedWorkId}</p>
-                        <p className="text-xs text-muted-foreground">ID: {ref.relatedWorkId}</p>
-                      </div>
-                    </div>
+                      <p className="font-medium">{ref.relatedWorkTitle || ref.relatedWorkId}</p>
+                    </a>
                   ))}
                 </div>
               ) : (
