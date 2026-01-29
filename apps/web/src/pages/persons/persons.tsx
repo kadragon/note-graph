@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@web/components/ui/table';
 import { usePersons } from '@web/hooks/use-persons';
+import { formatPhoneExt } from '@web/lib/utils';
 import type { Person } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -20,11 +21,6 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PersonDialog } from './components/person-dialog';
 import { PersonImportDialog } from './components/person-import-dialog';
-
-const formatPhone = (phone: string | null) => {
-  if (!phone) return null;
-  return phone.replace(/^043-230-/, '');
-};
 
 export default function Persons() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -189,7 +185,7 @@ export default function Persons() {
                           <TableCell>
                             {person.phoneExt ? (
                               <span className="text-sm font-mono">
-                                {formatPhone(person.phoneExt)}
+                                {formatPhoneExt(person.phoneExt)}
                               </span>
                             ) : (
                               <span className="text-muted-foreground text-sm">-</span>
