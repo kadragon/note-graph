@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@web/components/ui/table';
 import { usePersons } from '@web/hooks/use-persons';
+import { formatPhoneExt } from '@web/lib/utils';
 import type { Person } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -155,11 +156,12 @@ export default function Persons() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
-                        <TableHead>이름</TableHead>
-                        <TableHead>직책</TableHead>
-                        <TableHead>사번</TableHead>
-                        <TableHead>연락처</TableHead>
-                        <TableHead>생성일</TableHead>
+                        <TableHead className="w-24">이름</TableHead>
+                        <TableHead className="w-20">직책</TableHead>
+                        <TableHead className="w-20">사번</TableHead>
+                        <TableHead className="w-24">연락처</TableHead>
+                        <TableHead>담당업무</TableHead>
+                        <TableHead className="w-24">생성일</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -182,7 +184,16 @@ export default function Persons() {
                           </TableCell>
                           <TableCell>
                             {person.phoneExt ? (
-                              <span className="text-sm font-mono">{person.phoneExt}</span>
+                              <span className="text-sm font-mono">
+                                {formatPhoneExt(person.phoneExt)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {person.currentRoleDesc ? (
+                              <span className="text-sm">{person.currentRoleDesc}</span>
                             ) : (
                               <span className="text-muted-foreground text-sm">-</span>
                             )}
