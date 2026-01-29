@@ -8,9 +8,14 @@
   --spacing-sidebar: 16rem;
 
   /* Custom font family */
-  --font-family-sans:
+  --font-sans:
     "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  --font-mono:
+    "D2Coding", "D2 Coding", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
 
+/* Theme values that reference other CSS variables must use @theme inline */
+@theme inline {
   /* Custom border radius */
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -140,8 +145,7 @@
 :is(.prose, .prose-xs, .prose-sm) code {
   @apply rounded px-1 py-0.5 text-sm;
   background-color: var(--code-inline-bg);
-  font-family:
-    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 :is(.prose, .prose-xs, .prose-sm) pre code {
