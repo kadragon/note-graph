@@ -21,6 +21,11 @@ import { useSearchParams } from 'react-router-dom';
 import { PersonDialog } from './components/person-dialog';
 import { PersonImportDialog } from './components/person-import-dialog';
 
+const formatPhone = (phone: string | null) => {
+  if (!phone) return null;
+  return phone.replace(/^043-230-/, '');
+};
+
 export default function Persons() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -155,11 +160,12 @@ export default function Persons() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
-                        <TableHead>이름</TableHead>
-                        <TableHead>직책</TableHead>
-                        <TableHead>사번</TableHead>
-                        <TableHead>연락처</TableHead>
-                        <TableHead>생성일</TableHead>
+                        <TableHead className="w-24">이름</TableHead>
+                        <TableHead className="w-20">직책</TableHead>
+                        <TableHead className="w-20">사번</TableHead>
+                        <TableHead className="w-24">연락처</TableHead>
+                        <TableHead>담당업무</TableHead>
+                        <TableHead className="w-24">생성일</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -182,7 +188,16 @@ export default function Persons() {
                           </TableCell>
                           <TableCell>
                             {person.phoneExt ? (
-                              <span className="text-sm font-mono">{person.phoneExt}</span>
+                              <span className="text-sm font-mono">
+                                {formatPhone(person.phoneExt)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {person.currentRoleDesc ? (
+                              <span className="text-sm">{person.currentRoleDesc}</span>
                             ) : (
                               <span className="text-muted-foreground text-sm">-</span>
                             )}
