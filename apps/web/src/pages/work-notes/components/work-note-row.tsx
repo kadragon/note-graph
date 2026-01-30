@@ -35,11 +35,15 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
 
   return (
     <TableRow>
-      <TableCell>
+      <TableCell className="text-center">
         {workNote.categories && workNote.categories.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 justify-center">
             {workNote.categories.map((category) => (
-              <Badge key={category.categoryId} variant="secondary">
+              <Badge
+                key={category.categoryId}
+                variant="secondary"
+                className="min-w-[4rem] justify-center"
+              >
                 {category.name}
               </Badge>
             ))}
@@ -48,7 +52,7 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
           <span className="text-muted-foreground text-sm">-</span>
         )}
       </TableCell>
-      <TableCell className="w-20">
+      <TableCell className="w-20 text-center">
         {workNote.latestTodoDate ? (
           <span className={dueDateColor ?? ''}>
             {format(parseISO(workNote.latestTodoDate), 'M/d')}
@@ -119,33 +123,35 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
           <span className="text-muted-foreground text-sm">-</span>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
+      <TableCell className="text-muted-foreground text-xs text-center">
         {format(parseISO(workNote.createdAt), 'yyyy-MM-dd')}
       </TableCell>
-      <TableCell className="text-right">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => downloadWorkNote(workNote)}
-          disabled={isDownloading}
-          className="h-8 w-8 p-0"
-        >
-          {isDownloading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-          <span className="sr-only">다운로드</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDelete(workNote.id)}
-          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-          <span className="sr-only">삭제</span>
-        </Button>
+      <TableCell className="text-center">
+        <div className="inline-flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => downloadWorkNote(workNote)}
+            disabled={isDownloading}
+            className="h-8 w-8 p-0"
+          >
+            {isDownloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            <span className="sr-only">다운로드</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(workNote.id)}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="sr-only">삭제</span>
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   );
