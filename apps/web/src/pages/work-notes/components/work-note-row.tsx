@@ -70,16 +70,16 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
         {workNote.persons && workNote.persons.length > 0 ? (
           <div className="flex flex-wrap gap-1 text-sm">
             {workNote.persons.map((person, index, arr) => {
-              const parts: string[] = [];
-              if (person.currentDept) parts.push(person.currentDept);
-              parts.push(person.personName);
-              const formattedPhone = formatPhoneExt(person.phoneExt);
-              if (formattedPhone) {
-                parts.push(formattedPhone);
-              }
+              const personInfo = [
+                person.currentDept,
+                person.personName,
+                formatPhoneExt(person.phoneExt),
+              ]
+                .filter(Boolean)
+                .join(' / ');
               return (
                 <span key={person.personId}>
-                  {parts.join(' / ')}
+                  {personInfo}
                   {index < arr.length - 1 && ', '}
                 </span>
               );
