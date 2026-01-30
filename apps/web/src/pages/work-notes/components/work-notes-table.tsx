@@ -82,7 +82,6 @@ export function WorkNotesTable({
             currentSortKey={sortKey}
             sortDirection={sortDirection}
             onSort={onSort}
-            className="text-center"
           />
           <SortableHeader
             label="마감일"
@@ -90,7 +89,7 @@ export function WorkNotesTable({
             currentSortKey={sortKey}
             sortDirection={sortDirection}
             onSort={onSort}
-            className="w-24 text-center"
+            className="w-24"
           />
           <SortableHeader
             label="제목"
@@ -120,7 +119,7 @@ export function WorkNotesTable({
             currentSortKey={sortKey}
             sortDirection={sortDirection}
             onSort={onSort}
-            className="w-36 text-center"
+            className="w-36"
           />
           <TableHead className="text-center w-20">작업</TableHead>
         </TableRow>
