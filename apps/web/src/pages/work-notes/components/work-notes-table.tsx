@@ -39,7 +39,7 @@ function SortableHeader({
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+        className="flex items-center justify-center gap-1 w-full hover:text-foreground transition-colors cursor-pointer"
       >
         {label}
         {isActive ? (
@@ -82,6 +82,7 @@ export function WorkNotesTable({
             currentSortKey={sortKey}
             sortDirection={sortDirection}
             onSort={onSort}
+            className="text-center"
           />
           <SortableHeader
             label="마감일"
@@ -89,7 +90,7 @@ export function WorkNotesTable({
             currentSortKey={sortKey}
             sortDirection={sortDirection}
             onSort={onSort}
-            className="w-24"
+            className="w-24 text-center"
           />
           <SortableHeader
             label="제목"
@@ -119,9 +120,9 @@ export function WorkNotesTable({
             currentSortKey={sortKey}
             sortDirection={sortDirection}
             onSort={onSort}
-            className="w-36"
+            className="w-36 text-center"
           />
-          <TableHead className="text-right w-16">작업</TableHead>
+          <TableHead className="text-center w-20">작업</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
