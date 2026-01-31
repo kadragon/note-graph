@@ -106,4 +106,13 @@ describe('rag page', () => {
       });
     });
   });
+
+  describe('accessibility', () => {
+    it('has aria-label on message input', () => {
+      render(<RAG />);
+
+      const messageInput = screen.getByRole('textbox', { name: /메시지 입력/ });
+      expect(messageInput).toBeInTheDocument();
+    });
+  });
 });

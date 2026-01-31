@@ -44,6 +44,7 @@ export function WorkNoteEditForm({
       {showTitle && (
         <div>
           <Input
+            aria-label="제목"
             value={title}
             onChange={(e) => onChange('title', e.target.value)}
             placeholder="제목"

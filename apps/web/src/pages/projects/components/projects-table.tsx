@@ -89,6 +89,7 @@ export function ProjectsTable({ projects, onView, onDelete }: ProjectsTableProps
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label="보기"
                   onClick={(e) => {
                     e.stopPropagation();
                     onView(project);
@@ -99,6 +100,7 @@ export function ProjectsTable({ projects, onView, onDelete }: ProjectsTableProps
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label="삭제"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete(project.projectId);

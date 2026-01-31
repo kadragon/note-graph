@@ -200,6 +200,7 @@ export default function RAG() {
 
                 <form onSubmit={(e) => void handleSubmit(e)} className="border-t p-4 flex gap-2">
                   <Input
+                    aria-label="메시지 입력"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="메시지를 입력하세요..."

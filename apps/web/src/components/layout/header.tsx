@@ -78,6 +78,8 @@ export default function Header() {
           <Input
             ref={searchInputRef}
             type="search"
+            aria-label="검색"
+            autoComplete="off"
             placeholder="검색... (⌘/Ctrl+K)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

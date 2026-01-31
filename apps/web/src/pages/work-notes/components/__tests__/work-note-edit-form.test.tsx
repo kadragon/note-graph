@@ -171,4 +171,13 @@ describe('WorkNoteEditForm', () => {
     expect(checkbox).not.toBeDisabled();
     expect(checkbox).toBeChecked();
   });
+
+  describe('accessibility', () => {
+    it('has aria-label on title input', () => {
+      render(<WorkNoteEditForm {...defaultProps} />);
+
+      const titleInput = screen.getByRole('textbox', { name: /제목/ });
+      expect(titleInput).toBeInTheDocument();
+    });
+  });
 });
