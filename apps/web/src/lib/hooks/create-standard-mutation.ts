@@ -34,7 +34,7 @@ export function createStandardMutation<TData, TVariables>(
           typeof invalidateKeys === 'function' ? invalidateKeys(data, variables) : invalidateKeys;
 
         for (const key of keys) {
-          void queryClient.invalidateQueries({ queryKey: [...key] });
+          void queryClient.invalidateQueries({ queryKey: key });
         }
         toast({
           title: '성공',
