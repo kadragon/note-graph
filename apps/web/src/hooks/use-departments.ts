@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { DEPARTMENT_SEARCH_LIMIT } from '@web/constants/search';
 import { API } from '@web/lib/api';
+import { createStandardMutation } from '@web/lib/hooks/create-standard-mutation';
 import type { CreateDepartmentRequest, Department, UpdateDepartmentRequest } from '@web/types/api';
-import { useToast } from './use-toast';
 
 interface UseDepartmentsOptions {
   search?: string;
@@ -21,49 +21,21 @@ export function useDepartments(options?: UseDepartmentsOptions) {
   });
 }
 
-export function useCreateDepartment() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+export const useCreateDepartment = createStandardMutation({
+  mutationFn: (data: CreateDepartmentRequest) => API.createDepartment(data),
+  invalidateKeys: [['departments']],
+  messages: {
+    success: '부서가 생성되었습니다.',
+    error: '부서를 생성할 수 없습니다.',
+  },
+});
 
-  return useMutation({
-    mutationFn: (data: CreateDepartmentRequest) => API.createDepartment(data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['departments'] });
-      toast({
-        title: '성공',
-        description: '부서가 생성되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '부서를 생성할 수 없습니다.',
-      });
-    },
-  });
-}
-
-export function useUpdateDepartment() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: ({ deptName, data }: { deptName: string; data: UpdateDepartmentRequest }) =>
-      API.updateDepartment(deptName, data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['departments'] });
-      toast({
-        title: '성공',
-        description: '부서가 수정되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '부서를 수정할 수 없습니다.',
-      });
-    },
-  });
-}
+export const useUpdateDepartment = createStandardMutation({
+  mutationFn: ({ deptName, data }: { deptName: string; data: UpdateDepartmentRequest }) =>
+    API.updateDepartment(deptName, data),
+  invalidateKeys: [['departments']],
+  messages: {
+    success: '부서가 수정되었습니다.',
+    error: '부서를 수정할 수 없습니다.',
+  },
+});

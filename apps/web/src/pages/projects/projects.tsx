@@ -1,5 +1,6 @@
 // Trace: SPEC-project-1, TASK-043
 
+import { StateRenderer } from '@web/components/state-renderer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@web/components/ui/select';
+import { useDialogState } from '@web/hooks/use-dialog-state';
 import { usePersons } from '@web/hooks/use-persons';
 import { useDeleteProject, useProjects } from '@web/hooks/use-projects';
 import type { Project, ProjectStatus } from '@web/types/api';
@@ -30,11 +32,9 @@ import { ProjectDetailDialog } from './components/project-detail-dialog';
 import { ProjectsTable } from './components/projects-table';
 
 export default function Projects() {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const createDialog = useDialogState();
+  const detailDialog = useDialogState<string>();
+  const deleteDialog = useDialogState<string>();
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [leaderFilter, setLeaderFilter] = useState<string>('all');
   const [startDateFilter, setStartDateFilter] = useState<string>('');
@@ -50,20 +50,17 @@ export default function Projects() {
   const deleteMutation = useDeleteProject();
 
   const handleView = (project: Project) => {
-    setSelectedProject(project);
-    setDetailDialogOpen(true);
+    detailDialog.open(project.projectId);
   };
 
   const handleDeleteClick = (projectId: string) => {
-    setProjectToDelete(projectId);
-    setDeleteDialogOpen(true);
+    deleteDialog.open(projectId);
   };
 
   const handleDeleteConfirm = async () => {
-    if (projectToDelete) {
-      await deleteMutation.mutateAsync(projectToDelete);
-      setDeleteDialogOpen(false);
-      setProjectToDelete(null);
+    if (deleteDialog.id) {
+      await deleteMutation.mutateAsync(deleteDialog.id);
+      deleteDialog.close();
     }
   };
 
@@ -81,7 +78,7 @@ export default function Projects() {
           <h1 className="page-title">프로젝트</h1>
           <p className="page-description">프로젝트를 관리하세요</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={createDialog.open}>
           <Plus className="h-4 w-4 mr-2" />새 프로젝트
         </Button>
       </div>
@@ -154,29 +151,27 @@ export default function Projects() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">로딩 중...</div>
-          ) : projects.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              프로젝트가 없습니다. 새 프로젝트를 만들어보세요.
-            </div>
-          ) : (
+          <StateRenderer
+            isLoading={isLoading}
+            isEmpty={projects.length === 0}
+            emptyMessage="프로젝트가 없습니다. 새 프로젝트를 만들어보세요."
+          >
             <ProjectsTable projects={projects} onView={handleView} onDelete={handleDeleteClick} />
-          )}
+          </StateRenderer>
         </CardContent>
       </Card>
 
-      <CreateProjectDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      <CreateProjectDialog open={createDialog.isOpen} onOpenChange={createDialog.onOpenChange} />
 
-      {selectedProject && (
+      {detailDialog.id && (
         <ProjectDetailDialog
-          open={detailDialogOpen}
-          onOpenChange={setDetailDialogOpen}
-          projectId={selectedProject.projectId}
+          open={detailDialog.isOpen}
+          onOpenChange={detailDialog.onOpenChange}
+          projectId={detailDialog.id}
         />
       )}
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialog.isOpen} onOpenChange={deleteDialog.onOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>프로젝트 삭제</AlertDialogTitle>

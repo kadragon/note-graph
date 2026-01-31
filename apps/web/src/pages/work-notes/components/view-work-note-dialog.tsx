@@ -1,7 +1,6 @@
 // Trace: TASK-024, TASK-025, SPEC-worknote-1, SPEC-worknote-2, SPEC-ui-1, TASK-034, SPEC-todo-2, TASK-051, TASK-052, SPEC-worknote-email-copy-001, TASK-0071
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AssigneeSelector } from '@web/components/assignee-selector';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +13,6 @@ import {
 } from '@web/components/ui/alert-dialog';
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
-import { Checkbox } from '@web/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +22,6 @@ import {
 } from '@web/components/ui/dialog';
 import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
-import { Textarea } from '@web/components/ui/textarea';
 import { TODO_STATUS } from '@web/constants/todo-status';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
@@ -35,15 +32,7 @@ import { API } from '@web/lib/api';
 import { buildAssigneeEmailTemplate } from '@web/lib/assignee-email-template';
 import { formatPersonBadge, toUTCISOString } from '@web/lib/utils';
 import { EditTodoDialog } from '@web/pages/dashboard/components/edit-todo-dialog';
-import type {
-  CreateTodoRequest,
-  CustomIntervalUnit,
-  RecurrenceType,
-  RepeatRule,
-  Todo,
-  TodoStatus,
-  WorkNote,
-} from '@web/types/api';
+import type { CreateTodoRequest, Todo, TodoStatus, WorkNote } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Copy, Edit2, Save, X } from 'lucide-react';
@@ -56,32 +45,10 @@ const LazyMarkdown = lazy(() =>
 );
 
 import { RecurringTodoGroup } from './recurring-todo-group';
+import { TodoCreationForm } from './todo-creation-form';
 import { TodoListItem } from './todo-list-item';
+import { WorkNoteEditForm } from './work-note-edit-form';
 import { WorkNoteFileList } from './work-note-file-list';
-
-// Constants for styling (same as EditTodoDialog)
-const SELECT_CLASS_NAME =
-  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
-
-// Options data for dropdowns
-const REPEAT_RULE_OPTIONS: Array<{ value: RepeatRule; label: string }> = [
-  { value: 'NONE', label: '반복 안함' },
-  { value: 'DAILY', label: '매일' },
-  { value: 'WEEKLY', label: '매주' },
-  { value: 'MONTHLY', label: '매월' },
-  { value: 'CUSTOM', label: '커스텀' },
-];
-
-const CUSTOM_UNIT_OPTIONS: Array<{ value: CustomIntervalUnit; label: string }> = [
-  { value: 'DAY', label: '일' },
-  { value: 'WEEK', label: '주' },
-  { value: 'MONTH', label: '개월' },
-];
-
-const RECURRENCE_TYPE_OPTIONS: Array<{ value: RecurrenceType; label: string }> = [
-  { value: 'DUE_DATE', label: '마감일 기준' },
-  { value: 'COMPLETION_DATE', label: '완료일 기준' },
-];
 
 interface ViewWorkNoteDialogProps {
   workNote: WorkNote | null;
@@ -89,9 +56,6 @@ interface ViewWorkNoteDialogProps {
   onOpenChange: (open: boolean) => void;
   loading?: boolean;
 }
-
-// Helper function to get today's date in YYYY-MM-DD format
-const getTodayString = (): string => new Date().toISOString().split('T')[0];
 
 export function ViewWorkNoteDialog({
   workNote,
@@ -106,16 +70,6 @@ export function ViewWorkNoteDialog({
   const [editPersonIds, setEditPersonIds] = useState<string[]>([]);
 
   const [showAddTodo, setShowAddTodo] = useState(false);
-  const [todoTitle, setTodoTitle] = useState('');
-  const [todoDescription, setTodoDescription] = useState('');
-  // Set default due date to today in YYYY-MM-DD format
-  const [todoDueDate, setTodoDueDate] = useState(getTodayString);
-  const [todoWaitUntil, setTodoWaitUntil] = useState('');
-  const [todoRepeatRule, setTodoRepeatRule] = useState<RepeatRule>('NONE');
-  const [todoRecurrenceType, setTodoRecurrenceType] = useState<RecurrenceType>('DUE_DATE');
-  const [todoCustomInterval, setTodoCustomInterval] = useState<number>(1);
-  const [todoCustomUnit, setTodoCustomUnit] = useState<CustomIntervalUnit>('MONTH');
-  const [todoSkipWeekends, setTodoSkipWeekends] = useState(false);
 
   // Refs for focusing specific sections when entering edit mode
   const categorySectionRef = useRef<HTMLDivElement | null>(null);
@@ -236,16 +190,6 @@ export function ViewWorkNoteDialog({
       void queryClient.invalidateQueries({ queryKey: ['work-note-todos', currentWorkNote?.id] });
       void queryClient.invalidateQueries({ queryKey: ['todos'] });
       void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-      setTodoTitle('');
-      setTodoDescription('');
-      // Reset all form fields to defaults
-      setTodoDueDate(getTodayString());
-      setTodoWaitUntil('');
-      setTodoRepeatRule('NONE');
-      setTodoRecurrenceType('DUE_DATE');
-      setTodoCustomInterval(1);
-      setTodoCustomUnit('MONTH');
-      setTodoSkipWeekends(false);
       setShowAddTodo(false);
       toast({
         title: '성공',
@@ -261,32 +205,12 @@ export function ViewWorkNoteDialog({
     },
   });
 
-  const handleTodoWaitUntilChange = (value: string) => {
-    setTodoWaitUntil(value);
-    if (!todoDueDate && value) {
-      setTodoDueDate(value);
-    }
-  };
-
-  const handleAddTodo = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!todoTitle.trim()) return;
-
-    const effectiveDueDate = todoDueDate || (todoWaitUntil ? todoWaitUntil : '');
-
-    const todoData: CreateTodoRequest = {
-      title: todoTitle.trim(),
-      description: todoDescription.trim() || undefined,
-      dueDate: effectiveDueDate ? toUTCISOString(effectiveDueDate) : undefined,
-      waitUntil: todoWaitUntil ? toUTCISOString(todoWaitUntil) : undefined,
-      repeatRule: todoRepeatRule,
-      recurrenceType: todoRecurrenceType,
-      customInterval: todoRepeatRule === 'CUSTOM' ? todoCustomInterval : undefined,
-      customUnit: todoRepeatRule === 'CUSTOM' ? todoCustomUnit : undefined,
-      skipWeekends: todoSkipWeekends,
-    };
-
-    createTodoMutation.mutate(todoData);
+  const handleAddTodo = (data: CreateTodoRequest) => {
+    createTodoMutation.mutate({
+      ...data,
+      dueDate: data.dueDate ? toUTCISOString(data.dueDate) : undefined,
+      waitUntil: data.waitUntil ? toUTCISOString(data.waitUntil) : undefined,
+    });
   };
 
   const handleToggleTodoStatus = (todoId: string, currentStatus: TodoStatus) => {
@@ -300,11 +224,25 @@ export function ViewWorkNoteDialog({
     toggleTodoMutation.mutate({ id: todoId, status: newStatus });
   };
 
-  const handleCategoryToggle = (categoryId: string) => {
-    setEditCategoryIds((prev) =>
-      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
-    );
-  };
+  const handleFormFieldChange = useCallback(
+    (field: 'title' | 'content' | 'categoryIds' | 'personIds', value: string | string[]) => {
+      switch (field) {
+        case 'title':
+          setEditTitle(value as string);
+          break;
+        case 'content':
+          setEditContent(value as string);
+          break;
+        case 'categoryIds':
+          setEditCategoryIds(value as string[]);
+          break;
+        case 'personIds':
+          setEditPersonIds(value as string[]);
+          break;
+      }
+    },
+    []
+  );
 
   const focusFirstInteractiveElement = useCallback((container: HTMLElement | null): boolean => {
     if (!container) return false;
@@ -455,132 +393,108 @@ export function ViewWorkNoteDialog({
           )}
 
           <div className="space-y-4">
-            {/* Categories Section */}
-            <div>
-              <Label className="text-sm font-medium mb-2 block">업무 구분</Label>
-              {isEditing ? (
-                categoriesLoading ? (
-                  <p className="text-sm text-muted-foreground">로딩 중...</p>
-                ) : editableCategories.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">등록된 업무 구분이 없습니다.</p>
-                ) : (
-                  <div
-                    ref={categorySectionRef}
-                    className="grid grid-cols-2 gap-3 max-h-[150px] overflow-y-auto border rounded-md p-3"
-                  >
-                    {editableCategories.map((category) => {
-                      const isInactive = !category.isActive;
-                      const isSelected = editCategoryIds.includes(category.categoryId);
-                      return (
-                        <div
-                          key={category.categoryId}
-                          className={`flex items-center space-x-2 ${isInactive ? 'opacity-60' : ''}`}
-                        >
-                          <Checkbox
-                            id={`edit-category-${category.categoryId}`}
-                            checked={isSelected}
-                            onCheckedChange={() => handleCategoryToggle(category.categoryId)}
-                            disabled={isInactive && !isSelected}
-                          />
-                          <label
-                            htmlFor={`edit-category-${category.categoryId}`}
-                            className={`text-sm font-medium leading-none ${
-                              isInactive && !isSelected ? 'cursor-not-allowed' : 'cursor-pointer'
-                            }`}
-                          >
-                            {category.name}
-                            {isInactive && (
-                              <span className="ml-1 text-xs text-muted-foreground">(비활성)</span>
-                            )}
-                          </label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )
-              ) : (
-                <div className="flex flex-wrap gap-1">
-                  {currentWorkNote.categories && currentWorkNote.categories.length > 0 ? (
-                    currentWorkNote.categories.map((category) => (
-                      <Badge key={category.categoryId} variant="secondary">
-                        {category.name}
-                      </Badge>
-                    ))
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => enterEditMode('category')}
-                      className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      aria-label="업무 구분 추가하기"
-                    >
-                      <Badge variant="outline">업무 구분 없음</Badge>
-                      <span className="text-xs">클릭하여 추가</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Assignees Section */}
-            <div>
-              <Label className="text-sm font-medium mb-2 block">담당자</Label>
-              {isEditing ? (
-                persons.length === 0 && !personsLoading ? (
-                  <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
-                ) : (
-                  <div ref={assigneeSectionRef}>
-                    <AssigneeSelector
-                      persons={persons}
-                      selectedPersonIds={editPersonIds}
-                      onSelectionChange={setEditPersonIds}
-                      isLoading={personsLoading}
-                    />
-                  </div>
-                )
-              ) : (
-                <div className="flex flex-wrap gap-1">
-                  {currentWorkNote.persons && currentWorkNote.persons.length > 0 ? (
-                    currentWorkNote.persons.map((person) => (
-                      <div key={person.personId} className="inline-flex items-center gap-1">
-                        <Badge variant="outline">
-                          {formatPersonBadge({
-                            name: person.personName,
-                            personId: person.personId,
-                            phoneExt: person.phoneExt,
-                            currentDept: person.currentDept,
-                            currentPosition: person.currentPosition,
-                          })}
-                          {person.role === 'OWNER' && <span className="ml-1 text-xs">(담당)</span>}
+            {isEditing ? (
+              <WorkNoteEditForm
+                content={editContent}
+                categoryIds={editCategoryIds}
+                personIds={editPersonIds}
+                categories={editableCategories}
+                persons={persons}
+                onChange={handleFormFieldChange}
+                categoriesLoading={categoriesLoading}
+                personsLoading={personsLoading}
+                categorySectionRef={categorySectionRef}
+                assigneeSectionRef={assigneeSectionRef}
+                showTitle={false}
+              />
+            ) : (
+              <>
+                {/* Categories Section */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">업무 구분</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {currentWorkNote.categories && currentWorkNote.categories.length > 0 ? (
+                      currentWorkNote.categories.map((category) => (
+                        <Badge key={category.categoryId} variant="secondary">
+                          {category.name}
                         </Badge>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          aria-label="담당자 이메일 양식 복사"
-                          title="이메일 양식 복사"
-                          onClick={() => handleCopyAssigneeEmail(person.personName)}
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => enterEditMode('assignee')}
-                      className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      aria-label="담당자 지정하기"
-                    >
-                      <Badge variant="outline">담당자 없음</Badge>
-                      <span className="text-xs">클릭하여 지정</span>
-                    </button>
-                  )}
+                      ))
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => enterEditMode('category')}
+                        className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        aria-label="업무 구분 추가하기"
+                      >
+                        <Badge variant="outline">업무 구분 없음</Badge>
+                        <span className="text-xs">클릭하여 추가</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Dates */}
+                {/* Assignees Section */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">담당자</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {currentWorkNote.persons && currentWorkNote.persons.length > 0 ? (
+                      currentWorkNote.persons.map((person) => (
+                        <div key={person.personId} className="inline-flex items-center gap-1">
+                          <Badge variant="outline">
+                            {formatPersonBadge({
+                              name: person.personName,
+                              personId: person.personId,
+                              phoneExt: person.phoneExt,
+                              currentDept: person.currentDept,
+                              currentPosition: person.currentPosition,
+                            })}
+                            {person.role === 'OWNER' && (
+                              <span className="ml-1 text-xs">(담당)</span>
+                            )}
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            aria-label="담당자 이메일 양식 복사"
+                            title="이메일 양식 복사"
+                            onClick={() => handleCopyAssigneeEmail(person.personName)}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => enterEditMode('assignee')}
+                        className="inline-flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        aria-label="담당자 지정하기"
+                      >
+                        <Badge variant="outline">담당자 없음</Badge>
+                        <span className="text-xs">클릭하여 지정</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold mb-2">내용</h3>
+                  <div
+                    className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50"
+                    data-testid="lazy-markdown"
+                  >
+                    <Suspense fallback={<div className="text-muted-foreground">로딩 중...</div>}>
+                      <LazyMarkdown>{currentWorkNote.content}</LazyMarkdown>
+                    </Suspense>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Dates - always visible */}
             <div className="text-sm text-muted-foreground space-y-1">
               <p>
                 생성일:{' '}
@@ -594,33 +508,6 @@ export function ViewWorkNoteDialog({
                   locale: ko,
                 })}
               </p>
-            </div>
-
-            {/* Content */}
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-2">내용</h3>
-              {isEditing ? (
-                <div className="space-y-2">
-                  <Textarea
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    placeholder="마크다운 형식으로 작성하세요"
-                    className="min-h-[400px] font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    마크다운 형식 지원: **굵게**, *기울임*, # 제목, - 목록 등
-                  </p>
-                </div>
-              ) : (
-                <div
-                  className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50"
-                  data-testid="lazy-markdown"
-                >
-                  <Suspense fallback={<div className="text-muted-foreground">로딩 중...</div>}>
-                    <LazyMarkdown>{currentWorkNote.content}</LazyMarkdown>
-                  </Suspense>
-                </div>
-              )}
             </div>
 
             {/* References */}
@@ -682,133 +569,10 @@ export function ViewWorkNoteDialog({
               </div>
 
               {showAddTodo && (
-                <form onSubmit={handleAddTodo} className="mb-4 p-3 border rounded-md space-y-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor="todo-title">할일 제목</Label>
-                    <Input
-                      id="todo-title"
-                      value={todoTitle}
-                      onChange={(e) => setTodoTitle(e.target.value)}
-                      placeholder="할일을 입력하세요"
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="todo-description">설명 (선택사항)</Label>
-                    <Textarea
-                      id="todo-description"
-                      value={todoDescription}
-                      onChange={(e) => setTodoDescription(e.target.value)}
-                      placeholder="상세 설명"
-                      className="min-h-[80px]"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="todo-wait-until">대기일 (선택사항)</Label>
-                    <Input
-                      id="todo-wait-until"
-                      type="date"
-                      value={todoWaitUntil}
-                      onChange={(e) => handleTodoWaitUntilChange(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      이 날짜까지 대시보드에서 숨겨집니다.
-                    </p>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="todo-due-date">마감일 (선택사항)</Label>
-                    <Input
-                      id="todo-due-date"
-                      type="date"
-                      value={todoDueDate}
-                      onChange={(e) => setTodoDueDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="todo-repeat-rule">반복 설정</Label>
-                    <select
-                      id="todo-repeat-rule"
-                      value={todoRepeatRule}
-                      onChange={(e) => setTodoRepeatRule(e.target.value as RepeatRule)}
-                      className={SELECT_CLASS_NAME}
-                    >
-                      {REPEAT_RULE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {todoRepeatRule === 'CUSTOM' && (
-                    <div className="grid gap-2">
-                      <Label>커스텀 반복 간격</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="number"
-                          min={1}
-                          max={365}
-                          value={todoCustomInterval}
-                          onChange={(e) => setTodoCustomInterval(parseInt(e.target.value, 10) || 1)}
-                          className="w-20"
-                        />
-                        <select
-                          value={todoCustomUnit}
-                          onChange={(e) => setTodoCustomUnit(e.target.value as CustomIntervalUnit)}
-                          className={SELECT_CLASS_NAME}
-                        >
-                          {CUSTOM_UNIT_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="flex items-center text-sm text-muted-foreground">
-                          마다
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {todoRepeatRule !== 'NONE' && (
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="todo-skip-weekends"
-                        checked={todoSkipWeekends}
-                        onCheckedChange={(checked) => setTodoSkipWeekends(checked === true)}
-                      />
-                      <Label
-                        htmlFor="todo-skip-weekends"
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        주말 제외 (토/일요일은 다음 월요일로)
-                      </Label>
-                    </div>
-                  )}
-                  {todoRepeatRule !== 'NONE' && (
-                    <div className="grid gap-2">
-                      <Label htmlFor="todo-recurrence-type">반복 기준</Label>
-                      <select
-                        id="todo-recurrence-type"
-                        value={todoRecurrenceType}
-                        onChange={(e) => setTodoRecurrenceType(e.target.value as RecurrenceType)}
-                        className={SELECT_CLASS_NAME}
-                      >
-                        {RECURRENCE_TYPE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-muted-foreground">
-                        {todoRecurrenceType === 'DUE_DATE'
-                          ? '다음 할일은 현재 마감일을 기준으로 생성됩니다.'
-                          : '다음 할일은 완료한 날짜를 기준으로 생성됩니다.'}
-                      </p>
-                    </div>
-                  )}
-                  <Button type="submit" disabled={createTodoMutation.isPending} className="w-full">
-                    {createTodoMutation.isPending ? '추가 중...' : '추가'}
-                  </Button>
-                </form>
+                <TodoCreationForm
+                  onSubmit={handleAddTodo}
+                  isPending={createTodoMutation.isPending}
+                />
               )}
 
               {todosLoading ? (

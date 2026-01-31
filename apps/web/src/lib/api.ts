@@ -1,3 +1,4 @@
+import { CF_ACCESS_CONFIG } from '@web/lib/config';
 import type {
   AIGenerateDraftRequest,
   AIGenerateDraftResponse,
@@ -80,10 +81,6 @@ class CFAccessTokenRefresher {
   private refreshPromise: Promise<boolean> | null = null;
   private lastRefreshTime = 0;
   private consecutiveFailures = 0;
-  private static readonly REFRESH_COOLDOWN_MS = 5000; // 5 seconds cooldown
-  private static readonly COOKIE_SET_DELAY_MS = 1000; // Time for CF Access to set cookie
-  private static readonly REFRESH_TIMEOUT_MS = 5000; // Fallback timeout
-  private static readonly MAX_CONSECUTIVE_FAILURES = 2; // Max retries before redirect
 
   /**
    * Check if browser is online
@@ -122,9 +119,7 @@ class CFAccessTokenRefresher {
    */
   shouldRedirectToLogin(): boolean {
     // Only redirect if online - offline users should see network error, not login redirect
-    return (
-      this.isOnline() && this.consecutiveFailures >= CFAccessTokenRefresher.MAX_CONSECUTIVE_FAILURES
-    );
+    return this.isOnline() && this.consecutiveFailures >= CF_ACCESS_CONFIG.MAX_CONSECUTIVE_FAILURES;
   }
 
   /**
@@ -139,7 +134,10 @@ class CFAccessTokenRefresher {
   async verifyOriginReachable(): Promise<boolean> {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        CF_ACCESS_CONFIG.AUTH_CHECK_TIMEOUT_MS
+      );
 
       // mode: 'no-cors' avoids CORS errors and returns an opaque response
       // when the server responds (even with CF Access redirect)
@@ -211,7 +209,7 @@ class CFAccessTokenRefresher {
     const now = Date.now();
 
     // Prevent rapid refresh attempts
-    if (now - this.lastRefreshTime < CFAccessTokenRefresher.REFRESH_COOLDOWN_MS) {
+    if (now - this.lastRefreshTime < CF_ACCESS_CONFIG.REFRESH_COOLDOWN_MS) {
       return false;
     }
 
@@ -249,13 +247,13 @@ class CFAccessTokenRefresher {
 
       const fallbackTimeoutId = setTimeout(
         () => finalCleanup(false),
-        CFAccessTokenRefresher.REFRESH_TIMEOUT_MS
+        CF_ACCESS_CONFIG.REFRESH_TIMEOUT_MS
       );
 
       iframe.onload = () => {
         clearTimeout(fallbackTimeoutId);
         // Give CF Access time to set the cookie
-        setTimeout(() => finalCleanup(true), CFAccessTokenRefresher.COOKIE_SET_DELAY_MS);
+        setTimeout(() => finalCleanup(true), CF_ACCESS_CONFIG.COOKIE_SET_DELAY_MS);
       };
 
       iframe.onerror = () => {

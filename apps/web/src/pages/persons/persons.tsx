@@ -1,5 +1,6 @@
 // Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-045, TASK-LLM-IMPORT
 
+import { StateRenderer } from '@web/components/state-renderer';
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
@@ -11,23 +12,23 @@ import {
   TableHeader,
   TableRow,
 } from '@web/components/ui/table';
+import { useDialogState } from '@web/hooks/use-dialog-state';
 import { usePersons } from '@web/hooks/use-persons';
 import { formatPhoneExt } from '@web/lib/utils';
 import type { Person } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { FileText, Plus, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PersonDialog } from './components/person-dialog';
 import { PersonImportDialog } from './components/person-import-dialog';
 
 export default function Persons() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const createDialog = useDialogState();
+  const editDialog = useDialogState<Person>();
+  const importDialog = useDialogState();
   const { data: persons = [], isLoading } = usePersons();
 
   // Get department filter from URL params
@@ -79,8 +80,7 @@ export default function Persons() {
   }, [persons, deptFilter]);
 
   const handleRowClick = (person: Person) => {
-    setSelectedPerson(person);
-    setEditDialogOpen(true);
+    editDialog.open(person);
   };
 
   return (
@@ -91,11 +91,11 @@ export default function Persons() {
           <p className="page-description">사람을 관리하세요</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+          <Button variant="outline" onClick={importDialog.open}>
             <FileText className="h-4 w-4 mr-2" />
             가져오기
           </Button>
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button onClick={createDialog.open}>
             <Plus className="h-4 w-4 mr-2" />새 사람
           </Button>
         </div>
@@ -124,15 +124,11 @@ export default function Persons() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : persons.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
-            </div>
-          ) : (
+          <StateRenderer
+            isLoading={isLoading}
+            isEmpty={persons.length === 0}
+            emptyMessage="등록된 사람이 없습니다."
+          >
             <div className="space-y-6">
               {groupedPersons.map((group) => (
                 <div key={group.dept} className="space-y-3">
@@ -210,20 +206,24 @@ export default function Persons() {
                 </div>
               ))}
             </div>
-          )}
+          </StateRenderer>
         </CardContent>
       </Card>
 
-      <PersonDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} mode="create" />
-
       <PersonDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        mode="edit"
-        initialData={selectedPerson}
+        open={createDialog.isOpen}
+        onOpenChange={createDialog.onOpenChange}
+        mode="create"
       />
 
-      <PersonImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+      <PersonDialog
+        open={editDialog.isOpen}
+        onOpenChange={editDialog.onOpenChange}
+        mode="edit"
+        initialData={editDialog.id}
+      />
+
+      <PersonImportDialog open={importDialog.isOpen} onOpenChange={importDialog.onOpenChange} />
     </div>
   );
 }

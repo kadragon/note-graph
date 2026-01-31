@@ -1,6 +1,7 @@
 // Trace: SPEC-person-1, SPEC-person-2, SPEC-person-3, TASK-022, TASK-025, TASK-027, TASK-LLM-IMPORT
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API } from '@web/lib/api';
+import { createStandardMutation } from '@web/lib/hooks/create-standard-mutation';
 import type {
   CreatePersonRequest,
   ImportPersonFromTextRequest,
@@ -15,54 +16,24 @@ export function usePersons() {
   });
 }
 
-export function useCreatePerson() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+export const useCreatePerson = createStandardMutation({
+  mutationFn: (data: CreatePersonRequest) => API.createPerson(data),
+  invalidateKeys: [['persons'], ['departments']],
+  messages: {
+    success: '사람이 추가되었습니다.',
+    error: '사람을 추가할 수 없습니다.',
+  },
+});
 
-  return useMutation({
-    mutationFn: (data: CreatePersonRequest) => API.createPerson(data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['persons'] });
-      void queryClient.invalidateQueries({ queryKey: ['departments'] });
-      toast({
-        title: '성공',
-        description: '사람이 추가되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '사람을 추가할 수 없습니다.',
-      });
-    },
-  });
-}
-
-export function useUpdatePerson() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: ({ personId, data }: { personId: string; data: UpdatePersonRequest }) =>
-      API.updatePerson(personId, data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['persons'] });
-      void queryClient.invalidateQueries({ queryKey: ['departments'] });
-      toast({
-        title: '성공',
-        description: '사람 정보가 수정되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '사람 정보를 수정할 수 없습니다.',
-      });
-    },
-  });
-}
+export const useUpdatePerson = createStandardMutation({
+  mutationFn: ({ personId, data }: { personId: string; data: UpdatePersonRequest }) =>
+    API.updatePerson(personId, data),
+  invalidateKeys: [['persons'], ['departments']],
+  messages: {
+    success: '사람 정보가 수정되었습니다.',
+    error: '사람 정보를 수정할 수 없습니다.',
+  },
+});
 
 export function usePersonHistory(personId: string | null) {
   return useQuery({
@@ -72,6 +43,7 @@ export function usePersonHistory(personId: string | null) {
   });
 }
 
+// Keep manual - only has onError, no invalidation
 export function useParsePersonFromText() {
   const { toast } = useToast();
 
@@ -87,6 +59,7 @@ export function useParsePersonFromText() {
   });
 }
 
+// Keep manual - conditional success message based on result.isNew
 export function useImportPerson() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
