@@ -1,29 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API } from '@web/lib/api';
+import { createStandardMutation } from '@web/lib/hooks/create-standard-mutation';
 import { useToast } from './use-toast';
 
 // Trace: spec_id=SPEC-pdf-1, task_id=TASK-062
 
-export function useUploadPDF() {
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: (file: File) => API.uploadPDF(file),
-    onSuccess: (_data) => {
-      toast({
-        title: '성공',
-        description: 'PDF 파일이 업로드되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || 'PDF 업로드에 실패했습니다.',
-      });
-    },
-  });
-}
+export const useUploadPDF = createStandardMutation({
+  mutationFn: (file: File) => API.uploadPDF(file),
+  invalidateKeys: [],
+  messages: {
+    success: 'PDF 파일이 업로드되었습니다.',
+    error: 'PDF 업로드에 실패했습니다.',
+  },
+});
 
 export function usePDFJob(jobId: string | null, enabled: boolean) {
   return useQuery({
@@ -42,6 +31,7 @@ interface SavePDFDraftParams {
   pdfFile?: File;
 }
 
+// Keep manual - complex mutationFn with nested API calls and conditional toast
 export function useSavePDFDraft() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

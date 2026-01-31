@@ -1,3 +1,4 @@
+import { StateRenderer } from '@web/components/state-renderer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -141,11 +142,7 @@ export default function WorkNotes() {
           <CardTitle>업무노트 목록</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
+          <StateRenderer isLoading={isLoading} isEmpty={false}>
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkNoteTab)}>
               <TabsList className="mb-4 flex flex-wrap gap-2">
                 <TabsTrigger value="active">진행 중 ({activeWorkNotes.length})</TabsTrigger>
@@ -230,7 +227,7 @@ export default function WorkNotes() {
                 />
               </TabsContent>
             </Tabs>
-          )}
+          </StateRenderer>
         </CardContent>
       </Card>
 

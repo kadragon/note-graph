@@ -1,8 +1,8 @@
 // Trace: TASK-024, SPEC-worknote-1
 
 import { AssigneeSelector } from '@web/components/assignee-selector';
+import { CategorySelector } from '@web/components/category-selector';
 import { Button } from '@web/components/ui/button';
-import { Checkbox } from '@web/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -33,12 +33,6 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
   const createMutation = useCreateWorkNote();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
-
-  const handleCategoryToggle = (categoryId: string) => {
-    setSelectedCategoryIds((prev) =>
-      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
-    );
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,31 +85,13 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
 
             <div className="grid gap-2">
               <Label>업무 구분 (선택사항)</Label>
-              {categoriesLoading ? (
-                <p className="text-sm text-muted-foreground">로딩 중...</p>
-              ) : taskCategories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  등록된 업무 구분이 없습니다. 먼저 업무 구분을 추가해주세요.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto border rounded-md p-3">
-                  {taskCategories.map((category) => (
-                    <div key={category.categoryId} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`category-${category.categoryId}`}
-                        checked={selectedCategoryIds.includes(category.categoryId)}
-                        onCheckedChange={() => handleCategoryToggle(category.categoryId)}
-                      />
-                      <label
-                        htmlFor={`category-${category.categoryId}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {category.name}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <CategorySelector
+                categories={taskCategories}
+                selectedIds={selectedCategoryIds}
+                onSelectionChange={setSelectedCategoryIds}
+                isLoading={categoriesLoading}
+                idPrefix="create-category"
+              />
             </div>
 
             <div className="grid gap-2">

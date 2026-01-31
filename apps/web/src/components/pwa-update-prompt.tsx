@@ -1,9 +1,8 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Button } from '@web/components/ui/button';
+import { PWA_CONFIG } from '@web/lib/config';
 import { reloadApp } from '@web/lib/pwa-reload';
 import { useEffect, useState } from 'react';
-
-const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
 export default function PwaUpdatePrompt() {
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -22,7 +21,7 @@ export default function PwaUpdatePrompt() {
     if (!registration) return;
     const intervalId = window.setInterval(() => {
       void registration.update();
-    }, UPDATE_CHECK_INTERVAL_MS);
+    }, PWA_CONFIG.UPDATE_CHECK_INTERVAL_MS);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TODO_STATUS } from '@web/constants/todo-status';
 import { API } from '@web/lib/api';
+import { createStandardMutation } from '@web/lib/hooks/create-standard-mutation';
 import type {
   CreateWorkNoteRequest,
   DriveFileListItem,
@@ -110,79 +111,37 @@ export function useWorkNotesWithStats() {
   });
 }
 
-export function useCreateWorkNote() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+export const useCreateWorkNote = createStandardMutation({
+  mutationFn: (data: CreateWorkNoteRequest) => API.createWorkNote(data),
+  invalidateKeys: [['work-notes'], ['work-notes-with-stats']],
+  messages: {
+    success: '업무노트가 생성되었습니다.',
+    error: '업무노트를 생성할 수 없습니다.',
+  },
+});
 
-  return useMutation({
-    mutationFn: (data: CreateWorkNoteRequest) => API.createWorkNote(data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-      toast({
-        title: '성공',
-        description: '업무노트가 생성되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '업무노트를 생성할 수 없습니다.',
-      });
-    },
-  });
-}
+export const useUpdateWorkNote = createStandardMutation({
+  mutationFn: ({ workId, data }: { workId: string; data: UpdateWorkNoteRequest }) =>
+    API.updateWorkNote(workId, data),
+  invalidateKeys: (_data, variables) => [
+    ['work-notes'],
+    ['work-notes-with-stats'],
+    ['work-note-detail', variables.workId],
+  ],
+  messages: {
+    success: '업무노트가 수정되었습니다.',
+    error: '업무노트를 수정할 수 없습니다.',
+  },
+});
 
-export function useUpdateWorkNote() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: ({ workId, data }: { workId: string; data: UpdateWorkNoteRequest }) =>
-      API.updateWorkNote(workId, data),
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-note-detail', variables.workId] });
-      toast({
-        title: '성공',
-        description: '업무노트가 수정되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '업무노트를 수정할 수 없습니다.',
-      });
-    },
-  });
-}
-
-export function useDeleteWorkNote() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: (workId: string) => API.deleteWorkNote(workId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-      toast({
-        title: '성공',
-        description: '업무노트가 삭제되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '업무노트를 삭제할 수 없습니다.',
-      });
-    },
-  });
-}
+export const useDeleteWorkNote = createStandardMutation({
+  mutationFn: (workId: string) => API.deleteWorkNote(workId),
+  invalidateKeys: [['work-notes'], ['work-notes-with-stats']],
+  messages: {
+    success: '업무노트가 삭제되었습니다.',
+    error: '업무노트를 삭제할 수 없습니다.',
+  },
+});
 
 // Work note file hooks
 export function useWorkNoteFiles(workId: string | null) {
@@ -220,56 +179,33 @@ export function useGoogleDriveConfigStatus() {
   };
 }
 
-export function useUploadWorkNoteFile() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+export const useUploadWorkNoteFile = createStandardMutation({
+  mutationFn: ({ workId, file }: { workId: string; file: File }) =>
+    API.uploadWorkNoteFile(workId, file),
+  invalidateKeys: (_data, variables) => [
+    ['work-note-files', variables.workId],
+    ['work-note-detail', variables.workId],
+  ],
+  messages: {
+    success: '파일이 업로드되었습니다.',
+    error: '파일을 업로드할 수 없습니다.',
+  },
+});
 
-  return useMutation({
-    mutationFn: ({ workId, file }: { workId: string; file: File }) =>
-      API.uploadWorkNoteFile(workId, file),
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['work-note-files', variables.workId] });
-      void queryClient.invalidateQueries({ queryKey: ['work-note-detail', variables.workId] });
-      toast({
-        title: '성공',
-        description: '파일이 업로드되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '파일을 업로드할 수 없습니다.',
-      });
-    },
-  });
-}
+export const useDeleteWorkNoteFile = createStandardMutation({
+  mutationFn: ({ workId, fileId }: { workId: string; fileId: string }) =>
+    API.deleteWorkNoteFile(workId, fileId),
+  invalidateKeys: (_data, variables) => [
+    ['work-note-files', variables.workId],
+    ['work-note-detail', variables.workId],
+  ],
+  messages: {
+    success: '파일이 삭제되었습니다.',
+    error: '파일을 삭제할 수 없습니다.',
+  },
+});
 
-export function useDeleteWorkNoteFile() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: ({ workId, fileId }: { workId: string; fileId: string }) =>
-      API.deleteWorkNoteFile(workId, fileId),
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['work-note-files', variables.workId] });
-      void queryClient.invalidateQueries({ queryKey: ['work-note-detail', variables.workId] });
-      toast({
-        title: '성공',
-        description: '파일이 삭제되었습니다.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: error.message || '파일을 삭제할 수 없습니다.',
-      });
-    },
-  });
-}
-
+// Keep manual - complex success message based on migration result
 export function useMigrateWorkNoteFiles() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

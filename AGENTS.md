@@ -40,6 +40,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Status codes: 200/201/204/400/401/404/429/500.
 - DB: tables snake_case plural; columns snake_case with *_id, *_at, *_date conventions.
 - Index foreign keys and common filters.
+- React Query mutations: Use `createStandardMutation` factory from `@web/lib/hooks/create-standard-mutation` for standard CRUD mutations with toast feedback. Supports static or dynamic (function-based) invalidateKeys. Keep manual implementations only for: optimistic updates, conditional success messages, or complex mutationFn logic.
 
 ## Testing
 - Default: Vitest + @cloudflare/vitest-pool-workers.
@@ -131,3 +132,4 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - 2026-01-15: Documented completion of PR #202 (fix/google-drive-file-handling) refactor that centralizes `request` behavior in `requestWithHeaders`; verified via `bun run test` (584 suites) before pushing.
 - 2026-01-16: Added Google Drive status check UI in attachments with a manual refresh + re-auth flow and a dedicated test for the button behavior.
 - 2026-01-16: Moved Google Drive status UI from work note attachments to sidebar user section. Added `useGoogleDriveConfigStatus` hook and updated `API.getGoogleDriveStatus` to check for configuration header. Updated tests.
+- 2026-01-31: Created `createStandardMutation` factory at `apps/web/src/lib/hooks/create-standard-mutation.ts` to reduce mutation hook boilerplate from ~25 lines to ~5 lines. Supports static and dynamic (function-based) invalidateKeys. Refactored 18 mutation hooks across 6 files (use-persons, use-departments, use-projects, use-work-notes, use-task-categories, use-pdf). Kept manual implementations for hooks with optimistic updates, conditional messages, or complex logic.

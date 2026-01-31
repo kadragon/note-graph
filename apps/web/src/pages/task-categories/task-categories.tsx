@@ -1,3 +1,4 @@
+import { StateRenderer } from '@web/components/state-renderer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@web/components/ui/table';
+import { useDialogState } from '@web/hooks/use-dialog-state';
 import {
   useDeleteTaskCategory,
   useTaskCategories,
@@ -28,15 +30,13 @@ import type { TaskCategory } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
 import { CreateTaskCategoryDialog } from './components/create-task-category-dialog';
 import { EditTaskCategoryDialog } from './components/edit-task-category-dialog';
 
 export default function TaskCategories() {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<TaskCategory | null>(null);
+  const createDialog = useDialogState();
+  const editDialog = useDialogState<TaskCategory>();
+  const deleteDialog = useDialogState<TaskCategory>();
 
   const { data: categories = [], isLoading } = useTaskCategories();
   const deleteMutation = useDeleteTaskCategory();
@@ -50,22 +50,19 @@ export default function TaskCategories() {
   };
 
   const handleEdit = (category: TaskCategory) => {
-    setSelectedCategory(category);
-    setEditDialogOpen(true);
+    editDialog.open(category);
   };
 
   const handleDelete = (category: TaskCategory) => {
-    setSelectedCategory(category);
-    setDeleteDialogOpen(true);
+    deleteDialog.open(category);
   };
 
   const handleDeleteConfirm = () => {
-    if (!selectedCategory) return;
+    if (!deleteDialog.id) return;
 
-    deleteMutation.mutate(selectedCategory.categoryId, {
+    deleteMutation.mutate(deleteDialog.id.categoryId, {
       onSuccess: () => {
-        setDeleteDialogOpen(false);
-        setSelectedCategory(null);
+        deleteDialog.close();
       },
     });
   };
@@ -77,7 +74,7 @@ export default function TaskCategories() {
           <h1 className="page-title">업무 구분 관리</h1>
           <p className="page-description">업무 구분을 관리하세요</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={createDialog.open}>
           <Plus className="h-4 w-4 mr-2" />새 업무 구분
         </Button>
       </div>
@@ -87,15 +84,11 @@ export default function TaskCategories() {
           <CardTitle>업무 구분 목록</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : categories.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-sm text-muted-foreground">등록된 업무 구분이 없습니다.</p>
-            </div>
-          ) : (
+          <StateRenderer
+            isLoading={isLoading}
+            isEmpty={categories.length === 0}
+            emptyMessage="등록된 업무 구분이 없습니다."
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -138,25 +131,28 @@ export default function TaskCategories() {
                 ))}
               </TableBody>
             </Table>
-          )}
+          </StateRenderer>
         </CardContent>
       </Card>
 
-      <CreateTaskCategoryDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      <CreateTaskCategoryDialog
+        open={createDialog.isOpen}
+        onOpenChange={createDialog.onOpenChange}
+      />
 
       <EditTaskCategoryDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        category={selectedCategory}
+        open={editDialog.isOpen}
+        onOpenChange={editDialog.onOpenChange}
+        category={editDialog.id}
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialog.isOpen} onOpenChange={deleteDialog.onOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>업무 구분 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              "{selectedCategory?.name}" 업무 구분을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+              "{deleteDialog.id?.name}" 업무 구분을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

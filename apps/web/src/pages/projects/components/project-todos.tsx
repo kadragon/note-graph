@@ -1,5 +1,6 @@
 // Trace: SPEC-project-1, TASK-043
 
+import { StateRenderer } from '@web/components/state-renderer';
 import { Badge } from '@web/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import {
@@ -74,13 +75,13 @@ export function ProjectTodos({ projectId, stats }: ProjectTodosProps) {
           <CardTitle>프로젝트 할일</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <p className="text-muted-foreground">로딩 중...</p>
-          ) : error ? (
-            <p className="text-destructive text-sm">할일 목록을 불러올 수 없습니다.</p>
-          ) : todos.length === 0 ? (
-            <p className="text-muted-foreground text-sm">등록된 할일이 없습니다.</p>
-          ) : (
+          <StateRenderer
+            isLoading={isLoading}
+            isEmpty={todos.length === 0}
+            error={error}
+            emptyMessage="등록된 할일이 없습니다."
+            errorMessage="할일 목록을 불러올 수 없습니다."
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -114,7 +115,7 @@ export function ProjectTodos({ projectId, stats }: ProjectTodosProps) {
                 ))}
               </TableBody>
             </Table>
-          )}
+          </StateRenderer>
         </CardContent>
       </Card>
     </div>
