@@ -13,6 +13,7 @@ import { Label } from '@web/components/ui/label';
 import { Textarea } from '@web/components/ui/textarea';
 import { useEnhanceWorkNote } from '@web/hooks/use-enhance-work-note';
 import { useToast } from '@web/hooks/use-toast';
+import { FILE_UPLOAD_CONFIG } from '@web/lib/config';
 import type { EnhanceWorkNoteResponse } from '@web/types/api';
 import { Paperclip, Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -64,11 +65,11 @@ export function EnhanceWorkNoteDialog({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
+      if (file.size > FILE_UPLOAD_CONFIG.MAX_FILE_SIZE_BYTES) {
         toast({
           variant: 'destructive',
           title: '오류',
-          description: '파일 크기는 10MB를 초과할 수 없습니다.',
+          description: `파일 크기는 ${FILE_UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB를 초과할 수 없습니다.`,
         });
         return;
       }
@@ -166,7 +167,7 @@ export function EnhanceWorkNoteDialog({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              PDF, HWP, DOCX, TXT 파일 지원 (최대 10MB)
+              PDF, HWP, DOCX, TXT 파일 지원 (최대 {FILE_UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB)
             </p>
           </div>
 

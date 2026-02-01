@@ -45,6 +45,11 @@ export class AIDraftService {
    */
   private static readonly GPT_MAX_COMPLETION_TOKENS = 3000;
 
+  /**
+   * Maximum characters to include from similar note content for context preview
+   */
+  private static readonly SIMILAR_NOTE_CONTENT_PREVIEW_LENGTH = 200;
+
   constructor(private env: Env) {}
 
   /**
@@ -284,7 +289,7 @@ export class AIDraftService {
         ? `\n\n[유사 업무노트 - 스타일 참고]\n${options.similarNotes
             .map(
               (note, idx) =>
-                `[참고 ${idx + 1}] ${note.title}\n카테고리: ${note.category || '없음'}\n내용 요약: ${note.content.slice(0, 200)}...`
+                `[참고 ${idx + 1}] ${note.title}\n카테고리: ${note.category || '없음'}\n내용 요약: ${note.content.slice(0, AIDraftService.SIMILAR_NOTE_CONTENT_PREVIEW_LENGTH)}...`
             )
             .join('\n\n')}`
         : '';
