@@ -3,7 +3,7 @@ import AppLayout from '@web/components/layout/app-layout';
 import { Toaster } from '@web/components/ui/toaster';
 import { Loader2 } from 'lucide-react';
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom';
 
 // Lazy load page components
 const Dashboard = lazy(() => import('@web/pages/dashboard'));
@@ -19,10 +19,12 @@ const Projects = lazy(() => import('@web/pages/projects'));
 const Statistics = lazy(() => import('@web/pages/statistics'));
 
 function App() {
+  const location = useLocation();
+
   return (
     <>
       <AppLayout>
-        <ErrorBoundary>
+        <ErrorBoundary key={location.pathname}>
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-full">

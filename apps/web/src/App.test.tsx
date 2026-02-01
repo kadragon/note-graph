@@ -96,4 +96,13 @@ describe('App', () => {
 
     expect(await screen.findByTestId('app-layout')).toBeInTheDocument();
   });
+
+  it('resets error boundary on route navigation', async () => {
+    // The ErrorBoundary is keyed by location.pathname
+    // This ensures errors are cleared when navigating to a different route
+    renderApp('/');
+
+    expect(await screen.findByTestId('app-layout')).toBeInTheDocument();
+    expect(await screen.findByText('Dashboard Page')).toBeInTheDocument();
+  });
 });

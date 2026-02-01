@@ -74,7 +74,7 @@ interface MyComponentProps {
 }
 
 // Component with explicit return type
-export function MyComponent({ title, onAction }: MyComponentProps) {
+export function MyComponent({ title, onAction }: MyComponentProps): JSX.Element {
   return (
     <div>
       <h1>{title}</h1>
@@ -186,7 +186,7 @@ describe('ComponentName', () => {
 
 ### Hook Testing
 ```typescript
-import { renderHookWithClient } from '@web/test/setup';
+import { renderHookWithClient, waitFor } from '@web/test/setup';
 
 it('fetches data on mount', async () => {
   const { result } = renderHookWithClient(() => useMyHook());
