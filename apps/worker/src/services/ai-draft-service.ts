@@ -182,6 +182,163 @@ export class AIDraftService {
   }
 
   /**
+   * Reference todo structure for enhance prompt
+   */
+  private formatExistingTodo(todo: {
+    title: string;
+    description?: string | null;
+    status: string;
+    dueDate?: string | null;
+  }): string {
+    let line = `- ${todo.title}`;
+    if (todo.dueDate) {
+      line += ` (기한: ${todo.dueDate})`;
+    }
+    if (todo.status !== '진행중') {
+      line += ` [${todo.status}]`;
+    }
+    return line;
+  }
+
+  /**
+   * Enhance existing work note by merging new content with existing content
+   *
+   * @param workNote - Existing work note to enhance
+   * @param existingTodos - Current todos for this work note
+   * @param newContent - New content to merge (from user input or extracted from file)
+   * @param options - Optional hints (similarNotes, activeCategories)
+   * @returns Enhanced work note draft with merged content and new todo suggestions
+   */
+  async enhanceExistingWorkNote(
+    workNote: WorkNote,
+    existingTodos: Array<{
+      title: string;
+      description?: string | null;
+      status: string;
+      dueDate?: string | null;
+    }>,
+    newContent: string,
+    options?: {
+      similarNotes?: Array<{
+        workId: string;
+        title: string;
+        content: string;
+        category?: string;
+        similarityScore?: number;
+      }>;
+      activeCategories?: string[];
+    }
+  ): Promise<WorkNoteDraft> {
+    const prompt = this.constructEnhancePrompt(workNote, existingTodos, newContent, options);
+    const response = await this.callGPT(prompt);
+
+    // Parse JSON response from GPT
+    try {
+      const rawDraft = JSON.parse(response) as RawWorkNoteDraft;
+
+      // Validate required fields
+      if (!rawDraft.title || !rawDraft.content) {
+        throw new Error('Invalid draft: missing title or content');
+      }
+
+      // Transform to proper format
+      return this.transformDraft(rawDraft);
+    } catch (error) {
+      console.error('Error parsing enhance response:', error);
+      throw new Error('Failed to parse AI response. Please try again.');
+    }
+  }
+
+  /**
+   * Construct prompt for enhancing existing work note
+   */
+  private constructEnhancePrompt(
+    workNote: WorkNote,
+    existingTodos: Array<{
+      title: string;
+      description?: string | null;
+      status: string;
+      dueDate?: string | null;
+    }>,
+    newContent: string,
+    options?: {
+      similarNotes?: Array<{
+        workId: string;
+        title: string;
+        content: string;
+        category?: string;
+        similarityScore?: number;
+      }>;
+      activeCategories?: string[];
+    }
+  ): string {
+    // Build existing todos section
+    const existingTodosSection =
+      existingTodos.length > 0
+        ? `\n\n[기존 할 일 목록 - 참고만 하고 중복 생성 금지]\n${existingTodos.map((todo) => this.formatExistingTodo(todo)).join('\n')}`
+        : '';
+
+    // Build similar notes context
+    const similarNotesSection =
+      options?.similarNotes && options.similarNotes.length > 0
+        ? `\n\n[유사 업무노트 - 스타일 참고]\n${options.similarNotes
+            .map(
+              (note, idx) =>
+                `[참고 ${idx + 1}] ${note.title}\n카테고리: ${note.category || '없음'}\n내용 요약: ${note.content.slice(0, 200)}...`
+            )
+            .join('\n\n')}`
+        : '';
+
+    const categoryInstruction = this.buildCategoryInstruction(
+      options?.activeCategories,
+      workNote.category
+        ? `3. 카테고리 (기존: "${workNote.category}", 변경 필요시에만 수정)`
+        : '3. 카테고리 추론'
+    );
+
+    return `당신은 한국 직장에서 업무노트를 업데이트하는 어시스턴트입니다.
+
+사용자가 기존 업무노트에 새로운 내용을 추가하려고 합니다.
+
+[기존 업무노트]
+제목: ${workNote.title}
+카테고리: ${workNote.category || '없음'}
+내용:
+${workNote.contentRaw}${existingTodosSection}
+
+[추가할 새 내용]
+${newContent}${similarNotesSection}
+
+위의 기존 업무노트와 새 내용을 **통합하여** 다음을 작성해주세요:
+1. 업데이트된 제목 (기존 제목 유지 또는 필요시 수정)
+2. 통합된 내용 (기존 내용 + 새 내용을 자연스럽게 병합, 마크다운 포맷)
+${categoryInstruction}
+4. **새로운** 할 일만 제안 (기존 할 일과 중복되지 않는 것만, 필요한 만큼만)
+
+중요 지침:
+- 기존 내용의 핵심 정보를 **반드시 보존**하세요
+- 새 내용을 기존 내용과 자연스럽게 통합하세요
+- 기존 할 일과 중복되는 할 일은 **절대 제안하지 마세요**
+- 내용은 간결하게, 불필요한 반복 없이 작성하세요
+
+JSON 형식으로 반환:
+{
+  "title": "...",
+  "content": "...",
+  "category": "...",
+  "todos": [
+    {
+      "title": "...",
+      "description": "...",
+      "dueDateSuggestion": "YYYY-MM-DD" 또는 null
+    }
+  ]
+}
+
+JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
+  }
+
+  /**
    * Build category instruction for AI prompt
    * @param activeCategories - List of active category names, or undefined
    * @param fallback - Fallback instruction when no active categories

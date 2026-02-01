@@ -161,3 +161,32 @@ export interface UnifiedSearchResponse {
   departments: DepartmentSearchItem[];
   query: string;
 }
+
+/**
+ * Enhance work note request
+ */
+export interface EnhanceWorkNoteRequest {
+  newContent: string;
+  generateNewTodos?: boolean;
+}
+
+/**
+ * Existing todo summary for enhance response
+ */
+export interface ExistingTodoSummary {
+  todoId: string;
+  title: string;
+  description: string | null;
+  status: string;
+  dueDate: string | null;
+}
+
+/**
+ * Enhance work note response
+ */
+export interface EnhanceWorkNoteResponse {
+  enhancedDraft: WorkNoteDraft;
+  originalContent: string;
+  existingTodos: ExistingTodoSummary[];
+  references: SimilarWorkNoteReference[];
+}

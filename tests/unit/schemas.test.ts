@@ -1,6 +1,7 @@
 // Trace: SPEC-worknote-1, TASK-004, TASK-016
 // Unit tests for Zod validation schemas
 
+import { enhanceWorkNoteRequestSchema } from '@worker/schemas/ai-draft';
 import { createDepartmentSchema, updateDepartmentSchema } from '@worker/schemas/department';
 import { createPersonSchema, updatePersonSchema } from '@worker/schemas/person';
 import { ragQuerySchema, searchWorkNotesSchema } from '@worker/schemas/search';
@@ -225,6 +226,52 @@ describe('Schema Validation', () => {
 
         const result = updateDepartmentSchema.safeParse(validData);
         expect(result.success).toBe(true);
+      });
+    });
+  });
+
+  describe('AI Draft Schemas', () => {
+    describe('enhanceWorkNoteRequestSchema', () => {
+      it('should validate valid enhance request', () => {
+        const validData = {
+          newContent: '추가 내용입니다.',
+          generateNewTodos: true,
+        };
+
+        const result = enhanceWorkNoteRequestSchema.safeParse(validData);
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.newContent).toBe('추가 내용입니다.');
+          expect(result.data.generateNewTodos).toBe(true);
+        }
+      });
+
+      it('should require newContent', () => {
+        const invalidData = {};
+
+        const result = enhanceWorkNoteRequestSchema.safeParse(invalidData);
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject empty newContent', () => {
+        const invalidData = {
+          newContent: '',
+        };
+
+        const result = enhanceWorkNoteRequestSchema.safeParse(invalidData);
+        expect(result.success).toBe(false);
+      });
+
+      it('should default generateNewTodos to true', () => {
+        const validData = {
+          newContent: '내용',
+        };
+
+        const result = enhanceWorkNoteRequestSchema.safeParse(validData);
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.generateNewTodos).toBe(true);
+        }
       });
     });
   });

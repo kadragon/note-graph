@@ -208,10 +208,127 @@ export const useCreatePerson = createStandardMutation({
 
 ---
 
+## Feature: Work Note AI-Assisted Update
+
+### Overview
+
+Add an "AI로 업데이트" (Update with AI) feature to existing work notes that allows users to add new content (text or files) and have AI intelligently merge it with the existing work note while preserving all existing todos.
+
+### User Flow
+
+1. Open work note detail dialog
+2. Click "AI로 업데이트" button (next to edit button)
+3. Enhancement input dialog opens:
+   - Text input area for new content
+   - File upload option (PDF, HWP, etc.) - text extracted and merged
+4. Click "생성" → AI processes and returns enhanced draft
+5. Preview dialog shows:
+   - Editable enhanced content (title, content, categories)
+   - Suggested new todos (checkboxes)
+   - Existing todos label (preserved, read-only)
+6. User reviews, edits if needed, selects new todos to add
+7. Click "적용" → work note updated, new todos created, existing todos preserved
+
+### Implementation Tasks
+
+#### Phase A: Backend API
+
+- [x] **A.1** Add enhance endpoint schema (`apps/worker/src/schemas/ai-draft.ts`)
+  - `enhanceWorkNoteRequestSchema` with newContent, generateNewTodos fields
+
+- [x] **A.2** Add enhance method to AIDraftService (`apps/worker/src/services/ai-draft-service.ts`)
+  - `enhanceExistingWorkNote()` method
+  - `constructEnhancePrompt()` method with Korean prompt that:
+    - Receives existing work note + new content
+    - Instructs AI to merge/enhance (not replace)
+    - Preserves key information from original
+    - Suggests only NEW todos (not duplicates of existing)
+
+- [x] **A.3** Add enhance route (`apps/worker/src/routes/ai-draft.ts`)
+  - `POST /ai/work-notes/:workId/enhance` endpoint
+  - Accepts multipart form data (text + optional file)
+  - If file uploaded: extract text using PdfExtractionService
+  - Combine text input + extracted file text as newContent
+  - Fetches existing work note and its todos
+  - Calls `findSimilarNotes()` for context
+  - Returns `{ enhancedDraft, originalContent, existingTodos, references }`
+
+#### Phase B: Shared Types
+
+- [x] **B.1** Add enhance types (`packages/shared/types/search.ts`)
+  - `EnhanceWorkNoteRequest` interface
+  - `EnhanceWorkNoteResponse` interface
+
+#### Phase C: Frontend API & Hooks
+
+- [x] **C.1** Add API method (`apps/web/src/lib/api.ts`)
+  - `enhanceWorkNote(workId, data): Promise<EnhanceWorkNoteResponse>`
+
+- [x] **C.2** Add types (`apps/web/src/types/api.ts`)
+  - `EnhanceWorkNoteRequest`, `EnhanceWorkNoteResponse`
+
+- [x] **C.3** Create enhance hook (`apps/web/src/hooks/use-enhance-work-note.ts`)
+  - `useEnhanceWorkNote()` mutation hook for calling enhance API
+  - `useEnhanceWorkNoteForm()` hook managing:
+    - Enhanced draft state (title, content, categoryIds, personIds)
+    - Suggested new todos (checkboxes)
+    - Existing todos display (read-only, preserved)
+    - Submit handler that updates work note + creates selected new todos
+
+#### Phase D: Frontend UI Components
+
+- [x] **D.1** Create enhance input dialog (`apps/web/src/pages/work-notes/components/enhance-work-note-dialog.tsx`)
+  - Textarea for new content input
+  - File upload button (PDF, HWP supported) with file name display
+  - "생성" button to call enhance API (sends form data)
+  - Loading state during AI processing (file extraction + AI)
+
+- [x] **D.2** Create enhance preview dialog (`apps/web/src/pages/work-notes/components/enhance-preview-dialog.tsx`)
+  - Shows enhanced content (editable)
+  - Shows suggested new todos (checkbox list)
+  - Shows existing todos (greyed out, label: "기존 할일 유지됨")
+  - "적용" / "취소" buttons
+
+- [x] **D.3** Update view work note dialog (`apps/web/src/pages/work-notes/components/view-work-note-dialog.tsx`)
+  - Add "AI로 업데이트" button next to Edit button in header
+  - Wire up dialog open state for enhance flow
+
+### Key Design Decisions
+
+1. **Content merging**: AI generates unified enhanced content, not simple append
+2. **File extraction**: PDF/HWP files are text-extracted and merged with text input
+3. **Todo preservation**: ALL existing todos preserved (any status)
+4. **New todos only**: AI suggests only new todos, avoiding duplicates
+5. **Simple preview**: Show editable enhanced content only (no side-by-side diff)
+6. **Two-step confirmation**: Input dialog → Preview dialog for safety
+7. **Pattern reuse**: Follow `useAIDraftForm` and `PdfExtractionService` patterns
+
+### Critical Files to Modify
+
+| File | Changes |
+|------|---------|
+| `apps/worker/src/services/ai-draft-service.ts` | Add enhance methods |
+| `apps/worker/src/routes/ai-draft.ts` | Add enhance endpoint |
+| `apps/web/src/pages/work-notes/components/view-work-note-dialog.tsx` | Add enhance button |
+| `apps/web/src/lib/api.ts` | Add API method |
+| `apps/web/src/hooks/use-enhance-work-note.ts` | New hook file |
+
+### Verification Plan
+
+1. **Unit tests**: Test enhance prompt generation and response parsing
+2. **Integration test**: Full flow from input → AI → apply
+3. **Manual verification**:
+   - Create work note with 3 todos (1 completed)
+   - Use enhance feature with new content
+   - Verify: content merged, completed todo preserved, new todos added
+   - Re-embedding triggered after update
+
+---
+
 ## Next Steps
 
 1. Review this plan and prioritize tasks
-2. Start with Phase 1.1 (Mutation Hook Factory) as it has highest impact
+2. Start with Phase A.1 (Backend Schema) for the AI Update feature
 3. Proceed through phases in order
 4. Mark tasks complete as they are implemented
 
