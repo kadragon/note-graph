@@ -106,53 +106,53 @@ export const useCreatePerson = createStandardMutation({
 ### Phase 3: Accessibility Improvements
 
 #### 3.1 Icon Button Labels
-- [ ] Add `aria-label` to icon-only buttons in `ProjectsTable`
-- [ ] Add `aria-label` to icon-only buttons in `WorkNotesTable`
-- [ ] Add `aria-label` to sidebar collapse button
-- [ ] Add `aria-label` to file action buttons
+- [x] Add `aria-label` to icon-only buttons in `ProjectsTable`
+- [x] Add `aria-label` to icon-only buttons in `WorkNotesTable`
+- [x] Add `aria-label` to sidebar collapse button
+- [x] Add `aria-label` to file action buttons
 
 #### 3.2 Form Labels
-- [ ] Ensure all inputs have associated labels
-- [ ] Add `autocomplete` attributes to form inputs
-- [ ] Verify keyboard navigation in dialogs
+- [x] Ensure all inputs have associated labels
+- [x] Add `autocomplete` attributes to form inputs
+- [x] Verify keyboard navigation in dialogs
 
 ---
 
 ### Phase 4: Testing Coverage Expansion
 
 #### 4.1 Component Tests (Currently 56%)
-- [ ] Add tests for `assignee-selector.tsx`
-- [ ] Add tests for `draft-editor-form.tsx`
-- [ ] Add tests for `lazy-markdown.tsx`
-- [ ] Add tests for `ai-reference-list.tsx`
+- [x] Add tests for `assignee-selector.tsx`
+- [x] Add tests for `draft-editor-form.tsx`
+- [x] Add tests for `lazy-markdown.tsx`
+- [x] Add tests for `ai-reference-list.tsx`
 
 #### 4.2 Page Tests (Currently 26%)
-- [ ] Add tests for `dashboard.tsx`
-- [ ] Add tests for `vector-store.tsx`
-- [ ] Expand dialog interaction tests
+- [x] Add tests for `dashboard.tsx`
+- [x] Add tests for `vector-store.tsx`
+- [x] Expand dialog interaction tests
 
 #### 4.3 Missing Utility Tests
-- [ ] Add tests for `get-latest-todo-date.ts`
+- [x] Add tests for `get-latest-todo-date.ts`
 
 ---
 
 ### Phase 5: Code Organization (Nice-to-Have)
 
 #### 5.1 Consolidate Mappers
-- [ ] Move `transformWorkNoteFromBackend` to `lib/mappers/work-note.ts`
-- [ ] Move `transformTodoFromBackend` to `lib/mappers/todo.ts`
-- [ ] Remove transformation methods from APIClient
+- [x] Move `transformWorkNoteFromBackend` to `lib/mappers/work-note.ts`
+- [x] Move `transformTodoFromBackend` to `lib/mappers/todo.ts`
+- [x] Remove transformation methods from APIClient
 
 #### 5.2 Add Error Boundaries
-- [ ] Create `ErrorBoundary` component
-- [ ] Wrap page routes with error boundary
-- [ ] Add fallback UI for error states
+- [x] Create `ErrorBoundary` component
+- [x] Wrap page routes with error boundary
+- [x] Add fallback UI for error states
 
 #### 5.3 Document Conventions
-- [ ] Create `docs/ARCHITECTURE.md`
-- [ ] Document import order rules
-- [ ] Document component patterns
-- [ ] Document hook naming conventions
+- [x] Create `docs/ARCHITECTURE.md`
+- [x] Document import order rules
+- [x] Document component patterns
+- [x] Document hook naming conventions
 
 ---
 

@@ -109,4 +109,20 @@ describe('header component', () => {
 
     expect(screen.getByText('업무노트')).toBeInTheDocument();
   });
+
+  describe('accessibility', () => {
+    it('has aria-label on search input', () => {
+      render(<Header />);
+
+      const searchInput = screen.getByRole('searchbox', { name: /검색/ });
+      expect(searchInput).toBeInTheDocument();
+    });
+
+    it('has autocomplete="off" on search input', () => {
+      render(<Header />);
+
+      const searchInput = screen.getByRole('searchbox', { name: /검색/ });
+      expect(searchInput).toHaveAttribute('autocomplete', 'off');
+    });
+  });
 });

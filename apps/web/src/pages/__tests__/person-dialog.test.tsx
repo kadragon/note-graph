@@ -221,4 +221,31 @@ describe('PersonDialog', () => {
       expect(mockOnOpenChange).toHaveBeenCalledWith(false);
     });
   });
+
+  describe('accessibility', () => {
+    beforeEach(() => {
+      vi.mocked(useCreatePerson).mockReturnValue({
+        mutateAsync: vi.fn(),
+        isPending: false,
+      } as unknown as ReturnType<typeof useCreatePerson>);
+      vi.mocked(useUpdatePerson).mockReturnValue({
+        mutateAsync: vi.fn(),
+        isPending: false,
+      } as unknown as ReturnType<typeof useUpdatePerson>);
+    });
+
+    it('has autocomplete="name" on name input', () => {
+      render(<PersonDialog open={true} onOpenChange={mockOnOpenChange} mode="create" />);
+
+      const nameInput = screen.getByLabelText('이름');
+      expect(nameInput).toHaveAttribute('autocomplete', 'name');
+    });
+
+    it('has autocomplete="tel" on phone input', () => {
+      render(<PersonDialog open={true} onOpenChange={mockOnOpenChange} mode="create" />);
+
+      const phoneInput = screen.getByLabelText('연락처 (선택)');
+      expect(phoneInput).toHaveAttribute('autocomplete', 'tel');
+    });
+  });
 });

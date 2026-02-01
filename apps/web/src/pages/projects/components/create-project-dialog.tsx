@@ -222,6 +222,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
             <div className="grid gap-2">
               <Label>참여자</Label>
               <Input
+                aria-label="참여자 검색"
                 placeholder="참여자 검색..."
                 value={participantSearch}
                 onChange={(e) => setParticipantSearch(e.target.value)}

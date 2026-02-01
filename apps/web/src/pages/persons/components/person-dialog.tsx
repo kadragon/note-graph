@@ -265,6 +265,7 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
               <Label htmlFor="name">이름</Label>
               <Input
                 id="name"
+                autoComplete="name"
                 value={name}
                 onChange={(e) => {
                   dispatch({ type: 'SET_FIELD', field: 'name', value: e.target.value });
@@ -304,6 +305,7 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
               <Label htmlFor="phoneExt">연락처 (선택)</Label>
               <Input
                 id="phoneExt"
+                autoComplete="tel"
                 value={phoneExt}
                 onChange={(e) => {
                   dispatch({ type: 'SET_FIELD', field: 'phoneExt', value: e.target.value });
