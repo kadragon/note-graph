@@ -1,4 +1,6 @@
 import { CF_ACCESS_CONFIG } from '@web/lib/config';
+import { type BackendTodo, transformTodoFromBackend } from '@web/lib/mappers/todo';
+import { type BackendWorkNote, transformWorkNoteFromBackend } from '@web/lib/mappers/work-note';
 import type {
   AIGenerateDraftRequest,
   AIGenerateDraftResponse,
@@ -11,7 +13,6 @@ import type {
   CreateTaskCategoryRequest,
   CreateTodoRequest,
   CreateWorkNoteRequest,
-  CustomIntervalUnit,
   Department,
   DepartmentSearchResult,
   DriveFileListItem,
@@ -31,14 +32,11 @@ import type {
   ProjectStats,
   RAGQueryRequest,
   RAGResponse,
-  RecurrenceType,
-  RepeatRule,
   SearchRequest,
   SearchResult,
   StatisticsQueryParams,
   TaskCategory,
   Todo,
-  TodoStatus,
   TodoView,
   UnifiedSearchResult,
   UpdateDepartmentRequest,
@@ -49,7 +47,6 @@ import type {
   UpdateWorkNoteRequest,
   User,
   WorkNote,
-  WorkNoteFile,
   WorkNoteFileMigrationResult,
   WorkNoteFilesListResponse,
   WorkNoteStatistics,
@@ -271,55 +268,9 @@ class CFAccessTokenRefresher {
 export const cfTokenRefresher = new CFAccessTokenRefresher();
 
 /**
- * Backend work note response format
- * Maps to D1 database schema
- */
-interface BackendWorkNote {
-  workId: string;
-  title: string;
-  contentRaw: string;
-  category: string | null;
-  categories?: TaskCategory[];
-  persons?: Array<{
-    personId: string;
-    personName: string;
-    role: 'OWNER' | 'RELATED';
-    currentDept?: string | null;
-    currentPosition?: string | null;
-    phoneExt?: string | null;
-  }>;
-  relatedWorkNotes?: Array<{
-    relatedWorkId: string;
-    relatedWorkTitle?: string;
-  }>;
-  files?: WorkNoteFile[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
  * Backend todo response format
  * Maps to D1 database schema
  */
-interface BackendTodo {
-  todoId: string;
-  workId: string;
-  title: string;
-  description?: string;
-  status: TodoStatus;
-  dueDate?: string;
-  waitUntil?: string;
-  repeatRule?: RepeatRule;
-  recurrenceType?: RecurrenceType;
-  customInterval?: number;
-  customUnit?: CustomIntervalUnit;
-  skipWeekends?: boolean;
-  createdAt: string;
-  updatedAt: string;
-  workTitle?: string;
-  workCategory?: string;
-}
-
 export class APIClient {
   private baseURL = '/api';
 
@@ -493,12 +444,12 @@ export class APIClient {
   // Work Notes
   async getWorkNotes() {
     const response = await this.request<BackendWorkNote[]>('/work-notes');
-    return response.map((note) => this.transformWorkNoteFromBackend(note));
+    return response.map((note) => transformWorkNoteFromBackend(note));
   }
 
   async getWorkNote(workId: string) {
     const response = await this.request<BackendWorkNote>(`/work-notes/${workId}`);
-    return this.transformWorkNoteFromBackend(response);
+    return transformWorkNoteFromBackend(response);
   }
 
   async createWorkNote(data: CreateWorkNoteRequest) {
@@ -516,7 +467,7 @@ export class APIClient {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    return this.transformWorkNoteFromBackend(response);
+    return transformWorkNoteFromBackend(response);
   }
 
   async updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
@@ -536,7 +487,7 @@ export class APIClient {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
-    return this.transformWorkNoteFromBackend(response);
+    return transformWorkNoteFromBackend(response);
   }
 
   deleteWorkNote(workId: string) {
@@ -577,21 +528,6 @@ export class APIClient {
     return `${this.baseURL}/work-notes/${workId}/files/${fileId}/view`;
   }
 
-  private transformWorkNoteFromBackend(backendWorkNote: BackendWorkNote): WorkNote {
-    return {
-      id: backendWorkNote.workId,
-      title: backendWorkNote.title,
-      content: backendWorkNote.contentRaw,
-      category: backendWorkNote.category || '',
-      categories: backendWorkNote.categories || [],
-      persons: backendWorkNote.persons || [],
-      relatedWorkNotes: backendWorkNote.relatedWorkNotes || [],
-      files: backendWorkNote.files || [],
-      createdAt: backendWorkNote.createdAt,
-      updatedAt: backendWorkNote.updatedAt,
-    };
-  }
-
   /**
    * Transforms relatedPersonIds and relatedWorkIds to backend format
    * Reduces code duplication between createWorkNote and updateWorkNote
@@ -611,27 +547,6 @@ export class APIClient {
     if (relatedWorkIds !== undefined) {
       payload.relatedWorkIds = relatedWorkIds;
     }
-  }
-
-  private transformTodoFromBackend(backendTodo: BackendTodo): Todo {
-    return {
-      id: backendTodo.todoId,
-      workNoteId: backendTodo.workId,
-      workTitle: backendTodo.workTitle,
-      workCategory: backendTodo.workCategory,
-      title: backendTodo.title,
-      description: backendTodo.description,
-      status: backendTodo.status,
-      dueDate: backendTodo.dueDate,
-      waitUntil: backendTodo.waitUntil,
-      repeatRule: backendTodo.repeatRule,
-      recurrenceType: backendTodo.recurrenceType,
-      customInterval: backendTodo.customInterval,
-      customUnit: backendTodo.customUnit,
-      skipWeekends: backendTodo.skipWeekends,
-      createdAt: backendTodo.createdAt,
-      updatedAt: backendTodo.updatedAt,
-    };
   }
 
   // Persons
@@ -742,7 +657,7 @@ export class APIClient {
       params.set('workIds', workIds.join(','));
     }
     const response = await this.request<BackendTodo[]>(`/todos?${params.toString()}`);
-    return response.map(this.transformTodoFromBackend.bind(this));
+    return response.map(transformTodoFromBackend.bind(this));
   }
 
   async updateTodo(todoId: string, data: UpdateTodoRequest) {
@@ -750,7 +665,7 @@ export class APIClient {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return this.transformTodoFromBackend(response);
+    return transformTodoFromBackend(response);
   }
 
   deleteTodo(todoId: string) {
@@ -764,7 +679,7 @@ export class APIClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return this.transformTodoFromBackend(response);
+    return transformTodoFromBackend(response);
   }
 
   // Search
@@ -928,7 +843,7 @@ export class APIClient {
         if ((wn as unknown as WorkNote).content && (wn as unknown as WorkNote).id) {
           return wn as unknown as WorkNote;
         }
-        return this.transformWorkNoteFromBackend({
+        return transformWorkNoteFromBackend({
           ...wn,
           workId: wn.workId ?? wn.id,
           contentRaw: wn.contentRaw ?? wn.content ?? '',

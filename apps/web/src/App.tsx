@@ -1,3 +1,4 @@
+import { ErrorBoundary } from '@web/components/error-boundary';
 import AppLayout from '@web/components/layout/app-layout';
 import { Toaster } from '@web/components/ui/toaster';
 import { Loader2 } from 'lucide-react';
@@ -21,27 +22,29 @@ function App() {
   return (
     <>
       <AppLayout>
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          }
-        >
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/work-notes" element={<WorkNotes />} />
-            <Route path="/persons" element={<Persons />} />
-            <Route path="/departments" element={<Departments />} />
-            <Route path="/task-categories" element={<TaskCategories />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/statistics" element={<Statistics />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/rag" element={<RAG />} />
-            <Route path="/pdf" element={<PDFUpload />} />
-            <Route path="/vector-store" element={<VectorStore />} />
-          </Routes>
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/work-notes" element={<WorkNotes />} />
+              <Route path="/persons" element={<Persons />} />
+              <Route path="/departments" element={<Departments />} />
+              <Route path="/task-categories" element={<TaskCategories />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/statistics" element={<Statistics />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/rag" element={<RAG />} />
+              <Route path="/pdf" element={<PDFUpload />} />
+              <Route path="/vector-store" element={<VectorStore />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </AppLayout>
       <Toaster />
     </>
