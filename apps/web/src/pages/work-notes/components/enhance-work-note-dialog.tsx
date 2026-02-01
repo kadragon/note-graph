@@ -134,7 +134,7 @@ export function EnhanceWorkNoteDialog({
               <Input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.hwp,.hwpx,.docx,.doc,.txt"
+                accept=".pdf,.txt,.md"
                 onChange={handleFileSelect}
                 className="hidden"
                 id="file-upload"
@@ -167,7 +167,7 @@ export function EnhanceWorkNoteDialog({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              PDF, HWP, DOCX, TXT 파일 지원 (최대 {FILE_UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB)
+              PDF, TXT, MD 파일 지원 (최대 {FILE_UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB)
             </p>
           </div>
 

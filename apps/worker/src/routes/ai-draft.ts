@@ -14,7 +14,7 @@ import {
   TodoSuggestionsRequestSchema,
 } from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
-import { PdfExtractionService } from '../services/pdf-extraction-service';
+import { FileTextExtractionService } from '../services/file-text-extraction-service';
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext, AppVariables } from '../types/context';
 import { NotFoundError } from '../types/errors';
@@ -164,9 +164,14 @@ app.post('/work-notes/:workId/enhance', activeCategoriesMiddleware, async (c) =>
   // Extract text from file if provided
   let extractedText = '';
   if (file) {
-    const pdfService = new PdfExtractionService();
-    const buffer = await file.arrayBuffer();
-    extractedText = await pdfService.extractText(buffer);
+    const extractor = new FileTextExtractionService();
+    const result = await extractor.extractText(file, file.type);
+
+    if (!result.success) {
+      return c.json({ error: result.reason || '파일에서 텍스트를 추출할 수 없습니다.' }, 400);
+    }
+
+    extractedText = result.text || '';
   }
 
   // Combine text input and extracted file text
