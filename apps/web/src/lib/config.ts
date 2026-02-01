@@ -88,6 +88,17 @@ export const API_CONFIG = {
 } as const;
 
 // -----------------------------------------------------------------------------
+// File Upload Configuration
+// -----------------------------------------------------------------------------
+export const FILE_UPLOAD_CONFIG = {
+  /** Maximum file size in bytes (10MB) */
+  MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024,
+
+  /** Maximum file size in MB for display */
+  MAX_FILE_SIZE_MB: 10,
+} as const;
+
+// -----------------------------------------------------------------------------
 // Legacy Exports (for backward compatibility with constants/search.ts)
 // These re-export from SEARCH_CONFIG for files still using the old imports
 // -----------------------------------------------------------------------------

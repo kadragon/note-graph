@@ -64,9 +64,11 @@ import type {
 } from '@shared/types/project';
 import type {
   DepartmentSearchItem,
+  ExistingTodoSummary,
   PersonSearchItem,
   RagContextSnippet,
   RagScope,
+  EnhanceWorkNoteResponse as SharedEnhanceWorkNoteResponse,
   SimilarWorkNoteReference,
 } from '@shared/types/search';
 import type {
@@ -117,6 +119,15 @@ export type AIDraftReference = SimilarWorkNoteReference;
 export type AIDraftPayload = WorkNoteDraft;
 export type PDFJobStatus = PdfJobStatus;
 export type PDFJob = PdfJobResponse;
+export type EnhanceWorkNoteResponse = SharedEnhanceWorkNoteResponse;
+export type { ExistingTodoSummary };
+
+// Frontend-specific request type (extends shared type with optional file)
+export interface EnhanceWorkNoteRequest {
+  newContent: string;
+  generateNewTodos?: boolean;
+  file?: File;
+}
 
 // Extract Todo type from AIDraftPayload
 export type AIDraftTodo = import('@shared/types/pdf').WorkNoteDraft['todos'][number];

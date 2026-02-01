@@ -21,3 +21,13 @@ export const TodoSuggestionsRequestSchema = z.object({
 });
 
 export type TodoSuggestionsRequest = z.infer<typeof TodoSuggestionsRequestSchema>;
+
+/**
+ * Enhance existing work note request schema
+ */
+export const enhanceWorkNoteRequestSchema = z.object({
+  newContent: z.string().min(1, 'New content is required'),
+  generateNewTodos: z.boolean().default(true),
+});
+
+export type EnhanceWorkNoteRequest = z.infer<typeof enhanceWorkNoteRequestSchema>;

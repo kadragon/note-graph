@@ -8,8 +8,13 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
-import { DraftFromTextRequestSchema, TodoSuggestionsRequestSchema } from '../schemas/ai-draft';
+import {
+  DraftFromTextRequestSchema,
+  enhanceWorkNoteRequestSchema,
+  TodoSuggestionsRequestSchema,
+} from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
+import { FileTextExtractionService } from '../services/file-text-extraction-service';
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext, AppVariables } from '../types/context';
 import { NotFoundError } from '../types/errors';
@@ -140,5 +145,106 @@ app.post(
     return c.json(todos);
   }
 );
+
+/**
+ * POST /ai/work-notes/:workId/enhance
+ * Enhance existing work note with new content (text and/or file)
+ */
+app.post('/work-notes/:workId/enhance', activeCategoriesMiddleware, async (c) => {
+  const workId = c.req.param('workId');
+  const activeCategoryNames = c.get('activeCategoryNames');
+  const { todos: todoRepository } = c.get('repositories');
+
+  // Parse multipart form data
+  const formData = await c.req.formData();
+  const newContentText = formData.get('newContent') as string | null;
+  const generateNewTodosStr = formData.get('generateNewTodos') as string | null;
+  const file = formData.get('file') as File | null;
+
+  // Extract text from file if provided
+  let extractedText = '';
+  if (file) {
+    const extractor = new FileTextExtractionService();
+    const result = await extractor.extractText(file, file.type);
+
+    if (!result.success) {
+      return c.json({ error: result.reason || '파일에서 텍스트를 추출할 수 없습니다.' }, 400);
+    }
+
+    extractedText = result.text || '';
+  }
+
+  // Combine text input and extracted file text
+  const combinedContent = [newContentText || '', extractedText].filter(Boolean).join('\n\n');
+
+  // Validate that we have some content
+  const validationResult = enhanceWorkNoteRequestSchema.safeParse({
+    newContent: combinedContent,
+    generateNewTodos: generateNewTodosStr !== 'false',
+  });
+
+  if (!validationResult.success) {
+    return c.json({ error: validationResult.error.errors[0]?.message || 'Invalid request' }, 400);
+  }
+
+  const { newContent, generateNewTodos } = validationResult.data;
+
+  // Fetch existing work note
+  const workNoteService = new WorkNoteService(c.env);
+  const workNote = await workNoteService.findById(workId);
+
+  if (!workNote) {
+    throw new NotFoundError('Work note', workId);
+  }
+
+  // Fetch existing todos
+  const existingTodos = await todoRepository.findByWorkId(workId);
+  const todoReferences = existingTodos.map((todo) => ({
+    title: todo.title,
+    description: todo.description,
+    status: todo.status,
+    dueDate: todo.dueDate,
+  }));
+
+  // Find similar notes for context
+  const similarNotes = await workNoteService.findSimilarNotes(newContent, SIMILAR_NOTES_TOP_K);
+
+  // Generate enhanced draft
+  const aiDraftService = new AIDraftService(c.env);
+  const enhancedDraft = await aiDraftService.enhanceExistingWorkNote(
+    workNote,
+    todoReferences,
+    newContent,
+    {
+      similarNotes,
+      activeCategories: activeCategoryNames,
+    }
+  );
+
+  // If generateNewTodos is false, clear the todos array
+  if (!generateNewTodos) {
+    enhancedDraft.todos = [];
+  }
+
+  const references = similarNotes.map((note) => ({
+    workId: note.workId,
+    title: note.title,
+    category: note.category,
+    similarityScore: note.similarityScore,
+  }));
+
+  return c.json({
+    enhancedDraft,
+    originalContent: workNote.contentRaw,
+    existingTodos: existingTodos.map((todo) => ({
+      todoId: todo.todoId,
+      title: todo.title,
+      description: todo.description,
+      status: todo.status,
+      dueDate: todo.dueDate,
+    })),
+    references,
+  });
+});
 
 export default app;

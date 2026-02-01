@@ -32,10 +32,16 @@ import { API } from '@web/lib/api';
 import { buildAssigneeEmailTemplate } from '@web/lib/assignee-email-template';
 import { formatPersonBadge, toUTCISOString } from '@web/lib/utils';
 import { EditTodoDialog } from '@web/pages/dashboard/components/edit-todo-dialog';
-import type { CreateTodoRequest, Todo, TodoStatus, WorkNote } from '@web/types/api';
+import type {
+  CreateTodoRequest,
+  EnhanceWorkNoteResponse,
+  Todo,
+  TodoStatus,
+  WorkNote,
+} from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Copy, Edit2, Save, X } from 'lucide-react';
+import { Copy, Edit2, Save, Sparkles, X } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { groupRecurringTodos } from './group-recurring-todos';
 
@@ -44,6 +50,8 @@ const LazyMarkdown = lazy(() =>
   import('@web/components/lazy-markdown').then((mod) => ({ default: mod.LazyMarkdown }))
 );
 
+import { EnhancePreviewDialog } from './enhance-preview-dialog';
+import { EnhanceWorkNoteDialog } from './enhance-work-note-dialog';
 import { RecurringTodoGroup } from './recurring-todo-group';
 import { TodoCreationForm } from './todo-creation-form';
 import { TodoListItem } from './todo-list-item';
@@ -81,6 +89,11 @@ export function ViewWorkNoteDialog({
 
   // Delete todo confirmation dialog state
   const [deleteTodoId, setDeleteTodoId] = useState<string | null>(null);
+
+  // Enhance dialog states
+  const [enhanceInputOpen, setEnhanceInputOpen] = useState(false);
+  const [enhancePreviewOpen, setEnhancePreviewOpen] = useState(false);
+  const [enhanceResponse, setEnhanceResponse] = useState<EnhanceWorkNoteResponse | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -314,6 +327,17 @@ export function ViewWorkNoteDialog({
     setIsEditing(false);
   };
 
+  const handleEnhanceSuccess = (response: EnhanceWorkNoteResponse) => {
+    setEnhanceResponse(response);
+    setEnhanceInputOpen(false);
+    setEnhancePreviewOpen(true);
+  };
+
+  const handleEnhancePreviewClose = () => {
+    setEnhancePreviewOpen(false);
+    setEnhanceResponse(null);
+  };
+
   // Show loading state when data is being fetched
   if (loading || !currentWorkNote) {
     if (!open) return null;
@@ -355,15 +379,26 @@ export function ViewWorkNoteDialog({
               )}
               <div className="flex items-center gap-2">
                 {!isEditing && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => enterEditMode()}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                    <span className="sr-only">수정</span>
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEnhanceInputOpen(true)}
+                      className="h-8 px-2"
+                    >
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      <span className="text-xs">AI로 업데이트</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => enterEditMode()}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      <span className="sr-only">수정</span>
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -655,6 +690,26 @@ export function ViewWorkNoteDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {currentWorkNote && (
+        <>
+          <EnhanceWorkNoteDialog
+            workId={currentWorkNote.id}
+            open={enhanceInputOpen}
+            onOpenChange={setEnhanceInputOpen}
+            onEnhanceSuccess={handleEnhanceSuccess}
+          />
+
+          {enhanceResponse && (
+            <EnhancePreviewDialog
+              workId={currentWorkNote.id}
+              open={enhancePreviewOpen}
+              onOpenChange={handleEnhancePreviewClose}
+              enhanceResponse={enhanceResponse}
+            />
+          )}
+        </>
+      )}
     </>
   );
 }

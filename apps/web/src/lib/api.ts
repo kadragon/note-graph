@@ -17,6 +17,8 @@ import type {
   DepartmentSearchResult,
   DriveFileListItem,
   EmbeddingStats,
+  EnhanceWorkNoteRequest,
+  EnhanceWorkNoteResponse,
   GoogleDriveStatus,
   ImportPersonFromTextRequest,
   ImportPersonResponse,
@@ -780,6 +782,49 @@ export class APIClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async enhanceWorkNote(
+    workId: string,
+    data: EnhanceWorkNoteRequest,
+    isRetry = false
+  ): Promise<EnhanceWorkNoteResponse> {
+    const formData = new FormData();
+    formData.append('newContent', data.newContent);
+    formData.append('generateNewTodos', String(data.generateNewTodos ?? true));
+
+    if (data.file) {
+      formData.append('file', data.file);
+    }
+
+    const headers: Record<string, string> = {};
+
+    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
+      headers['X-Test-User-Email'] = 'test@example.com';
+    }
+
+    try {
+      const response = await fetch(`${this.baseURL}/ai/work-notes/${workId}/enhance`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = (await response.json().catch(() => ({
+          message: '업데이트 실패',
+        }))) as { message?: string };
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+
+      cfTokenRefresher.recordSuccess();
+
+      return response.json() as Promise<EnhanceWorkNoteResponse>;
+    } catch (error) {
+      return this.handleCFAccessError(error, isRetry, () =>
+        this.enhanceWorkNote(workId, data, true)
+      );
+    }
   }
 
   // PDF Jobs

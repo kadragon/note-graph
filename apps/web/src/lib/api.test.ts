@@ -801,3 +801,133 @@ describe('API.getWorkNoteFileViewUrl', () => {
     expect(url).toBe('/api/work-notes/work-1/files/file-1/view');
   });
 });
+
+describe('API.enhanceWorkNote', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('sends multipart form data to correct endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        enhancedDraft: {
+          title: '향상된 제목',
+          content: '향상된 내용',
+          category: '업무',
+          todos: [],
+        },
+        originalContent: '원본 내용',
+        existingTodos: [],
+        references: [],
+      }),
+    });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.enhanceWorkNote('work-1', {
+      newContent: '새로운 정보 추가',
+      generateNewTodos: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/ai/work-notes/work-1/enhance',
+      expect.objectContaining({
+        method: 'POST',
+      })
+    );
+
+    const [, options] = fetchMock.mock.calls[0];
+    expect(options.body).toBeInstanceOf(FormData);
+    const formData = options.body as FormData;
+    expect(formData.get('newContent')).toBe('새로운 정보 추가');
+    expect(formData.get('generateNewTodos')).toBe('true');
+  });
+
+  it('appends file to form data when provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        enhancedDraft: {
+          title: '향상된 제목',
+          content: '향상된 내용',
+          category: '업무',
+          todos: [],
+        },
+        originalContent: '원본 내용',
+        existingTodos: [],
+        references: [],
+      }),
+    });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    const file = new File(['test content'], 'document.pdf', { type: 'application/pdf' });
+
+    await API.enhanceWorkNote('work-1', {
+      newContent: '추가 정보',
+      file,
+    });
+
+    const [, options] = fetchMock.mock.calls[0];
+    const formData = options.body as FormData;
+    const uploadedFile = formData.get('file') as File;
+    expect(uploadedFile.name).toBe('document.pdf');
+    expect(uploadedFile.type).toBe('application/pdf');
+  });
+
+  it('returns enhance response with all fields', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        enhancedDraft: {
+          title: '향상된 제목',
+          content: '향상된 내용',
+          category: '업무',
+          relatedPersonIds: ['person-1'],
+          todos: [
+            {
+              title: '새 할일',
+              description: '설명',
+              dueDate: '2024-02-01',
+            },
+          ],
+        },
+        originalContent: '원본 내용',
+        existingTodos: [
+          {
+            todoId: 'todo-1',
+            title: '기존 할일',
+            description: null,
+            status: 'PENDING',
+            dueDate: '2024-01-15',
+          },
+        ],
+        references: [
+          {
+            workId: 'work-2',
+            title: '참조 노트',
+            category: '업무',
+            similarityScore: 0.85,
+          },
+        ],
+      }),
+    });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    const result = await API.enhanceWorkNote('work-1', {
+      newContent: '새 정보',
+    });
+
+    expect(result.enhancedDraft.title).toBe('향상된 제목');
+    expect(result.enhancedDraft.todos).toHaveLength(1);
+    expect(result.existingTodos).toHaveLength(1);
+    expect(result.existingTodos[0].todoId).toBe('todo-1');
+    expect(result.references).toHaveLength(1);
+    expect(result.originalContent).toBe('원본 내용');
+  });
+});

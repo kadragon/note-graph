@@ -674,4 +674,173 @@ describe('AIDraftService', () => {
       );
     });
   });
+
+  describe('enhanceExistingWorkNote()', () => {
+    it('should enhance work note by merging new content with existing', async () => {
+      // Arrange
+      const workNote: WorkNote = {
+        workId: 'WORK-001',
+        title: '프로젝트 기획',
+        contentRaw: '기존 프로젝트 내용입니다.',
+        category: '기획',
+        projectId: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        embeddedAt: null,
+      };
+
+      const existingTodos = [
+        { title: '기존 할 일 1', description: '설명 1', status: '진행중', dueDate: '2025-01-15' },
+        { title: '기존 할 일 2', description: '설명 2', status: '완료', dueDate: '2025-01-10' },
+      ];
+
+      const newContent = '추가된 새로운 내용입니다. 미팅 결과가 추가되었습니다.';
+
+      const mockLLMResponse = {
+        title: '프로젝트 기획 (업데이트)',
+        content: '기존 프로젝트 내용입니다.\n\n## 미팅 결과\n추가된 새로운 내용입니다.',
+        category: '기획',
+        todos: [
+          {
+            title: '미팅 결과 정리',
+            description: '새로운 할 일',
+            dueDateSuggestion: '2025-01-20',
+          },
+        ],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockLLMResponse) } }],
+        }),
+      });
+
+      // Act
+      const result = await service.enhanceExistingWorkNote(workNote, existingTodos, newContent);
+
+      // Assert
+      expect(result.title).toBe('프로젝트 기획 (업데이트)');
+      expect(result.content).toContain('미팅 결과');
+      expect(result.category).toBe('기획');
+      expect(result.todos).toHaveLength(1);
+      expect(result.todos[0].title).toBe('미팅 결과 정리');
+    });
+
+    it('should include existing work note info in the prompt', async () => {
+      // Arrange
+      const workNote: WorkNote = {
+        workId: 'WORK-001',
+        title: '테스트 제목',
+        contentRaw: '테스트 내용',
+        category: '테스트',
+        projectId: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        embeddedAt: null,
+      };
+
+      const existingTodos = [
+        { title: '기존 할 일', description: '설명', status: '진행중', dueDate: '2025-01-15' },
+      ];
+
+      const newContent = '새 내용';
+
+      const mockDraft = {
+        title: '업데이트된 제목',
+        content: '업데이트된 내용',
+        category: '테스트',
+        todos: [],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      // Act
+      await service.enhanceExistingWorkNote(workNote, existingTodos, newContent);
+
+      // Assert
+      const callBody = mockFetch.mock.calls[0][1].body;
+      expect(callBody).toContain('테스트 제목');
+      expect(callBody).toContain('테스트 내용');
+      expect(callBody).toContain('기존 할 일');
+      expect(callBody).toContain('새 내용');
+    });
+
+    it('should throw RateLimitError on 429 status', async () => {
+      // Arrange
+      const workNote: WorkNote = {
+        workId: 'WORK-001',
+        title: '업무',
+        contentRaw: '내용',
+        category: '업무',
+        projectId: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        embeddedAt: null,
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 429,
+        text: async () => 'Rate limit exceeded',
+      });
+
+      // Act & Assert
+      await expect(service.enhanceExistingWorkNote(workNote, [], '새 내용')).rejects.toThrow(
+        RateLimitError
+      );
+    });
+
+    it('should handle similar notes context', async () => {
+      // Arrange
+      const workNote: WorkNote = {
+        workId: 'WORK-001',
+        title: '업무',
+        contentRaw: '내용',
+        category: '업무',
+        projectId: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        embeddedAt: null,
+      };
+
+      const similarNotes = [
+        {
+          workId: 'WORK-002',
+          title: '유사 노트',
+          content: '유사 내용',
+          category: '업무',
+          similarityScore: 0.9,
+        },
+      ];
+
+      const mockDraft = {
+        title: '업데이트된 제목',
+        content: '업데이트된 내용',
+        category: '업무',
+        todos: [],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      // Act
+      await service.enhanceExistingWorkNote(workNote, [], '새 내용', {
+        similarNotes,
+      });
+
+      // Assert
+      const callBody = mockFetch.mock.calls[0][1].body;
+      expect(callBody).toContain('유사 노트');
+    });
+  });
 });

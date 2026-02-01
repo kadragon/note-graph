@@ -356,4 +356,24 @@ describe('ViewWorkNoteDialog', () => {
     // Verify the markdown content renders correctly
     expect(screen.getByText(/굵은 텍스트/)).toBeInTheDocument();
   });
+
+  it('renders AI enhance button next to edit button', async () => {
+    const workNote = createWorkNote({
+      title: 'AI 업데이트 테스트',
+      content: '내용',
+    });
+
+    mockGetWorkNote.mockResolvedValue(workNote);
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    // Should have both edit and AI enhance buttons
+    expect(screen.getByRole('button', { name: '수정' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'AI로 업데이트' })).toBeInTheDocument();
+  });
 });
