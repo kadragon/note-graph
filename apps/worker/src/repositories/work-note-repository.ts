@@ -338,35 +338,35 @@ export class WorkNoteRepository {
       const chunk = workIds.slice(i, i + CHUNK_SIZE);
       const placeholders = chunk.map(() => '?').join(',');
 
-      // Fetch categories for this chunk
-      const categoriesResult = await this.db
-        .prepare(
-          `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
+      // Fetch categories and persons for this chunk in parallel
+      const [categoriesResult, personsResult] = await Promise.all([
+        this.db
+          .prepare(
+            `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
            FROM task_categories tc
            INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
            WHERE wntc.work_id IN (${placeholders})`
-        )
-        .bind(...chunk)
-        .all<{
-          workId: string;
-          categoryId: string;
-          name: string;
-          isActive: number;
-          createdAt: string;
-        }>();
-
-      // Fetch persons for this chunk
-      const personsResult = await this.db
-        .prepare(
-          `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
+          )
+          .bind(...chunk)
+          .all<{
+            workId: string;
+            categoryId: string;
+            name: string;
+            isActive: number;
+            createdAt: string;
+          }>(),
+        this.db
+          .prepare(
+            `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
                   wnp.role, p.name as personName, p.current_dept as currentDept,
                   p.current_position as currentPosition, p.phone_ext as phoneExt
            FROM work_note_person wnp
            INNER JOIN persons p ON wnp.person_id = p.person_id
            WHERE wnp.work_id IN (${placeholders})`
-        )
-        .bind(...chunk)
-        .all<WorkNotePersonAssociation & { workId: string }>();
+          )
+          .bind(...chunk)
+          .all<WorkNotePersonAssociation & { workId: string }>(),
+      ]);
 
       // Group categories by workId
       for (const cat of categoriesResult.results || []) {
