@@ -56,10 +56,14 @@ export function useWorkNotesWithStats() {
 
           const { completed, pending, remaining } = workNoteTodos.reduce(
             (acc, todo) => {
+              // Inactive statuses (완료, 보류, 중단) are excluded from remaining/pending counts
               if (todo.status === TODO_STATUS.COMPLETED) {
                 acc.completed++;
+              } else if (todo.status === '보류' || todo.status === '중단') {
+                // 보류/중단 are inactive - not counted in remaining or pending
+                // (they are included in total only)
               } else {
-                // 미완료 상태: waitUntil이 내일 이후면 pending, 아니면 remaining
+                // 진행중 상태: waitUntil이 내일 이후면 pending, 아니면 remaining
                 // 백엔드와 동일한 로직: waitUntil < tomorrowMidnight이면 remaining
                 const hasFutureWaitUntil =
                   todo.waitUntil && new Date(todo.waitUntil) >= tomorrowMidnight;

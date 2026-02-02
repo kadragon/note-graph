@@ -104,11 +104,17 @@ export function ViewWorkNoteDialog({
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
   // Fetch todos for this work note
-  const { data: todos = [], isLoading: todosLoading } = useQuery({
+  const { data: allTodos = [], isLoading: todosLoading } = useQuery({
     queryKey: ['work-note-todos', workNote?.id],
     queryFn: () => (workNote ? API.getTodos('all', undefined, [workNote.id]) : Promise.resolve([])),
     enabled: !!workNote && open,
   });
+
+  // Filter out inactive statuses (보류, 중단) from active display
+  const todos = useMemo(
+    () => allTodos.filter((t) => t.status !== '보류' && t.status !== '중단'),
+    [allTodos]
+  );
 
   // Fetch detailed work note (includes references)
   // Use placeholderData to show list data immediately while fetching detail

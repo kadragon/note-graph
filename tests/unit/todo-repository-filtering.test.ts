@@ -274,5 +274,100 @@ describe('TodoRepository - Filtering and Views', () => {
       // Assert
       expect(result.some((t) => t.todoId === 'TODO-NEAR-FUTURE')).toBe(false);
     });
+
+    it('should exclude 보류 and 중단 status todos from today view', async () => {
+      // Arrange
+      const now = new Date(BASE_NOW.getTime());
+
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(
+          'TODO-HOLD',
+          testWorkId,
+          'On Hold',
+          now.toISOString(),
+          now.toISOString(),
+          '보류',
+          'NONE'
+        ),
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(
+          'TODO-STOPPED',
+          testWorkId,
+          'Stopped',
+          now.toISOString(),
+          now.toISOString(),
+          '중단',
+          'NONE'
+        ),
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(
+          'TODO-ACTIVE',
+          testWorkId,
+          'Active',
+          now.toISOString(),
+          now.toISOString(),
+          '진행중',
+          'NONE'
+        ),
+      ]);
+
+      // Act
+      const result = await repository.findAll({ view: 'today' });
+
+      // Assert
+      expect(result.some((t) => t.todoId === 'TODO-HOLD')).toBe(false);
+      expect(result.some((t) => t.todoId === 'TODO-STOPPED')).toBe(false);
+      expect(result.some((t) => t.todoId === 'TODO-ACTIVE')).toBe(true);
+    });
+
+    it('should exclude 보류 and 중단 status todos from remaining view', async () => {
+      // Arrange
+      const now = new Date(BASE_NOW.getTime());
+
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind('TODO-REMAIN-HOLD', testWorkId, 'On Hold', now.toISOString(), '보류', 'NONE'),
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind('TODO-REMAIN-STOPPED', testWorkId, 'Stopped', now.toISOString(), '중단', 'NONE'),
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind('TODO-REMAIN-ACTIVE', testWorkId, 'Active', now.toISOString(), '진행중', 'NONE'),
+      ]);
+
+      // Act
+      const result = await repository.findAll({ view: 'remaining' });
+
+      // Assert
+      expect(result.some((t) => t.todoId === 'TODO-REMAIN-HOLD')).toBe(false);
+      expect(result.some((t) => t.todoId === 'TODO-REMAIN-STOPPED')).toBe(false);
+      expect(result.some((t) => t.todoId === 'TODO-REMAIN-ACTIVE')).toBe(true);
+    });
+
+    it('should include 보류 and 중단 status todos in all view', async () => {
+      // Arrange
+      const now = new Date(BASE_NOW.getTime());
+
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind('TODO-ALL-HOLD', testWorkId, 'On Hold', now.toISOString(), '보류', 'NONE'),
+        testEnv.DB.prepare(
+          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind('TODO-ALL-STOPPED', testWorkId, 'Stopped', now.toISOString(), '중단', 'NONE'),
+      ]);
+
+      // Act
+      const result = await repository.findAll({ view: 'all' });
+
+      // Assert
+      expect(result.some((t) => t.todoId === 'TODO-ALL-HOLD')).toBe(true);
+      expect(result.some((t) => t.todoId === 'TODO-ALL-STOPPED')).toBe(true);
+    });
   });
 });
