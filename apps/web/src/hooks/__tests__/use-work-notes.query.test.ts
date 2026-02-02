@@ -171,8 +171,8 @@ describe('useWorkNotesWithStats', () => {
 
     const todos = [
       createTodo({ status: TODO_STATUS.IN_PROGRESS, workNoteId: 'work-1' }),
-      createTodo({ status: '보류', workNoteId: 'work-1' }),
-      createTodo({ status: '중단', workNoteId: 'work-1' }),
+      createTodo({ status: TODO_STATUS.ON_HOLD, workNoteId: 'work-1' }),
+      createTodo({ status: TODO_STATUS.STOPPED, workNoteId: 'work-1' }),
       createTodo({ status: TODO_STATUS.COMPLETED, workNoteId: 'work-1' }),
     ];
     vi.mocked(API.getTodos).mockResolvedValue(todos);

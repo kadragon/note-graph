@@ -112,7 +112,8 @@ export function ViewWorkNoteDialog({
 
   // Filter out inactive statuses (보류, 중단) from active display
   const todos = useMemo(
-    () => allTodos.filter((t) => t.status !== '보류' && t.status !== '중단'),
+    () =>
+      allTodos.filter((t) => t.status !== TODO_STATUS.ON_HOLD && t.status !== TODO_STATUS.STOPPED),
     [allTodos]
   );
 

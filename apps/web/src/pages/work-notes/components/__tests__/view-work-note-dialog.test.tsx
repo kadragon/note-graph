@@ -1,5 +1,6 @@
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { TODO_STATUS } from '@web/constants/todo-status';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useDeleteTodo, useToggleTodo } from '@web/hooks/use-todos';
@@ -387,21 +388,21 @@ describe('ViewWorkNoteDialog', () => {
     const activeTodo = createTodo({
       id: 'todo-active',
       title: '진행중 할일',
-      status: '진행중',
+      status: TODO_STATUS.IN_PROGRESS,
       workNoteId: workNote.id,
     });
 
     const holdTodo = createTodo({
       id: 'todo-hold',
       title: '보류 할일',
-      status: '보류',
+      status: TODO_STATUS.ON_HOLD,
       workNoteId: workNote.id,
     });
 
     const stoppedTodo = createTodo({
       id: 'todo-stopped',
       title: '중단 할일',
-      status: '중단',
+      status: TODO_STATUS.STOPPED,
       workNoteId: workNote.id,
     });
 

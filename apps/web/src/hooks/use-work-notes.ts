@@ -59,7 +59,10 @@ export function useWorkNotesWithStats() {
               // Inactive statuses (완료, 보류, 중단) are excluded from remaining/pending counts
               if (todo.status === TODO_STATUS.COMPLETED) {
                 acc.completed++;
-              } else if (todo.status === '보류' || todo.status === '중단') {
+              } else if (
+                todo.status === TODO_STATUS.ON_HOLD ||
+                todo.status === TODO_STATUS.STOPPED
+              ) {
                 // 보류/중단 are inactive - not counted in remaining or pending
                 // (they are included in total only)
               } else {
