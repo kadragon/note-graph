@@ -328,67 +328,75 @@ export class WorkNoteRepository {
       return [];
     }
 
-    // Fetch all categories in a single query
-    const placeholders = workIds.map(() => '?').join(',');
-    const categoriesResult = await this.db
-      .prepare(
-        `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
-         FROM task_categories tc
-         INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
-         WHERE wntc.work_id IN (${placeholders})`
-      )
-      .bind(...workIds)
-      .all<{
-        workId: string;
-        categoryId: string;
-        name: string;
-        isActive: number;
-        createdAt: string;
-      }>();
-
-    // Fetch all persons in a single query
-    const personsResult = await this.db
-      .prepare(
-        `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                wnp.role, p.name as personName, p.current_dept as currentDept,
-                p.current_position as currentPosition, p.phone_ext as phoneExt
-         FROM work_note_person wnp
-         INNER JOIN persons p ON wnp.person_id = p.person_id
-         WHERE wnp.work_id IN (${placeholders})`
-      )
-      .bind(...workIds)
-      .all<WorkNotePersonAssociation & { workId: string }>();
-
-    // Group categories and persons by workId
+    // SQLite has a limit of 999 binding variables, so we chunk the queries
+    const CHUNK_SIZE = 900;
     const categoriesByWorkId = new Map<string, TaskCategory[]>();
     const personsByWorkId = new Map<string, WorkNotePersonAssociation[]>();
 
-    for (const cat of categoriesResult.results || []) {
-      if (!categoriesByWorkId.has(cat.workId)) {
-        categoriesByWorkId.set(cat.workId, []);
-      }
-      categoriesByWorkId.get(cat.workId)?.push({
-        categoryId: cat.categoryId,
-        name: cat.name,
-        isActive: cat.isActive === 1,
-        createdAt: cat.createdAt,
-      });
-    }
+    // Fetch categories and persons in chunks
+    for (let i = 0; i < workIds.length; i += CHUNK_SIZE) {
+      const chunk = workIds.slice(i, i + CHUNK_SIZE);
+      const placeholders = chunk.map(() => '?').join(',');
 
-    for (const person of personsResult.results || []) {
-      if (!personsByWorkId.has(person.workId)) {
-        personsByWorkId.set(person.workId, []);
+      // Fetch categories and persons for this chunk in parallel
+      const [categoriesResult, personsResult] = await Promise.all([
+        this.db
+          .prepare(
+            `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
+           FROM task_categories tc
+           INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+           WHERE wntc.work_id IN (${placeholders})`
+          )
+          .bind(...chunk)
+          .all<{
+            workId: string;
+            categoryId: string;
+            name: string;
+            isActive: number;
+            createdAt: string;
+          }>(),
+        this.db
+          .prepare(
+            `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
+                  wnp.role, p.name as personName, p.current_dept as currentDept,
+                  p.current_position as currentPosition, p.phone_ext as phoneExt
+           FROM work_note_person wnp
+           INNER JOIN persons p ON wnp.person_id = p.person_id
+           WHERE wnp.work_id IN (${placeholders})`
+          )
+          .bind(...chunk)
+          .all<WorkNotePersonAssociation & { workId: string }>(),
+      ]);
+
+      // Group categories by workId
+      for (const cat of categoriesResult.results || []) {
+        if (!categoriesByWorkId.has(cat.workId)) {
+          categoriesByWorkId.set(cat.workId, []);
+        }
+        categoriesByWorkId.get(cat.workId)?.push({
+          categoryId: cat.categoryId,
+          name: cat.name,
+          isActive: cat.isActive === 1,
+          createdAt: cat.createdAt,
+        });
       }
-      personsByWorkId.get(person.workId)?.push({
-        id: person.id,
-        workId: person.workId,
-        personId: person.personId,
-        role: person.role,
-        personName: person.personName,
-        currentDept: person.currentDept,
-        currentPosition: person.currentPosition,
-        phoneExt: person.phoneExt,
-      });
+
+      // Group persons by workId
+      for (const person of personsResult.results || []) {
+        if (!personsByWorkId.has(person.workId)) {
+          personsByWorkId.set(person.workId, []);
+        }
+        personsByWorkId.get(person.workId)?.push({
+          id: person.id,
+          workId: person.workId,
+          personId: person.personId,
+          role: person.role,
+          personName: person.personName,
+          currentDept: person.currentDept,
+          currentPosition: person.currentPosition,
+          phoneExt: person.phoneExt,
+        });
+      }
     }
 
     // Map results to work notes
