@@ -164,6 +164,34 @@ describe('useWorkNotesWithStats', () => {
     expect(data?.[0].todoStats.completed).toBe(1);
     expect(data?.[1].todoStats.remaining).toBe(2);
   });
+
+  it('excludes 보류 and 중단 status todos from remaining count', async () => {
+    const workNote = createWorkNote({ id: 'work-1' });
+    vi.mocked(API.getWorkNotes).mockResolvedValue([workNote]);
+
+    const todos = [
+      createTodo({ status: TODO_STATUS.IN_PROGRESS, workNoteId: 'work-1' }),
+      createTodo({ status: TODO_STATUS.ON_HOLD, workNoteId: 'work-1' }),
+      createTodo({ status: TODO_STATUS.STOPPED, workNoteId: 'work-1' }),
+      createTodo({ status: TODO_STATUS.COMPLETED, workNoteId: 'work-1' }),
+    ];
+    vi.mocked(API.getTodos).mockResolvedValue(todos);
+
+    const { result } = renderHookWithClient(() => useWorkNotesWithStats());
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    const data = result.current.data;
+    // 보류/중단 should NOT be counted in remaining or pending
+    expect(data?.[0].todoStats).toEqual({
+      total: 4,
+      completed: 1,
+      remaining: 1, // Only 진행중
+      pending: 0,
+    });
+  });
 });
 
 describe('useWorkNoteFiles', () => {

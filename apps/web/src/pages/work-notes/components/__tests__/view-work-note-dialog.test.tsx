@@ -1,10 +1,11 @@
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { TODO_STATUS } from '@web/constants/todo-status';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useDeleteTodo, useToggleTodo } from '@web/hooks/use-todos';
 import { useUpdateWorkNote } from '@web/hooks/use-work-notes';
-import { createTaskCategory, createWorkNote } from '@web/test/factories';
+import { createTaskCategory, createTodo, createWorkNote } from '@web/test/factories';
 import { render, screen } from '@web/test/setup';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -375,5 +376,57 @@ describe('ViewWorkNoteDialog', () => {
     // Should have both edit and AI enhance buttons
     expect(screen.getByRole('button', { name: '수정' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'AI로 업데이트' })).toBeInTheDocument();
+  });
+
+  it('filters out 보류 and 중단 status todos from display', async () => {
+    const workNote = createWorkNote({
+      id: 'work-filter-test',
+      title: '필터 테스트',
+      content: '내용',
+    });
+
+    const activeTodo = createTodo({
+      id: 'todo-active',
+      title: '진행중 할일',
+      status: TODO_STATUS.IN_PROGRESS,
+      workNoteId: workNote.id,
+    });
+
+    const holdTodo = createTodo({
+      id: 'todo-hold',
+      title: '보류 할일',
+      status: TODO_STATUS.ON_HOLD,
+      workNoteId: workNote.id,
+    });
+
+    const stoppedTodo = createTodo({
+      id: 'todo-stopped',
+      title: '중단 할일',
+      status: TODO_STATUS.STOPPED,
+      workNoteId: workNote.id,
+    });
+
+    mockGetWorkNote.mockResolvedValue(workNote);
+    mockGetTodos.mockResolvedValue([activeTodo, holdTodo, stoppedTodo]);
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    // Wait for data to load
+    await waitFor(() => {
+      expect(mockGetTodos).toHaveBeenCalled();
+    });
+
+    // Only active todos should be rendered (via TodoListItem mock)
+    // Since TodoListItem is mocked, we count the data-testid="todo-list-item" elements
+    await waitFor(() => {
+      const todoItems = screen.getAllByTestId('todo-list-item');
+      // Should only render 1 item (진행중), not 3 (보류/중단 filtered out)
+      expect(todoItems).toHaveLength(1);
+    });
   });
 });
