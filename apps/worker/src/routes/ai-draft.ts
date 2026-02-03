@@ -184,7 +184,7 @@ app.post('/work-notes/:workId/enhance', activeCategoriesMiddleware, async (c) =>
   });
 
   if (!validationResult.success) {
-    return c.json({ error: validationResult.error.errors[0]?.message || 'Invalid request' }, 400);
+    return c.json({ error: validationResult.error.issues[0]?.message || 'Invalid request' }, 400);
   }
 
   const { newContent, generateNewTodos } = validationResult.data;

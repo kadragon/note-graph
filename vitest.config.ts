@@ -18,7 +18,7 @@ export default defineWorkersConfig({
         main: "./apps/worker/src/index.ts",
         miniflare: {
           // Miniflare options for local testing
-          compatibilityDate: "2024-01-01",
+          compatibilityDate: "2025-01-01",
           compatibilityFlags: [
             "nodejs_compat",
             "enable_nodejs_tty_module",
