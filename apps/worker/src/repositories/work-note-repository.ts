@@ -20,6 +20,7 @@ import type {
   UpdateWorkNoteInput,
 } from '../schemas/work-note';
 import { NotFoundError } from '../types/errors';
+import { queryInChunks } from '../utils/db-utils';
 
 const MAX_VERSIONS = 5;
 const D1_BATCH_LIMIT = 100;
@@ -120,23 +121,19 @@ export class WorkNoteRepository {
    * Find multiple work notes by IDs (batch fetch)
    */
   async findByIds(workIds: string[]): Promise<WorkNote[]> {
-    if (workIds.length === 0) {
-      return [];
-    }
-
-    const placeholders = workIds.map(() => '?').join(',');
-    const result = await this.db
-      .prepare(
-        `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, project_id as projectId, created_at as createdAt,
-                updated_at as updatedAt, embedded_at as embeddedAt
-         FROM work_notes
-         WHERE work_id IN (${placeholders})`
-      )
-      .bind(...workIds)
-      .all<WorkNote>();
-
-    return result.results || [];
+    return queryInChunks(workIds, async (chunk, placeholders) => {
+      const result = await this.db
+        .prepare(
+          `SELECT work_id as workId, title, content_raw as contentRaw,
+                  category, project_id as projectId, created_at as createdAt,
+                  updated_at as updatedAt, embedded_at as embeddedAt
+           FROM work_notes
+           WHERE work_id IN (${placeholders})`
+        )
+        .bind(...chunk)
+        .all<WorkNote>();
+      return result.results || [];
+    });
   }
 
   /**
@@ -144,30 +141,28 @@ export class WorkNoteRepository {
    * Returns a map of workId to array of simplified todos for AI reference context
    */
   async findTodosByWorkIds(workIds: string[]): Promise<Map<string, ReferenceTodo[]>> {
-    if (workIds.length === 0) {
-      return new Map();
-    }
-
-    const placeholders = workIds.map(() => '?').join(',');
-    const result = await this.db
-      .prepare(
-        `SELECT work_id as workId, title, description, status, due_date as dueDate
-         FROM todos
-         WHERE work_id IN (${placeholders})
-         ORDER BY due_date ASC NULLS LAST, created_at ASC`
-      )
-      .bind(...workIds)
-      .all<{
-        workId: string;
-        title: string;
-        description: string | null;
-        status: string;
-        dueDate: string | null;
-      }>();
+    const todos = await queryInChunks(workIds, async (chunk, placeholders) => {
+      const result = await this.db
+        .prepare(
+          `SELECT work_id as workId, title, description, status, due_date as dueDate
+           FROM todos
+           WHERE work_id IN (${placeholders})
+           ORDER BY due_date ASC NULLS LAST, created_at ASC`
+        )
+        .bind(...chunk)
+        .all<{
+          workId: string;
+          title: string;
+          description: string | null;
+          status: string;
+          dueDate: string | null;
+        }>();
+      return result.results || [];
+    });
 
     // Group todos by workId
     const todosByWorkId = new Map<string, ReferenceTodo[]>();
-    for (const todo of result.results || []) {
+    for (const todo of todos) {
       if (!todosByWorkId.has(todo.workId)) {
         todosByWorkId.set(todo.workId, []);
       }
@@ -178,7 +173,6 @@ export class WorkNoteRepository {
         dueDate: todo.dueDate,
       });
     }
-
     return todosByWorkId;
   }
 
@@ -187,46 +181,42 @@ export class WorkNoteRepository {
    * Optimized to avoid N+1 queries
    */
   async findByIdsWithDetails(workIds: string[]): Promise<Map<string, WorkNoteDetail>> {
-    if (workIds.length === 0) {
-      return new Map();
-    }
+    if (workIds.length === 0) return new Map();
 
-    const placeholders = workIds.map(() => '?').join(',');
-
-    // Fetch all work notes
-    const workNotesResult = await this.db
-      .prepare(
-        `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, project_id as projectId, created_at as createdAt,
-                updated_at as updatedAt, embedded_at as embeddedAt
-         FROM work_notes
-         WHERE work_id IN (${placeholders})`
-      )
-      .bind(...workIds)
-      .all<WorkNote>();
-
-    const workNotes = workNotesResult.results || [];
-
-    if (workNotes.length === 0) {
-      return new Map();
-    }
-
-    // Fetch all persons in a single query
-    const personsResult = await this.db
-      .prepare(
-        `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                wnp.role, p.name as personName, p.current_dept as currentDept,
-                p.current_position as currentPosition, p.phone_ext as phoneExt
-         FROM work_note_person wnp
-         INNER JOIN persons p ON wnp.person_id = p.person_id
-         WHERE wnp.work_id IN (${placeholders})`
-      )
-      .bind(...workIds)
-      .all<WorkNotePersonAssociation & { workId: string }>();
+    // Fetch work notes and persons in parallel, both chunked
+    const [workNotes, persons] = await Promise.all([
+      queryInChunks(workIds, async (chunk, placeholders) => {
+        const result = await this.db
+          .prepare(
+            `SELECT work_id as workId, title, content_raw as contentRaw,
+                    category, project_id as projectId, created_at as createdAt,
+                    updated_at as updatedAt, embedded_at as embeddedAt
+             FROM work_notes
+             WHERE work_id IN (${placeholders})`
+          )
+          .bind(...chunk)
+          .all<WorkNote>();
+        return result.results || [];
+      }),
+      queryInChunks(workIds, async (chunk, placeholders) => {
+        const result = await this.db
+          .prepare(
+            `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
+                    wnp.role, p.name as personName, p.current_dept as currentDept,
+                    p.current_position as currentPosition, p.phone_ext as phoneExt
+             FROM work_note_person wnp
+             INNER JOIN persons p ON wnp.person_id = p.person_id
+             WHERE wnp.work_id IN (${placeholders})`
+          )
+          .bind(...chunk)
+          .all<WorkNotePersonAssociation & { workId: string }>();
+        return result.results || [];
+      }),
+    ]);
 
     // Group persons by workId
     const personsByWorkId = new Map<string, WorkNotePersonAssociation[]>();
-    for (const person of personsResult.results || []) {
+    for (const person of persons) {
       if (!personsByWorkId.has(person.workId)) {
         personsByWorkId.set(person.workId, []);
       }
@@ -252,7 +242,6 @@ export class WorkNoteRepository {
         categories: [],
       });
     }
-
     return result;
   }
 
@@ -320,32 +309,21 @@ export class WorkNoteRepository {
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<WorkNote>();
 
     const workNotes = result.results || [];
-
-    // Batch fetch categories and persons for all work notes to avoid N+1 queries
     const workIds = workNotes.map((wn) => wn.workId);
 
     if (workIds.length === 0) {
       return [];
     }
 
-    // SQLite has a limit of 999 binding variables, so we chunk the queries
-    const CHUNK_SIZE = 900;
-    const categoriesByWorkId = new Map<string, TaskCategory[]>();
-    const personsByWorkId = new Map<string, WorkNotePersonAssociation[]>();
-
-    // Fetch categories and persons in chunks
-    for (let i = 0; i < workIds.length; i += CHUNK_SIZE) {
-      const chunk = workIds.slice(i, i + CHUNK_SIZE);
-      const placeholders = chunk.map(() => '?').join(',');
-
-      // Fetch categories and persons for this chunk in parallel
-      const [categoriesResult, personsResult] = await Promise.all([
-        this.db
+    // Batch fetch categories and persons in parallel, both chunked
+    const [categories, persons] = await Promise.all([
+      queryInChunks(workIds, async (chunk, placeholders) => {
+        const res = await this.db
           .prepare(
             `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
-           FROM task_categories tc
-           INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
-           WHERE wntc.work_id IN (${placeholders})`
+             FROM task_categories tc
+             INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+             WHERE wntc.work_id IN (${placeholders})`
           )
           .bind(...chunk)
           .all<{
@@ -354,52 +332,56 @@ export class WorkNoteRepository {
             name: string;
             isActive: number;
             createdAt: string;
-          }>(),
-        this.db
+          }>();
+        return res.results || [];
+      }),
+      queryInChunks(workIds, async (chunk, placeholders) => {
+        const res = await this.db
           .prepare(
             `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                  wnp.role, p.name as personName, p.current_dept as currentDept,
-                  p.current_position as currentPosition, p.phone_ext as phoneExt
-           FROM work_note_person wnp
-           INNER JOIN persons p ON wnp.person_id = p.person_id
-           WHERE wnp.work_id IN (${placeholders})`
+                    wnp.role, p.name as personName, p.current_dept as currentDept,
+                    p.current_position as currentPosition, p.phone_ext as phoneExt
+             FROM work_note_person wnp
+             INNER JOIN persons p ON wnp.person_id = p.person_id
+             WHERE wnp.work_id IN (${placeholders})`
           )
           .bind(...chunk)
-          .all<WorkNotePersonAssociation & { workId: string }>(),
-      ]);
+          .all<WorkNotePersonAssociation & { workId: string }>();
+        return res.results || [];
+      }),
+    ]);
 
-      // Group categories by workId
-      for (const cat of categoriesResult.results || []) {
-        if (!categoriesByWorkId.has(cat.workId)) {
-          categoriesByWorkId.set(cat.workId, []);
-        }
-        categoriesByWorkId.get(cat.workId)?.push({
-          categoryId: cat.categoryId,
-          name: cat.name,
-          isActive: cat.isActive === 1,
-          createdAt: cat.createdAt,
-        });
+    // Group by workId
+    const categoriesByWorkId = new Map<string, TaskCategory[]>();
+    for (const cat of categories) {
+      if (!categoriesByWorkId.has(cat.workId)) {
+        categoriesByWorkId.set(cat.workId, []);
       }
-
-      // Group persons by workId
-      for (const person of personsResult.results || []) {
-        if (!personsByWorkId.has(person.workId)) {
-          personsByWorkId.set(person.workId, []);
-        }
-        personsByWorkId.get(person.workId)?.push({
-          id: person.id,
-          workId: person.workId,
-          personId: person.personId,
-          role: person.role,
-          personName: person.personName,
-          currentDept: person.currentDept,
-          currentPosition: person.currentPosition,
-          phoneExt: person.phoneExt,
-        });
-      }
+      categoriesByWorkId.get(cat.workId)?.push({
+        categoryId: cat.categoryId,
+        name: cat.name,
+        isActive: cat.isActive === 1,
+        createdAt: cat.createdAt,
+      });
     }
 
-    // Map results to work notes
+    const personsByWorkId = new Map<string, WorkNotePersonAssociation[]>();
+    for (const person of persons) {
+      if (!personsByWorkId.has(person.workId)) {
+        personsByWorkId.set(person.workId, []);
+      }
+      personsByWorkId.get(person.workId)?.push({
+        id: person.id,
+        workId: person.workId,
+        personId: person.personId,
+        role: person.role,
+        personName: person.personName,
+        currentDept: person.currentDept,
+        currentPosition: person.currentPosition,
+        phoneExt: person.phoneExt,
+      });
+    }
+
     return workNotes.map((workNote) => ({
       ...workNote,
       persons: personsByWorkId.get(workNote.workId) || [],
@@ -443,21 +425,27 @@ export class WorkNoteRepository {
 
     // Add person associations with snapshot of current department and position
     if (data.persons && data.persons.length > 0) {
-      // Fetch current department and position for all persons
+      // Fetch current department and position for all persons (chunked to avoid SQLite limit)
       const personIds = data.persons.map((p) => p.personId);
-      const placeholders = personIds.map(() => '?').join(', ');
-      const personsInfo = await this.db
-        .prepare(
-          `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
-        )
-        .bind(...personIds)
-        .all<{ person_id: string; current_dept: string | null; current_position: string | null }>();
+      const personsInfo = await queryInChunks(personIds, async (chunk, placeholders) => {
+        const result = await this.db
+          .prepare(
+            `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
+          )
+          .bind(...chunk)
+          .all<{
+            person_id: string;
+            current_dept: string | null;
+            current_position: string | null;
+          }>();
+        return result.results || [];
+      });
 
       const personInfoMap = new Map<
         string,
         { currentDept: string | null; currentPosition: string | null }
       >();
-      for (const info of personsInfo.results || []) {
+      for (const info of personsInfo) {
         personInfoMap.set(info.person_id, {
           currentDept: info.current_dept,
           currentPosition: info.current_position,
@@ -636,25 +624,27 @@ export class WorkNoteRepository {
 
       // Add new associations with snapshot of current department and position
       if (data.persons.length > 0) {
-        // Fetch current department and position for all persons
+        // Fetch current department and position for all persons (chunked to avoid SQLite limit)
         const personIds = data.persons.map((p) => p.personId);
-        const placeholders = personIds.map(() => '?').join(', ');
-        const personsInfo = await this.db
-          .prepare(
-            `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
-          )
-          .bind(...personIds)
-          .all<{
-            person_id: string;
-            current_dept: string | null;
-            current_position: string | null;
-          }>();
+        const personsInfo = await queryInChunks(personIds, async (chunk, placeholders) => {
+          const result = await this.db
+            .prepare(
+              `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
+            )
+            .bind(...chunk)
+            .all<{
+              person_id: string;
+              current_dept: string | null;
+              current_position: string | null;
+            }>();
+          return result.results || [];
+        });
 
         const personInfoMap = new Map<
           string,
           { currentDept: string | null; currentPosition: string | null }
         >();
-        for (const info of personsInfo.results || []) {
+        for (const info of personsInfo) {
           personInfoMap.set(info.person_id, {
             currentDept: info.current_dept,
             currentPosition: info.current_position,

@@ -3,6 +3,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
+import { SQL_VAR_LIMIT } from '../utils/db-utils';
 import { FtsSearchService } from './fts-search-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
 import { VectorizeService } from './vectorize-service';
@@ -232,43 +233,46 @@ export class HybridSearchService {
       return new Map();
     }
 
-    // Build SQL with parameter placeholders
-    const placeholders = workIds.map(() => '?').join(',');
-    let sql = `
-      SELECT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
-             wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt
-      FROM work_notes wn
-    `;
-
-    const conditions: string[] = [`wn.work_id IN (${placeholders})`];
-    const params: unknown[] = [...workIds];
-
-    // Apply person and department filters (same logic as FTS search)
-    if (filters?.personId || filters?.deptName) {
-      sql += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
-      sql += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
-
-      if (filters?.personId) {
-        conditions.push('wnp.person_id = ?');
-        params.push(filters.personId);
-      }
-
-      if (filters?.deptName) {
-        conditions.push('p.current_dept = ?');
-        params.push(filters.deptName);
-      }
-    }
-
-    sql += ` WHERE ${conditions.join(' AND ')}`;
-
-    const result = await this.db
-      .prepare(sql)
-      .bind(...params)
-      .all<WorkNote>();
-
     const workNotesMap = new Map<string, WorkNote>();
-    for (const workNote of result.results || []) {
-      workNotesMap.set(workNote.workId, workNote);
+
+    for (let i = 0; i < workIds.length; i += SQL_VAR_LIMIT) {
+      const chunk = workIds.slice(i, i + SQL_VAR_LIMIT);
+      const placeholders = chunk.map(() => '?').join(',');
+
+      let sql = `
+        SELECT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
+               wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt
+        FROM work_notes wn
+      `;
+
+      const conditions: string[] = [`wn.work_id IN (${placeholders})`];
+      const params: unknown[] = [...chunk];
+
+      if (filters?.personId || filters?.deptName) {
+        sql += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
+        sql += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
+
+        if (filters?.personId) {
+          conditions.push('wnp.person_id = ?');
+          params.push(filters.personId);
+        }
+
+        if (filters?.deptName) {
+          conditions.push('p.current_dept = ?');
+          params.push(filters.deptName);
+        }
+      }
+
+      sql += ` WHERE ${conditions.join(' AND ')}`;
+
+      const result = await this.db
+        .prepare(sql)
+        .bind(...params)
+        .all<WorkNote>();
+
+      for (const workNote of result.results || []) {
+        workNotesMap.set(workNote.workId, workNote);
+      }
     }
 
     return workNotesMap;
