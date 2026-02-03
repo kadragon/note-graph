@@ -13,11 +13,29 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 
-// Request access to files created by this app and read-only calendar access
+// Request full access to Google Drive (needed to see files added directly to Drive folders)
+// and read-only calendar access
 const SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/calendar.readonly',
 ];
+
+// Required scope for full Drive access (used to detect if re-auth is needed)
+const REQUIRED_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+
+/**
+ * Check if the stored scope includes the required full drive scope.
+ * Returns true if full 'drive' scope is present (regardless of whether 'drive.file' is also present).
+ * This handles the case where Google returns both scopes after re-auth.
+ */
+export function hasSufficientDriveScope(scope: string | null | undefined): boolean {
+  if (!scope) return false;
+  const scopes = scope.split(' ');
+  // Full drive scope is sufficient - if present, user has full access
+  // even if drive.file is also in the scope list (can happen after re-auth)
+  // Using explicit equality check (===) to avoid CodeQL false positive about URL substring matching
+  return scopes.some((s) => s === REQUIRED_DRIVE_SCOPE);
+}
 
 export interface OAuthTokens {
   accessToken: string;

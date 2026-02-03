@@ -5,7 +5,7 @@
 import { Hono } from 'hono';
 import { authMiddleware, getAuthUser } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
-import { GoogleOAuthService } from '../services/google-oauth-service';
+import { GoogleOAuthService, hasSufficientDriveScope } from '../services/google-oauth-service';
 import type { AppContext } from '../types/context';
 
 const authGoogle = new Hono<AppContext>();
@@ -90,13 +90,17 @@ authGoogle.get('/status', async (c) => {
   c.header('X-Google-Drive-Configured', isConfigured ? 'true' : 'false');
 
   if (!tokens) {
-    return c.json({ connected: false });
+    return c.json({ connected: false, needsReauth: false });
   }
+
+  // Check if stored token has sufficient scope (full drive, not just drive.file)
+  const needsReauth = !hasSufficientDriveScope(tokens.scope);
 
   return c.json({
     connected: true,
     connectedAt: tokens.createdAt,
     scope: tokens.scope,
+    needsReauth,
   });
 });
 

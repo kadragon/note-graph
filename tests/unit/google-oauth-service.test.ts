@@ -1,5 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import { GoogleOAuthService } from '@worker/services/google-oauth-service';
+import { GoogleOAuthService, hasSufficientDriveScope } from '@worker/services/google-oauth-service';
 import type { Env } from '@worker/types/env';
 import { DomainError } from '@worker/types/errors';
 import { describe, expect, it, vi } from 'vitest';
@@ -24,7 +24,7 @@ describe('GoogleOAuthService', () => {
       expect(scope).toContain('https://www.googleapis.com/auth/calendar.readonly');
     });
 
-    it('includes drive.file scope for existing Drive integration', () => {
+    it('includes drive scope for full Drive access', () => {
       const env = createEnv();
       const service = new GoogleOAuthService(env, {} as D1Database);
 
@@ -32,10 +32,10 @@ describe('GoogleOAuthService', () => {
       const params = new URL(url).searchParams;
       const scope = params.get('scope') ?? '';
 
-      expect(scope).toContain('https://www.googleapis.com/auth/drive.file');
+      expect(scope).toContain('https://www.googleapis.com/auth/drive');
     });
 
-    it('includes both drive.file and calendar.readonly scopes', () => {
+    it('includes both drive and calendar.readonly scopes', () => {
       const env = createEnv();
       const service = new GoogleOAuthService(env, {} as D1Database);
 
@@ -43,8 +43,51 @@ describe('GoogleOAuthService', () => {
       const params = new URL(url).searchParams;
       const scope = params.get('scope') ?? '';
 
-      expect(scope).toContain('drive.file');
+      expect(scope).toContain('drive');
       expect(scope).toContain('calendar.readonly');
+    });
+  });
+
+  describe('hasSufficientDriveScope', () => {
+    it('returns true for full drive scope', () => {
+      expect(
+        hasSufficientDriveScope(
+          'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.readonly'
+        )
+      ).toBe(true);
+    });
+
+    it('returns false for limited drive.file scope', () => {
+      expect(
+        hasSufficientDriveScope(
+          'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.readonly'
+        )
+      ).toBe(false);
+    });
+
+    it('returns false for null scope', () => {
+      expect(hasSufficientDriveScope(null)).toBe(false);
+    });
+
+    it('returns false for undefined scope', () => {
+      expect(hasSufficientDriveScope(undefined)).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      expect(hasSufficientDriveScope('')).toBe(false);
+    });
+
+    it('returns true for drive scope only', () => {
+      expect(hasSufficientDriveScope('https://www.googleapis.com/auth/drive')).toBe(true);
+    });
+
+    it('returns true when both drive and drive.file scopes are present (re-auth scenario)', () => {
+      // Google may return both scopes after re-auth if user previously had drive.file
+      expect(
+        hasSufficientDriveScope(
+          'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.readonly'
+        )
+      ).toBe(true);
     });
   });
 

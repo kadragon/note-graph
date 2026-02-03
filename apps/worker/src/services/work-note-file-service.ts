@@ -29,6 +29,7 @@ const ALLOWED_MIME_TYPES = [
   // HWP (Hancom Office)
   'application/x-hwp',
   'application/haansofthwp', // HWP 5.x
+  'application/vnd.hancom.hwp', // HWP (another common MIME type)
   'application/vnd.hancom.hwpx', // HWP 2014+
   // Excel
   'application/vnd.ms-excel', // .xls
