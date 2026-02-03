@@ -32,8 +32,9 @@ export function hasSufficientDriveScope(scope: string | null | undefined): boole
   if (!scope) return false;
   const scopes = scope.split(' ');
   // Must have full drive scope, not the limited drive.file scope
-  const hasFullDrive = scopes.includes(REQUIRED_DRIVE_SCOPE);
-  const hasLimitedDrive = scopes.includes(LIMITED_DRIVE_SCOPE);
+  // Using explicit equality check (===) to avoid CodeQL false positive about URL substring matching
+  const hasFullDrive = scopes.some((s) => s === REQUIRED_DRIVE_SCOPE);
+  const hasLimitedDrive = scopes.some((s) => s === LIMITED_DRIVE_SCOPE);
   return hasFullDrive && !hasLimitedDrive;
 }
 
