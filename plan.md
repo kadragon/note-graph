@@ -1,6 +1,6 @@
 # Plan
 
-No active tasks.
+- [ ] Refactor remaining WorkNoteRepository queries (findByIds, findTodosByWorkIds, findByIdsWithDetails) to use `json_each` instead of chunked `IN (...)` to avoid SQL variable overflow.
 
 ---
 

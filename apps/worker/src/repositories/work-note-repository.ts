@@ -315,41 +315,38 @@ export class WorkNoteRepository {
       return [];
     }
 
-    // Batch fetch categories and persons in parallel, both chunked
-    const [categories, persons] = await Promise.all([
-      queryInChunks(workIds, async (chunk, placeholders) => {
-        const res = await this.db
-          .prepare(
-            `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
-             FROM task_categories tc
-             INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
-             WHERE wntc.work_id IN (${placeholders})`
-          )
-          .bind(...chunk)
-          .all<{
-            workId: string;
-            categoryId: string;
-            name: string;
-            isActive: number;
-            createdAt: string;
-          }>();
-        return res.results || [];
-      }),
-      queryInChunks(workIds, async (chunk, placeholders) => {
-        const res = await this.db
-          .prepare(
-            `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                    wnp.role, p.name as personName, p.current_dept as currentDept,
-                    p.current_position as currentPosition, p.phone_ext as phoneExt
-             FROM work_note_person wnp
-             INNER JOIN persons p ON wnp.person_id = p.person_id
-             WHERE wnp.work_id IN (${placeholders})`
-          )
-          .bind(...chunk)
-          .all<WorkNotePersonAssociation & { workId: string }>();
-        return res.results || [];
-      }),
+    // Batch fetch categories and persons in parallel using json_each to avoid SQL variable limits
+    const workIdsJson = JSON.stringify(workIds);
+    const [categoriesResult, personsResult] = await Promise.all([
+      this.db
+        .prepare(
+          `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
+           FROM task_categories tc
+           INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+           WHERE wntc.work_id IN (SELECT value FROM json_each(?))`
+        )
+        .bind(workIdsJson)
+        .all<{
+          workId: string;
+          categoryId: string;
+          name: string;
+          isActive: number;
+          createdAt: string;
+        }>(),
+      this.db
+        .prepare(
+          `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
+                  wnp.role, p.name as personName, p.current_dept as currentDept,
+                  p.current_position as currentPosition, p.phone_ext as phoneExt
+           FROM work_note_person wnp
+           INNER JOIN persons p ON wnp.person_id = p.person_id
+           WHERE wnp.work_id IN (SELECT value FROM json_each(?))`
+        )
+        .bind(workIdsJson)
+        .all<WorkNotePersonAssociation & { workId: string }>(),
     ]);
+    const categories = categoriesResult.results || [];
+    const persons = personsResult.results || [];
 
     // Group by workId
     const categoriesByWorkId = new Map<string, TaskCategory[]>();
