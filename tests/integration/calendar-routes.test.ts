@@ -67,7 +67,7 @@ describe('Calendar API Routes', () => {
           'test-refresh-token',
           'Bearer',
           new Date(Date.now() + 3600000).toISOString(),
-          'https://www.googleapis.com/auth/drive.file' // No calendar scope
+          'https://www.googleapis.com/auth/drive' // No calendar scope
         )
         .run();
 

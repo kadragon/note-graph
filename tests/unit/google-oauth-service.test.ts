@@ -24,7 +24,7 @@ describe('GoogleOAuthService', () => {
       expect(scope).toContain('https://www.googleapis.com/auth/calendar.readonly');
     });
 
-    it('includes drive.file scope for existing Drive integration', () => {
+    it('includes drive scope for full Drive access', () => {
       const env = createEnv();
       const service = new GoogleOAuthService(env, {} as D1Database);
 
@@ -32,10 +32,10 @@ describe('GoogleOAuthService', () => {
       const params = new URL(url).searchParams;
       const scope = params.get('scope') ?? '';
 
-      expect(scope).toContain('https://www.googleapis.com/auth/drive.file');
+      expect(scope).toContain('https://www.googleapis.com/auth/drive');
     });
 
-    it('includes both drive.file and calendar.readonly scopes', () => {
+    it('includes both drive and calendar.readonly scopes', () => {
       const env = createEnv();
       const service = new GoogleOAuthService(env, {} as D1Database);
 
@@ -43,7 +43,7 @@ describe('GoogleOAuthService', () => {
       const params = new URL(url).searchParams;
       const scope = params.get('scope') ?? '';
 
-      expect(scope).toContain('drive.file');
+      expect(scope).toContain('drive');
       expect(scope).toContain('calendar.readonly');
     });
   });

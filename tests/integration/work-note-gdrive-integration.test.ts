@@ -71,7 +71,7 @@ describe('Work Note Google Drive Integration', () => {
         'refresh-token',
         'Bearer',
         expiresAt,
-        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive',
         now,
         now
       )
