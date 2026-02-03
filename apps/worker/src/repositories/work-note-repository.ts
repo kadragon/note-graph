@@ -311,8 +311,6 @@ export class WorkNoteRepository {
     const workNotes = result.results || [];
     const workIds = workNotes.map((wn) => wn.workId);
 
-    console.log(`[WorkNoteRepository.findAll] workIds count: ${workIds.length}`);
-
     if (workIds.length === 0) {
       return [];
     }
