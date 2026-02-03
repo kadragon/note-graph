@@ -80,6 +80,15 @@ describe('GoogleOAuthService', () => {
     it('returns true for drive scope only', () => {
       expect(hasSufficientDriveScope('https://www.googleapis.com/auth/drive')).toBe(true);
     });
+
+    it('returns true when both drive and drive.file scopes are present (re-auth scenario)', () => {
+      // Google may return both scopes after re-auth if user previously had drive.file
+      expect(
+        hasSufficientDriveScope(
+          'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.readonly'
+        )
+      ).toBe(true);
+    });
   });
 
   describe('refreshAccessToken', () => {

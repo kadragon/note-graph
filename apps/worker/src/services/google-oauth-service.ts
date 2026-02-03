@@ -22,20 +22,19 @@ const SCOPES = [
 
 // Required scope for full Drive access (used to detect if re-auth is needed)
 const REQUIRED_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
-const LIMITED_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 /**
- * Check if the stored scope includes the required full drive scope
- * (not just the limited drive.file scope)
+ * Check if the stored scope includes the required full drive scope.
+ * Returns true if full 'drive' scope is present (regardless of whether 'drive.file' is also present).
+ * This handles the case where Google returns both scopes after re-auth.
  */
 export function hasSufficientDriveScope(scope: string | null | undefined): boolean {
   if (!scope) return false;
   const scopes = scope.split(' ');
-  // Must have full drive scope, not the limited drive.file scope
+  // Full drive scope is sufficient - if present, user has full access
+  // even if drive.file is also in the scope list (can happen after re-auth)
   // Using explicit equality check (===) to avoid CodeQL false positive about URL substring matching
-  const hasFullDrive = scopes.some((s) => s === REQUIRED_DRIVE_SCOPE);
-  const hasLimitedDrive = scopes.some((s) => s === LIMITED_DRIVE_SCOPE);
-  return hasFullDrive && !hasLimitedDrive;
+  return scopes.some((s) => s === REQUIRED_DRIVE_SCOPE);
 }
 
 export interface OAuthTokens {
