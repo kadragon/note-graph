@@ -20,6 +20,23 @@ const SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
 ];
 
+// Required scope for full Drive access (used to detect if re-auth is needed)
+const REQUIRED_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+const LIMITED_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+/**
+ * Check if the stored scope includes the required full drive scope
+ * (not just the limited drive.file scope)
+ */
+export function hasSufficientDriveScope(scope: string | null | undefined): boolean {
+  if (!scope) return false;
+  const scopes = scope.split(' ');
+  // Must have full drive scope, not the limited drive.file scope
+  const hasFullDrive = scopes.includes(REQUIRED_DRIVE_SCOPE);
+  const hasLimitedDrive = scopes.includes(LIMITED_DRIVE_SCOPE);
+  return hasFullDrive && !hasLimitedDrive;
+}
+
 export interface OAuthTokens {
   accessToken: string;
   refreshToken: string;

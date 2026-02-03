@@ -130,10 +130,15 @@ export default function Sidebar() {
   } = useGoogleDriveConfigStatus();
   const isDriveConnected = driveStatus?.connected ?? false;
   const isCalendarConnected = driveStatus?.calendarConnected ?? false;
+  const needsReauth = driveStatus?.needsReauth ?? false;
 
   const handleGoogleReconnect = async () => {
     const nextStatus = await refreshDriveStatus();
-    if (!nextStatus.data?.connected || !nextStatus.data?.calendarConnected) {
+    if (
+      !nextStatus.data?.connected ||
+      !nextStatus.data?.calendarConnected ||
+      nextStatus.data?.needsReauth
+    ) {
       window.location.href = GOOGLE_AUTH_URL;
     }
   };
@@ -246,12 +251,18 @@ export default function Sidebar() {
             <div
               className={cn(
                 'flex items-center gap-2 text-xs',
-                isDriveConnected ? 'text-emerald-600 font-medium' : 'text-amber-600'
+                isDriveConnected && !needsReauth ? 'text-emerald-600 font-medium' : 'text-amber-600'
               )}
               data-testid="drive-connection-badge"
             >
               <Cloud className="h-3 w-3" />
-              <span>{isDriveConnected ? 'Drive 연결됨' : 'Drive 미연결'}</span>
+              <span>
+                {!isDriveConnected
+                  ? 'Drive 미연결'
+                  : needsReauth
+                    ? 'Drive 재연결 필요'
+                    : 'Drive 연결됨'}
+              </span>
             </div>
 
             <div
@@ -272,7 +283,7 @@ export default function Sidebar() {
               size="sm"
               className={cn(
                 'w-full justify-start h-7 text-xs',
-                isDriveConnected && isCalendarConnected
+                isDriveConnected && isCalendarConnected && !needsReauth
                   ? 'text-emerald-600 hover:text-emerald-700'
                   : 'text-amber-600'
               )}
@@ -281,14 +292,20 @@ export default function Sidebar() {
               title={
                 !configured
                   ? 'Google OAuth 설정이 필요합니다'
-                  : isDriveConnected && isCalendarConnected
-                    ? '연결 상태 확인'
-                    : 'Google OAuth 연결하기'
+                  : needsReauth
+                    ? 'Drive 권한 업데이트를 위해 재연결이 필요합니다'
+                    : isDriveConnected && isCalendarConnected
+                      ? '연결 상태 확인'
+                      : 'Google OAuth 연결하기'
               }
               data-testid="google-connect-button"
             >
               <ExternalLink className="h-3 w-3 mr-2" />
-              {isDriveConnected && isCalendarConnected ? '연결 확인' : '연결하기'}
+              {needsReauth
+                ? '재연결 필요'
+                : isDriveConnected && isCalendarConnected
+                  ? '연결 확인'
+                  : '연결하기'}
             </Button>
 
             <Button

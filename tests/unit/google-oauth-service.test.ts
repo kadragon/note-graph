@@ -1,5 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import { GoogleOAuthService } from '@worker/services/google-oauth-service';
+import { GoogleOAuthService, hasSufficientDriveScope } from '@worker/services/google-oauth-service';
 import type { Env } from '@worker/types/env';
 import { DomainError } from '@worker/types/errors';
 import { describe, expect, it, vi } from 'vitest';
@@ -45,6 +45,40 @@ describe('GoogleOAuthService', () => {
 
       expect(scope).toContain('drive');
       expect(scope).toContain('calendar.readonly');
+    });
+  });
+
+  describe('hasSufficientDriveScope', () => {
+    it('returns true for full drive scope', () => {
+      expect(
+        hasSufficientDriveScope(
+          'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.readonly'
+        )
+      ).toBe(true);
+    });
+
+    it('returns false for limited drive.file scope', () => {
+      expect(
+        hasSufficientDriveScope(
+          'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.readonly'
+        )
+      ).toBe(false);
+    });
+
+    it('returns false for null scope', () => {
+      expect(hasSufficientDriveScope(null)).toBe(false);
+    });
+
+    it('returns false for undefined scope', () => {
+      expect(hasSufficientDriveScope(undefined)).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      expect(hasSufficientDriveScope('')).toBe(false);
+    });
+
+    it('returns true for drive scope only', () => {
+      expect(hasSufficientDriveScope('https://www.googleapis.com/auth/drive')).toBe(true);
     });
   });
 

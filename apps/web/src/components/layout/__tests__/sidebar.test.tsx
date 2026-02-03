@@ -142,4 +142,58 @@ describe('sidebar component', () => {
     expect(API.disconnectGoogle).toHaveBeenCalled();
     expect(refetch).toHaveBeenCalled();
   });
+
+  it('shows reauth required when needsReauth is true', () => {
+    vi.mocked(useQuery).mockReturnValue({
+      data: { email: 'test@example.com' },
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as unknown as ReturnType<typeof useQuery>);
+
+    vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
+      configured: true,
+      data: { connected: true, calendarConnected: true, needsReauth: true },
+      refetch: vi.fn(),
+      isFetching: false,
+    } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
+
+    render(<Sidebar />);
+
+    expect(screen.getByTestId('drive-connection-badge')).toHaveTextContent('Drive 재연결 필요');
+    expect(screen.getByTestId('google-connect-button')).toHaveTextContent('재연결 필요');
+  });
+
+  it('redirects to auth when needsReauth is true and connect clicked', async () => {
+    const user = userEvent.setup();
+    const refetch = vi
+      .fn()
+      .mockResolvedValue({ data: { connected: true, calendarConnected: true, needsReauth: true } });
+
+    vi.mocked(useQuery).mockReturnValue({
+      data: { email: 'test@example.com' },
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as unknown as ReturnType<typeof useQuery>);
+
+    vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
+      configured: true,
+      data: { connected: true, calendarConnected: true, needsReauth: true },
+      refetch,
+      isFetching: false,
+    } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
+
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, href: '' },
+    });
+
+    render(<Sidebar />);
+
+    await user.click(screen.getByTestId('google-connect-button'));
+
+    expect(refetch).toHaveBeenCalled();
+    expect(window.location.href).toBe('/api/auth/google/authorize');
+  });
 });
