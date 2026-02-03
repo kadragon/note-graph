@@ -20,29 +20,10 @@ import type {
   UpdateWorkNoteInput,
 } from '../schemas/work-note';
 import { NotFoundError } from '../types/errors';
+import { queryInChunks } from '../utils/db-utils';
 
 const MAX_VERSIONS = 5;
 const D1_BATCH_LIMIT = 100;
-const SQL_VAR_LIMIT = 900; // SQLite limit is 999, use 900 for safety
-
-/**
- * Execute a query function in chunks to avoid SQLite's 999 variable limit.
- * Collects results from all chunks into a single array.
- */
-async function queryInChunks<T, R>(
-  items: T[],
-  queryFn: (chunk: T[], placeholders: string) => Promise<R[]>
-): Promise<R[]> {
-  if (items.length === 0) return [];
-
-  const results: R[] = [];
-  for (let i = 0; i < items.length; i += SQL_VAR_LIMIT) {
-    const chunk = items.slice(i, i + SQL_VAR_LIMIT);
-    const placeholders = chunk.map(() => '?').join(',');
-    results.push(...(await queryFn(chunk, placeholders)));
-  }
-  return results;
-}
 
 export class WorkNoteRepository {
   constructor(private db: D1Database) {}
@@ -444,21 +425,27 @@ export class WorkNoteRepository {
 
     // Add person associations with snapshot of current department and position
     if (data.persons && data.persons.length > 0) {
-      // Fetch current department and position for all persons
+      // Fetch current department and position for all persons (chunked to avoid SQLite limit)
       const personIds = data.persons.map((p) => p.personId);
-      const placeholders = personIds.map(() => '?').join(', ');
-      const personsInfo = await this.db
-        .prepare(
-          `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
-        )
-        .bind(...personIds)
-        .all<{ person_id: string; current_dept: string | null; current_position: string | null }>();
+      const personsInfo = await queryInChunks(personIds, async (chunk, placeholders) => {
+        const result = await this.db
+          .prepare(
+            `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
+          )
+          .bind(...chunk)
+          .all<{
+            person_id: string;
+            current_dept: string | null;
+            current_position: string | null;
+          }>();
+        return result.results || [];
+      });
 
       const personInfoMap = new Map<
         string,
         { currentDept: string | null; currentPosition: string | null }
       >();
-      for (const info of personsInfo.results || []) {
+      for (const info of personsInfo) {
         personInfoMap.set(info.person_id, {
           currentDept: info.current_dept,
           currentPosition: info.current_position,
@@ -637,25 +624,27 @@ export class WorkNoteRepository {
 
       // Add new associations with snapshot of current department and position
       if (data.persons.length > 0) {
-        // Fetch current department and position for all persons
+        // Fetch current department and position for all persons (chunked to avoid SQLite limit)
         const personIds = data.persons.map((p) => p.personId);
-        const placeholders = personIds.map(() => '?').join(', ');
-        const personsInfo = await this.db
-          .prepare(
-            `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
-          )
-          .bind(...personIds)
-          .all<{
-            person_id: string;
-            current_dept: string | null;
-            current_position: string | null;
-          }>();
+        const personsInfo = await queryInChunks(personIds, async (chunk, placeholders) => {
+          const result = await this.db
+            .prepare(
+              `SELECT person_id, current_dept, current_position FROM persons WHERE person_id IN (${placeholders})`
+            )
+            .bind(...chunk)
+            .all<{
+              person_id: string;
+              current_dept: string | null;
+              current_position: string | null;
+            }>();
+          return result.results || [];
+        });
 
         const personInfoMap = new Map<
           string,
           { currentDept: string | null; currentPosition: string | null }
         >();
-        for (const info of personsInfo.results || []) {
+        for (const info of personsInfo) {
           personInfoMap.set(info.person_id, {
             currentDept: info.current_dept,
             currentPosition: info.current_position,

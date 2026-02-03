@@ -3,9 +3,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
-
-const SQL_VAR_LIMIT = 900; // SQLite limit is 999, use 900 for safety
-
+import { SQL_VAR_LIMIT } from '../utils/db-utils';
 import { FtsSearchService } from './fts-search-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
 import { VectorizeService } from './vectorize-service';
