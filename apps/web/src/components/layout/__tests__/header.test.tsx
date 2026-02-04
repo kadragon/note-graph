@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Header from '../header';
 
+vi.mock('../top-menu', () => ({
+  default: () => <div data-testid="top-menu" />,
+}));
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
@@ -39,6 +43,12 @@ describe('header component', () => {
     render(<Header />);
 
     expect(screen.getByPlaceholderText('검색... (⌘/Ctrl+K)')).toBeInTheDocument();
+  });
+
+  it('renders the top menu inside the header', () => {
+    render(<Header />);
+
+    expect(screen.getByTestId('top-menu')).toBeInTheDocument();
   });
 
   it('navigates to search page on Enter with query', async () => {
