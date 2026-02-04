@@ -1,10 +1,15 @@
 import userEvent from '@testing-library/user-event';
+import { toast } from '@web/hooks/use-toast';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
 import { render, screen } from '@web/test/setup';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import TopMenu from '../top-menu';
+
+vi.mock('@web/hooks/use-toast', () => ({
+  toast: vi.fn(),
+}));
 
 vi.mock('@web/hooks/use-work-notes', () => ({
   useGoogleDriveConfigStatus: vi.fn(),
@@ -98,5 +103,27 @@ describe('top-menu', () => {
 
     expect(API.disconnectGoogle).toHaveBeenCalled();
     expect(refetch).toHaveBeenCalled();
+  });
+
+  it('shows error toast when disconnect fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(API.disconnectGoogle).mockRejectedValue(new Error('Network error'));
+
+    vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
+      configured: true,
+      data: { connected: true, calendarConnected: true },
+      refetch: vi.fn(),
+      isFetching: false,
+    } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
+
+    render(<TopMenu />);
+
+    await user.click(screen.getByTestId('google-disconnect-button'));
+
+    expect(toast).toHaveBeenCalledWith({
+      title: '연결 해제 실패',
+      description: 'Google 연결 해제 중 오류가 발생했습니다.',
+      variant: 'destructive',
+    });
   });
 });

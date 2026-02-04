@@ -1,14 +1,22 @@
 import { Button } from '@web/components/ui/button';
+import { toast } from '@web/hooks/use-toast';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
 import { cn } from '@web/lib/utils';
-import { Calendar, CheckCircle2, Cloud, Settings2 } from 'lucide-react';
+import { Calendar, Cloud, Settings2 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const navItems = [
   { path: '/', label: '대시보드' },
+  { path: '/statistics', label: '통계' },
   { path: '/work-notes', label: '업무노트' },
+  { path: '/task-categories', label: '업무 구분' },
+  { path: '/projects', label: '프로젝트' },
   { path: '/persons', label: '사람 관리' },
+  { path: '/departments', label: '부서 관리' },
+  { path: '/search', label: '검색' },
+  { path: '/rag', label: 'AI 챗봇' },
+  { path: '/vector-store', label: '벡터 스토어' },
 ];
 
 const GOOGLE_AUTH_URL = '/api/auth/google/authorize';
@@ -36,8 +44,16 @@ export default function TopMenu() {
   };
 
   const handleGoogleDisconnect = async () => {
-    await API.disconnectGoogle();
-    await refreshDriveStatus();
+    try {
+      await API.disconnectGoogle();
+      await refreshDriveStatus();
+    } catch {
+      toast({
+        title: '연결 해제 실패',
+        description: 'Google 연결 해제 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -48,7 +64,12 @@ export default function TopMenu() {
             key={item.path}
             to={item.path}
             end={item.path === '/'}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground"
+            className={({ isActive }) =>
+              cn(
+                'text-sm font-medium',
+                isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+              )
+            }
           >
             {item.label}
           </NavLink>
@@ -79,19 +100,6 @@ export default function TopMenu() {
               isCalendarConnected ? 'text-emerald-600' : 'text-muted-foreground'
             )}
             aria-label={isCalendarConnected ? '캘린더 연결됨' : '캘린더 미연결'}
-          />
-          <CheckCircle2
-            className={cn(
-              'h-4 w-4',
-              isDriveConnected && isCalendarConnected && !needsReauth
-                ? 'text-emerald-600'
-                : 'text-muted-foreground'
-            )}
-            aria-label={
-              isDriveConnected && isCalendarConnected && !needsReauth
-                ? '연결 상태 정상'
-                : '연결 상태 확인 필요'
-            }
           />
         </div>
         <Button
