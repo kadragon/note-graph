@@ -60,6 +60,9 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
     if (normalizedMime === 'image/jpg') {
       normalizedMime = 'image/jpeg';
     }
+    if (normalizedMime === 'application/hwp+zip') {
+      normalizedMime = 'application/vnd.hancom.hwpx';
+    }
 
     const extension = originalName.toLowerCase().split('.').pop();
 

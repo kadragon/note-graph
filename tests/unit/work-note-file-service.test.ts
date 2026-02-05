@@ -310,7 +310,7 @@ describe('WorkNoteFileService', () => {
       uploadedBy: userEmail,
     });
 
-    expect(result.fileType).toBe('application/hwp+zip');
+    expect(result.fileType).toBe('application/vnd.hancom.hwpx');
   });
 
   it('uploads Excel file successfully', async () => {
