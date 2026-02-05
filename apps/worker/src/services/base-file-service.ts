@@ -7,7 +7,7 @@ import type { D1Database, R2Bucket, R2Object, R2ObjectBody } from '@cloudflare/w
 import { BadRequestError, NotFoundError } from '../types/errors';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-const GENERIC_MIME_TYPES = ['', 'application/octet-stream'];
+const GENERIC_MIME_TYPES = ['', 'application/octet-stream', 'application/zip'];
 
 export interface BaseFileRecord {
   fileId: string;
