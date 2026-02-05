@@ -782,6 +782,28 @@ describe('WorkNoteFileService', () => {
       expect(result.files).toEqual([]);
     });
 
+    it('returns empty files when Drive folder id is missing', async () => {
+      await insertWorkNote('WORK-EMPTY', '2023-05-01T00:00:00.000Z');
+
+      await baseEnv.DB.prepare(
+        `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
+         VALUES (?, ?, ?, ?)`
+      )
+        .bind('WORK-EMPTY', '', '', new Date().toISOString())
+        .run();
+
+      const result = await service.listFilesFromDrive('WORK-EMPTY', userEmail);
+
+      expect(result.googleDriveConfigured).toBe(true);
+      expect(result.driveFolderId).toBeNull();
+      expect(result.driveFolderLink).toBeNull();
+      expect(result.files).toEqual([]);
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        expect.stringContaining('/files?'),
+        expect.anything()
+      );
+    });
+
     it('sets hasLegacyFiles when R2 files exist', async () => {
       await insertWorkNote('WORK-789', '2023-05-01T00:00:00.000Z');
 

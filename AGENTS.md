@@ -133,3 +133,14 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - 2026-01-16: Added Google Drive status check UI in attachments with a manual refresh + re-auth flow and a dedicated test for the button behavior.
 - 2026-01-16: Moved Google Drive status UI from work note attachments to sidebar user section. Added `useGoogleDriveConfigStatus` hook and updated `API.getGoogleDriveStatus` to check for configuration header. Updated tests.
 - 2026-01-31: Created `createStandardMutation` factory at `apps/web/src/lib/hooks/create-standard-mutation.ts` to reduce mutation hook boilerplate from ~25 lines to ~5 lines. Supports static and dynamic (function-based) invalidateKeys. Refactored 18 mutation hooks across 6 files (use-persons, use-departments, use-projects, use-work-notes, use-task-categories, use-pdf). Kept manual implementations for hooks with optimistic updates, conditional messages, or complex logic.
+
+## 2026-02-05 Drive Folder Listing Guard
+
+### Decision/Learning
+Treat empty or missing `gdrive_folder_id` as unlinked and skip Drive listing.
+
+### Reason
+Some folder records can exist without a valid ID, and listing with an empty ID triggers Drive errors.
+
+### Impact
+Normalize folder IDs before listing and return `driveFolderId`/`driveFolderLink` as null when missing.

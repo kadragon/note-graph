@@ -479,22 +479,26 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
 
     const hasLegacyFiles = (legacyCount?.count ?? 0) > 0;
 
+    const normalizedFolderId = folderRecord?.gdriveFolderId?.trim() ?? '';
+    const hasDriveFolderId = normalizedFolderId.length > 0;
+    const driveFolderId = hasDriveFolderId ? normalizedFolderId : null;
+    const driveFolderLink = hasDriveFolderId
+      ? (folderRecord?.gdriveFolderLink?.trim() ?? null)
+      : null;
+
     // If no Drive folder or Drive not configured, return empty list
-    if (!folderRecord || !googleDriveConfigured || !this.driveService) {
+    if (!driveFolderId || !googleDriveConfigured || !this.driveService) {
       return {
         files: [],
-        driveFolderId: folderRecord?.gdriveFolderId ?? null,
-        driveFolderLink: folderRecord?.gdriveFolderLink ?? null,
+        driveFolderId,
+        driveFolderLink,
         googleDriveConfigured,
         hasLegacyFiles,
       };
     }
 
     // List files from Drive folder
-    const driveFiles = await this.driveService.listFilesInFolder(
-      userEmail,
-      folderRecord.gdriveFolderId
-    );
+    const driveFiles = await this.driveService.listFilesInFolder(userEmail, driveFolderId);
 
     // Map to DriveFileListItem format (convert size from string to number)
     const files: DriveFileListItem[] = driveFiles.map((f) => ({
@@ -508,8 +512,8 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
 
     return {
       files,
-      driveFolderId: folderRecord.gdriveFolderId,
-      driveFolderLink: folderRecord.gdriveFolderLink,
+      driveFolderId,
+      driveFolderLink,
       googleDriveConfigured,
       hasLegacyFiles,
     };
