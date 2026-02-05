@@ -19,6 +19,7 @@ import {
   Tag,
   Users,
 } from 'lucide-react';
+import * as React from 'react';
 import { NavLink } from 'react-router-dom';
 
 type NavItem = {
@@ -136,7 +137,7 @@ export default function TopMenu() {
   );
 }
 
-function NavLinkItem({ item }: { item: NavItem }) {
+const NavLinkItem = React.memo(function NavLinkItem({ item }: { item: NavItem }) {
   const Icon = item.icon;
   return (
     <NavLink
@@ -167,4 +168,4 @@ function NavLinkItem({ item }: { item: NavItem }) {
       </span>
     </NavLink>
   );
-}
+});
