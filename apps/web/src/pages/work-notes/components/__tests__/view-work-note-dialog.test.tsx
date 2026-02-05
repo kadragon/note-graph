@@ -179,7 +179,12 @@ describe('ViewWorkNoteDialog', () => {
     });
 
     // Mock detail fetch to return the work note
-    mockGetWorkNote.mockResolvedValue(workNote);
+    const detailedWorkNote = {
+      ...workNote,
+      relatedWorkNotes: [...(workNote.relatedWorkNotes || [])],
+    };
+
+    mockGetWorkNote.mockResolvedValue(detailedWorkNote);
 
     const user = userEvent.setup();
 
@@ -216,7 +221,12 @@ describe('ViewWorkNoteDialog', () => {
     });
 
     // Mock detail fetch to return the work note
-    mockGetWorkNote.mockResolvedValue(workNote);
+    const detailedWorkNote = {
+      ...workNote,
+      relatedWorkNotes: [...(workNote.relatedWorkNotes || [])],
+    };
+
+    mockGetWorkNote.mockResolvedValue(detailedWorkNote);
 
     const user = userEvent.setup();
 
@@ -230,6 +240,52 @@ describe('ViewWorkNoteDialog', () => {
 
     expect(screen.getByRole('checkbox', { name: /레거시/ })).toBeDisabled();
     expect(screen.getByText('(비활성)')).toBeInTheDocument();
+  });
+
+  it('removes referenced work notes in edit mode', async () => {
+    const workNote = createWorkNote({
+      id: 'work-1',
+      title: '업무노트',
+      content: '내용',
+      relatedWorkNotes: [
+        { relatedWorkId: 'ref-1', relatedWorkTitle: '참고 노트 A' },
+        { relatedWorkId: 'ref-2', relatedWorkTitle: '참고 노트 B' },
+      ],
+    });
+
+    const updateMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useUpdateWorkNote).mockReturnValue({
+      mutateAsync: updateMock,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUpdateWorkNote>);
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    mockGetWorkNote.mockResolvedValue(workNote);
+
+    const user = userEvent.setup();
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: '수정' }));
+
+    const deleteButtons = await screen.findAllByRole('button', { name: '참고 업무노트 삭제' });
+    await user.click(deleteButtons[0]);
+
+    expect(screen.queryByText('참고 노트 A')).not.toBeInTheDocument();
+    expect(screen.getByText('참고 노트 B')).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: '저장' })[0]);
+
+    expect(updateMock).toHaveBeenCalledWith({
+      workId: 'work-1',
+      data: expect.objectContaining({
+        relatedWorkIds: ['ref-2'],
+      }),
+    });
   });
 
   it('renders markdown without dark mode attributes', () => {
