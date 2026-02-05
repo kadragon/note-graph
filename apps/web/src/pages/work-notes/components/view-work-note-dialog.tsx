@@ -65,6 +65,8 @@ interface ViewWorkNoteDialogProps {
   loading?: boolean;
 }
 
+type RelatedWorkNote = NonNullable<WorkNote['relatedWorkNotes']>[number];
+
 export function ViewWorkNoteDialog({
   workNote,
   open,
@@ -76,6 +78,7 @@ export function ViewWorkNoteDialog({
   const [editContent, setEditContent] = useState('');
   const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
   const [editPersonIds, setEditPersonIds] = useState<string[]>([]);
+  const [editRelatedWorkNotes, setEditRelatedWorkNotes] = useState<RelatedWorkNote[]>([]);
 
   const [showAddTodo, setShowAddTodo] = useState(false);
 
@@ -119,7 +122,7 @@ export function ViewWorkNoteDialog({
 
   // Fetch detailed work note (includes references)
   // Use placeholderData to show list data immediately while fetching detail
-  const { data: detailedWorkNote } = useQuery({
+  const { data: detailedWorkNote, isPlaceholderData: isWorkNotePlaceholder } = useQuery({
     queryKey: ['work-note-detail', workNote?.id],
     queryFn: () => (workNote ? API.getWorkNote(workNote.id) : Promise.resolve(null)),
     enabled: !!workNote && open,
@@ -129,6 +132,7 @@ export function ViewWorkNoteDialog({
 
   // Fallback to list workNote when detail fetch fails (network error, etc.)
   const currentWorkNote = detailedWorkNote ?? workNote;
+  const relatedWorkNotesLoaded = !isWorkNotePlaceholder;
 
   // For editing: show active categories + already selected inactive categories
   const editableCategories = useMemo(() => {
@@ -154,6 +158,7 @@ export function ViewWorkNoteDialog({
       setEditContent(currentWorkNote.content);
       setEditCategoryIds(currentWorkNote.categories?.map((c) => c.categoryId) || []);
       setEditPersonIds(currentWorkNote.persons?.map((p) => p.personId) || []);
+      setEditRelatedWorkNotes(currentWorkNote.relatedWorkNotes || []);
     }
   }, [currentWorkNote]);
 
@@ -264,6 +269,10 @@ export function ViewWorkNoteDialog({
     []
   );
 
+  const handleRemoveRelatedWorkNote = useCallback((relatedWorkId: string) => {
+    setEditRelatedWorkNotes((prev) => prev.filter((note) => note.relatedWorkId !== relatedWorkId));
+  }, []);
+
   const focusFirstInteractiveElement = useCallback((container: HTMLElement | null): boolean => {
     if (!container) return false;
     const focusable = container.querySelector<HTMLElement>(
@@ -313,6 +322,9 @@ export function ViewWorkNoteDialog({
     }
 
     try {
+      const relatedWorkIds = relatedWorkNotesLoaded
+        ? editRelatedWorkNotes.map((note) => note.relatedWorkId)
+        : undefined;
       await updateMutation.mutateAsync({
         workId: currentWorkNote.id,
         data: {
@@ -321,6 +333,7 @@ export function ViewWorkNoteDialog({
           categoryIds: editCategoryIds.length > 0 ? editCategoryIds : undefined,
           // Always send relatedPersonIds (including empty array) to allow clearing all assignees
           relatedPersonIds: editPersonIds,
+          ...(relatedWorkNotesLoaded ? { relatedWorkIds } : {}),
         },
       });
       setIsEditing(false);
@@ -555,23 +568,49 @@ export function ViewWorkNoteDialog({
             {/* References */}
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-2">참고한 업무노트</h3>
-              {currentWorkNote.relatedWorkNotes && currentWorkNote.relatedWorkNotes.length > 0 ? (
-                <div className="space-y-2">
-                  {currentWorkNote.relatedWorkNotes.map((ref) => (
-                    <a
-                      key={ref.relatedWorkId}
-                      href={`/work-notes?id=${ref.relatedWorkId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between border rounded-md p-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                    >
-                      <p className="font-medium">{ref.relatedWorkTitle || ref.relatedWorkId}</p>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">저장된 참고 업무노트가 없습니다.</p>
-              )}
+              <div className="rounded-md border bg-muted/30 p-3">
+                {(isEditing ? editRelatedWorkNotes : currentWorkNote.relatedWorkNotes || [])
+                  .length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(isEditing
+                      ? editRelatedWorkNotes
+                      : currentWorkNote.relatedWorkNotes || []
+                    ).map((ref) => (
+                      <div
+                        key={ref.relatedWorkId}
+                        className="flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-sm"
+                      >
+                        <a
+                          href={`/work-notes?id=${ref.relatedWorkId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="max-w-[240px] truncate font-medium hover:underline"
+                        >
+                          {ref.relatedWorkTitle || ref.relatedWorkId}
+                        </a>
+                        {isEditing && relatedWorkNotesLoaded && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                            aria-label="참고 업무노트 삭제"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              handleRemoveRelatedWorkNote(ref.relatedWorkId);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">저장된 참고 업무노트가 없습니다.</p>
+                )}
+              </div>
             </div>
 
             {/* Files Section */}
