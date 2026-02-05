@@ -133,6 +133,9 @@ export function ViewWorkNoteDialog({
   // Fallback to list workNote when detail fetch fails (network error, etc.)
   const currentWorkNote = detailedWorkNote ?? workNote;
   const relatedWorkNotesLoaded = !isWorkNotePlaceholder;
+  const relatedWorkNotesToDisplay = isEditing
+    ? editRelatedWorkNotes
+    : currentWorkNote?.relatedWorkNotes || [];
 
   // For editing: show active categories + already selected inactive categories
   const editableCategories = useMemo(() => {
@@ -569,13 +572,9 @@ export function ViewWorkNoteDialog({
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-2">참고한 업무노트</h3>
               <div className="rounded-md border bg-muted/30 p-3">
-                {(isEditing ? editRelatedWorkNotes : currentWorkNote.relatedWorkNotes || [])
-                  .length > 0 ? (
+                {relatedWorkNotesToDisplay.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {(isEditing
-                      ? editRelatedWorkNotes
-                      : currentWorkNote.relatedWorkNotes || []
-                    ).map((ref) => (
+                    {relatedWorkNotesToDisplay.map((ref) => (
                       <div
                         key={ref.relatedWorkId}
                         className="flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-sm"
