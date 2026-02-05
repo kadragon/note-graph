@@ -8,6 +8,7 @@
 - [x] Embed the top menu inside the header (test: header renders the top menu).
 - [x] Replace Google auth status text with icon-only indicators (test: status text not shown; icons present with labels).
 - [x] Remove top-bar hide/collapse plumbing (test: no sidebar collapse hook/context used in layout).
+- [x] Skip Drive listing when no linked Drive folder ID exists (return empty list instead of calling Drive).
 - [ ] Refactor remaining WorkNoteRepository queries (findByIds, findTodosByWorkIds, findByIdsWithDetails) to use `json_each` instead of chunked `IN (...)` to avoid SQL variable overflow.
 
 ---
