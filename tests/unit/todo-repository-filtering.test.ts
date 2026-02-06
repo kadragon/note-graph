@@ -4,7 +4,7 @@
 import { env } from 'cloudflare:test';
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { Env } from '@worker/types/env';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
 const REAL_DATE = Date;
@@ -63,6 +63,10 @@ describe('TodoRepository - Filtering and Views', () => {
     )
       .bind(testWorkId, 'Test Work Note', 'Content', now, now)
       .run();
+  });
+
+  afterEach(() => {
+    useFixedDate();
   });
 
   describe('findAll()', () => {
@@ -297,8 +301,6 @@ describe('TodoRepository - Filtering and Views', () => {
       const result = await repository.findAll({ view: 'remaining' });
 
       expect(result.some((t) => t.todoId === 'TODO-WAIT-TODAY')).toBe(true);
-
-      useFixedDate();
     });
 
     it('should exclude 보류 and 중단 status todos from today view', async () => {

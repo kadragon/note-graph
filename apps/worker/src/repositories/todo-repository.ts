@@ -15,6 +15,8 @@ import { nanoid } from 'nanoid';
 import type { CreateTodoInput, ListTodosQuery, UpdateTodoInput } from '../schemas/todo';
 import { NotFoundError } from '../types/errors';
 
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
 export class TodoRepository {
   constructor(private db: D1Database) {}
 
@@ -155,10 +157,10 @@ export class TodoRepository {
    * Find all todos with view filters
    */
   /**
-   * Helper functions to calculate date strings in KST for time-based views
+   * Helper functions to calculate KST date boundaries in UTC for time-based views
    */
   private getKSTDateParts(date: Date = new Date()) {
-    const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    const kstDate = new Date(date.getTime() + KST_OFFSET_MS);
     return {
       year: kstDate.getUTCFullYear(),
       month: kstDate.getUTCMonth(),
@@ -167,33 +169,39 @@ export class TodoRepository {
     };
   }
 
-  private formatKSTDate(year: number, month: number, day: number): string {
-    return new Date(Date.UTC(year, month, day)).toISOString().split('T')[0];
+  private getKSTDayStartUTC(year: number, month: number, day: number): Date {
+    return new Date(Date.UTC(year, month, day) - KST_OFFSET_MS);
   }
 
-  private getTodayKST(): string {
+  private getStartOfTodayUTC(): string {
     const { year, month, day } = this.getKSTDateParts();
-    return this.formatKSTDate(year, month, day);
+    return this.getKSTDayStartUTC(year, month, day).toISOString();
   }
 
-  private getEndDateKST(view: 'today' | 'week' | 'month'): string {
+  private getStartOfTomorrowUTC(): string {
+    const { year, month, day } = this.getKSTDateParts();
+    return this.getKSTDayStartUTC(year, month, day + 1).toISOString();
+  }
+
+  private getPeriodEndExclusiveUTC(view: 'today' | 'week' | 'month'): string {
     const { year, month, day, dayOfWeek } = this.getKSTDateParts();
     switch (view) {
       case 'today': {
-        return this.formatKSTDate(year, month, day);
+        return this.getKSTDayStartUTC(year, month, day + 1).toISOString();
       }
       case 'week': {
         const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
-        return this.formatKSTDate(year, month, day + daysUntilFriday);
+        return this.getKSTDayStartUTC(year, month, day + daysUntilFriday + 1).toISOString();
       }
       case 'month': {
-        return new Date(Date.UTC(year, month + 1, 0)).toISOString().split('T')[0];
+        return this.getKSTDayStartUTC(year, month + 1, 1).toISOString();
       }
     }
   }
 
   async findAll(query: ListTodosQuery): Promise<TodoWithWorkNote[]> {
-    const todayKST = this.getTodayKST();
+    const startOfTodayUTC = this.getStartOfTodayUTC();
+    const startOfTomorrowUTC = this.getStartOfTomorrowUTC();
 
     let sql = `
       SELECT t.todo_id as todoId, t.work_id as workId,
@@ -224,15 +232,15 @@ export class TodoRepository {
       case 'month': {
         // Time-based views: show incomplete todos with due_date and wait_until up to the end of the period
         // Exclude inactive statuses: 완료, 보류, 중단
-        const endDate = this.getEndDateKST(query.view);
+        const endExclusiveUTC = this.getPeriodEndExclusiveUTC(query.view);
 
         conditions.push(
           `t.status NOT IN (?, ?, ?)`,
           `t.due_date IS NOT NULL`,
-          `substr(t.due_date, 1, 10) <= ?`,
-          `(t.wait_until IS NULL OR substr(t.wait_until, 1, 10) <= ?)`
+          `t.due_date < ?`,
+          `(t.wait_until IS NULL OR t.wait_until < ?)`
         );
-        params.push('완료', '보류', '중단', endDate, endDate);
+        params.push('완료', '보류', '중단', endExclusiveUTC, endExclusiveUTC);
         break;
       }
 
@@ -242,18 +250,21 @@ export class TodoRepository {
         conditions.push(
           `t.status NOT IN (?, ?, ?)`,
           `t.due_date IS NOT NULL`,
-          `substr(t.due_date, 1, 10) < ?`,
-          `(t.wait_until IS NULL OR substr(t.wait_until, 1, 10) <= ?)`
+          `t.due_date < ?`,
+          `(t.wait_until IS NULL OR t.wait_until < ?)`
         );
-        params.push('완료', '보류', '중단', todayKST, todayKST);
+        params.push('완료', '보류', '중단', startOfTodayUTC, startOfTomorrowUTC);
         break;
       }
 
       case 'remaining': {
         // All incomplete todos (no year restriction)
         // Exclude inactive statuses: 완료, 보류, 중단
-        conditions.push(`t.status NOT IN (?, ?, ?)`, `(t.wait_until IS NULL OR substr(t.wait_until, 1, 10) <= ?)`);
-        params.push('완료', '보류', '중단', todayKST);
+        conditions.push(
+          `t.status NOT IN (?, ?, ?)`,
+          `(t.wait_until IS NULL OR t.wait_until < ?)`
+        );
+        params.push('완료', '보류', '중단', startOfTomorrowUTC);
         break;
       }
 
