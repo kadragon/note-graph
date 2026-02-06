@@ -178,18 +178,18 @@ describe('Project API Routes', () => {
         testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
         testEnv.DB.prepare(
           `INSERT INTO projects (
-						project_id, name, status, dept_name, created_at, updated_at
-					) VALUES (?, ?, ?, ?, ?, ?)`
+            project_id, name, status, dept_name, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?)`
         ).bind('PROJECT-001', '프로젝트1', '진행중', '개발팀', now, now),
         testEnv.DB.prepare(
           `INSERT INTO projects (
-						project_id, name, status, created_at, updated_at
-					) VALUES (?, ?, ?, ?, ?)`
+            project_id, name, status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?)`
         ).bind('PROJECT-002', '프로젝트2', '완료', now, now),
         testEnv.DB.prepare(
           `INSERT INTO projects (
-						project_id, name, status, created_at, updated_at
-					) VALUES (?, ?, ?, ?, ?)`
+            project_id, name, status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?)`
         ).bind('PROJECT-003', '프로젝트3', '보류', now, now),
       ]);
     });
@@ -251,7 +251,7 @@ describe('Project API Routes', () => {
         ).bind(projectId, 'WORK-003', now),
         testEnv.DB.prepare(
           `INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
           'FILE-001',
           projectId,
@@ -264,7 +264,7 @@ describe('Project API Routes', () => {
         ),
         testEnv.DB.prepare(
           `INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
           'FILE-002',
           projectId,
@@ -435,7 +435,7 @@ describe('Project API Routes', () => {
         ).bind(projectId, '삭제 파일 프로젝트', now, now),
         testEnv.DB.prepare(
           `INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
           'FILE-DEL-1',
           projectId,
@@ -448,7 +448,7 @@ describe('Project API Routes', () => {
         ),
         testEnv.DB.prepare(
           `INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
           'FILE-DEL-2',
           projectId,
@@ -585,7 +585,7 @@ describe('Project API Routes', () => {
         ).bind('TODO-002', 'WORK-001', '할일2', '진행중', now, now),
         testEnv.DB.prepare(
           `INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
           'FILE-001',
           projectId,
@@ -598,7 +598,7 @@ describe('Project API Routes', () => {
         ),
         testEnv.DB.prepare(
           `INSERT INTO project_files (file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
           'FILE-002',
           projectId,

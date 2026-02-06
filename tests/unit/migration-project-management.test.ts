@@ -55,7 +55,7 @@ async function getForeignKeys(table: string): Promise<Array<{ from: string; tabl
   }));
 }
 
-describe('Migration 0014 - Project management schema', () => {
+describe('Project schema migrations', () => {
   it('creates project entities and relationships tables', async () => {
     await expect(getTableColumns('projects')).resolves.toEqual(
       expect.arrayContaining([
