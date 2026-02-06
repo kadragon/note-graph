@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from '@web/components/ui/select';
 import { useDialogState } from '@web/hooks/use-dialog-state';
-import { usePersons } from '@web/hooks/use-persons';
 import { useDeleteProject, useProjects } from '@web/hooks/use-projects';
 import type { Project, ProjectStatus } from '@web/types/api';
 import { Filter, Plus, RotateCcw } from 'lucide-react';
@@ -36,14 +35,11 @@ export default function Projects() {
   const detailDialog = useDialogState<string>();
   const deleteDialog = useDialogState<string>();
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
-  const [leaderFilter, setLeaderFilter] = useState<string>('all');
   const [startDateFilter, setStartDateFilter] = useState<string>('');
   const [endDateFilter, setEndDateFilter] = useState<string>('');
 
-  const { data: persons = [] } = usePersons();
   const { data: projects = [], isLoading } = useProjects({
     status: statusFilter === 'all' ? undefined : statusFilter,
-    leaderPersonId: leaderFilter === 'all' ? undefined : leaderFilter,
     startDate: startDateFilter || undefined,
     endDate: endDateFilter || undefined,
   });
@@ -66,7 +62,6 @@ export default function Projects() {
 
   const resetFilters = () => {
     setStatusFilter('all');
-    setLeaderFilter('all');
     setStartDateFilter('');
     setEndDateFilter('');
   };
@@ -92,7 +87,7 @@ export default function Projects() {
               필터
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">상태</p>
               <Select
@@ -108,22 +103,6 @@ export default function Projects() {
                   <SelectItem value="완료">완료</SelectItem>
                   <SelectItem value="보류">보류</SelectItem>
                   <SelectItem value="중단">중단</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">리더</p>
-              <Select value={leaderFilter} onValueChange={setLeaderFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="전체" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체</SelectItem>
-                  {persons.map((person) => (
-                    <SelectItem key={person.personId} value={person.personId}>
-                      {person.name} ({person.personId})
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>

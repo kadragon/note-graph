@@ -10,11 +10,6 @@ import { z } from 'zod';
  */
 export const projectStatusSchema = z.enum(['진행중', '완료', '보류', '중단']);
 
-/**
- * Project priority enum
- */
-export const projectPrioritySchema = z.enum(['높음', '중간', '낮음']);
-
 const projectDateSchema = z.union([z.string().date(), z.string().datetime()]);
 
 /**
@@ -25,10 +20,7 @@ export const createProjectSchema = z.object({
   description: z.string().max(2000, 'Description too long').optional(),
   status: projectStatusSchema.optional(),
   tags: z.string().max(500, 'Tags too long').optional(),
-  priority: projectPrioritySchema.optional(),
   startDate: projectDateSchema.optional(),
-  targetEndDate: projectDateSchema.optional(),
-  leaderPersonId: z.string().optional(),
   deptName: z.string().optional(),
   participantPersonIds: z.array(z.string()).optional(),
   participantIds: z.array(z.string()).optional(),
@@ -44,11 +36,8 @@ export const updateProjectSchema = z.object({
   description: z.string().max(2000).optional(),
   status: projectStatusSchema.optional(),
   tags: z.string().max(500).optional(),
-  priority: projectPrioritySchema.optional(),
   startDate: projectDateSchema.optional(),
-  targetEndDate: projectDateSchema.optional(),
   actualEndDate: projectDateSchema.optional(),
-  leaderPersonId: z.string().optional(),
   deptName: z.string().optional(),
 });
 
@@ -59,13 +48,10 @@ export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
  */
 export const listProjectsQuerySchema = z.object({
   status: projectStatusSchema.optional(),
-  leaderPersonId: z.string().optional(),
   deptName: z.string().optional(),
   participantPersonId: z.string().optional(),
   startDateFrom: projectDateSchema.optional(),
   startDateTo: projectDateSchema.optional(),
-  targetEndDateFrom: projectDateSchema.optional(),
-  targetEndDateTo: projectDateSchema.optional(),
   includeDeleted: z
     .string()
     .transform((val) => val === 'true')

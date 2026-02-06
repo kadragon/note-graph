@@ -65,10 +65,7 @@ describe('ProjectRepository - CRUD operations', () => {
         description: '상세 설명',
         status: '진행중',
         tags: '태그1,태그2',
-        priority: '높음',
         startDate: '2025-01-01',
-        targetEndDate: '2025-12-31',
-        leaderPersonId: 'PERSON-001',
         deptName: '개발팀',
       };
 
@@ -80,10 +77,7 @@ describe('ProjectRepository - CRUD operations', () => {
       expect(result.description).toBe('상세 설명');
       expect(result.status).toBe('진행중');
       expect(result.tags).toBe('태그1,태그2');
-      expect(result.priority).toBe('높음');
       expect(result.startDate).toBe('2025-01-01');
-      expect(result.targetEndDate).toBe('2025-12-31');
-      expect(result.leaderPersonId).toBe('PERSON-001');
       expect(result.deptName).toBe('개발팀');
     });
 
@@ -150,7 +144,6 @@ describe('ProjectRepository - CRUD operations', () => {
         name: '새 이름',
         description: '새 설명',
         status: '완료',
-        priority: '높음',
       };
 
       // Act
@@ -160,7 +153,6 @@ describe('ProjectRepository - CRUD operations', () => {
       expect(result.name).toBe('새 이름');
       expect(result.description).toBe('새 설명');
       expect(result.status).toBe('완료');
-      expect(result.priority).toBe('높음');
     });
 
     it('should update status and actualEndDate', async () => {

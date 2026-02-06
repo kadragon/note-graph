@@ -12,11 +12,8 @@ export interface Project {
   description: string | null;
   status: ProjectStatus;
   tags: string | null; // JSON array or comma-separated
-  priority: ProjectPriority | null;
   startDate: string | null; // ISO 8601 date
-  targetEndDate: string | null; // ISO 8601 date
   actualEndDate: string | null; // ISO 8601 date
-  leaderPersonId: string | null; // FK to persons
   deptName: string | null; // FK to departments
   createdAt: string; // ISO 8601 timestamp
   updatedAt: string; // ISO 8601 timestamp
@@ -27,11 +24,6 @@ export interface Project {
  * Project status values
  */
 export type ProjectStatus = '진행중' | '완료' | '보류' | '중단';
-
-/**
- * Project priority values
- */
-export type ProjectPriority = '높음' | '중간' | '낮음';
 
 /**
  * Project participant role values
@@ -109,13 +101,10 @@ export interface ProjectDetail extends Project {
  */
 export interface ProjectFilters {
   status?: ProjectStatus;
-  leaderPersonId?: string;
   deptName?: string;
   participantPersonId?: string;
   startDateFrom?: string; // ISO 8601 date
   startDateTo?: string; // ISO 8601 date
-  targetEndDateFrom?: string; // ISO 8601 date
-  targetEndDateTo?: string; // ISO 8601 date
   includeDeleted?: boolean; // default false
 }
 
@@ -127,10 +116,7 @@ export interface CreateProjectData {
   description?: string;
   status?: ProjectStatus; // default '진행중'
   tags?: string;
-  priority?: ProjectPriority;
   startDate?: string;
-  targetEndDate?: string;
-  leaderPersonId?: string;
   deptName?: string;
   participantPersonIds?: string[]; // Initial team members
 }
@@ -143,10 +129,7 @@ export interface UpdateProjectData {
   description?: string;
   status?: ProjectStatus;
   tags?: string;
-  priority?: ProjectPriority;
   startDate?: string;
-  targetEndDate?: string;
   actualEndDate?: string;
-  leaderPersonId?: string;
   deptName?: string;
 }

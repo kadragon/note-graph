@@ -58,7 +58,6 @@ import type {
   ProjectFile,
   ProjectParticipant,
   ProjectParticipantRole,
-  ProjectPriority,
   ProjectStats,
   ProjectStatus,
 } from '@shared/types/project';
@@ -104,7 +103,6 @@ export type {
   ProjectFile,
   ProjectParticipant,
   ProjectParticipantRole,
-  ProjectPriority,
   ProjectStats,
   ProjectStatus,
 };

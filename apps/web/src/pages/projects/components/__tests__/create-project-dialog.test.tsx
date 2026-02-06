@@ -84,7 +84,7 @@ describe('CreateProjectDialog', () => {
       render(<CreateProjectDialog {...defaultProps} />);
 
       const selectRoots = screen.getAllByTestId('select-root');
-      expect(selectRoots).toHaveLength(4);
+      expect(selectRoots).toHaveLength(2);
 
       for (const selectRoot of selectRoots) {
         expect(selectRoot).not.toHaveAttribute('data-value', '__undefined__');

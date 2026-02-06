@@ -73,12 +73,6 @@ export class ProjectRepository {
       bindings.push(filters.status);
     }
 
-    // Leader filter
-    if (filters.leaderPersonId) {
-      conditions.push('leader_person_id = ?');
-      bindings.push(filters.leaderPersonId);
-    }
-
     // Department filter
     if (filters.deptName) {
       conditions.push('dept_name = ?');
@@ -109,20 +103,6 @@ export class ProjectRepository {
         bindings.push(filters.startDateTo);
       }
     }
-    if (filters.targetEndDateFrom) {
-      conditions.push('target_end_date >= ?');
-      bindings.push(filters.targetEndDateFrom);
-    }
-    if (filters.targetEndDateTo) {
-      if (ISO_DATE_ONLY_REGEX.test(filters.targetEndDateTo)) {
-        conditions.push('target_end_date < ?');
-        bindings.push(getNextDateString(filters.targetEndDateTo));
-      } else {
-        conditions.push('target_end_date <= ?');
-        bindings.push(filters.targetEndDateTo);
-      }
-    }
-
     // Build final query
     if (conditions.length > 0) {
       query += ` WHERE ${conditions.join(' AND ')}`;
@@ -174,10 +154,10 @@ export class ProjectRepository {
         .prepare(
           `
         INSERT INTO projects (
-          project_id, name, description, status, tags, priority,
-          start_date, target_end_date, leader_person_id, dept_name,
+          project_id, name, description, status, tags,
+          start_date, dept_name,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
         )
         .bind(
@@ -186,10 +166,7 @@ export class ProjectRepository {
           data.description || null,
           status,
           data.tags || null,
-          data.priority || null,
           data.startDate || null,
-          data.targetEndDate || null,
-          data.leaderPersonId || null,
           data.deptName || null,
           now,
           now
@@ -251,25 +228,13 @@ export class ProjectRepository {
       updates.push('tags = ?');
       bindings.push(data.tags);
     }
-    if (data.priority !== undefined) {
-      updates.push('priority = ?');
-      bindings.push(data.priority);
-    }
     if (data.startDate !== undefined) {
       updates.push('start_date = ?');
       bindings.push(data.startDate);
     }
-    if (data.targetEndDate !== undefined) {
-      updates.push('target_end_date = ?');
-      bindings.push(data.targetEndDate);
-    }
     if (data.actualEndDate !== undefined) {
       updates.push('actual_end_date = ?');
       bindings.push(data.actualEndDate);
-    }
-    if (data.leaderPersonId !== undefined) {
-      updates.push('leader_person_id = ?');
-      bindings.push(data.leaderPersonId);
     }
     if (data.deptName !== undefined) {
       updates.push('dept_name = ?');
@@ -613,11 +578,8 @@ export class ProjectRepository {
       description: (row.description as string) || null,
       status: row.status as Project['status'],
       tags: (row.tags as string) || null,
-      priority: (row.priority as Project['priority']) || null,
       startDate: (row.start_date as string) || null,
-      targetEndDate: (row.target_end_date as string) || null,
       actualEndDate: (row.actual_end_date as string) || null,
-      leaderPersonId: (row.leader_person_id as string) || null,
       deptName: (row.dept_name as string) || null,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,

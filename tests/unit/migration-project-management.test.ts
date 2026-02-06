@@ -62,8 +62,8 @@ describe('Migration 0014 - Project management schema', () => {
         'project_id',
         'name',
         'status',
-        'priority',
-        'leader_person_id',
+        'start_date',
+        'actual_end_date',
         'dept_name',
         'deleted_at',
       ])
@@ -108,9 +108,8 @@ describe('Migration 0014 - Project management schema', () => {
     expect(projectIndexes).toEqual(
       expect.arrayContaining([
         'idx_projects_status',
-        'idx_projects_leader',
         'idx_projects_dept',
-        'idx_projects_dates',
+        'idx_projects_start_date',
       ])
     );
 

@@ -32,7 +32,6 @@ describe('Project API Routes', () => {
         name: '테스트 프로젝트',
         description: '프로젝트 설명',
         status: '진행중' as const,
-        priority: '높음' as const,
       };
 
       const response = await authFetch('http://localhost/api/projects', {
@@ -46,15 +45,13 @@ describe('Project API Routes', () => {
       expect(project.name).toBe(projectData.name);
       expect(project.description).toBe(projectData.description);
       expect(project.status).toBe('진행중');
-      expect(project.priority).toBe('높음');
       expect(project.createdAt).toBeDefined();
     });
 
-    it('should accept ISO date-only strings for start and target end dates', async () => {
+    it('should accept ISO date-only string for start date', async () => {
       const projectData = {
         name: '날짜 형식 테스트 프로젝트',
         startDate: '2026-02-04',
-        targetEndDate: '2026-02-06',
       };
 
       const response = await authFetch('http://localhost/api/projects', {
@@ -65,7 +62,6 @@ describe('Project API Routes', () => {
       expect(response.status).toBe(201);
       const project = await response.json<Project>();
       expect(project.startDate).toBe('2026-02-04');
-      expect(project.targetEndDate).toBe('2026-02-06');
     });
 
     it('should create project with participants', async () => {
@@ -181,18 +177,15 @@ describe('Project API Routes', () => {
       await testEnv.DB.batch([
         testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
         testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PERSON-001', '홍길동', now, now),
-        testEnv.DB.prepare(
           `INSERT INTO projects (
-						project_id, name, status, leader_person_id, dept_name, created_at, updated_at
-					) VALUES (?, ?, ?, ?, ?, ?, ?)`
-        ).bind('PROJECT-001', '프로젝트1', '진행중', 'PERSON-001', '개발팀', now, now),
-        testEnv.DB.prepare(
-          `INSERT INTO projects (
-						project_id, name, status, leader_person_id, created_at, updated_at
+						project_id, name, status, dept_name, created_at, updated_at
 					) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind('PROJECT-002', '프로젝트2', '완료', 'PERSON-001', now, now),
+        ).bind('PROJECT-001', '프로젝트1', '진행중', '개발팀', now, now),
+        testEnv.DB.prepare(
+          `INSERT INTO projects (
+						project_id, name, status, created_at, updated_at
+					) VALUES (?, ?, ?, ?, ?)`
+        ).bind('PROJECT-002', '프로젝트2', '완료', now, now),
         testEnv.DB.prepare(
           `INSERT INTO projects (
 						project_id, name, status, created_at, updated_at
@@ -216,15 +209,6 @@ describe('Project API Routes', () => {
       const projects = await response.json<Project[]>();
       expect(projects).toHaveLength(1);
       expect(projects[0].status).toBe('진행중');
-    });
-
-    it('should filter projects by leader', async () => {
-      const response = await authFetch('http://localhost/api/projects?leaderPersonId=PERSON-001');
-
-      expect(response.status).toBe(200);
-      const projects = await response.json<Project[]>();
-      expect(projects).toHaveLength(2);
-      expect(projects.every((p) => p.leaderPersonId === 'PERSON-001')).toBe(true);
     });
 
     it('should filter projects by department', async () => {
