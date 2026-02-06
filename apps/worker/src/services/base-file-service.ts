@@ -60,11 +60,14 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
     if (normalizedMime === 'image/jpg') {
       normalizedMime = 'image/jpeg';
     }
+    const extension = originalName.toLowerCase().split('.').pop();
+
     if (normalizedMime === 'application/hwp+zip') {
       normalizedMime = 'application/vnd.hancom.hwpx';
     }
-
-    const extension = originalName.toLowerCase().split('.').pop();
+    if (normalizedMime === 'application/zip' && extension === 'hwpx') {
+      return 'application/vnd.hancom.hwpx';
+    }
 
     if (normalizedMime && this.getAllowedMimeTypes().includes(normalizedMime)) {
       return normalizedMime;

@@ -144,3 +144,14 @@ Some folder records can exist without a valid ID, and listing with an empty ID t
 
 ### Impact
 Normalize folder IDs before listing and return `driveFolderId`/`driveFolderLink` as null when missing.
+
+## 2026-02-05 HWPX Zip MIME
+
+### Decision/Learning
+Special-case `application/zip` for `.hwpx` so it resolves to the HWPX MIME without relaxing other ZIP uploads.
+
+### Reason
+Some systems report HWPX files as ZIP containers, and generic ZIP acceptance would be overly broad.
+
+### Impact
+Handle ZIP only when the extension is `hwpx` instead of treating ZIP as a generic MIME type.
