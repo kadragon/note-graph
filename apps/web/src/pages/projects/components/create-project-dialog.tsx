@@ -23,7 +23,7 @@ import { Textarea } from '@web/components/ui/textarea';
 import { useDepartments } from '@web/hooks/use-departments';
 import { usePersons } from '@web/hooks/use-persons';
 import { useCreateProject } from '@web/hooks/use-projects';
-import type { ProjectPriority, ProjectStatus } from '@web/types/api';
+import type { ProjectStatus } from '@web/types/api';
 import { useState } from 'react';
 
 interface CreateProjectDialogProps {
@@ -35,10 +35,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<ProjectStatus>('진행중');
-  const [priority, setPriority] = useState<ProjectPriority>('중간');
   const [startDate, setStartDate] = useState('');
-  const [targetEndDate, setTargetEndDate] = useState('');
-  const [leaderPersonId, setLeaderPersonId] = useState('');
   const [deptName, setDeptName] = useState('');
   const [tags, setTags] = useState('');
   const [participantIds, setParticipantIds] = useState<string[]>([]);
@@ -60,10 +57,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
         name: name.trim(),
         description: description.trim() || undefined,
         status,
-        priority,
         startDate: startDate || undefined,
-        targetEndDate: targetEndDate || undefined,
-        leaderPersonId: leaderPersonId || undefined,
         deptName: deptName || undefined,
         tags: tags.trim() || undefined,
         participantIds,
@@ -73,10 +67,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
       setName('');
       setDescription('');
       setStatus('진행중');
-      setPriority('중간');
       setStartDate('');
-      setTargetEndDate('');
-      setLeaderPersonId('');
       setDeptName('');
       setTags('');
       setParticipantIds([]);
@@ -138,25 +129,6 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="priority">우선순위</Label>
-                <Select
-                  value={priority}
-                  onValueChange={(value) => setPriority(value as ProjectPriority)}
-                >
-                  <SelectTrigger id="priority">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="높음">높음</SelectItem>
-                    <SelectItem value="중간">중간</SelectItem>
-                    <SelectItem value="낮음">낮음</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
                 <Label htmlFor="startDate">시작일</Label>
                 <Input
                   id="startDate"
@@ -165,32 +137,6 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="targetEndDate">목표 종료일</Label>
-                <Input
-                  id="targetEndDate"
-                  type="date"
-                  value={targetEndDate}
-                  onChange={(e) => setTargetEndDate(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="leaderPersonId">프로젝트 리더</Label>
-              <Select value={leaderPersonId} onValueChange={setLeaderPersonId}>
-                <SelectTrigger id="leaderPersonId">
-                  <SelectValue placeholder="리더를 선택하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  {persons.map((person) => (
-                    <SelectItem key={person.personId} value={person.personId}>
-                      {person.name} ({person.personId})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="grid gap-2">

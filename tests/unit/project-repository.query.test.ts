@@ -84,25 +84,18 @@ describe('ProjectRepository - Query operations', () => {
       await testEnv.DB.batch([
         testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
         testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PERSON-001', '홍길동', now, now),
-        testEnv.DB.prepare(
           `INSERT INTO projects (
-            project_id, name, description, status, tags, priority,
-            start_date, target_end_date, actual_end_date,
-            leader_person_id, dept_name, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            project_id, name, description, status, tags,
+            start_date, actual_end_date, dept_name, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
           'PROJECT-003',
           '전체 필드 프로젝트',
           '전체 필드 테스트',
           '완료',
           '태그1,태그2',
-          '높음',
           '2025-01-01',
-          '2025-12-31',
           '2025-12-30',
-          'PERSON-001',
           '개발팀',
           now,
           now
@@ -114,11 +107,8 @@ describe('ProjectRepository - Query operations', () => {
 
       // Assert
       expect(result?.tags).toBe('태그1,태그2');
-      expect(result?.priority).toBe('높음');
       expect(result?.startDate).toBe('2025-01-01');
-      expect(result?.targetEndDate).toBe('2025-12-31');
       expect(result?.actualEndDate).toBe('2025-12-30');
-      expect(result?.leaderPersonId).toBe('PERSON-001');
       expect(result?.deptName).toBe('개발팀');
       expect(result?.status).toBe('완료');
     });
@@ -138,49 +128,19 @@ describe('ProjectRepository - Query operations', () => {
         ).bind('PERSON-002', '이순신', now, now),
         testEnv.DB.prepare(
           `INSERT INTO projects (
-            project_id, name, status, leader_person_id, dept_name, start_date, target_end_date, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'PROJECT-101',
-          '프로젝트1',
-          '진행중',
-          'PERSON-001',
-          '개발팀',
-          '2025-01-01',
-          '2025-06-30',
-          now,
-          now
-        ),
+            project_id, name, status, dept_name, start_date, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).bind('PROJECT-101', '프로젝트1', '진행중', '개발팀', '2025-01-01', now, now),
         testEnv.DB.prepare(
           `INSERT INTO projects (
-            project_id, name, status, leader_person_id, dept_name, start_date, target_end_date, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'PROJECT-102',
-          '프로젝트2',
-          '완료',
-          'PERSON-002',
-          '기획팀',
-          '2025-02-01',
-          '2025-07-31',
-          now,
-          now
-        ),
+            project_id, name, status, dept_name, start_date, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).bind('PROJECT-102', '프로젝트2', '완료', '기획팀', '2025-02-01', now, now),
         testEnv.DB.prepare(
           `INSERT INTO projects (
-            project_id, name, status, leader_person_id, dept_name, start_date, target_end_date, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'PROJECT-103',
-          '프로젝트3',
-          '보류',
-          'PERSON-001',
-          '개발팀',
-          '2025-03-01',
-          '2025-08-31',
-          now,
-          now
-        ),
+            project_id, name, status, dept_name, start_date, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).bind('PROJECT-103', '프로젝트3', '보류', '개발팀', '2025-03-01', now, now),
       ]);
     });
 
@@ -203,17 +163,6 @@ describe('ProjectRepository - Query operations', () => {
       expect(result).toHaveLength(1);
       expect(result[0].projectId).toBe('PROJECT-101');
       expect(result[0].status).toBe('진행중');
-    });
-
-    it('should filter by leader person ID', async () => {
-      // Act
-      const result = await repository.findAll({ leaderPersonId: 'PERSON-001' });
-
-      // Assert
-      expect(result).toHaveLength(2);
-      expect(result.map((p) => p.leaderPersonId)).toEqual(
-        ['PROJECT-103', 'PROJECT-101'].map(() => 'PERSON-001')
-      );
     });
 
     it('should filter by department', async () => {
@@ -260,18 +209,10 @@ describe('ProjectRepository - Query operations', () => {
       const now = new Date().toISOString();
       await testEnv.DB.prepare(
         `INSERT INTO projects (
-          project_id, name, status, start_date, target_end_date, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+          project_id, name, status, start_date, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`
       )
-        .bind(
-          'PROJECT-104',
-          '프로젝트4',
-          '진행중',
-          '2025-03-31T12:00:00.000Z',
-          '2025-09-01',
-          now,
-          now
-        )
+        .bind('PROJECT-104', '프로젝트4', '진행중', '2025-03-31T12:00:00.000Z', now, now)
         .run();
 
       // Act
@@ -279,32 +220,6 @@ describe('ProjectRepository - Query operations', () => {
 
       // Assert
       expect(result.map((p) => p.projectId)).toContain('PROJECT-104');
-    });
-
-    it('should include same-day datetime values when targetEndDateTo is date-only', async () => {
-      // Arrange
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        `INSERT INTO projects (
-          project_id, name, status, start_date, target_end_date, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`
-      )
-        .bind(
-          'PROJECT-105',
-          '프로젝트5',
-          '진행중',
-          '2025-04-01',
-          '2025-07-31T18:30:00.000Z',
-          now,
-          now
-        )
-        .run();
-
-      // Act
-      const result = await repository.findAll({ targetEndDateTo: '2025-07-31' });
-
-      // Assert
-      expect(result.map((p) => p.projectId)).toContain('PROJECT-105');
     });
 
     it('should exclude deleted projects by default', async () => {

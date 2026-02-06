@@ -8,6 +8,7 @@ This directory contains D1 database migrations for the work note management syst
 - `0002_add_task_categories.sql` → `0013_drop_embedding_retry_queue.sql` - Iterative enhancements (task categories, embedding retry queue lifecycle, phone/ employment fields, custom repeat settings, embedded_at)
 - `0014_add_project_management.sql` - Adds project management tables (projects, participants, work note links, files) and `project_id` column on `work_notes` with supporting indexes (Trace: SPEC-project-1, TASK-035)
 - `0018_cleanup_soft_deleted_project_work_note_links.sql` - Cleans up stale `project_work_notes` rows and clears `work_notes.project_id` when linked to soft-deleted projects (Trace: SPEC-project-1, TASK-065)
+- `0022_remove_unused_project_fields.sql` - Removes unused `projects` columns (`priority`, `target_end_date`, `leader_person_id`) and rebuilds related indexes (Trace: TASK-066)
 
 ## Schema Overview
 
@@ -25,7 +26,7 @@ This directory contains D1 database migrations for the work note management syst
 
 ### Project Management Tables (SPEC-project-1)
 
-10. **projects** - Project entity with status, priority, dates, leader, department, soft delete
+10. **projects** - Project entity with status, start/actual dates, department, soft delete
 11. **project_participants** - Project team members with roles
 12. **project_work_notes** - 1:N association enforcing single-project membership per work note
 13. **project_files** - R2 file attachments with soft delete and embedding timestamps

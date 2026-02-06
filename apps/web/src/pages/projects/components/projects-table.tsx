@@ -35,9 +35,7 @@ export function ProjectsTable({ projects, onView, onDelete }: ProjectsTableProps
         <TableRow>
           <TableHead>프로젝트명</TableHead>
           <TableHead>상태</TableHead>
-          <TableHead>우선순위</TableHead>
-          <TableHead>리더</TableHead>
-          <TableHead>목표일</TableHead>
+          <TableHead>시작일</TableHead>
           <TableHead>생성일</TableHead>
           <TableHead className="text-right">작업</TableHead>
         </TableRow>
@@ -54,23 +52,9 @@ export function ProjectsTable({ projects, onView, onDelete }: ProjectsTableProps
               <Badge className={STATUS_COLORS[project.status]}>{project.status}</Badge>
             </TableCell>
             <TableCell>
-              {project.priority ? (
-                <Badge variant="outline">{project.priority}</Badge>
-              ) : (
-                <span className="text-muted-foreground text-sm">-</span>
-              )}
-            </TableCell>
-            <TableCell>
-              {project.leaderPersonId ? (
-                <span className="text-sm">{project.leaderPersonId}</span>
-              ) : (
-                <span className="text-muted-foreground text-sm">-</span>
-              )}
-            </TableCell>
-            <TableCell>
-              {project.targetEndDate ? (
+              {project.startDate ? (
                 <span className="text-sm">
-                  {new Date(project.targetEndDate).toLocaleDateString('ko-KR')}
+                  {new Date(project.startDate).toLocaleDateString('ko-KR')}
                 </span>
               ) : (
                 <span className="text-muted-foreground text-sm">-</span>

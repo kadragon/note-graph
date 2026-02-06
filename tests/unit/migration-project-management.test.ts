@@ -55,15 +55,15 @@ async function getForeignKeys(table: string): Promise<Array<{ from: string; tabl
   }));
 }
 
-describe('Migration 0014 - Project management schema', () => {
+describe('Project schema migrations', () => {
   it('creates project entities and relationships tables', async () => {
     await expect(getTableColumns('projects')).resolves.toEqual(
       expect.arrayContaining([
         'project_id',
         'name',
         'status',
-        'priority',
-        'leader_person_id',
+        'start_date',
+        'actual_end_date',
         'dept_name',
         'deleted_at',
       ])
@@ -108,9 +108,8 @@ describe('Migration 0014 - Project management schema', () => {
     expect(projectIndexes).toEqual(
       expect.arrayContaining([
         'idx_projects_status',
-        'idx_projects_leader',
         'idx_projects_dept',
-        'idx_projects_dates',
+        'idx_projects_start_date',
       ])
     );
 

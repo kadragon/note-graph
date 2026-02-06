@@ -86,14 +86,6 @@ export function ProjectDetailDialog({ open, onOpenChange, projectId }: ProjectDe
                     <Badge className={STATUS_COLORS[project.status]}>{project.status}</Badge>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">우선순위</p>
-                    <p className="text-sm">{project.priority || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">리더</p>
-                    <p className="text-sm">{project.leaderPersonId || '-'}</p>
-                  </div>
-                  <div>
                     <p className="text-sm font-medium text-muted-foreground">담당 부서</p>
                     <p className="text-sm">{project.deptName || '-'}</p>
                   </div>
@@ -111,14 +103,6 @@ export function ProjectDetailDialog({ open, onOpenChange, projectId }: ProjectDe
                       <p className="text-sm font-medium text-muted-foreground">시작일</p>
                       <p className="text-sm">
                         {new Date(project.startDate).toLocaleDateString('ko-KR')}
-                      </p>
-                    </div>
-                  )}
-                  {project.targetEndDate && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">목표 종료일</p>
-                      <p className="text-sm">
-                        {new Date(project.targetEndDate).toLocaleDateString('ko-KR')}
                       </p>
                     </div>
                   )}

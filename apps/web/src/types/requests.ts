@@ -1,5 +1,5 @@
 import type { EmploymentStatus } from '@shared/types/person';
-import type { ProjectPriority, ProjectStatus } from '@shared/types/project';
+import type { ProjectStatus } from '@shared/types/project';
 import type { RagScope } from '@shared/types/search';
 import type { StatisticsPeriod } from '@shared/types/statistics';
 
@@ -124,7 +124,6 @@ export interface AIGenerateDraftRequest {
 // Project requests
 export interface ProjectFilters {
   status?: ProjectStatus;
-  leaderPersonId?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -134,10 +133,7 @@ export interface CreateProjectRequest {
   description?: string;
   status?: ProjectStatus;
   tags?: string;
-  priority?: ProjectPriority;
   startDate?: string;
-  targetEndDate?: string;
-  leaderPersonId?: string;
   deptName?: string;
   participantIds?: string[];
 }
@@ -147,11 +143,8 @@ export interface UpdateProjectRequest {
   description?: string;
   status?: ProjectStatus;
   tags?: string;
-  priority?: ProjectPriority;
   startDate?: string;
-  targetEndDate?: string;
   actualEndDate?: string;
-  leaderPersonId?: string;
   deptName?: string;
 }
 
