@@ -178,3 +178,14 @@ When supporting payload aliases for array fields, merge both arrays with `Set` i
 
 ### Impact
 For participant alias handling, always combine `participantPersonIds` and `participantIds` and deduplicate before repository writes.
+
+## 2026-02-06 Project Date Upper-Bound Filter Normalization
+
+### Decision/Learning
+When project query upper bounds (`startDateTo`, `targetEndDateTo`) are date-only strings, normalize them to a next-day exclusive comparison (`< nextDate`) instead of direct `<=`.
+
+### Reason
+Project date fields can contain datetime strings, and direct lexicographic `<= YYYY-MM-DD` excludes same-day datetime values.
+
+### Impact
+Keep repository date filters index-friendly and date-compatible by converting date-only upper bounds before SQL binding.

@@ -255,6 +255,58 @@ describe('ProjectRepository - Query operations', () => {
       expect(result.map((p) => p.projectId).sort()).toEqual(['PROJECT-102', 'PROJECT-103']);
     });
 
+    it('should include same-day datetime values when startDateTo is date-only', async () => {
+      // Arrange
+      const now = new Date().toISOString();
+      await testEnv.DB.prepare(
+        `INSERT INTO projects (
+          project_id, name, status, start_date, target_end_date, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+        .bind(
+          'PROJECT-104',
+          '프로젝트4',
+          '진행중',
+          '2025-03-31T12:00:00.000Z',
+          '2025-09-01',
+          now,
+          now
+        )
+        .run();
+
+      // Act
+      const result = await repository.findAll({ startDateTo: '2025-03-31' });
+
+      // Assert
+      expect(result.map((p) => p.projectId)).toContain('PROJECT-104');
+    });
+
+    it('should include same-day datetime values when targetEndDateTo is date-only', async () => {
+      // Arrange
+      const now = new Date().toISOString();
+      await testEnv.DB.prepare(
+        `INSERT INTO projects (
+          project_id, name, status, start_date, target_end_date, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+        .bind(
+          'PROJECT-105',
+          '프로젝트5',
+          '진행중',
+          '2025-04-01',
+          '2025-07-31T18:30:00.000Z',
+          now,
+          now
+        )
+        .run();
+
+      // Act
+      const result = await repository.findAll({ targetEndDateTo: '2025-07-31' });
+
+      // Assert
+      expect(result.map((p) => p.projectId)).toContain('PROJECT-105');
+    });
+
     it('should exclude deleted projects by default', async () => {
       // Arrange
       await testEnv.DB.prepare(`UPDATE projects SET deleted_at = ? WHERE project_id = ?`)
