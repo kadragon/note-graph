@@ -558,7 +558,10 @@ describe('DraftEditorForm', () => {
       const deleteButton = todoItem?.querySelector('button');
 
       expect(deleteButton).toBeInTheDocument();
-      await user.click(deleteButton!);
+      if (!deleteButton) {
+        throw new Error('Delete button not found');
+      }
+      await user.click(deleteButton);
 
       expect(mockHandleRemoveTodo).toHaveBeenCalledWith('todo-1');
     });
