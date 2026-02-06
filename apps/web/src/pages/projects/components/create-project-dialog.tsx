@@ -179,7 +179,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 
             <div className="grid gap-2">
               <Label htmlFor="leaderPersonId">프로젝트 리더</Label>
-              <Select value={leaderPersonId || undefined} onValueChange={setLeaderPersonId}>
+              <Select value={leaderPersonId} onValueChange={setLeaderPersonId}>
                 <SelectTrigger id="leaderPersonId">
                   <SelectValue placeholder="리더를 선택하세요" />
                 </SelectTrigger>
@@ -195,7 +195,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 
             <div className="grid gap-2">
               <Label htmlFor="deptName">담당 부서</Label>
-              <Select value={deptName || undefined} onValueChange={setDeptName}>
+              <Select value={deptName} onValueChange={setDeptName}>
                 <SelectTrigger id="deptName">
                   <SelectValue placeholder="부서를 선택하세요" />
                 </SelectTrigger>
