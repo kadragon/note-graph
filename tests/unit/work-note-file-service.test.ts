@@ -398,7 +398,9 @@ describe('WorkNoteFileService', () => {
         originalName: 'malware.exe',
         uploadedBy: userEmail,
       })
-    ).rejects.toThrow(BadRequestError);
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('file.type: application/x-msdownload'),
+    });
   });
 
   it('lists files for work note', async () => {

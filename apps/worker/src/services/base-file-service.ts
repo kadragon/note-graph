@@ -47,6 +47,11 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
   protected abstract getExtensionMimeMap(): Record<string, string>;
   protected abstract getUnsupportedFileMessage(): string;
 
+  private formatUnsupportedFileMessage(mimeType: string): string {
+    const fileType = mimeType.trim() || '(empty)';
+    return `${this.getUnsupportedFileMessage()} (file.type: ${fileType})`;
+  }
+
   protected validateFileSize(file: Blob): void {
     if (file.size > MAX_FILE_SIZE) {
       throw new BadRequestError(
@@ -65,7 +70,10 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
     if (normalizedMime === 'application/hwp+zip') {
       normalizedMime = 'application/vnd.hancom.hwpx';
     }
-    if (normalizedMime === 'application/zip' && extension === 'hwpx') {
+    if (
+      extension === 'hwpx' &&
+      (normalizedMime === 'application/zip' || normalizedMime === 'application/x-zip-compressed')
+    ) {
       return 'application/vnd.hancom.hwpx';
     }
 
@@ -74,7 +82,7 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
     }
 
     if (normalizedMime && !GENERIC_MIME_TYPES.includes(normalizedMime)) {
-      throw new BadRequestError(this.getUnsupportedFileMessage());
+      throw new BadRequestError(this.formatUnsupportedFileMessage(mimeType));
     }
 
     if (extension) {
@@ -85,7 +93,7 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
       }
     }
 
-    throw new BadRequestError(this.getUnsupportedFileMessage());
+    throw new BadRequestError(this.formatUnsupportedFileMessage(mimeType));
   }
 
   protected async putFileObject(params: {
