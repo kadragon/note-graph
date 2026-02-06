@@ -39,9 +39,12 @@ projects.post('/', bodyValidator(createProjectSchema), async (c) => {
   const { projects: repository } = c.get('repositories');
 
   const { participantIds, ...rest } = data;
+  const mergedParticipantIds = Array.from(
+    new Set([...(rest.participantPersonIds ?? []), ...(participantIds ?? [])])
+  );
   const project = await repository.create({
     ...rest,
-    participantPersonIds: rest.participantPersonIds ?? participantIds,
+    participantPersonIds: mergedParticipantIds,
   });
 
   return c.json(project, 201);

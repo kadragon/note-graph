@@ -167,3 +167,14 @@ Project create/edit UI and manual API calls commonly send date-only strings and 
 
 ### Impact
 Keep project schema date validators date-compatible, and normalize participant payload keys in the create route so project creation behaves consistently across frontend and direct API usage.
+
+## 2026-02-06 Participant Alias Merge Edge Case
+
+### Decision/Learning
+When supporting payload aliases for array fields, merge both arrays with `Set` instead of selecting one with `??`.
+
+### Reason
+`[]` is not nullish, so `primary ?? alias` can silently discard alias values when clients send an empty primary array.
+
+### Impact
+For participant alias handling, always combine `participantPersonIds` and `participantIds` and deduplicate before repository writes.

@@ -132,6 +132,39 @@ describe('Project API Routes', () => {
       expect(participantsCheck?.count).toBe(2);
     });
 
+    it('should merge participant IDs when both participantPersonIds and participantIds are provided', async () => {
+      const now = new Date().toISOString();
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind('PERSON-201', '세종대왕', now, now),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind('PERSON-202', '장영실', now, now),
+      ]);
+
+      const projectData = {
+        name: '참가자 병합 테스트',
+        participantPersonIds: [],
+        participantIds: ['PERSON-201', 'PERSON-202'],
+      };
+
+      const response = await authFetch('http://localhost/api/projects', {
+        method: 'POST',
+        body: JSON.stringify(projectData),
+      });
+
+      expect(response.status).toBe(201);
+      const project = await response.json<Project>();
+
+      const participantsCheck = await testEnv.DB.prepare(
+        'SELECT COUNT(*) as count FROM project_participants WHERE project_id = ?'
+      )
+        .bind(project.projectId)
+        .first<{ count: number }>();
+      expect(participantsCheck?.count).toBe(2);
+    });
+
     it('should reject invalid project data', async () => {
       const response = await authFetch('http://localhost/api/projects', {
         method: 'POST',
