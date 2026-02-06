@@ -230,14 +230,15 @@ export class TodoRepository {
       case 'today':
       case 'week':
       case 'month': {
-        // Time-based views: show incomplete todos with due_date and wait_until up to the end of the period
+        // Time-based views: show incomplete todos up to period end.
+        // Include wait_until-only todos as well, but still hide todos gated by future wait_until.
         // Exclude inactive statuses: 완료, 보류, 중단
         const endExclusiveUTC = this.getPeriodEndExclusiveUTC(query.view);
 
         conditions.push(
           `t.status NOT IN (?, ?, ?)`,
-          `t.due_date IS NOT NULL`,
-          `t.due_date < ?`,
+          `COALESCE(t.due_date, t.wait_until) IS NOT NULL`,
+          `COALESCE(t.due_date, t.wait_until) < ?`,
           `(t.wait_until IS NULL OR t.wait_until < ?)`
         );
         params.push('완료', '보류', '중단', endExclusiveUTC, endExclusiveUTC);
@@ -260,10 +261,7 @@ export class TodoRepository {
       case 'remaining': {
         // All incomplete todos (no year restriction)
         // Exclude inactive statuses: 완료, 보류, 중단
-        conditions.push(
-          `t.status NOT IN (?, ?, ?)`,
-          `(t.wait_until IS NULL OR t.wait_until < ?)`
-        );
+        conditions.push(`t.status NOT IN (?, ?, ?)`, `(t.wait_until IS NULL OR t.wait_until < ?)`);
         params.push('완료', '보류', '중단', startOfTomorrowUTC);
         break;
       }
