@@ -16,7 +16,11 @@ vi.mock('@web/components/ui/dialog', () => ({
 }));
 
 vi.mock('@web/components/ui/select', () => ({
-  Select: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Select: ({ value, children }: { value?: string; children: ReactNode }) => (
+    <div data-testid="select-root" data-value={value === undefined ? '__undefined__' : value}>
+      {children}
+    </div>
+  ),
   SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SelectTrigger: ({ id, children }: { id?: string; children: ReactNode }) => (
@@ -72,6 +76,19 @@ describe('CreateProjectDialog', () => {
 
       const searchInput = screen.getByRole('textbox', { name: /참여자 검색/ });
       expect(searchInput).toBeInTheDocument();
+    });
+  });
+
+  describe('select values', () => {
+    it('keeps all Select components controlled on initial render', () => {
+      render(<CreateProjectDialog {...defaultProps} />);
+
+      const selectRoots = screen.getAllByTestId('select-root');
+      expect(selectRoots).toHaveLength(4);
+
+      for (const selectRoot of selectRoots) {
+        expect(selectRoot).not.toHaveAttribute('data-value', '__undefined__');
+      }
     });
   });
 });
