@@ -148,10 +148,10 @@ Normalize folder IDs before listing and return `driveFolderId`/`driveFolderLink`
 ## 2026-02-05 HWPX Zip MIME
 
 ### Decision/Learning
-Treat `application/zip` as a generic MIME type so `.hwpx` uploads can resolve by extension.
+Special-case `application/zip` for `.hwpx` so it resolves to the HWPX MIME without relaxing other ZIP uploads.
 
 ### Reason
-Some systems report HWPX files as ZIP containers, which previously failed validation.
+Some systems report HWPX files as ZIP containers, and generic ZIP acceptance would be overly broad.
 
 ### Impact
-Allow ZIP MIME to fall back to extension mapping for supported file types.
+Handle ZIP only when the extension is `hwpx` instead of treating ZIP as a generic MIME type.
