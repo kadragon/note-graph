@@ -39,8 +39,6 @@ import type {
   TodoStatus,
   WorkNote,
 } from '@web/types/api';
-import { format, parseISO } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { Copy, Edit2, Save, Sparkles, X } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { groupRecurringTodos } from './group-recurring-todos';
@@ -66,6 +64,21 @@ interface ViewWorkNoteDialogProps {
 }
 
 type RelatedWorkNote = NonNullable<WorkNote['relatedWorkNotes']>[number];
+
+const kstDateTimeFormatter = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'Asia/Seoul',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+function formatDateTimeInKst(dateString: string): string {
+  const date = new Date(dateString);
+  return Number.isNaN(date.getTime()) ? '-' : kstDateTimeFormatter.format(date);
+}
 
 export function ViewWorkNoteDialog({
   workNote,
@@ -396,9 +409,19 @@ export function ViewWorkNoteDialog({
                     placeholder="제목"
                     className="text-xl font-semibold"
                   />
+                  <p className="mt-1 text-xs text-muted-foreground whitespace-nowrap">
+                    생성일: {formatDateTimeInKst(currentWorkNote.createdAt)} | 수정일:{' '}
+                    {formatDateTimeInKst(currentWorkNote.updatedAt)}
+                  </p>
                 </div>
               ) : (
-                <DialogTitle className="text-xl">{currentWorkNote.title}</DialogTitle>
+                <div className="flex-1">
+                  <DialogTitle className="text-xl">{currentWorkNote.title}</DialogTitle>
+                  <p className="mt-1 text-xs text-muted-foreground whitespace-nowrap">
+                    생성일: {formatDateTimeInKst(currentWorkNote.createdAt)} | 수정일:{' '}
+                    {formatDateTimeInKst(currentWorkNote.updatedAt)}
+                  </p>
+                </div>
               )}
               <div className="flex items-center gap-2">
                 {!isEditing && (
@@ -551,22 +574,6 @@ export function ViewWorkNoteDialog({
                 </div>
               </>
             )}
-
-            {/* Dates - always visible */}
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>
-                생성일:{' '}
-                {format(parseISO(currentWorkNote.createdAt), 'yyyy년 M월 d일 HH:mm', {
-                  locale: ko,
-                })}
-              </p>
-              <p>
-                수정일:{' '}
-                {format(parseISO(currentWorkNote.updatedAt), 'yyyy년 M월 d일 HH:mm', {
-                  locale: ko,
-                })}
-              </p>
-            </div>
 
             {/* References */}
             <div className="border-t pt-4">
