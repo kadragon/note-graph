@@ -38,7 +38,11 @@ projects.post('/', bodyValidator(createProjectSchema), async (c) => {
   const data = getValidatedBody<typeof createProjectSchema>(c);
   const { projects: repository } = c.get('repositories');
 
-  const project = await repository.create(data);
+  const { participantIds, ...rest } = data;
+  const project = await repository.create({
+    ...rest,
+    participantPersonIds: rest.participantPersonIds ?? participantIds,
+  });
 
   return c.json(project, 201);
 });

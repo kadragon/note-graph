@@ -155,3 +155,15 @@ Some systems report HWPX files as ZIP containers, and generic ZIP acceptance wou
 
 ### Impact
 Handle ZIP only when the extension is `hwpx` instead of treating ZIP as a generic MIME type.
+
+## 2026-02-06 Project Date/Participant Payload Compatibility
+
+### Decision/Learning
+Allow project date fields (`startDate`, `targetEndDate`, `actualEndDate`, filter dates) to accept ISO date-only strings (`YYYY-MM-DD`) as well as datetime strings.
+Also accept `participantIds` as a create-project alias and normalize it to `participantPersonIds`.
+
+### Reason
+Project create/edit UI and manual API calls commonly send date-only strings and `participantIds`; strict datetime-only validation and a single participant field name caused rejected or partially applied requests.
+
+### Impact
+Keep project schema date validators date-compatible, and normalize participant payload keys in the create route so project creation behaves consistently across frontend and direct API usage.
