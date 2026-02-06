@@ -24,6 +24,7 @@ vi.mock('@web/lib/api', () => ({
 describe('top-menu', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.pushState({}, '', '/');
     vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
       configured: true,
       data: { connected: true, calendarConnected: true },
@@ -51,11 +52,27 @@ describe('top-menu', () => {
     render(<TopMenu />);
 
     expect(screen.queryByText('환경 설정 필요')).not.toBeInTheDocument();
+    expect(screen.queryByText('연결하기')).not.toBeInTheDocument();
+    expect(screen.queryByText('로그아웃')).not.toBeInTheDocument();
     expect(screen.getByLabelText('환경 설정 필요')).toBeInTheDocument();
     expect(screen.getByLabelText('Drive 미연결')).toBeInTheDocument();
     expect(screen.getByLabelText('캘린더 미연결')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Google 연결하기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Google 연결 해제' })).toBeInTheDocument();
     expect(screen.getByTestId('google-connect-button')).toBeDisabled();
     expect(screen.getByTestId('google-disconnect-button')).toBeDisabled();
+  });
+
+  it('highlights active nav icon for current path', () => {
+    window.history.pushState({}, '', '/');
+    render(<TopMenu />);
+
+    const dashboardLink = screen.getByRole('link', { name: '대시보드' });
+    const workNotesLink = screen.getByRole('link', { name: '업무노트' });
+
+    expect(dashboardLink).toHaveClass('ring-1');
+    expect(dashboardLink).toHaveClass('shadow-sm');
+    expect(workNotesLink).not.toHaveClass('ring-1');
   });
 
   it('refreshes status and redirects when connect is clicked while disconnected', async () => {

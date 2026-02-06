@@ -1,19 +1,8 @@
 import { Input } from '@web/components/ui/input';
 import { Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import TopMenu from './top-menu';
-
-// Map paths to breadcrumb titles
-const pathTitles: Record<string, { title: string; subtitle: string }> = {
-  '/': { title: '대시보드', subtitle: '할 일을 관리하세요' },
-  '/work-notes': { title: '업무노트', subtitle: '업무노트를 관리하세요' },
-  '/persons': { title: '사람 관리', subtitle: '사람을 관리하세요' },
-  '/departments': { title: '부서 관리', subtitle: '부서를 관리하세요' },
-  '/task-categories': { title: '업무 구분 관리', subtitle: '업무 구분을 관리하세요' },
-  '/search': { title: '검색', subtitle: '업무노트를 검색하세요' },
-  '/rag': { title: 'AI 챗봇', subtitle: 'AI와 대화하세요' },
-};
 
 // Check if element is an editable input field
 function isEditableElement(target: EventTarget | null): boolean {
@@ -28,11 +17,9 @@ function isEditableElement(target: EventTarget | null): boolean {
 }
 
 export default function Header() {
-  const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const pageInfo = pathTitles[location.pathname] || { title: '페이지', subtitle: '' };
 
   // Global keyboard shortcut: Ctrl+K (or Cmd+K on Mac) or / to focus search
   useEffect(() => {
@@ -68,10 +55,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6">
-      <div className="flex flex-1 items-center gap-6">
-        <div className="hidden md:block">
-          <h1 className="text-lg font-semibold">{pageInfo.title}</h1>
-        </div>
+      <div className="flex flex-1 items-center">
         <TopMenu />
       </div>
       <div className="flex items-center gap-2">
@@ -86,7 +70,7 @@ export default function Header() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="w-64 pl-8 bg-muted/50 border-0 focus-visible:ring-1"
+            className="w-36 md:w-44 focus:w-64 md:focus:w-72 transition-[width] duration-200 ease-out pl-8 bg-muted/50 border-0 focus-visible:ring-1"
           />
         </div>
       </div>

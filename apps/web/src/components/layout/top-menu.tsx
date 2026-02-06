@@ -13,6 +13,8 @@ import {
   DatabaseZap,
   FolderKanban,
   Home,
+  Link,
+  LogOut,
   NotebookPen,
   Search,
   Settings2,
@@ -114,23 +116,27 @@ export default function TopMenu() {
         </div>
         <Button
           variant="outline"
-          size="sm"
-          className="h-7 text-xs"
+          size="icon"
+          className="h-8 w-8"
           onClick={handleGoogleReconnect}
           disabled={!configured || isDriveChecking}
+          aria-label="Google 연결하기"
+          title="Google 연결하기"
           data-testid="google-connect-button"
         >
-          연결하기
+          <Link className="h-4 w-4" aria-hidden="true" />
         </Button>
         <Button
           variant="outline"
-          size="sm"
-          className="h-7 text-xs"
+          size="icon"
+          className="h-8 w-8"
           disabled={!isDriveConnected && !isCalendarConnected}
           data-testid="google-disconnect-button"
           onClick={handleGoogleDisconnect}
+          aria-label="Google 연결 해제"
+          title="Google 연결 해제"
         >
-          로그아웃
+          <LogOut className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
     </div>
@@ -149,7 +155,7 @@ const NavLinkItem = React.memo(function NavLinkItem({ item }: { item: NavItem })
           'group relative flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           isActive
-            ? 'bg-accent text-foreground'
+            ? 'bg-accent text-foreground shadow-sm ring-1 ring-ring/30 after:absolute after:bottom-1 after:h-1 after:w-1 after:rounded-full after:bg-foreground'
             : 'text-muted-foreground hover:bg-accent hover:text-foreground'
         )
       }
