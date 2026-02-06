@@ -327,6 +327,20 @@ describe('WorkNoteFileService', () => {
     expect(result.fileType).toBe('application/vnd.hancom.hwpx');
   });
 
+  it('uploads HWPX file when browser sends application/x-zip-compressed mime type', async () => {
+    await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
+    const file = new Blob(['HWPX content'], { type: 'application/x-zip-compressed' });
+
+    const result = await service.uploadFile({
+      workId: 'WORK-123',
+      file,
+      originalName: '정책정보.hwpx',
+      uploadedBy: userEmail,
+    });
+
+    expect(result.fileType).toBe('application/vnd.hancom.hwpx');
+  });
+
   it('uploads Excel file successfully', async () => {
     await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
     const file = new Blob(['Excel content'], {
@@ -398,7 +412,9 @@ describe('WorkNoteFileService', () => {
         originalName: 'malware.exe',
         uploadedBy: userEmail,
       })
-    ).rejects.toThrow(BadRequestError);
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('file.type: application/x-msdownload'),
+    });
   });
 
   it('lists files for work note', async () => {

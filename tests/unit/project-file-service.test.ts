@@ -175,7 +175,9 @@ describe('ProjectFileService', () => {
         originalName: 'archive.zip',
         uploadedBy: 'tester@example.com',
       })
-    ).rejects.toBeInstanceOf(BadRequestError);
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('file.type: application/zip'),
+    });
   });
 
   it('uploads file when browser sends empty mime type using extension fallback', async () => {
