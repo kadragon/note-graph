@@ -10,11 +10,11 @@ const testEnv = env as unknown as Env;
 const REAL_DATE = Date;
 const BASE_NOW = new REAL_DATE('2025-01-10T12:00:00.000Z');
 
-const useFixedDate = () => {
+const useFixedDate = (baseDate: Date = BASE_NOW) => {
   class MockDate extends REAL_DATE {
     constructor(...args: unknown[]) {
       if (args.length === 0) {
-        super(BASE_NOW.getTime());
+        super(baseDate.getTime());
         return;
       }
       // @ts-expect-error allow variadic Date constructor args
@@ -22,7 +22,7 @@ const useFixedDate = () => {
     }
 
     static now() {
-      return BASE_NOW.getTime();
+      return baseDate.getTime();
     }
   }
 
@@ -249,7 +249,7 @@ describe('TodoRepository - Filtering and Views', () => {
       expect(result.some((todo) => todo.todoId === 'TODO-OVERDUE-WAIT')).toBe(false);
     });
 
-    it('should exclude todo with wait_until in the near future', async () => {
+    it('should include todo with wait_until later today', async () => {
       // Arrange
       const now = new Date(BASE_NOW.getTime());
       const nearFuture = new Date(now.getTime() + 3600000); // 1 hour later
@@ -272,7 +272,33 @@ describe('TodoRepository - Filtering and Views', () => {
       const result = await repository.findAll({ view: 'today' });
 
       // Assert
-      expect(result.some((t) => t.todoId === 'TODO-NEAR-FUTURE')).toBe(false);
+      expect(result.some((t) => t.todoId === 'TODO-NEAR-FUTURE')).toBe(true);
+    });
+
+    it('should include wait_until date when KST date has advanced ahead of UTC', async () => {
+      const earlyKstNow = new REAL_DATE('2025-01-09T23:00:00.000Z'); // 2025-01-10 08:00 KST
+      useFixedDate(earlyKstNow);
+
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(
+          'TODO-WAIT-TODAY',
+          testWorkId,
+          'Wait Today',
+          earlyKstNow.toISOString(),
+          '2025-01-10T00:00:00.000Z',
+          '2025-01-10T00:00:00.000Z',
+          '진행중',
+          'NONE'
+        )
+        .run();
+
+      const result = await repository.findAll({ view: 'remaining' });
+
+      expect(result.some((t) => t.todoId === 'TODO-WAIT-TODAY')).toBe(true);
+
+      useFixedDate();
     });
 
     it('should exclude 보류 and 중단 status todos from today view', async () => {
