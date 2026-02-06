@@ -15,6 +15,8 @@ export const projectStatusSchema = z.enum(['진행중', '완료', '보류', '중
  */
 export const projectPrioritySchema = z.enum(['높음', '중간', '낮음']);
 
+const projectDateSchema = z.union([z.string().date(), z.string().datetime()]);
+
 /**
  * Create project request body
  */
@@ -24,11 +26,12 @@ export const createProjectSchema = z.object({
   status: projectStatusSchema.optional(),
   tags: z.string().max(500, 'Tags too long').optional(),
   priority: projectPrioritySchema.optional(),
-  startDate: z.string().datetime().optional(),
-  targetEndDate: z.string().datetime().optional(),
+  startDate: projectDateSchema.optional(),
+  targetEndDate: projectDateSchema.optional(),
   leaderPersonId: z.string().optional(),
   deptName: z.string().optional(),
   participantPersonIds: z.array(z.string()).optional(),
+  participantIds: z.array(z.string()).optional(),
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
@@ -42,9 +45,9 @@ export const updateProjectSchema = z.object({
   status: projectStatusSchema.optional(),
   tags: z.string().max(500).optional(),
   priority: projectPrioritySchema.optional(),
-  startDate: z.string().datetime().optional(),
-  targetEndDate: z.string().datetime().optional(),
-  actualEndDate: z.string().datetime().optional(),
+  startDate: projectDateSchema.optional(),
+  targetEndDate: projectDateSchema.optional(),
+  actualEndDate: projectDateSchema.optional(),
   leaderPersonId: z.string().optional(),
   deptName: z.string().optional(),
 });
@@ -59,10 +62,10 @@ export const listProjectsQuerySchema = z.object({
   leaderPersonId: z.string().optional(),
   deptName: z.string().optional(),
   participantPersonId: z.string().optional(),
-  startDateFrom: z.string().datetime().optional(),
-  startDateTo: z.string().datetime().optional(),
-  targetEndDateFrom: z.string().datetime().optional(),
-  targetEndDateTo: z.string().datetime().optional(),
+  startDateFrom: projectDateSchema.optional(),
+  startDateTo: projectDateSchema.optional(),
+  targetEndDateFrom: projectDateSchema.optional(),
+  targetEndDateTo: projectDateSchema.optional(),
   includeDeleted: z
     .string()
     .transform((val) => val === 'true')

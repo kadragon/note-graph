@@ -20,6 +20,18 @@ import type { TodoWithWorkNote } from '@shared/types/todo';
 import { nanoid } from 'nanoid';
 import { ConflictError, NotFoundError } from '../types/errors';
 
+const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+function getNextDateString(dateOnly: string): string {
+  const [yearStr, monthStr, dayStr] = dateOnly.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  utcDate.setUTCDate(utcDate.getUTCDate() + 1);
+  return utcDate.toISOString().split('T')[0] as string;
+}
+
 export class ProjectRepository {
   constructor(private db: D1Database) {}
 
@@ -89,16 +101,26 @@ export class ProjectRepository {
       bindings.push(filters.startDateFrom);
     }
     if (filters.startDateTo) {
-      conditions.push('start_date <= ?');
-      bindings.push(filters.startDateTo);
+      if (ISO_DATE_ONLY_REGEX.test(filters.startDateTo)) {
+        conditions.push('start_date < ?');
+        bindings.push(getNextDateString(filters.startDateTo));
+      } else {
+        conditions.push('start_date <= ?');
+        bindings.push(filters.startDateTo);
+      }
     }
     if (filters.targetEndDateFrom) {
       conditions.push('target_end_date >= ?');
       bindings.push(filters.targetEndDateFrom);
     }
     if (filters.targetEndDateTo) {
-      conditions.push('target_end_date <= ?');
-      bindings.push(filters.targetEndDateTo);
+      if (ISO_DATE_ONLY_REGEX.test(filters.targetEndDateTo)) {
+        conditions.push('target_end_date < ?');
+        bindings.push(getNextDateString(filters.targetEndDateTo));
+      } else {
+        conditions.push('target_end_date <= ?');
+        bindings.push(filters.targetEndDateTo);
+      }
     }
 
     // Build final query

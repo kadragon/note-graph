@@ -155,3 +155,37 @@ Some systems report HWPX files as ZIP containers, and generic ZIP acceptance wou
 
 ### Impact
 Handle ZIP only when the extension is `hwpx` instead of treating ZIP as a generic MIME type.
+
+## 2026-02-06 Project Date/Participant Payload Compatibility
+
+### Decision/Learning
+Allow project date fields (`startDate`, `targetEndDate`, `actualEndDate`, filter dates) to accept ISO date-only strings (`YYYY-MM-DD`) as well as datetime strings.
+Also accept `participantIds` as a create-project alias and normalize it to `participantPersonIds`.
+
+### Reason
+Project create/edit UI and manual API calls commonly send date-only strings and `participantIds`; strict datetime-only validation and a single participant field name caused rejected or partially applied requests.
+
+### Impact
+Keep project schema date validators date-compatible, and normalize participant payload keys in the create route so project creation behaves consistently across frontend and direct API usage.
+
+## 2026-02-06 Participant Alias Merge Edge Case
+
+### Decision/Learning
+When supporting payload aliases for array fields, merge both arrays with `Set` instead of selecting one with `??`.
+
+### Reason
+`[]` is not nullish, so `primary ?? alias` can silently discard alias values when clients send an empty primary array.
+
+### Impact
+For participant alias handling, always combine `participantPersonIds` and `participantIds` and deduplicate before repository writes.
+
+## 2026-02-06 Project Date Upper-Bound Filter Normalization
+
+### Decision/Learning
+When project query upper bounds (`startDateTo`, `targetEndDateTo`) are date-only strings, normalize them to a next-day exclusive comparison (`< nextDate`) instead of direct `<=`.
+
+### Reason
+Project date fields can contain datetime strings, and direct lexicographic `<= YYYY-MM-DD` excludes same-day datetime values.
+
+### Impact
+Keep repository date filters index-friendly and date-compatible by converting date-only upper bounds before SQL binding.

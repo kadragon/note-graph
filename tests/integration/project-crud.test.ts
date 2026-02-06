@@ -50,6 +50,24 @@ describe('Project API Routes', () => {
       expect(project.createdAt).toBeDefined();
     });
 
+    it('should accept ISO date-only strings for start and target end dates', async () => {
+      const projectData = {
+        name: '날짜 형식 테스트 프로젝트',
+        startDate: '2026-02-04',
+        targetEndDate: '2026-02-06',
+      };
+
+      const response = await authFetch('http://localhost/api/projects', {
+        method: 'POST',
+        body: JSON.stringify(projectData),
+      });
+
+      expect(response.status).toBe(201);
+      const project = await response.json<Project>();
+      expect(project.startDate).toBe('2026-02-04');
+      expect(project.targetEndDate).toBe('2026-02-06');
+    });
+
     it('should create project with participants', async () => {
       const now = new Date().toISOString();
       await testEnv.DB.batch([
@@ -64,6 +82,71 @@ describe('Project API Routes', () => {
       const projectData = {
         name: '팀 프로젝트',
         participantPersonIds: ['PERSON-001', 'PERSON-002'],
+      };
+
+      const response = await authFetch('http://localhost/api/projects', {
+        method: 'POST',
+        body: JSON.stringify(projectData),
+      });
+
+      expect(response.status).toBe(201);
+      const project = await response.json<Project>();
+
+      const participantsCheck = await testEnv.DB.prepare(
+        'SELECT COUNT(*) as count FROM project_participants WHERE project_id = ?'
+      )
+        .bind(project.projectId)
+        .first<{ count: number }>();
+      expect(participantsCheck?.count).toBe(2);
+    });
+
+    it('should create project participants from participantIds payload', async () => {
+      const now = new Date().toISOString();
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind('PERSON-101', '강감찬', now, now),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind('PERSON-102', '유관순', now, now),
+      ]);
+
+      const projectData = {
+        name: '참가자 필드 별칭 테스트',
+        participantIds: ['PERSON-101', 'PERSON-102'],
+      };
+
+      const response = await authFetch('http://localhost/api/projects', {
+        method: 'POST',
+        body: JSON.stringify(projectData),
+      });
+
+      expect(response.status).toBe(201);
+      const project = await response.json<Project>();
+
+      const participantsCheck = await testEnv.DB.prepare(
+        'SELECT COUNT(*) as count FROM project_participants WHERE project_id = ?'
+      )
+        .bind(project.projectId)
+        .first<{ count: number }>();
+      expect(participantsCheck?.count).toBe(2);
+    });
+
+    it('should merge participant IDs when both participantPersonIds and participantIds are provided', async () => {
+      const now = new Date().toISOString();
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind('PERSON-201', '세종대왕', now, now),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind('PERSON-202', '장영실', now, now),
+      ]);
+
+      const projectData = {
+        name: '참가자 병합 테스트',
+        participantPersonIds: [],
+        participantIds: ['PERSON-201', 'PERSON-202'],
       };
 
       const response = await authFetch('http://localhost/api/projects', {
