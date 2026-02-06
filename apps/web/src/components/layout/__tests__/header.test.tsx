@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen } from '@web/test/setup';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Header from '../header';
@@ -24,19 +24,12 @@ describe('header component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useNavigate).mockReturnValue(mockNavigate);
-    vi.mocked(useLocation).mockReturnValue({
-      pathname: '/',
-      search: '',
-      hash: '',
-      state: null,
-      key: 'default',
-    });
   });
 
-  it('renders page title based on current path (대시보드 for /)', () => {
+  it('does not render page title text in header', () => {
     render(<Header />);
 
-    expect(screen.getByText('대시보드')).toBeInTheDocument();
+    expect(screen.queryByText('대시보드')).not.toBeInTheDocument();
   });
 
   it('renders search input with placeholder (검색... (⌘/Ctrl+K))', () => {
@@ -49,6 +42,17 @@ describe('header component', () => {
     render(<Header />);
 
     expect(screen.getByTestId('top-menu')).toBeInTheDocument();
+  });
+
+  it('uses compact width and expands only on focus for search input', () => {
+    render(<Header />);
+
+    const searchInput = screen.getByRole('searchbox', { name: /검색/ });
+    expect(searchInput).toHaveClass('w-36');
+    expect(searchInput).toHaveClass('md:w-44');
+    expect(searchInput).toHaveClass('focus:w-64');
+    expect(searchInput).toHaveClass('md:focus:w-72');
+    expect(searchInput).toHaveClass('transition-[width]');
   });
 
   it('navigates to search page on Enter with query', async () => {
@@ -104,20 +108,6 @@ describe('header component', () => {
     await user.keyboard('{Escape}');
 
     expect(document.activeElement).not.toBe(searchInput);
-  });
-
-  it('shows different titles for different paths (/work-notes -> 업무노트)', () => {
-    vi.mocked(useLocation).mockReturnValue({
-      pathname: '/work-notes',
-      search: '',
-      hash: '',
-      state: null,
-      key: 'default',
-    });
-
-    render(<Header />);
-
-    expect(screen.getByText('업무노트')).toBeInTheDocument();
   });
 
   describe('accessibility', () => {
