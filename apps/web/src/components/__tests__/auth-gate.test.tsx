@@ -25,6 +25,7 @@ function createTestQueryClient() {
     defaultOptions: {
       queries: {
         retry: false,
+        retryDelay: 0,
         gcTime: 0,
       },
     },
@@ -64,9 +65,7 @@ describe('AuthGate', () => {
       </AuthGate>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Protected Content')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Protected Content')).toBeInTheDocument();
   });
 
   it('triggers redirect on CF Access error when online and origin reachable', async () => {
@@ -82,12 +81,9 @@ describe('AuthGate', () => {
       </AuthGate>
     );
 
-    await waitFor(
-      () => {
-        expect(cfTokenRefresher.forceAuthRedirect).toHaveBeenCalled();
-      },
-      { timeout: 3000 }
-    );
+    await waitFor(() => {
+      expect(cfTokenRefresher.forceAuthRedirect).toHaveBeenCalled();
+    });
 
     expect(screen.getByText('로그인 페이지로 이동 중...')).toBeInTheDocument();
   });
@@ -104,12 +100,7 @@ describe('AuthGate', () => {
       </AuthGate>
     );
 
-    await waitFor(
-      () => {
-        expect(screen.getByText('인터넷 연결이 끊어졌습니다.')).toBeInTheDocument();
-      },
-      { timeout: 3000 }
-    );
+    expect(await screen.findByText('인터넷 연결이 끊어졌습니다.')).toBeInTheDocument();
 
     expect(cfTokenRefresher.forceAuthRedirect).not.toHaveBeenCalled();
   });
@@ -127,12 +118,7 @@ describe('AuthGate', () => {
       </AuthGate>
     );
 
-    await waitFor(
-      () => {
-        expect(screen.getByText('서버에 연결할 수 없습니다.')).toBeInTheDocument();
-      },
-      { timeout: 3000 }
-    );
+    expect(await screen.findByText('서버에 연결할 수 없습니다.')).toBeInTheDocument();
   });
 
   it('shows error state on non-network error', async () => {
@@ -145,12 +131,7 @@ describe('AuthGate', () => {
       </AuthGate>
     );
 
-    await waitFor(
-      () => {
-        expect(screen.getByText('서버에 연결할 수 없습니다.')).toBeInTheDocument();
-      },
-      { timeout: 3000 }
-    );
+    expect(await screen.findByText('서버에 연결할 수 없습니다.')).toBeInTheDocument();
 
     expect(screen.getByText('다시 시도')).toBeInTheDocument();
   });
@@ -166,12 +147,7 @@ describe('AuthGate', () => {
     );
 
     // Wait for error state to appear
-    await waitFor(
-      () => {
-        expect(screen.getByText('서버에 연결할 수 없습니다.')).toBeInTheDocument();
-      },
-      { timeout: 3000 }
-    );
+    expect(await screen.findByText('서버에 연결할 수 없습니다.')).toBeInTheDocument();
 
     // Verify retry button is present
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
@@ -192,12 +168,9 @@ describe('AuthGate', () => {
       </AuthGate>
     );
 
-    await waitFor(
-      () => {
-        expect(cfTokenRefresher.forceAuthRedirect).toHaveBeenCalled();
-      },
-      { timeout: 3000 }
-    );
+    await waitFor(() => {
+      expect(cfTokenRefresher.forceAuthRedirect).toHaveBeenCalled();
+    });
 
     // Should show redirecting message, not error
     expect(screen.getByText('로그인 페이지로 이동 중...')).toBeInTheDocument();
