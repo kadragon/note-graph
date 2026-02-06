@@ -189,3 +189,14 @@ Project date fields can contain datetime strings, and direct lexicographic `<= Y
 
 ### Impact
 Keep repository date filters index-friendly and date-compatible by converting date-only upper bounds before SQL binding.
+
+## 2026-02-06 AuthGate Test Retry Delay
+
+### Decision/Learning
+In `AuthGate` component tests, control React Query retry backoff with `retryDelay: 0` in the test QueryClient and avoid long `waitFor(..., { timeout: 3000 })` patterns.
+
+### Reason
+`AuthGate` sets `retry: 1` at query level, so default retry delay caused ~1s waits per error-path test and inflated suite runtime.
+
+### Impact
+Keep retry behavior coverage while forcing zero retry backoff in tests, and prefer immediate `findBy*` assertions for state transitions.

@@ -81,28 +81,12 @@ describe('App', () => {
     renderApp('/');
 
     expect(await screen.findByText('Dashboard Page')).toBeInTheDocument();
+    expect(await screen.findByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('renders work notes page on /work-notes route', async () => {
     renderApp('/work-notes');
 
     expect(await screen.findByText('Work Notes Page')).toBeInTheDocument();
-  });
-
-  it('wraps routes with error boundary', async () => {
-    // The ErrorBoundary should be present in the component tree
-    // This test verifies the App renders without crashing
-    renderApp('/');
-
-    expect(await screen.findByTestId('app-layout')).toBeInTheDocument();
-  });
-
-  it('resets error boundary on route navigation', async () => {
-    // The ErrorBoundary is keyed by location.pathname
-    // This ensures errors are cleared when navigating to a different route
-    renderApp('/');
-
-    expect(await screen.findByTestId('app-layout')).toBeInTheDocument();
-    expect(await screen.findByText('Dashboard Page')).toBeInTheDocument();
   });
 });

@@ -7,6 +7,56 @@
 
 ---
 
+## 2026-02-06 Performance Guard Snapshot
+
+### Run Metrics (post-optimization)
+- `bun run test`: `real 13.17s` (`Test Files: 52`, `Tests: 619`, Vitest duration `13.00s`)
+- `bun run test:web`: `real 19.16s` (`Test Files: 76`, `Tests: 686`, Vitest duration `19.07s`)
+- Sequential total (wall): `32.33s` (previous baseline `~35.4s`)
+- `bun run test:all`: `real 31.25s` (parallel worker+web run)
+
+### Key Improvements
+- `apps/web/src/components/__tests__/auth-gate.test.tsx`
+  - Before: ~`6.2s` in `bun run test:web`
+  - After: ~`250ms` in full suite; repeated isolated runs `~112-134ms`
+- Removed duplicate backend tests already covered by frontend test target:
+  - `tests/unit/date-utils.test.ts`
+  - `tests/unit/get-latest-todo-date.test.ts`
+- Reduced redundant App-level route assertions:
+  - `apps/web/src/App.test.tsx` (4 -> 2 tests)
+- Removed low-value static layout test:
+  - `apps/web/src/components/layout/__tests__/app-layout.test.tsx`
+
+### Slowest Files (Worker Top 10, ms)
+1. `tests/unit/person-repository.test.ts` - 259
+2. `tests/unit/work-note-file-service.test.ts` - 251
+3. `tests/unit/department-repository.test.ts` - 245
+4. `tests/integration/project-crud.test.ts` - 210
+5. `tests/unit/work-note-repository.crud.test.ts` - 201
+6. `tests/unit/schemas.test.ts` - 167
+7. `tests/unit/pdf-job-repository.test.ts` - 163
+8. `tests/search.test.ts` - 156
+9. `tests/unit/work-note-repository.read.test.ts` - 131
+10. `tests/unit/todo-repository-crud.test.ts` - 127
+
+### Slowest Files (Web Top 10, ms)
+1. `apps/web/src/pages/work-notes/components/__tests__/create-work-note-dialog.test.tsx` - 1539
+2. `apps/web/src/pages/__tests__/person-dialog.test.tsx` - 1258
+3. `apps/web/src/hooks/__tests__/use-projects.mutations.test.ts` - 1184
+4. `apps/web/src/hooks/__tests__/use-todos.test.ts` - 1097
+5. `apps/web/src/pages/work-notes/components/__tests__/view-work-note-dialog.test.tsx` - 1094
+6. `apps/web/src/pages/work-notes/components/__tests__/work-note-file-list.test.tsx` - 924
+7. `apps/web/src/pages/dashboard/components/__tests__/edit-todo-dialog.test.tsx` - 783
+8. `apps/web/src/hooks/__tests__/use-projects.query.test.ts` - 752
+9. `apps/web/src/components/__tests__/draft-editor-form.test.tsx` - 666
+10. `apps/web/src/App.test.tsx` - 654
+
+### Target
+- Short-term guardrail: keep sequential local wall time within `~30s` to `~33s`.
+- Next candidate optimization focus: top 5 Web slow files (non-deletion refactors first).
+
+---
+
 ## 2026-01-22 Inventory & Tagging (Phase A)
 
 ### Inventory Snapshot

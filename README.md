@@ -178,10 +178,16 @@ wrangler secret put CF_AIG_AUTHORIZATION  # Optional, if AI Gateway requires aut
 ## Testing
 
 ```bash
-# Run tests
+# Run Workers tests (backend/unit/integration)
 bun run test
 
-# Run with coverage
+# Run Web tests (frontend)
+bun run test:web
+
+# Run Workers + Web in parallel
+bun run test:all
+
+# Run with coverage (Workers config)
 bun run test:coverage
 ```
 

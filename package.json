@@ -17,6 +17,7 @@
     "deploy:with-migrations": "bun run build && wrangler deploy && wrangler d1 migrations apply worknote-db --remote",
     "test": "vitest --run",
     "test:web": "vitest --run --config vitest.config.web.ts",
+    "test:all": "concurrently --kill-others-on-fail --names worker,web \"bun run test\" \"bun run test:web\"",
     "test:watch": "vitest",
     "test:coverage": "vitest --coverage",
     "db:migrate": "wrangler d1 migrations apply worknote-db",
