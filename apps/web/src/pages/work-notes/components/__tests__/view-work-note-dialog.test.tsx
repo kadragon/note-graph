@@ -434,6 +434,29 @@ describe('ViewWorkNoteDialog', () => {
     expect(screen.getByRole('button', { name: 'AI로 업데이트' })).toBeInTheDocument();
   });
 
+  it('renders created/updated timestamps in one KST line below the title', () => {
+    const workNote = createWorkNote({
+      title: '날짜 포맷 테스트',
+      content: '내용',
+      createdAt: '2026-02-01T00:05:00.000Z',
+      updatedAt: '2026-02-01T20:40:00.000Z',
+    });
+
+    mockGetWorkNote.mockResolvedValue(workNote);
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    const title = screen.getByText('날짜 포맷 테스트');
+    const dateLine = screen.getByText('생성일: 2026-02-01 09:05 | 수정일: 2026-02-02 05:40');
+
+    expect(title.compareDocumentPosition(dateLine) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('filters out 보류 and 중단 status todos from display', async () => {
     const workNote = createWorkNote({
       id: 'work-filter-test',
