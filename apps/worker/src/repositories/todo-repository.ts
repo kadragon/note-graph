@@ -260,10 +260,7 @@ export class TodoRepository {
       case 'remaining': {
         // All incomplete todos (no year restriction)
         // Exclude inactive statuses: 완료, 보류, 중단
-        conditions.push(
-          `t.status NOT IN (?, ?, ?)`,
-          `(t.wait_until IS NULL OR t.wait_until < ?)`
-        );
+        conditions.push(`t.status NOT IN (?, ?, ?)`, `(t.wait_until IS NULL OR t.wait_until < ?)`);
         params.push('완료', '보류', '중단', startOfTomorrowUTC);
         break;
       }

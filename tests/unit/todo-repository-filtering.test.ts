@@ -259,13 +259,14 @@ describe('TodoRepository - Filtering and Views', () => {
       const nearFuture = new Date(now.getTime() + 3600000); // 1 hour later
 
       await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
       )
         .bind(
           'TODO-NEAR-FUTURE',
           testWorkId,
           'Near Future',
           now.toISOString(),
+          nearFuture.toISOString(),
           nearFuture.toISOString(),
           '진행중',
           'NONE'
