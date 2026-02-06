@@ -67,14 +67,12 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
     }
     const extension = originalName.toLowerCase().split('.').pop();
 
-    if (normalizedMime === 'application/hwp+zip') {
-      normalizedMime = 'application/vnd.hancom.hwpx';
-    }
-    if (
+    const isHwpxFromGenericZip =
       extension === 'hwpx' &&
-      (normalizedMime === 'application/zip' || normalizedMime === 'application/x-zip-compressed')
-    ) {
-      return 'application/vnd.hancom.hwpx';
+      (normalizedMime === 'application/zip' || normalizedMime === 'application/x-zip-compressed');
+
+    if (normalizedMime === 'application/hwp+zip' || isHwpxFromGenericZip) {
+      normalizedMime = 'application/vnd.hancom.hwpx';
     }
 
     if (normalizedMime && this.getAllowedMimeTypes().includes(normalizedMime)) {
