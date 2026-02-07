@@ -24,7 +24,7 @@ import { useDepartments } from '@web/hooks/use-departments';
 import { usePersons } from '@web/hooks/use-persons';
 import { useCreateProject } from '@web/hooks/use-projects';
 import type { ProjectStatus } from '@web/types/api';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -52,15 +52,17 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
   const createMutation = useCreateProject();
   const { data: persons = [] } = usePersons();
   const { data: departments = [] } = useDepartments();
-  const filteredPersons = persons.filter((person) => {
-    if (!participantSearch) return true;
+  const filteredPersons = useMemo(() => {
+    if (!participantSearch) return persons;
+
     const search = participantSearch.toLowerCase();
-    return (
-      person.name.toLowerCase().includes(search) ||
-      person.personId.toLowerCase().includes(search) ||
-      (person.currentDept || '').toLowerCase().includes(search)
+    return persons.filter(
+      (person) =>
+        person.name.toLowerCase().includes(search) ||
+        person.personId.toLowerCase().includes(search) ||
+        (person.currentDept || '').toLowerCase().includes(search)
     );
-  });
+  }, [persons, participantSearch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

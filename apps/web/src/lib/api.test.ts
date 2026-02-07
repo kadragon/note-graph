@@ -119,19 +119,19 @@ describe('API.getWorkNotes', () => {
 });
 
 describe('API.getProjects', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it('sends status and year-range filters as query params', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+    fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       json: vi.fn().mockResolvedValue([]),
     });
-
     (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+  });
 
+  it('sends status and year-range filters as query params', async () => {
     await API.getProjects({
       status: '진행중',
       startDateFrom: '2026-01-01',
@@ -150,14 +150,6 @@ describe('API.getProjects', () => {
   });
 
   it('uses base endpoint when no filters are provided', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue([]),
-    });
-
-    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
-
     await API.getProjects();
 
     expect(fetchMock).toHaveBeenCalledWith('/api/projects', expect.any(Object));
