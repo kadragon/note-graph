@@ -118,6 +118,52 @@ describe('API.getWorkNotes', () => {
   });
 });
 
+describe('API.getProjects', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('sends status and year-range filters as query params', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue([]),
+    });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.getProjects({
+      status: '진행중',
+      startDateFrom: '2026-01-01',
+      startDateTo: '2026-12-31',
+    });
+
+    const params = new URLSearchParams({
+      status: '진행중',
+      startDateFrom: '2026-01-01',
+      startDateTo: '2026-12-31',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/projects?${params.toString()}`,
+      expect.any(Object)
+    );
+  });
+
+  it('uses base endpoint when no filters are provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue([]),
+    });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.getProjects();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects', expect.any(Object));
+  });
+});
+
 describe('API.request error handling', () => {
   beforeEach(() => {
     vi.restoreAllMocks();

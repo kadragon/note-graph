@@ -1,3 +1,4 @@
+import { usePersons } from '@web/hooks/use-persons';
 import { createPerson } from '@web/test/factories';
 import { render, screen } from '@web/test/setup';
 import type { ReactNode } from 'react';
@@ -8,9 +9,15 @@ import { CreateProjectDialog } from '../create-project-dialog';
 vi.mock('@web/components/ui/dialog', () => ({
   Dialog: ({ open, children }: { open?: boolean; children: ReactNode }) =>
     open ? <div data-testid="dialog">{children}</div> : null,
-  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <div data-testid="dialog-content" className={className}>
+      {children}
+    </div>
+  ),
   DialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
   DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
@@ -77,6 +84,17 @@ describe('CreateProjectDialog', () => {
       const searchInput = screen.getByRole('textbox', { name: /참여자 검색/ });
       expect(searchInput).toBeInTheDocument();
     });
+
+    it('sets start date default value to today', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-02-07T10:00:00'));
+
+      render(<CreateProjectDialog {...defaultProps} />);
+
+      expect(screen.getByLabelText('시작일')).toHaveValue('2026-02-07');
+
+      vi.useRealTimers();
+    });
   });
 
   describe('select values', () => {
@@ -89,6 +107,28 @@ describe('CreateProjectDialog', () => {
       for (const selectRoot of selectRoots) {
         expect(selectRoot).not.toHaveAttribute('data-value', '__undefined__');
       }
+    });
+  });
+
+  describe('participants', () => {
+    it('renders participants as department/name format in list', () => {
+      vi.mocked(usePersons).mockReturnValue({
+        data: [createPerson({ personId: '123456', name: '홍길동', currentDept: '개발부' })],
+      } as unknown as ReturnType<typeof usePersons>);
+
+      render(<CreateProjectDialog {...defaultProps} />);
+
+      expect(screen.getByText('개발부/홍길동')).toBeInTheDocument();
+    });
+  });
+
+  describe('layout', () => {
+    it('keeps dialog wrapper non-scrollable and uses form column layout', () => {
+      render(<CreateProjectDialog {...defaultProps} />);
+
+      expect(screen.getByTestId('dialog-content')).toHaveClass('overflow-hidden');
+      const submitButton = screen.getByRole('button', { name: '생성' });
+      expect(submitButton.closest('form')).toHaveClass('flex', 'min-h-0', 'flex-col');
     });
   });
 });

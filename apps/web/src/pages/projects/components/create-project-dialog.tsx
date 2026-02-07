@@ -31,11 +31,19 @@ interface CreateProjectDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function getTodayDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<ProjectStatus>('진행중');
-  const [startDate, setStartDate] = useState('');
+  const [startDate, setStartDate] = useState(getTodayDateString);
   const [deptName, setDeptName] = useState('');
   const [tags, setTags] = useState('');
   const [participantIds, setParticipantIds] = useState<string[]>([]);
@@ -44,6 +52,15 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
   const createMutation = useCreateProject();
   const { data: persons = [] } = usePersons();
   const { data: departments = [] } = useDepartments();
+  const filteredPersons = persons.filter((person) => {
+    if (!participantSearch) return true;
+    const search = participantSearch.toLowerCase();
+    return (
+      person.name.toLowerCase().includes(search) ||
+      person.personId.toLowerCase().includes(search) ||
+      (person.currentDept || '').toLowerCase().includes(search)
+    );
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +84,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
       setName('');
       setDescription('');
       setStatus('진행중');
-      setStartDate('');
+      setStartDate(getTodayDateString());
       setDeptName('');
       setTags('');
       setParticipantIds([]);
@@ -80,8 +97,8 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <form onSubmit={(e) => void handleSubmit(e)}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden">
+        <form className="flex min-h-0 flex-col" onSubmit={(e) => void handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>새 프로젝트 생성</DialogTitle>
             <DialogDescription>
@@ -89,7 +106,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="grid min-h-0 gap-4 overflow-y-auto py-4 pr-1">
             <div className="grid gap-2">
               <Label htmlFor="name">프로젝트명 *</Label>
               <Input
@@ -175,50 +192,32 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
                 className="mb-2"
               />
               <div className="grid grid-cols-2 gap-2 max-h-48 overflow-auto border rounded-md p-3">
-                {persons
-                  .filter((person) => {
-                    if (!participantSearch) return true;
-                    const search = participantSearch.toLowerCase();
-                    return (
-                      person.name.toLowerCase().includes(search) ||
-                      person.personId.toLowerCase().includes(search)
-                    );
-                  })
-                  .map((person) => {
-                    const checked = participantIds.includes(person.personId);
-                    return (
-                      <label
-                        key={person.personId}
-                        htmlFor={`person-${person.personId}`}
-                        className="flex items-center gap-2 text-sm cursor-pointer"
-                      >
-                        <Checkbox
-                          id={`person-${person.personId}`}
-                          checked={checked}
-                          onCheckedChange={(value) => {
-                            if (value) {
-                              setParticipantIds((prev) => [...prev, person.personId]);
-                            } else {
-                              setParticipantIds((prev) =>
-                                prev.filter((id) => id !== person.personId)
-                              );
-                            }
-                          }}
-                        />
-                        <span>
-                          {person.name} ({person.personId})
-                        </span>
-                      </label>
-                    );
-                  })}
-                {persons.filter((person) => {
-                  if (!participantSearch) return true;
-                  const search = participantSearch.toLowerCase();
+                {filteredPersons.map((person) => {
+                  const checked = participantIds.includes(person.personId);
                   return (
-                    person.name.toLowerCase().includes(search) ||
-                    person.personId.toLowerCase().includes(search)
+                    <label
+                      key={person.personId}
+                      htmlFor={`person-${person.personId}`}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
+                    >
+                      <Checkbox
+                        id={`person-${person.personId}`}
+                        checked={checked}
+                        onCheckedChange={(value) => {
+                          if (value) {
+                            setParticipantIds((prev) => [...prev, person.personId]);
+                          } else {
+                            setParticipantIds((prev) =>
+                              prev.filter((id) => id !== person.personId)
+                            );
+                          }
+                        }}
+                      />
+                      <span>{`${person.currentDept ?? '미지정'}/${person.name}`}</span>
+                    </label>
                   );
-                }).length === 0 && (
+                })}
+                {filteredPersons.length === 0 && (
                   <p className="text-sm text-muted-foreground col-span-2">
                     {persons.length === 0 ? '등록된 사람이 없습니다.' : '검색 결과가 없습니다.'}
                   </p>
@@ -227,7 +226,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               취소
             </Button>

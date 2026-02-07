@@ -70,6 +70,40 @@ describe('projects page', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows only status/year filters and hides the page description', () => {
+    vi.mocked(useProjects).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useProjects>);
+
+    render(<Projects />);
+
+    expect(screen.getByText('상태')).toBeInTheDocument();
+    expect(screen.getByText('년도')).toBeInTheDocument();
+    expect(screen.queryByText('시작일 이후')).not.toBeInTheDocument();
+    expect(screen.queryByText('시작일 이전')).not.toBeInTheDocument();
+    expect(screen.queryByText('프로젝트를 관리하세요')).not.toBeInTheDocument();
+  });
+
+  it('converts year filter into startDateFrom/startDateTo query params', async () => {
+    vi.mocked(useProjects).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useProjects>);
+    const user = userEvent.setup();
+
+    render(<Projects />);
+    await user.type(screen.getByRole('spinbutton', { name: '년도' }), '2026');
+
+    await waitFor(() => {
+      expect(vi.mocked(useProjects)).toHaveBeenLastCalledWith({
+        status: undefined,
+        startDateFrom: '2026-01-01',
+        startDateTo: '2026-12-31',
+      });
+    });
+  });
+
   it('confirms deletion and calls the delete mutation', async () => {
     const project = createProject({ projectId: 'PROJECT-DELETE' });
     const mutateAsync = vi.fn().mockResolvedValue(undefined);

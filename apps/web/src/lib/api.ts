@@ -840,8 +840,8 @@ export class APIClient {
   getProjects(filters?: ProjectFilters) {
     const params = new URLSearchParams();
     if (filters?.status) params.set('status', filters.status);
-    if (filters?.startDate) params.set('startDate', filters.startDate);
-    if (filters?.endDate) params.set('endDate', filters.endDate);
+    if (filters?.startDateFrom) params.set('startDateFrom', filters.startDateFrom);
+    if (filters?.startDateTo) params.set('startDateTo', filters.startDateTo);
     const qs = params.toString();
     return this.request<Project[]>(`/projects${qs ? `?${qs}` : ''}`);
   }

@@ -35,13 +35,14 @@ export default function Projects() {
   const detailDialog = useDialogState<string>();
   const deleteDialog = useDialogState<string>();
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
-  const [startDateFilter, setStartDateFilter] = useState<string>('');
-  const [endDateFilter, setEndDateFilter] = useState<string>('');
+  const [yearFilter, setYearFilter] = useState<string>('');
+  const yearValue = yearFilter.trim();
+  const isValidYear = /^\d{4}$/.test(yearValue);
 
   const { data: projects = [], isLoading } = useProjects({
     status: statusFilter === 'all' ? undefined : statusFilter,
-    startDate: startDateFilter || undefined,
-    endDate: endDateFilter || undefined,
+    startDateFrom: isValidYear ? `${yearValue}-01-01` : undefined,
+    startDateTo: isValidYear ? `${yearValue}-12-31` : undefined,
   });
   const deleteMutation = useDeleteProject();
 
@@ -62,8 +63,7 @@ export default function Projects() {
 
   const resetFilters = () => {
     setStatusFilter('all');
-    setStartDateFilter('');
-    setEndDateFilter('');
+    setYearFilter('');
   };
 
   return (
@@ -71,7 +71,6 @@ export default function Projects() {
       <div className="page-header">
         <div>
           <h1 className="page-title">프로젝트</h1>
-          <p className="page-description">프로젝트를 관리하세요</p>
         </div>
         <Button onClick={createDialog.open}>
           <Plus className="h-4 w-4 mr-2" />새 프로젝트
@@ -87,7 +86,7 @@ export default function Projects() {
               필터
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">상태</p>
               <Select
@@ -107,20 +106,17 @@ export default function Projects() {
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">시작일 이후</p>
-              <Input
-                type="date"
-                value={startDateFilter}
-                onChange={(e) => setStartDateFilter(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">시작일 이전</p>
+              <p className="text-xs text-muted-foreground">년도</p>
               <div className="flex gap-2">
                 <Input
-                  type="date"
-                  value={endDateFilter}
-                  onChange={(e) => setEndDateFilter(e.target.value)}
+                  type="number"
+                  min={2000}
+                  max={2100}
+                  step={1}
+                  aria-label="년도"
+                  placeholder="예: 2026"
+                  value={yearFilter}
+                  onChange={(e) => setYearFilter(e.target.value)}
                 />
                 <Button type="button" variant="ghost" size="icon" onClick={resetFilters}>
                   <RotateCcw className="h-4 w-4" />

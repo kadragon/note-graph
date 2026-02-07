@@ -124,8 +124,8 @@ export interface AIGenerateDraftRequest {
 // Project requests
 export interface ProjectFilters {
   status?: ProjectStatus;
-  startDate?: string;
-  endDate?: string;
+  startDateFrom?: string;
+  startDateTo?: string;
 }
 
 export interface CreateProjectRequest {
