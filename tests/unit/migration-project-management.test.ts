@@ -56,6 +56,63 @@ async function getForeignKeys(table: string): Promise<Array<{ from: string; tabl
 }
 
 describe('Project schema migrations', () => {
+  it('adds Drive metadata columns to project_files and keeps storage_type default as R2', async () => {
+    const { results } = await getDb()
+      .prepare(`PRAGMA table_info(project_files);`)
+      .all<TableInfoRow>();
+    const projectFileColumns = results ?? [];
+
+    const columnNames = projectFileColumns.map((row) => row.name);
+    expect(columnNames).toEqual(
+      expect.arrayContaining([
+        'storage_type',
+        'gdrive_file_id',
+        'gdrive_folder_id',
+        'gdrive_web_view_link',
+      ])
+    );
+
+    const storageTypeColumn = projectFileColumns.find((row) => row.name === 'storage_type');
+    expect(storageTypeColumn).toBeDefined();
+    expect(storageTypeColumn?.dflt_value).toBe("'R2'");
+  });
+
+  it('creates project_gdrive_folders with project_id PK and cascade FK', async () => {
+    const { results: tableInfoResults } = await getDb()
+      .prepare(`PRAGMA table_info(project_gdrive_folders);`)
+      .all<TableInfoRow>();
+    const tableInfo = tableInfoResults ?? [];
+
+    expect(tableInfo.map((row) => row.name)).toEqual(
+      expect.arrayContaining(['project_id', 'gdrive_folder_id', 'gdrive_folder_link', 'created_at'])
+    );
+
+    const projectIdColumn = tableInfo.find((row) => row.name === 'project_id');
+    expect(projectIdColumn).toBeDefined();
+    expect(projectIdColumn?.pk).toBe(1);
+
+    const { results: fkResults } = await getDb()
+      .prepare(`PRAGMA foreign_key_list(project_gdrive_folders);`)
+      .all<ForeignKeyInfoRow>();
+
+    expect(fkResults ?? []).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          from: 'project_id',
+          table: 'projects',
+          on_delete: 'CASCADE',
+        }),
+      ])
+    );
+  });
+
+  it('creates project_files indexes for storage_type and gdrive_file_id', async () => {
+    const fileIndexes = await getIndexNames('project_files');
+    expect(fileIndexes).toEqual(
+      expect.arrayContaining(['idx_project_files_storage_type', 'idx_project_files_gdrive_file_id'])
+    );
+  });
+
   it('creates project entities and relationships tables', async () => {
     await expect(getTableColumns('projects')).resolves.toEqual(
       expect.arrayContaining([

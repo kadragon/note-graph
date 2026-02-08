@@ -9,11 +9,12 @@ import type { ProjectFile } from '@shared/types/project';
 import type { TextChunk } from '@shared/types/search';
 import { nanoid } from 'nanoid';
 import type { Env } from '../types/env';
-import { NotFoundError } from '../types/errors';
+import { DomainError, NotFoundError } from '../types/errors';
 import { BaseFileService } from './base-file-service.js';
 import { ChunkingService } from './chunking-service.js';
 import { EmbeddingProcessor } from './embedding-processor.js';
 import { FileTextExtractionService } from './file-text-extraction-service.js';
+import { GoogleDriveService } from './google-drive-service.js';
 import { VectorizeService } from './vectorize-service.js';
 
 // Configuration
@@ -58,6 +59,7 @@ const EXTENSION_MIME_MAP: Record<string, string> = {
 
 const UNSUPPORTED_FILE_MESSAGE =
   '지원하지 않는 파일 형식입니다. 허용된 형식: PDF, 이미지 (PNG, JPEG, GIF, WebP), Office 문서 (DOCX, XLSX, PPTX), 텍스트';
+const DRIVE_APP_PROPERTY_FILE_ID = 'projectFileId';
 
 interface UploadFileParams {
   projectId: string;
@@ -71,11 +73,18 @@ interface ArchiveResult {
   failed: Array<{ fileId: string; error: string }>;
 }
 
+interface ProjectFileMigrationResult {
+  migrated: number;
+  skipped: number;
+  failed: number;
+}
+
 export class ProjectFileService extends BaseFileService<ProjectFile> {
   private textExtractor: FileTextExtractionService;
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
   private embeddingProcessor: EmbeddingProcessor;
+  private driveService: GoogleDriveService | null;
 
   constructor(env: Env, r2: R2Bucket, db: D1Database) {
     super(r2, db);
@@ -84,6 +93,11 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
 
     this.embeddingProcessor = new EmbeddingProcessor(env);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
+    if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GDRIVE_ROOT_FOLDER_ID) {
+      this.driveService = new GoogleDriveService(env, db);
+    } else {
+      this.driveService = null;
+    }
   }
 
   protected tableName = 'project_files';
@@ -115,11 +129,40 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
     this.validateFileSize(file);
 
     const resolvedFileType = this.resolveFileType(originalName, file.type);
+    const driveService = this.requireDriveService();
 
     // Generate file ID and R2 key
     const fileId = `FILE-${nanoid()}`;
     const r2Key = this.buildR2Key(projectId, fileId);
     const now = new Date().toISOString();
+    let storageType: 'R2' | 'GDRIVE' = 'R2';
+    let gdriveFileId: string | null = null;
+    let gdriveFolderId: string | null = null;
+    let gdriveWebViewLink: string | null = null;
+
+    try {
+      const folder = await driveService.getOrCreateProjectFolder(uploadedBy, projectId);
+      const driveFile = await driveService.uploadFile(
+        uploadedBy,
+        folder.gdriveFolderId,
+        file,
+        originalName,
+        resolvedFileType,
+        {
+          [DRIVE_APP_PROPERTY_FILE_ID]: fileId,
+          projectId,
+        }
+      );
+      storageType = 'GDRIVE';
+      gdriveFileId = driveFile.id;
+      gdriveFolderId = folder.gdriveFolderId;
+      gdriveWebViewLink = driveFile.webViewLink;
+    } catch (error) {
+      console.warn(
+        `Project file ${fileId} Drive upload failed. Falling back to R2 storage.`,
+        error
+      );
+    }
 
     // Upload to R2
     await this.putFileObject({
@@ -144,6 +187,10 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       fileSize: file.size,
       uploadedBy,
       uploadedAt: now,
+      additionalColumns: {
+        names: ['storage_type', 'gdrive_file_id', 'gdrive_folder_id', 'gdrive_web_view_link'],
+        values: [storageType, gdriveFileId, gdriveFolderId, gdriveWebViewLink],
+      },
     });
 
     const projectFile: ProjectFile = {
@@ -180,14 +227,28 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
    * Note: R2 doesn't support presigned URLs like S3, so we use a Workers route
    */
   async getDownloadUrl(fileId: string): Promise<string> {
-    const file = await this.getFileById(fileId);
+    const file = await this.db
+      .prepare(
+        `
+      SELECT project_id as projectId, r2_key as r2Key, storage_type as storageType
+      FROM project_files
+      WHERE file_id = ? AND deleted_at IS NULL
+    `
+      )
+      .bind(fileId)
+      .first<{ projectId: string; r2Key: string; storageType: 'R2' | 'GDRIVE' | null }>();
+
     if (!file) {
       throw new NotFoundError('File', fileId);
     }
 
-    const object = await this.r2.get(file.r2Key);
-    if (!object) {
-      throw new NotFoundError('File in R2', file.r2Key);
+    const storageType = file.storageType ?? 'R2';
+
+    if (storageType === 'R2') {
+      const object = await this.r2.get(file.r2Key);
+      if (!object) {
+        throw new NotFoundError('File in R2', file.r2Key);
+      }
     }
 
     // Return a worker route that streams the file
@@ -301,13 +362,39 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
    * Delete file from R2 and mark as deleted in DB
    * Also removes embeddings from Vectorize if file was embedded
    */
-  async deleteFile(fileId: string): Promise<void> {
-    const file = await this.requireFile(fileId);
+  async deleteFile(fileId: string, userEmail?: string): Promise<void> {
+    const file = await this.db
+      .prepare(
+        `
+      SELECT file_id as fileId, r2_key as r2Key, embedded_at as embeddedAt,
+             storage_type as storageType, gdrive_file_id as gdriveFileId
+      FROM project_files
+      WHERE file_id = ? AND deleted_at IS NULL
+    `
+      )
+      .bind(fileId)
+      .first<{
+        fileId: string;
+        r2Key: string;
+        embeddedAt: string | null;
+        storageType: 'R2' | 'GDRIVE' | null;
+        gdriveFileId: string | null;
+      }>();
+
+    if (!file) {
+      throw new NotFoundError('File', fileId);
+    }
 
     await this.softDeleteFileRecord(fileId);
 
-    // Delete from R2 (or move to archive - for now just delete)
-    await this.deleteR2Object(file.r2Key);
+    const storageType = file.storageType ?? 'R2';
+    if (storageType === 'GDRIVE' && file.gdriveFileId && userEmail) {
+      const driveService = this.requireDriveService();
+      await driveService.deleteFile(userEmail, file.gdriveFileId);
+    } else if (file.r2Key) {
+      // Delete from R2 (or move to archive - for now just delete)
+      await this.deleteR2Object(file.r2Key);
+    }
 
     // Delete embeddings from Vectorize if file was embedded
     if (file.embeddedAt) {
@@ -330,7 +417,7 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
    * @returns ArchiveResult with lists of succeeded and failed file IDs
    * @throws BadRequestError if file count exceeds batch limit
    */
-  async archiveProjectFiles(projectId: string): Promise<ArchiveResult> {
+  async archiveProjectFiles(projectId: string, userEmail?: string): Promise<ArchiveResult> {
     // Select only necessary columns for better performance
     const files = await this.db
       .prepare(
@@ -343,6 +430,7 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       .all<Record<string, unknown>>();
 
     if (!files.results || files.results.length === 0) {
+      await this.deleteProjectDriveFolder(projectId, userEmail);
       return { succeeded: [], failed: [] };
     }
 
@@ -429,7 +517,125 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       }
     });
 
+    await this.deleteProjectDriveFolder(projectId, userEmail);
+
     return archiveResult;
+  }
+
+  private async updateFileToDriveRecord(
+    fileId: string,
+    folderId: string,
+    driveFile: { id: string; webViewLink: string }
+  ): Promise<void> {
+    await this.db
+      .prepare(
+        `UPDATE project_files
+         SET storage_type = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
+         WHERE file_id = ?`
+      )
+      .bind('GDRIVE', driveFile.id, folderId, driveFile.webViewLink, fileId)
+      .run();
+  }
+
+  async migrateR2FilesToDrive(
+    projectId: string,
+    userEmail?: string
+  ): Promise<ProjectFileMigrationResult> {
+    if (!userEmail) {
+      throw new DomainError('사용자 이메일이 필요합니다.', 'BAD_REQUEST', 400);
+    }
+
+    const driveService = this.requireDriveService();
+    const folder = await driveService.getOrCreateProjectFolder(userEmail, projectId);
+
+    const files = await this.db
+      .prepare(
+        `SELECT file_id as fileId, r2_key as r2Key, original_name as originalName, file_type as fileType
+         FROM project_files
+         WHERE project_id = ? AND deleted_at IS NULL AND COALESCE(storage_type, 'R2') = 'R2'`
+      )
+      .bind(projectId)
+      .all<{
+        fileId: string;
+        r2Key: string;
+        originalName: string;
+        fileType: string;
+      }>();
+
+    if (!files.results || files.results.length === 0) {
+      return { migrated: 0, skipped: 0, failed: 0 };
+    }
+
+    let migrated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const file of files.results) {
+      if (!file.r2Key) {
+        skipped++;
+        continue;
+      }
+
+      const object = await this.r2.get(file.r2Key);
+      if (!object) {
+        skipped++;
+        continue;
+      }
+
+      let uploadedFile: { id: string; webViewLink: string } | null = null;
+
+      try {
+        const existingFile = await driveService.findFileByAppPropertyInFolder(
+          userEmail,
+          folder.gdriveFolderId,
+          DRIVE_APP_PROPERTY_FILE_ID,
+          file.fileId
+        );
+        if (existingFile) {
+          await this.updateFileToDriveRecord(file.fileId, folder.gdriveFolderId, existingFile);
+          await this.deleteR2Object(file.r2Key);
+          migrated++;
+          continue;
+        }
+
+        const buffer = await object.arrayBuffer();
+        const blob = new Blob([buffer], {
+          type: file.fileType || 'application/octet-stream',
+        });
+
+        const driveFile = await driveService.uploadFile(
+          userEmail,
+          folder.gdriveFolderId,
+          blob,
+          file.originalName,
+          file.fileType || 'application/octet-stream',
+          {
+            [DRIVE_APP_PROPERTY_FILE_ID]: file.fileId,
+            projectId,
+          }
+        );
+        uploadedFile = driveFile;
+
+        await this.updateFileToDriveRecord(file.fileId, folder.gdriveFolderId, driveFile);
+        await this.deleteR2Object(file.r2Key);
+        migrated++;
+      } catch (error) {
+        failed++;
+        console.error(`Failed to migrate file ${file.fileId} to Google Drive:`, error);
+        if (uploadedFile) {
+          try {
+            await driveService.deleteFile(userEmail, uploadedFile.id);
+          } catch (cleanupError) {
+            console.error(
+              `Failed to rollback Google Drive file ${uploadedFile.id} after migration error:`,
+              cleanupError
+            );
+          }
+        }
+      }
+    }
+
+    return { migrated, skipped, failed };
   }
 
   /**
@@ -448,5 +654,43 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       embeddedAt: (row.embedded_at as string) || null,
       deletedAt: (row.deleted_at as string) || null,
     };
+  }
+
+  private async deleteProjectDriveFolder(projectId: string, userEmail?: string): Promise<void> {
+    if (!userEmail || !this.driveService) {
+      return;
+    }
+
+    const folderRecord = await this.db
+      .prepare(
+        `SELECT gdrive_folder_id
+         FROM project_gdrive_folders
+         WHERE project_id = ?`
+      )
+      .bind(projectId)
+      .first<{ gdrive_folder_id: string | null }>();
+
+    const folderId = folderRecord?.gdrive_folder_id?.trim();
+    if (!folderId) {
+      return;
+    }
+
+    try {
+      await this.driveService.deleteFolder(userEmail, folderId);
+    } catch (error) {
+      console.error(`Failed to delete Google Drive folder for project ${projectId}:`, error);
+    }
+  }
+
+  private requireDriveService(): GoogleDriveService {
+    if (!this.driveService) {
+      throw new DomainError(
+        'Google OAuth 또는 Google Drive 환경 변수가 설정되어 있지 않습니다.',
+        'CONFIGURATION_ERROR',
+        500
+      );
+    }
+
+    return this.driveService;
   }
 }

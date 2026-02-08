@@ -200,3 +200,80 @@ In `AuthGate` component tests, control React Query retry backoff with `retryDela
 
 ### Impact
 Keep retry behavior coverage while forcing zero retry backoff in tests, and prefer immediate `findBy*` assertions for state transitions.
+
+## 2026-02-07 Project File Storage Default
+
+### Decision/Learning
+When extending `project_files` for Google Drive metadata, keep `storage_type` as `TEXT NOT NULL DEFAULT 'R2'`.
+
+### Reason
+Existing project file rows are legacy R2 records, so a non-defaulted column would break backward compatibility and migrations.
+
+### Impact
+Future project file migrations/features should preserve `R2` as the implicit fallback unless data is explicitly migrated.
+
+## 2026-02-07 Project Drive Folder Mapping
+
+### Decision/Learning
+Model `project_gdrive_folders` as one row per project by using `project_id` as the primary key with `ON DELETE CASCADE`.
+
+### Reason
+Project-level Drive folders are a 1:1 relationship, and orphan folder mappings should be removed automatically on project deletion.
+
+### Impact
+Keep project folder linking idempotent (upsert by `project_id`) and rely on relational cleanup instead of manual mapping deletes.
+
+## 2026-02-07 Project File Drive Indexes
+
+### Decision/Learning
+Add explicit indexes on `project_files(storage_type)` and `project_files(gdrive_file_id)` when introducing Drive-backed metadata.
+
+### Reason
+Mixed R2/GDRIVE queries and Drive ID lookups are core access paths and should not depend on broader legacy indexes.
+
+### Impact
+When extending project file storage behavior, keep these Drive-specific indexes in schema migrations and migration tests.
+
+## 2026-02-07 Project Drive Year Foldering
+
+### Decision/Learning
+Implement `GoogleDriveService.getOrCreateProjectFolder` with the same year-bucket strategy as work notes: create/find `YYYY` under `GDRIVE_ROOT_FOLDER_ID`, then place the `project_id` folder under that year.
+
+### Reason
+Project folders need deterministic Drive organization and consistent behavior with existing work note folder management.
+
+### Impact
+Reuse and re-parent existing `project_gdrive_folders` mappings into the computed year folder, and throw an explicit error when the project row is missing.
+
+## 2026-02-07 Project File Upload Drive Fallback
+
+### Decision/Learning
+`ProjectFileService.uploadFile` now attempts Google Drive upload first, then falls back to legacy R2 storage when Drive upload cannot proceed (for example, user OAuth is not connected).
+
+### Reason
+Project file flows and existing routes/tests still need to succeed in environments where Drive env bindings exist but per-user OAuth tokens are absent.
+
+### Impact
+Persist `storage_type='GDRIVE'` plus Drive metadata on successful Drive upload, otherwise keep `storage_type='R2'` and continue normal R2 upload/embedding flow without failing the request.
+
+## 2026-02-08 Project File Drive Config Guard
+
+### Decision/Learning
+`ProjectFileService.uploadFile` now fails fast with `CONFIGURATION_ERROR` when required Drive env vars are missing.
+
+### Reason
+Silent fallback on missing configuration hides deployment misconfiguration and makes Drive-only behavior inconsistent.
+
+### Impact
+Keep Drive env bindings (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GDRIVE_ROOT_FOLDER_ID`) mandatory for project file uploads; tests should assert the explicit configuration error path.
+
+## 2026-02-08 Project File Storage-Aware Lifecycle
+
+### Decision/Learning
+Project file lifecycle operations are storage-type aware: `getDownloadUrl` skips R2 checks for `GDRIVE`, migration updates only legacy `R2` rows with rollback on DB failure, and project cleanup deletes linked Drive folders.
+
+### Reason
+Mixed `R2/GDRIVE` projects need deterministic branch behavior to avoid false 404s, partial migrations, and orphaned Drive folders.
+
+### Impact
+Maintain `storage_type` branching in download/delete/migrate/cleanup code paths and pass `userEmail` when invoking project cleanup that should remove Drive folders.
