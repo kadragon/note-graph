@@ -100,13 +100,14 @@ projects.put('/:projectId', bodyValidator(updateProjectSchema), async (c) => {
 projects.delete('/:projectId', async (c) => {
   const projectId = c.req.param('projectId');
   const { projects: repository } = c.get('repositories');
+  const user = getAuthUser(c);
 
   // Get R2 bucket
   const r2Bucket = getR2Bucket(c.env);
 
   const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
-  const archiveResult = await fileService.archiveProjectFiles(projectId);
+  const archiveResult = await fileService.archiveProjectFiles(projectId, user.email);
 
   // Log archival failures if any occurred
   if (archiveResult.failed.length > 0) {
@@ -419,12 +420,13 @@ projects.get('/:projectId/files/:fileId/download', async (c) => {
  */
 projects.delete('/:projectId/files/:fileId', async (c) => {
   const fileId = c.req.param('fileId');
+  const user = getAuthUser(c);
 
   const r2Bucket = getR2Bucket(c.env);
 
   const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
 
-  await fileService.deleteFile(fileId);
+  await fileService.deleteFile(fileId, user.email);
 
   return c.body(null, 204);
 });

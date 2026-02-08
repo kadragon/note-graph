@@ -9,7 +9,9 @@ class MockD1Database {
 
   constructor(
     private workNoteCreatedAt: string | null = null,
-    private existingFolder = false
+    private existingFolder = false,
+    private projectCreatedAt: string | null = null,
+    private existingProjectFolder = false
   ) {}
 
   prepare(query: string) {
@@ -32,6 +34,20 @@ class MockD1Database {
                 ? ({
                     gdriveFolderId: 'FOLDER-EXISTING',
                     gdriveFolderLink: 'https://drive.example/WORK-123',
+                  } as T)
+                : (null as T | null);
+            }
+            if (query.includes('FROM projects')) {
+              return this.projectCreatedAt
+                ? ({ createdAt: this.projectCreatedAt } as T)
+                : (null as T | null);
+            }
+            if (query.includes('FROM project_gdrive_folders')) {
+              const projectId = this.bindings[0];
+              return this.existingProjectFolder && this.projectCreatedAt && projectId
+                ? ({
+                    gdriveFolderId: 'FOLDER-PROJECT-EXISTING',
+                    gdriveFolderLink: 'https://drive.example/PROJECT-123',
                   } as T)
                 : (null as T | null);
             }
@@ -244,6 +260,81 @@ describe('GoogleDriveService', () => {
       { name: '2023', parentId: 'test-gdrive-root-folder-id' },
       { name: 'WORK-123', parentId: 'FOLDER-1' },
     ]);
+  });
+
+  it('creates YYYY folder under GDRIVE_ROOT_FOLDER_ID from project created_at', async () => {
+    const db = new MockD1Database(null, false, '2024-05-10T00:00:00.000Z');
+    const env = {
+      GOOGLE_CLIENT_ID: 'client-id',
+      GOOGLE_CLIENT_SECRET: 'client-secret',
+      GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+      GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+    } as Env;
+
+    const service = new TestGoogleDriveService(env, db as unknown as D1Database);
+
+    await service.getOrCreateProjectFolder('tester@example.com', 'PROJECT-123');
+
+    expect(service.createFolderCalls[0]).toEqual({
+      name: '2024',
+      parentId: 'test-gdrive-root-folder-id',
+    });
+  });
+
+  it('creates project folder under year folder using project_id as folder name', async () => {
+    const db = new MockD1Database(null, false, '2024-05-10T00:00:00.000Z');
+    const env = {
+      GOOGLE_CLIENT_ID: 'client-id',
+      GOOGLE_CLIENT_SECRET: 'client-secret',
+      GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+      GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+    } as Env;
+
+    const service = new TestGoogleDriveService(env, db as unknown as D1Database);
+
+    await service.getOrCreateProjectFolder('tester@example.com', 'PROJECT-123');
+
+    expect(service.createFolderCalls[1]).toEqual({
+      name: 'PROJECT-123',
+      parentId: 'FOLDER-1',
+    });
+  });
+
+  it('reuses existing project_gdrive_folders row and reparents folder into year folder', async () => {
+    const db = new MockD1Database(null, false, '2024-05-10T00:00:00.000Z', true);
+    const env = {
+      GOOGLE_CLIENT_ID: 'client-id',
+      GOOGLE_CLIENT_SECRET: 'client-secret',
+      GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+      GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+    } as Env;
+
+    const service = new TestGoogleDriveService(env, db as unknown as D1Database);
+
+    await service.getOrCreateProjectFolder('tester@example.com', 'PROJECT-123');
+
+    expect(service.ensureFolderCalls).toEqual([
+      { folderId: 'FOLDER-PROJECT-EXISTING', parentId: 'FOLDER-1' },
+    ]);
+    expect(service.createFolderCalls).toEqual([
+      { name: '2024', parentId: 'test-gdrive-root-folder-id' },
+    ]);
+  });
+
+  it('throws explicit error when project row is missing in getOrCreateProjectFolder', async () => {
+    const db = new MockD1Database();
+    const env = {
+      GOOGLE_CLIENT_ID: 'client-id',
+      GOOGLE_CLIENT_SECRET: 'client-secret',
+      GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+      GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+    } as Env;
+
+    const service = new TestGoogleDriveService(env, db as unknown as D1Database);
+
+    await expect(
+      service.getOrCreateProjectFolder('tester@example.com', 'PROJECT-404')
+    ).rejects.toThrow('Project not found for projectId: PROJECT-404');
   });
 
   describe('listFilesInFolder', () => {
