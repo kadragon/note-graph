@@ -214,8 +214,15 @@ describe('ProjectFileService', () => {
       .first<Record<string, unknown>>();
     expect(row).toBeTruthy();
 
-    // Assert - R2 stored at expected key
-    expect(r2.storage.has(result.r2Key)).toBe(true);
+    // Assert - Drive-backed upload does not duplicate into R2
+    const storageRow = await baseEnv.DB.prepare(
+      'SELECT storage_type, r2_key FROM project_files WHERE file_id = ?'
+    )
+      .bind(result.fileId)
+      .first<{ storage_type: string; r2_key: string }>();
+    expect(storageRow?.storage_type).toBe('GDRIVE');
+    expect(storageRow?.r2_key).toBe('');
+    expect(r2.storage.size).toBe(0);
 
     // Assert - EmbeddingProcessor.upsertChunks called with project metadata
     expect(mockEmbeddingProcessor.upsertChunks).toHaveBeenCalledTimes(1);
@@ -391,6 +398,50 @@ describe('ProjectFileService', () => {
     await insertProject('PROJECT-123');
     const file = new Blob(['PDF content']); // empty mime type
 
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const method = init?.method ?? 'GET';
+
+      if (url.startsWith(`${DRIVE_API_BASE}/files?`) && method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ files: [] }),
+        } as Response;
+      }
+
+      if (url.startsWith(`${DRIVE_API_BASE}/files`) && method === 'POST') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: url.includes('mimeType') ? 'FOLDER-YEAR-1' : 'FOLDER-PROJECT-1',
+            name: url.includes('mimeType') ? '2026' : 'PROJECT-123',
+            webViewLink: url.includes('mimeType')
+              ? 'https://drive.example/year'
+              : 'https://drive.example/folder',
+          }),
+        } as Response;
+      }
+
+      // Force Drive upload failure to exercise R2 fallback path
+      if (url.startsWith(`${DRIVE_UPLOAD_BASE}/files`) && method === 'POST') {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => 'Drive upload failed',
+        } as Response;
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: [{ embedding: new Array(1536).fill(0), index: 0 }],
+        }),
+      } as Response;
+    }) as typeof fetch;
+
     const result = await service.uploadFile({
       projectId: 'PROJECT-123',
       file,
@@ -399,6 +450,7 @@ describe('ProjectFileService', () => {
     });
 
     expect(result.fileType).toBe('application/pdf');
+    expect(result.r2Key).toContain('projects/PROJECT-123/files/FILE-');
     const stored = r2.storage.get(result.r2Key);
     expect(stored?.httpMetadata?.contentType).toBe('application/pdf');
   });
@@ -488,6 +540,43 @@ describe('ProjectFileService', () => {
       `${DRIVE_API_BASE}/files/GFILE-DELETE-1`,
       expect.objectContaining({ method: 'DELETE' })
     );
+  });
+
+  it('throws BAD_REQUEST when deleting GDRIVE file without userEmail', async () => {
+    const now = new Date().toISOString();
+    const fileId = 'FILE-GDRIVE-DELETE-NO-EMAIL';
+    await insertProject('PROJECT-GDRIVE-DELETE-NO-EMAIL');
+
+    await baseEnv.DB.prepare(
+      `INSERT INTO project_files (
+        file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at,
+        storage_type, gdrive_file_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        fileId,
+        'PROJECT-GDRIVE-DELETE-NO-EMAIL',
+        '',
+        'drive-doc.pdf',
+        'application/pdf',
+        512,
+        'tester@example.com',
+        now,
+        'GDRIVE',
+        'GFILE-DELETE-2'
+      )
+      .run();
+
+    await expect(service.deleteFile(fileId)).rejects.toMatchObject<Partial<DomainError>>({
+      code: 'BAD_REQUEST',
+    });
+
+    const deleted = await baseEnv.DB.prepare(
+      'SELECT deleted_at FROM project_files WHERE file_id = ?'
+    )
+      .bind(fileId)
+      .first<{ deleted_at: string | null }>();
+    expect(deleted?.deleted_at).toBeNull();
   });
 
   it('deletes R2 object when storage_type is R2', async () => {
@@ -772,6 +861,28 @@ describe('ProjectFileService', () => {
     expect(url).toBe(`/api/projects/PROJECT-9/files/${fileId}/download`);
     expect(streamed.headers.get('Content-Type')).toBe('application/pdf');
     expect(streamed.headers.get('Content-Length')).toBe('2048');
+  });
+
+  it('does not duplicate file into R2 when Drive upload succeeds', async () => {
+    await insertProject('PROJECT-DRIVE-NO-R2-DUP');
+    const file = new Blob(['PDF content'], { type: 'application/pdf' });
+
+    const result = await service.uploadFile({
+      projectId: 'PROJECT-DRIVE-NO-R2-DUP',
+      file,
+      originalName: 'spec.pdf',
+      uploadedBy: 'tester@example.com',
+    });
+
+    const row = await baseEnv.DB.prepare(
+      `SELECT storage_type, r2_key FROM project_files WHERE file_id = ?`
+    )
+      .bind(result.fileId)
+      .first<{ storage_type: string; r2_key: string }>();
+
+    expect(row?.storage_type).toBe('GDRIVE');
+    expect(row?.r2_key).toBe('');
+    expect(r2.storage.size).toBe(0);
   });
 
   it('returns download route for GDRIVE file without requiring an R2 object', async () => {

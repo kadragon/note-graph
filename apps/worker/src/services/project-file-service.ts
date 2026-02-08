@@ -133,7 +133,7 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
 
     // Generate file ID and R2 key
     const fileId = `FILE-${nanoid()}`;
-    const r2Key = this.buildR2Key(projectId, fileId);
+    const generatedR2Key = this.buildR2Key(projectId, fileId);
     const now = new Date().toISOString();
     let storageType: 'R2' | 'GDRIVE' = 'R2';
     let gdriveFileId: string | null = null;
@@ -164,18 +164,22 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       );
     }
 
-    // Upload to R2
-    await this.putFileObject({
-      r2Key,
-      file,
-      fileType: resolvedFileType,
-      customMetadata: {
-        originalName,
-        uploadedBy,
-        projectId,
-        fileId,
-      },
-    });
+    const r2Key = storageType === 'R2' ? generatedR2Key : '';
+
+    if (storageType === 'R2') {
+      // Upload to R2 only for legacy storage path
+      await this.putFileObject({
+        r2Key,
+        file,
+        fileType: resolvedFileType,
+        customMetadata: {
+          originalName,
+          uploadedBy,
+          projectId,
+          fileId,
+        },
+      });
+    }
 
     // Create DB record
     await this.insertFileRecord({
@@ -385,16 +389,26 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       throw new NotFoundError('File', fileId);
     }
 
-    await this.softDeleteFileRecord(fileId);
-
     const storageType = file.storageType ?? 'R2';
-    if (storageType === 'GDRIVE' && file.gdriveFileId && userEmail) {
-      const driveService = this.requireDriveService();
-      await driveService.deleteFile(userEmail, file.gdriveFileId);
+    if (storageType === 'GDRIVE') {
+      if (!userEmail) {
+        throw new DomainError(
+          'userEmail is required to delete a Google Drive file.',
+          'BAD_REQUEST',
+          400
+        );
+      }
+
+      if (file.gdriveFileId) {
+        const driveService = this.requireDriveService();
+        await driveService.deleteFile(userEmail, file.gdriveFileId);
+      }
     } else if (file.r2Key) {
       // Delete from R2 (or move to archive - for now just delete)
       await this.deleteR2Object(file.r2Key);
     }
+
+    await this.softDeleteFileRecord(fileId);
 
     // Delete embeddings from Vectorize if file was embedded
     if (file.embeddedAt) {
