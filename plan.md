@@ -11,3 +11,8 @@
 - [x] Implement submit logic: compute final `relatedWorkIds` using "Keep existing + Reflect AI selection (checked=add, unchecked=remove)" and include it in `API.updateWorkNote`.
 - [x] Implement cache refresh fixes: invalidate `work-note-detail`, `work-note-todos`, `work-notes`, `work-notes-with-stats`, and `todos` after successful apply.
 - [x] Implement preview wiring: pass `existingRelatedWorkIds` from `ViewWorkNoteDialog` to `EnhancePreviewDialog`, and wire `AIReferenceList` selection callbacks.
+
+## Todo Edit Dialog Date Clamp (2026-02-09)
+
+- [x] EditTodoDialog: waitUntil 변경 시 dueDate가 비었거나 더 이르면 dueDate를 waitUntil로 자동 보정
+- [x] EditTodoDialog: 저장 시 dueDate < waitUntil이면 dueDate를 waitUntil로 보정해 전송
