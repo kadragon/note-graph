@@ -34,7 +34,7 @@ export function EnhancePreviewDialog({
   open,
   onOpenChange,
   enhanceResponse,
-  existingRelatedWorkIds = [],
+  existingRelatedWorkIds,
 }: EnhancePreviewDialogProps) {
   const { state, actions, data } = useEnhanceWorkNoteForm(workId, {
     onSuccess: () => {

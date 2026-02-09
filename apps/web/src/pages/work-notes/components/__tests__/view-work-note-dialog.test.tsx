@@ -471,6 +471,50 @@ describe('ViewWorkNoteDialog', () => {
     expect(screen.getByRole('button', { name: 'AI로 업데이트' })).toBeInTheDocument();
   });
 
+  it('does not pass existing related work ids before detail related notes are loaded', async () => {
+    const workNote = createWorkNote({
+      id: 'work-1',
+      title: 'AI 업데이트 테스트',
+      content: '내용',
+      relatedWorkNotes: [],
+    });
+    const detailedWorkNote = createWorkNote({
+      id: 'work-1',
+      title: 'AI 업데이트 테스트',
+      content: '내용',
+      relatedWorkNotes: [{ relatedWorkId: 'ref-1', relatedWorkTitle: '참고 1' }],
+    });
+
+    mockGetWorkNote.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(detailedWorkNote), 100);
+        })
+    );
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    const user = userEvent.setup();
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'AI로 업데이트' }));
+    await user.click(screen.getByRole('button', { name: 'mock-enhance-success' }));
+
+    await waitFor(() => {
+      expect(mockEnhancePreviewDialog).toHaveBeenCalled();
+    });
+
+    const latestProps = mockEnhancePreviewDialog.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(latestProps).toEqual(
+      expect.objectContaining({
+        existingRelatedWorkIds: undefined,
+      })
+    );
+  });
+
   it('passes existing related work ids to EnhancePreviewDialog when AI preview opens', async () => {
     const workNote = createWorkNote({
       id: 'work-1',

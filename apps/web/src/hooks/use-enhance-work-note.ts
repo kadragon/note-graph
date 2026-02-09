@@ -83,6 +83,7 @@ export function useEnhanceWorkNoteForm(
   options: UseEnhanceWorkNoteFormOptions = {}
 ) {
   const { onSuccess } = options;
+  const hasLoadedExistingRelatedWorkIds = options.existingRelatedWorkIds !== undefined;
   const baseRelatedWorkIds = options.existingRelatedWorkIds ?? [];
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -175,29 +176,30 @@ export function useEnhanceWorkNoteForm(
       setIsSubmitting(true);
 
       try {
-        const aiReferenceIds = references.map((reference) => reference.workId);
-        const relatedWorkIdsSet = new Set(baseRelatedWorkIds);
-        const selectedReferenceIdsSet = new Set(selectedReferenceIds);
+        let relatedWorkIds: string[] | undefined;
 
-        for (const aiReferenceId of aiReferenceIds) {
-          if (selectedReferenceIdsSet.has(aiReferenceId)) {
-            relatedWorkIdsSet.add(aiReferenceId);
-          } else {
-            relatedWorkIdsSet.delete(aiReferenceId);
+        if (hasLoadedExistingRelatedWorkIds) {
+          const aiReferenceIds = references.map((reference) => reference.workId);
+          const relatedWorkIdsSet = new Set(baseRelatedWorkIds);
+          const selectedReferenceIdsSet = new Set(selectedReferenceIds);
+
+          for (const aiReferenceId of aiReferenceIds) {
+            if (selectedReferenceIdsSet.has(aiReferenceId)) {
+              relatedWorkIdsSet.add(aiReferenceId);
+            } else {
+              relatedWorkIdsSet.delete(aiReferenceId);
+            }
           }
+
+          relatedWorkIds = Array.from(relatedWorkIdsSet);
         }
-
-        const relatedWorkIds = Array.from(relatedWorkIdsSet);
-        const hasRelatedWorkSelectionSource =
-          baseRelatedWorkIds.length > 0 || aiReferenceIds.length > 0;
-
         // Update work note
         await API.updateWorkNote(workId, {
           title: title.trim(),
           content: content.trim(),
           categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
           relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
-          relatedWorkIds: hasRelatedWorkSelectionSource ? relatedWorkIds : undefined,
+          relatedWorkIds,
         });
 
         // Create selected new todos
@@ -262,6 +264,7 @@ export function useEnhanceWorkNoteForm(
       content,
       selectedCategoryIds,
       selectedPersonIds,
+      hasLoadedExistingRelatedWorkIds,
       baseRelatedWorkIds,
       references,
       selectedReferenceIds,

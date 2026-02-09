@@ -318,6 +318,42 @@ describe('useEnhanceWorkNoteForm', () => {
     );
   });
 
+  it('does not update relatedWorkIds when existing related works are not loaded', async () => {
+    const { result } = renderHookWithClient(() => useEnhanceWorkNoteForm('work-1'));
+
+    act(() => {
+      result.current.actions.populateFromEnhanceResponse({
+        enhancedDraft: {
+          title: '제목',
+          content: '내용',
+          category: '',
+          todos: [],
+        },
+        originalContent: '',
+        existingTodos: [],
+        references: [
+          { workId: 'ref-1', title: '참고 1', content: '내용 1', similarityScore: 0.9 },
+          { workId: 'ref-2', title: '참고 2', content: '내용 2', similarityScore: 0.8 },
+        ],
+      });
+    });
+
+    act(() => {
+      result.current.actions.setSelectedReferenceIds(['ref-1']);
+    });
+
+    await act(async () => {
+      await result.current.actions.handleSubmit({
+        preventDefault: vi.fn(),
+      } as unknown as React.FormEvent);
+    });
+
+    const updatePayload = vi.mocked(API.updateWorkNote).mock.calls.at(-1)?.[1] as
+      | { relatedWorkIds?: string[] }
+      | undefined;
+    expect(updatePayload?.relatedWorkIds).toBeUndefined();
+  });
+
   it('invalidates detail/todo queries on submit and does not use stale work-note key', async () => {
     const { result, queryClient } = renderHookWithClient(() => useEnhanceWorkNoteForm('work-1'));
     const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
