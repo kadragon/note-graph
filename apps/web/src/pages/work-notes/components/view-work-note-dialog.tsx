@@ -758,6 +758,13 @@ export function ViewWorkNoteDialog({
               open={enhancePreviewOpen}
               onOpenChange={handleEnhancePreviewClose}
               enhanceResponse={enhanceResponse}
+              existingRelatedWorkIds={
+                relatedWorkNotesLoaded
+                  ? (currentWorkNote.relatedWorkNotes || []).map(
+                      (relatedWorkNote) => relatedWorkNote.relatedWorkId
+                    )
+                  : undefined
+              }
             />
           )}
         </>

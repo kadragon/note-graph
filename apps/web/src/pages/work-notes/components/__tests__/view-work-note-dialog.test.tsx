@@ -32,6 +32,43 @@ vi.mock('@web/pages/work-notes/components/todo-list-item', () => ({
   TodoListItem: () => <div data-testid="todo-list-item" />,
 }));
 
+const { mockEnhancePreviewDialog, mockEnhanceResponse } = vi.hoisted(() => ({
+  mockEnhancePreviewDialog: vi.fn(),
+  mockEnhanceResponse: {
+    enhancedDraft: {
+      title: 'AI 제목',
+      content: 'AI 내용',
+      category: '',
+      todos: [],
+    },
+    originalContent: '원본',
+    existingTodos: [],
+    references: [{ workId: 'ref-1', title: '참고 1', content: '내용 1', similarityScore: 0.9 }],
+  },
+}));
+
+vi.mock('../enhance-preview-dialog', () => ({
+  EnhancePreviewDialog: (props: unknown) => {
+    mockEnhancePreviewDialog(props);
+    return <div data-testid="enhance-preview-dialog" />;
+  },
+}));
+
+vi.mock('../enhance-work-note-dialog', () => ({
+  EnhanceWorkNoteDialog: ({
+    open,
+    onEnhanceSuccess,
+  }: {
+    open: boolean;
+    onEnhanceSuccess: (response: typeof mockEnhanceResponse) => void;
+  }) =>
+    open ? (
+      <button type="button" onClick={() => onEnhanceSuccess(mockEnhanceResponse)}>
+        mock-enhance-success
+      </button>
+    ) : null,
+}));
+
 vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialog: ({ open, children }: { open?: boolean; children: ReactNode }) => (
     <div data-testid="alert-dialog" data-open={open ? 'true' : 'false'}>
@@ -432,6 +469,87 @@ describe('ViewWorkNoteDialog', () => {
     // Should have both edit and AI enhance buttons
     expect(screen.getByRole('button', { name: '수정' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'AI로 업데이트' })).toBeInTheDocument();
+  });
+
+  it('does not pass existing related work ids before detail related notes are loaded', async () => {
+    const workNote = createWorkNote({
+      id: 'work-1',
+      title: 'AI 업데이트 테스트',
+      content: '내용',
+      relatedWorkNotes: [],
+    });
+    const detailedWorkNote = createWorkNote({
+      id: 'work-1',
+      title: 'AI 업데이트 테스트',
+      content: '내용',
+      relatedWorkNotes: [{ relatedWorkId: 'ref-1', relatedWorkTitle: '참고 1' }],
+    });
+
+    mockGetWorkNote.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(detailedWorkNote), 100);
+        })
+    );
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    const user = userEvent.setup();
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'AI로 업데이트' }));
+    await user.click(screen.getByRole('button', { name: 'mock-enhance-success' }));
+
+    await waitFor(() => {
+      expect(mockEnhancePreviewDialog).toHaveBeenCalled();
+    });
+
+    const latestProps = mockEnhancePreviewDialog.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(latestProps).toEqual(
+      expect.objectContaining({
+        existingRelatedWorkIds: undefined,
+      })
+    );
+  });
+
+  it('passes existing related work ids to EnhancePreviewDialog when AI preview opens', async () => {
+    const workNote = createWorkNote({
+      id: 'work-1',
+      title: 'AI 업데이트 테스트',
+      content: '내용',
+      relatedWorkNotes: [
+        { relatedWorkId: 'ref-1', relatedWorkTitle: '참고 1' },
+        { relatedWorkId: 'ref-2', relatedWorkTitle: '참고 2' },
+      ],
+    });
+
+    mockGetWorkNote.mockResolvedValue(workNote);
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    const user = userEvent.setup();
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'AI로 업데이트' }));
+    await user.click(screen.getByRole('button', { name: 'mock-enhance-success' }));
+
+    await waitFor(() => {
+      expect(mockEnhancePreviewDialog).toHaveBeenCalled();
+    });
+
+    const latestProps = mockEnhancePreviewDialog.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+
+    expect(latestProps).toEqual(
+      expect.objectContaining({
+        existingRelatedWorkIds: ['ref-1', 'ref-2'],
+      })
+    );
   });
 
   it('renders created/updated timestamps in one KST line below the title', () => {

@@ -44,7 +44,19 @@ vi.mock('@web/components/assignee-selector', () => ({
 }));
 
 vi.mock('@web/components/ai-reference-list', () => ({
-  AIReferenceList: () => <div data-testid="ai-reference-list" />,
+  AIReferenceList: ({
+    selectedIds,
+    onSelectionChange,
+  }: {
+    selectedIds: string[];
+    onSelectionChange: (ids: string[]) => void;
+  }) => (
+    <div data-testid="ai-reference-list" data-selected-ids={selectedIds.join(',')}>
+      <button type="button" onClick={() => onSelectionChange(['ref-1'])}>
+        change-ai-selection
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('@web/hooks/use-task-categories', () => ({
@@ -73,6 +85,9 @@ vi.mock('@web/hooks/use-enhance-work-note', () => ({
       content: '',
       selectedCategoryIds: [],
       selectedPersonIds: [],
+      baseRelatedWorkIds: [],
+      references: [],
+      selectedReferenceIds: [],
       suggestedNewTodos: [],
       selectedNewTodoIds: [],
       existingTodos: [],
@@ -83,6 +98,7 @@ vi.mock('@web/hooks/use-enhance-work-note', () => ({
       setContent: vi.fn(),
       setSelectedCategoryIds: vi.fn(),
       setSelectedPersonIds: vi.fn(),
+      setSelectedReferenceIds: vi.fn(),
       handleCategoryToggle: vi.fn(),
       toggleNewTodo: vi.fn(),
       handleSubmit: mockHandleSubmit,
@@ -335,5 +351,66 @@ describe('EnhancePreviewDialog', () => {
       expect(screen.getByRole('button', { name: '적용 중...' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '적용 중...' })).toBeDisabled();
     });
+  });
+
+  it('controls AIReferenceList by form selectedReferenceIds and forwards selection changes', async () => {
+    const mockSetSelectedReferenceIds = vi.fn();
+    const user = userEvent.setup();
+
+    vi.mocked(useEnhanceWorkNoteForm).mockReturnValue({
+      state: {
+        title: '제목',
+        content: '내용',
+        selectedCategoryIds: [],
+        selectedPersonIds: [],
+        baseRelatedWorkIds: ['base-1'],
+        references: [
+          { workId: 'ref-1', title: '참고 1', content: '내용 1', similarityScore: 0.9 },
+          { workId: 'ref-2', title: '참고 2', content: '내용 2', similarityScore: 0.8 },
+        ],
+        selectedReferenceIds: ['ref-2'],
+        suggestedNewTodos: [],
+        selectedNewTodoIds: [],
+        existingTodos: [],
+        isSubmitting: false,
+      },
+      actions: {
+        setTitle: vi.fn(),
+        setContent: vi.fn(),
+        setSelectedCategoryIds: vi.fn(),
+        setSelectedPersonIds: vi.fn(),
+        setSelectedReferenceIds: mockSetSelectedReferenceIds,
+        handleCategoryToggle: vi.fn(),
+        toggleNewTodo: vi.fn(),
+        handleSubmit: mockHandleSubmit,
+        resetForm: vi.fn(),
+        populateFromEnhanceResponse: vi.fn(),
+      },
+      data: {
+        taskCategories: [],
+        persons: [],
+        categoriesLoading: false,
+        personsLoading: false,
+      },
+    } as unknown as ReturnType<typeof useEnhanceWorkNoteForm>);
+
+    render(
+      <EnhancePreviewDialog
+        {...defaultProps}
+        enhanceResponse={{
+          ...defaultEnhanceResponse,
+          references: [
+            { workId: 'ref-1', title: '참고 1', content: '내용 1', similarityScore: 0.9 },
+            { workId: 'ref-2', title: '참고 2', content: '내용 2', similarityScore: 0.8 },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('ai-reference-list')).toHaveAttribute('data-selected-ids', 'ref-2');
+
+    await user.click(screen.getByRole('button', { name: 'change-ai-selection' }));
+
+    expect(mockSetSelectedReferenceIds).toHaveBeenCalledWith(['ref-1']);
   });
 });
