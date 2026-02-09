@@ -258,6 +258,49 @@ describe('EditTodoDialog', () => {
         });
       });
     });
+
+    it('updates dueDate to waitUntil when existing dueDate is earlier', async () => {
+      const todo = createTodo({
+        id: 'todo-1',
+        title: '할일',
+        status: '진행중',
+        dueDate: '2026-01-10T00:00:00Z',
+      });
+
+      const user = userEvent.setup();
+      render(<EditTodoDialog todo={todo} open={true} onOpenChange={mockOnOpenChange} />);
+
+      await user.type(screen.getByLabelText('대기일 (선택사항)'), '2026-01-15');
+
+      expect(screen.getByLabelText('마감일 (선택사항)')).toHaveValue('2026-01-15');
+    });
+
+    it('clamps dueDate to waitUntil on submit when dueDate is manually set earlier', async () => {
+      mockMutateAsync.mockResolvedValue({});
+      const todo = createTodo({
+        id: 'todo-1',
+        title: '할일',
+        status: '진행중',
+      });
+
+      const user = userEvent.setup();
+      render(<EditTodoDialog todo={todo} open={true} onOpenChange={mockOnOpenChange} />);
+
+      await user.type(screen.getByLabelText('대기일 (선택사항)'), '2026-01-15');
+      await user.clear(screen.getByLabelText('마감일 (선택사항)'));
+      await user.type(screen.getByLabelText('마감일 (선택사항)'), '2026-01-10');
+      await user.click(screen.getByRole('button', { name: '저장' }));
+
+      await waitFor(() => {
+        expect(mockMutateAsync).toHaveBeenCalledWith({
+          id: 'todo-1',
+          data: expect.objectContaining({
+            dueDate: expect.stringContaining('2026-01-15'),
+            waitUntil: expect.stringContaining('2026-01-15'),
+          }),
+        });
+      });
+    });
   });
 
   describe('cancel button', () => {

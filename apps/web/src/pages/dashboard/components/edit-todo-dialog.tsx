@@ -62,6 +62,12 @@ const RECURRENCE_TYPE_OPTIONS: Array<{ value: RecurrenceType; label: string }> =
   { value: 'COMPLETION_DATE', label: '완료일 기준' },
 ];
 
+function getClampedDueDate(dueDate: string, waitUntil: string): string {
+  if (!waitUntil) return dueDate;
+  if (!dueDate || dueDate < waitUntil) return waitUntil;
+  return dueDate;
+}
+
 export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTodoDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -78,8 +84,9 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
 
   const handleWaitUntilChange = (value: string) => {
     setWaitUntil(value);
-    if (!dueDate && value) {
-      setDueDate(value);
+    const clampedDueDate = getClampedDueDate(dueDate, value);
+    if (clampedDueDate !== dueDate) {
+      setDueDate(clampedDueDate);
     }
   };
 
@@ -115,7 +122,7 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
       return;
     }
 
-    const effectiveDueDate = dueDate || (waitUntil ? waitUntil : '');
+    const effectiveDueDate = getClampedDueDate(dueDate, waitUntil);
 
     try {
       await updateMutation.mutateAsync({
