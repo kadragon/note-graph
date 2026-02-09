@@ -434,12 +434,8 @@ projects.get('/:projectId/files/:fileId/download', async (c) => {
     throw new NotFoundError('File', fileId);
   }
 
-  const storageType = (file as { storageType?: 'R2' | 'GDRIVE' }).storageType ?? 'R2';
-  if (storageType === 'GDRIVE') {
-    const driveLink = (file as { gdriveWebViewLink?: string | null }).gdriveWebViewLink;
-    if (driveLink) {
-      return c.redirect(driveLink);
-    }
+  if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
+    return c.redirect(file.gdriveWebViewLink);
   }
 
   const { body, headers } = await fileService.streamFile(fileId);

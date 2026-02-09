@@ -153,7 +153,7 @@ describe('ProjectRepository - Associations and statistics', () => {
   });
 
   describe('getFiles()', () => {
-    it('maps storageType and Drive metadata for mixed R2/GDRIVE rows', async () => {
+    it('maps storageType and Drive metadata for mixed rows and normalizes unknown storage types to R2', async () => {
       // Arrange
       const now = new Date().toISOString();
       await testEnv.DB.batch([
@@ -193,15 +193,31 @@ describe('ProjectRepository - Associations and statistics', () => {
           'GFOLDER-001',
           'https://drive.example/file/1'
         ),
+        testEnv.DB.prepare(
+          `INSERT INTO project_files (
+            file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at, storage_type
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'FILE-UNKNOWN-001',
+          'PROJECT-FILES-MIXED',
+          'projects/PROJECT-FILES-MIXED/files/FILE-UNKNOWN-001',
+          'unknown.bin',
+          'application/octet-stream',
+          333,
+          'tester@example.com',
+          now,
+          'DROPBOX'
+        ),
       ]);
 
       // Act
       const result = await repository.getFiles('PROJECT-FILES-MIXED');
       const r2File = result.find((file) => file.fileId === 'FILE-R2-001');
       const driveFile = result.find((file) => file.fileId === 'FILE-DRIVE-001');
+      const unknownStorageFile = result.find((file) => file.fileId === 'FILE-UNKNOWN-001');
 
       // Assert
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(3);
       expect(r2File).toMatchObject({
         storageType: 'R2',
         gdriveFileId: null,
@@ -213,6 +229,12 @@ describe('ProjectRepository - Associations and statistics', () => {
         gdriveFileId: 'GFILE-001',
         gdriveFolderId: 'GFOLDER-001',
         gdriveWebViewLink: 'https://drive.example/file/1',
+      });
+      expect(unknownStorageFile).toMatchObject({
+        storageType: 'R2',
+        gdriveFileId: null,
+        gdriveFolderId: null,
+        gdriveWebViewLink: null,
       });
     });
   });
