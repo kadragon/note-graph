@@ -1,27 +1,18 @@
 # Plan
 
+## Work Note AI Enhance Reference Fixes (2026-02-09)
+
+- [ ] Add hook test: `useEnhanceWorkNoteForm` stores AI references and initializes `selectedReferenceIds` to all AI reference IDs.
+- [ ] Add hook test: toggling AI reference selection updates `selectedReferenceIds` and preserves unchecked state.
+- [ ] Add hook test: submit payload merges `baseRelatedWorkIds` with selected AI references and excludes unchecked AI references in `relatedWorkIds`.
+- [ ] Add hook test: submit invalidates `['work-note-detail', workId]` and `['work-note-todos', workId]` (no stale `['work-note', workId]` key).
+- [ ] Add preview dialog test: `AIReferenceList` is controlled by form state (`selectedReferenceIds`) and updates via form action (`setSelectedReferenceIds`).
+- [ ] Implement form state/actions: add `references`, `selectedReferenceIds`, and `baseRelatedWorkIds` handling in `useEnhanceWorkNoteForm`.
+- [ ] Implement submit logic: compute final `relatedWorkIds` using "기존 유지 + AI 선택 반영(체크=추가, 해제=제외)" and include it in `API.updateWorkNote`.
+- [ ] Implement cache refresh fixes: invalidate `work-note-detail`, `work-note-todos`, `work-notes`, `work-notes-with-stats`, and `todos` after successful apply.
+- [ ] Implement preview wiring: pass `existingRelatedWorkIds` from `ViewWorkNoteDialog` to `EnhancePreviewDialog`, and wire `AIReferenceList` selection callbacks.
+
 ## Project Attachments: R2 -> Google Drive
-
-- [x] Add migration test: `project_files` accepts Drive metadata columns and `storage_type` default remains `R2`.
-- [x] Add migration test: `project_gdrive_folders` table is created with `project_id` PK and cascade FK.
-- [x] Add migration test: indexes for `project_files(storage_type)` and `project_files(gdrive_file_id)` are created.
-
-- [x] Add `GoogleDriveService` unit test: `getOrCreateProjectFolder` creates `YYYY` folder under `GDRIVE_ROOT_FOLDER_ID` using project `created_at`.
-- [x] Add `GoogleDriveService` unit test: `getOrCreateProjectFolder` creates project folder under year folder using `project_id` name.
-- [x] Add `GoogleDriveService` unit test: existing `project_gdrive_folders` row is reused and re-parented into year folder when needed.
-- [x] Add `GoogleDriveService` unit test: missing project row throws an explicit error in `getOrCreateProjectFolder`.
-
-- [x] Add `ProjectFileService` unit test: upload stores file in Drive and persists `storage_type='GDRIVE'` with Drive IDs/links.
-- [x] Add `ProjectFileService` unit test: upload still runs embedding flow and sets `embedded_at` for text-extractable files.
-- [x] Add `ProjectFileService` unit test: upload fails fast with configuration error when Drive env vars are missing.
-- [x] Add `ProjectFileService` unit test: download URL for `GDRIVE` file returns project download route without requiring R2 object.
-- [x] Add `ProjectFileService` unit test: `R2` legacy file download URL behavior remains unchanged.
-- [x] Add `ProjectFileService` unit test: delete removes Drive file when `storage_type='GDRIVE'`.
-- [x] Add `ProjectFileService` unit test: delete removes R2 object when `storage_type='R2'`.
-- [x] Add `ProjectFileService` unit test: migrateR2FilesToDrive converts only legacy R2 files and updates DB metadata.
-- [x] Add `ProjectFileService` unit test: migrateR2FilesToDrive skips entries with missing R2 object and reports skipped count.
-- [x] Add `ProjectFileService` unit test: migrateR2FilesToDrive rolls back uploaded Drive file when DB update fails.
-- [x] Add `ProjectFileService` unit test: project cleanup deletes Drive folder when project has linked Drive folder.
 
 - [ ] Add repository unit test: `ProjectRepository.getFiles` maps Drive fields and `storageType` for mixed `R2/GDRIVE` rows.
 - [ ] Add repository unit test: project statistics include both legacy `R2` and `GDRIVE` active files in `totalFiles/totalFileSize`.
@@ -40,31 +31,3 @@
 - [ ] Add `ProjectFiles` component test: migration button appears when legacy R2 files exist and triggers migrate flow.
 
 - [ ] Add end-to-end integration test: mixed storage project shows consistent behavior across upload/list/download/delete/migrate.
-
----
-
-## Completed (Archive)
-
-### Previous Backlog (Archived)
-- [x] Add a top navigation component that renders the sidebar menu links (test: top menu shows key links like "대시보드", "업무노트", "사람 관리").
-- [x] Move Google auth status badges into the top menu and keep the "환경 설정 필요" state disabling connect/disconnect buttons.
-- [x] Top menu connect button refreshes status and redirects to `/api/auth/google/authorize` when not fully connected.
-- [x] Top menu disconnect button calls `API.disconnectGoogle` and refreshes status.
-- [x] AppLayout renders the top menu and no longer renders the sidebar toggle button.
-- [x] Embed the top menu inside the header (test: header renders the top menu).
-- [x] Replace Google auth status text with icon-only indicators (test: status text not shown; icons present with labels).
-- [x] Remove top-bar hide/collapse plumbing (test: no sidebar collapse hook/context used in layout).
-- [x] Skip Drive listing when no linked Drive folder ID exists (return empty list instead of calling Drive).
-- [x] Refactor remaining WorkNoteRepository queries (findByIds, findTodosByWorkIds, findByIdsWithDetails) to use `json_each` instead of chunked `IN (...)` to avoid SQL variable overflow.
-
-### Front-End Refactoring (2026-01-31)
-- Phase 1: Mutation Hook Factory, Split Types File, Centralize Configuration
-- Phase 2: Component Extraction (ViewWorkNoteDialog, DialogState, StateRenderer)
-- Phase 3: Accessibility Improvements (aria-labels, form labels)
-- Phase 4: Testing Coverage Expansion
-- Phase 5: Code Organization (mappers, error boundaries, docs)
-
-### Work Note AI-Assisted Update (2026-01-31)
-- Backend: enhance endpoint, AIDraftService.enhanceExistingWorkNote()
-- Frontend: EnhanceWorkNoteDialog, EnhancePreviewDialog, useEnhanceWorkNote hook
-- Integration: "AI로 업데이트" button in ViewWorkNoteDialog
