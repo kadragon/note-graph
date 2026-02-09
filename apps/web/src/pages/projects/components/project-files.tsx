@@ -12,13 +12,14 @@ import {
 } from '@web/components/ui/table';
 import {
   useDeleteProjectFile,
+  useMigrateProjectFiles,
   useProjectFiles,
   useUploadProjectFile,
 } from '@web/hooks/use-projects';
 import { API } from '@web/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Download, File, Trash2, Upload } from 'lucide-react';
+import { Download, ExternalLink, File, Trash2, Upload } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
 interface ProjectFilesProps {
@@ -31,6 +32,8 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
   const { data: files = [] } = useProjectFiles(projectId);
   const uploadMutation = useUploadProjectFile();
   const deleteMutation = useDeleteProjectFile();
+  const migrateMutation = useMigrateProjectFiles();
+  const hasLegacyFiles = files.some((file) => file.storageType === 'R2');
 
   const handleFileUpload = useCallback(
     async (file: File) => {
@@ -74,9 +77,14 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
     [handleFileUpload]
   );
 
-  const handleDownload = async (fileId: string, fileName: string) => {
+  const handleDownload = async (fileId: string, fileName: string, storageType: 'R2' | 'GDRIVE') => {
     try {
-      const blob = await API.downloadProjectFile(projectId, fileId);
+      if (storageType === 'GDRIVE') {
+        await API.downloadProjectFile(projectId, fileId, { storageType });
+        return;
+      }
+
+      const blob = await API.downloadProjectFile(projectId, fileId, { storageType });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -112,6 +120,22 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
         <CardTitle>파일</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {hasLegacyFiles && (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => migrateMutation.mutate(projectId)}
+              disabled={migrateMutation.isPending}
+            >
+              {migrateMutation.isPending
+                ? 'Google Drive로 옮기는 중...'
+                : 'R2 파일 Google Drive로 옮기기'}
+            </Button>
+          </div>
+        )}
+
         {/* Upload Zone */}
         <fieldset
           onKeyDown={(e) => {
@@ -177,19 +201,39 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void handleDownload(file.fileId, file.originalName)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      {file.storageType === 'GDRIVE' ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            void handleDownload(file.fileId, file.originalName, file.storageType)
+                          }
+                          title="Google Drive에서 열기"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          <span className="sr-only">Google Drive에서 열기</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            void handleDownload(file.fileId, file.originalName, file.storageType)
+                          }
+                          title="파일 다운로드"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="sr-only">파일 다운로드</span>
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => void handleDelete(file.fileId)}
+                        title="파일 삭제"
                       >
                         <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">파일 삭제</span>
                       </Button>
                     </div>
                   </TableCell>

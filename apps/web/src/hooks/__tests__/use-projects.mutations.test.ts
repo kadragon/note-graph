@@ -9,6 +9,7 @@ import {
   useCreateProject,
   useDeleteProject,
   useDeleteProjectFile,
+  useMigrateProjectFiles,
   useRemoveWorkNoteFromProject,
   useUpdateProject,
   useUploadProjectFile,
@@ -23,6 +24,7 @@ vi.mock('@web/lib/api', () => ({
     removeWorkNoteFromProject: vi.fn(),
     uploadProjectFile: vi.fn(),
     deleteProjectFile: vi.fn(),
+    migrateProjectFiles: vi.fn(),
   },
 }));
 
@@ -514,5 +516,39 @@ describe('useDeleteProjectFile', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['project-files', 'project-1'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['project', 'project-1'] });
+  });
+});
+
+describe('useMigrateProjectFiles', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetFactoryCounter();
+  });
+
+  it('invalidates project-files and project queries and shows summary toast', async () => {
+    vi.mocked(API.migrateProjectFiles).mockResolvedValue({
+      migrated: 3,
+      skipped: 1,
+      failed: 0,
+    });
+
+    const queryClient = createTestQueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHookWithClient(() => useMigrateProjectFiles(), { queryClient });
+
+    await act(async () => {
+      result.current.mutate('project-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['project-files', 'project-1'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['project', 'project-1'] });
+    expect(mockToast).toHaveBeenCalledWith({
+      title: '성공',
+      description: '마이그레이션 완료: 이동 3개 · 건너뜀 1개 · 실패 0개',
+    });
   });
 });

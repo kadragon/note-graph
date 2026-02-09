@@ -63,6 +63,27 @@ describe('Project File Routes - Drive upload payload', () => {
       const method = (init as RequestInit).method ?? 'GET';
 
       if (url.startsWith(`${DRIVE_API_BASE}/files?`) && method === 'GET') {
+        const decodedUrl = decodeURIComponent(url);
+        if (decodedUrl.includes("name = '2024'")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              files:
+                createdFolderCount >= 1
+                  ? [
+                      {
+                        id: 'FOLDER-YEAR-POST',
+                        name: '2024',
+                        webViewLink: 'https://drive.example/year-post',
+                        parents: ['test-gdrive-root-folder-id'],
+                      },
+                    ]
+                  : [],
+            }),
+          } as Response;
+        }
+
         return {
           ok: true,
           status: 200,
@@ -91,6 +112,32 @@ describe('Project File Routes - Drive upload payload', () => {
             id: 'FOLDER-PROJECT-POST',
             name: 'PROJECT-DRIVE-POST',
             webViewLink: 'https://drive.example/project-folder-post',
+          }),
+        } as Response;
+      }
+
+      if (url.startsWith(`${DRIVE_API_BASE}/files/FOLDER-PROJECT-POST?`) && method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'FOLDER-PROJECT-POST',
+            name: 'PROJECT-DRIVE-POST',
+            mimeType: 'application/vnd.google-apps.folder',
+            webViewLink: 'https://drive.example/project-folder-post',
+            size: '0',
+            parents: ['FOLDER-YEAR-POST'],
+          }),
+        } as Response;
+      }
+
+      if (url.startsWith(`${DRIVE_API_BASE}/files/FOLDER-PROJECT-POST?`) && method === 'PATCH') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'FOLDER-PROJECT-POST',
+            parents: ['FOLDER-YEAR-POST'],
           }),
         } as Response;
       }
@@ -321,6 +368,122 @@ describe('Project File Routes - Drive upload payload', () => {
     expect(row?.storageType).toBe('GDRIVE');
     expect(row?.gdriveFileId).toBe('GFILE-POST-1');
     expect(row?.gdriveFolderId).toBe('FOLDER-PROJECT-POST');
+    expect(await testEnv.R2_BUCKET.get(legacyR2Key)).toBeNull();
+  });
+
+  it('supports consistent mixed-storage lifecycle across upload/list/download/delete/migrate', async () => {
+    const uploadForm = new FormData();
+    uploadForm.append('file', new Blob(['drive-file'], { type: 'image/png' }), 'drive-e2e.png');
+
+    const uploadResponse = await authFetch(
+      'http://localhost/api/projects/PROJECT-DRIVE-POST/files',
+      {
+        method: 'POST',
+        body: uploadForm,
+      }
+    );
+    expect(uploadResponse.status).toBe(201);
+
+    const uploadedDriveFile = await uploadResponse.json<{
+      fileId: string;
+      storageType: string;
+      r2Key: string;
+    }>();
+    expect(uploadedDriveFile.storageType).toBe('GDRIVE');
+    expect(uploadedDriveFile.r2Key).toBe('');
+
+    const legacyFileId = 'FILE-MIXED-R2-1';
+    const legacyR2Key = `projects/PROJECT-DRIVE-POST/files/${legacyFileId}`;
+    await testEnv.DB.prepare(
+      `INSERT INTO project_files (
+        file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at, storage_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        legacyFileId,
+        'PROJECT-DRIVE-POST',
+        legacyR2Key,
+        'legacy-mixed.txt',
+        'text/plain',
+        12,
+        userEmail,
+        now,
+        'R2'
+      )
+      .run();
+    await testEnv.R2_BUCKET.put(legacyR2Key, new Blob(['legacy-mixed'], { type: 'text/plain' }));
+
+    const listBeforeResponse = await authFetch(
+      'http://localhost/api/projects/PROJECT-DRIVE-POST/files'
+    );
+    expect(listBeforeResponse.status).toBe(200);
+    const listBefore =
+      await listBeforeResponse.json<
+        Array<{
+          fileId: string;
+          storageType: string;
+          r2Key: string;
+          gdriveWebViewLink: string | null;
+        }>
+      >();
+    expect(listBefore).toHaveLength(2);
+
+    const byIdBefore = new Map(listBefore.map((file) => [file.fileId, file]));
+    expect(byIdBefore.get(uploadedDriveFile.fileId)?.storageType).toBe('GDRIVE');
+    expect(byIdBefore.get(uploadedDriveFile.fileId)?.r2Key).toBe('');
+    expect(byIdBefore.get(legacyFileId)?.storageType).toBe('R2');
+    expect(byIdBefore.get(legacyFileId)?.r2Key).toBe(legacyR2Key);
+
+    const driveDownloadResponse = await authFetch(
+      `http://localhost/api/projects/PROJECT-DRIVE-POST/files/${uploadedDriveFile.fileId}/download`,
+      { redirect: 'manual' }
+    );
+    expect(driveDownloadResponse.status).toBe(302);
+    expect(driveDownloadResponse.headers.get('Location')).toBe('https://drive.example/file-post');
+
+    const r2DownloadResponse = await authFetch(
+      `http://localhost/api/projects/PROJECT-DRIVE-POST/files/${legacyFileId}/download`
+    );
+    expect(r2DownloadResponse.status).toBe(200);
+    expect(await r2DownloadResponse.text()).toBe('legacy-mixed');
+
+    const deleteDriveResponse = await authFetch(
+      `http://localhost/api/projects/PROJECT-DRIVE-POST/files/${uploadedDriveFile.fileId}`,
+      { method: 'DELETE' }
+    );
+    expect(deleteDriveResponse.status).toBe(204);
+
+    const migrateResponse = await authFetch(
+      'http://localhost/api/projects/PROJECT-DRIVE-POST/files/migrate',
+      { method: 'POST' }
+    );
+    expect(migrateResponse.status).toBe(200);
+    const migrateSummary = await migrateResponse.json<{
+      migrated: number;
+      skipped: number;
+      failed: number;
+    }>();
+    expect(migrateSummary).toEqual({ migrated: 1, skipped: 0, failed: 0 });
+
+    const listAfterResponse = await authFetch(
+      'http://localhost/api/projects/PROJECT-DRIVE-POST/files'
+    );
+    expect(listAfterResponse.status).toBe(200);
+    const listAfter =
+      await listAfterResponse.json<
+        Array<{
+          fileId: string;
+          storageType: string;
+          r2Key: string;
+          gdriveWebViewLink: string | null;
+        }>
+      >();
+
+    expect(listAfter).toHaveLength(1);
+    expect(listAfter[0]?.fileId).toBe(legacyFileId);
+    expect(listAfter[0]?.storageType).toBe('GDRIVE');
+    expect(listAfter[0]?.r2Key).toBe('');
+    expect(listAfter[0]?.gdriveWebViewLink).toBe('https://drive.example/file-post');
     expect(await testEnv.R2_BUCKET.get(legacyR2Key)).toBeNull();
   });
 });
