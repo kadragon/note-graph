@@ -177,9 +177,10 @@ export function useEnhanceWorkNoteForm(
       try {
         const aiReferenceIds = references.map((reference) => reference.workId);
         const relatedWorkIdsSet = new Set(baseRelatedWorkIds);
+        const selectedReferenceIdsSet = new Set(selectedReferenceIds);
 
         for (const aiReferenceId of aiReferenceIds) {
-          if (selectedReferenceIds.includes(aiReferenceId)) {
+          if (selectedReferenceIdsSet.has(aiReferenceId)) {
             relatedWorkIdsSet.add(aiReferenceId);
           } else {
             relatedWorkIdsSet.delete(aiReferenceId);
