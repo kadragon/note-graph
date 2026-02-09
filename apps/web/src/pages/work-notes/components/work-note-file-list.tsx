@@ -63,6 +63,12 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatFileDate(dateString: string): string {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toISOString().slice(0, 10);
+}
+
 export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
@@ -317,22 +323,19 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
             >
               <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <a
-                  href={file.webViewLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium truncate hover:underline block"
-                >
-                  {file.name}
-                </a>
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(file.size)} •{' '}
-                  {new Date(file.modifiedTime).toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
+                <div className="flex items-center gap-2 min-w-0">
+                  <a
+                    href={file.webViewLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium truncate hover:underline"
+                  >
+                    {file.name}
+                  </a>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatFileSize(file.size)} · 업로드일 {formatFileDate(file.modifiedTime)}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {isModifiedToday(file.modifiedTime) && (

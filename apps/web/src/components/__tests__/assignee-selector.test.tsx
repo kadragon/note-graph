@@ -204,4 +204,19 @@ describe('AssigneeSelector', () => {
     expect(options[0]).toHaveTextContent('개발팀');
     expect(options[0]).toHaveTextContent('과장');
   });
+
+  it('uses search placeholder for name or department and includes department in search value', () => {
+    render(
+      <AssigneeSelector
+        persons={persons}
+        selectedPersonIds={[]}
+        onSelectionChange={mockOnSelectionChange}
+      />
+    );
+
+    expect(screen.getByPlaceholderText('이름 또는 소속으로 검색...')).toBeInTheDocument();
+
+    const firstOption = screen.getAllByRole('option')[0];
+    expect(firstOption).toHaveAttribute('data-value', expect.stringContaining('개발팀'));
+  });
 });

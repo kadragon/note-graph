@@ -104,7 +104,7 @@ export function AssigneeSelector({
         </PopoverTrigger>
         <PopoverContent className="w-[400px] p-0" align="start">
           <Command>
-            <CommandInput placeholder="이름 또는 ID로 검색..." />
+            <CommandInput placeholder="이름 또는 소속으로 검색..." />
             <CommandList>
               <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
               <CommandGroup>
@@ -113,7 +113,7 @@ export function AssigneeSelector({
                   return (
                     <CommandItem
                       key={person.personId}
-                      value={`${person.name} ${person.personId}`}
+                      value={`${person.name} ${person.personId} ${person.currentDept ?? ''} ${person.currentPosition ?? ''}`}
                       onSelect={() => togglePerson(person.personId)}
                     >
                       <div
