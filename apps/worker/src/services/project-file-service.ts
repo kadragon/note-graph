@@ -197,10 +197,19 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       },
     });
 
-    const projectFile: ProjectFile = {
+    const projectFile: ProjectFile & {
+      storageType: 'R2' | 'GDRIVE';
+      gdriveFileId: string | null;
+      gdriveFolderId: string | null;
+      gdriveWebViewLink: string | null;
+    } = {
       fileId,
       projectId,
       r2Key,
+      storageType,
+      gdriveFileId,
+      gdriveFolderId,
+      gdriveWebViewLink,
       originalName,
       fileType: resolvedFileType,
       fileSize: file.size,
@@ -656,10 +665,19 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
    * Map database row to ProjectFile type
    */
   protected mapDbToFile(row: Record<string, unknown>): ProjectFile {
-    return {
+    const projectFile: ProjectFile & {
+      storageType: 'R2' | 'GDRIVE';
+      gdriveFileId: string | null;
+      gdriveFolderId: string | null;
+      gdriveWebViewLink: string | null;
+    } = {
       fileId: row.file_id as string,
       projectId: row.project_id as string,
       r2Key: row.r2_key as string,
+      storageType: ((row.storage_type as string) || 'R2') as 'R2' | 'GDRIVE',
+      gdriveFileId: (row.gdrive_file_id as string) || null,
+      gdriveFolderId: (row.gdrive_folder_id as string) || null,
+      gdriveWebViewLink: (row.gdrive_web_view_link as string) || null,
       originalName: row.original_name as string,
       fileType: row.file_type as string,
       fileSize: row.file_size as number,
@@ -668,6 +686,8 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       embeddedAt: (row.embedded_at as string) || null,
       deletedAt: (row.deleted_at as string) || null,
     };
+
+    return projectFile;
   }
 
   private async deleteProjectDriveFolder(projectId: string, userEmail?: string): Promise<void> {
@@ -691,6 +711,13 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
 
     try {
       await this.driveService.deleteFolder(userEmail, folderId);
+      await this.db
+        .prepare(
+          `DELETE FROM project_gdrive_folders
+           WHERE project_id = ?`
+        )
+        .bind(projectId)
+        .run();
     } catch (error) {
       console.error(`Failed to delete Google Drive folder for project ${projectId}:`, error);
     }

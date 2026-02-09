@@ -8,13 +8,20 @@ import type {
   VectorizeIndex,
 } from '@cloudflare/workers-types';
 import type { Project, ProjectDetail, ProjectStats } from '@shared/types/project';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { authFetch, MockR2, setTestR2Bucket, testEnv } from '../test-setup';
 
+const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
+
 describe('Project API Routes', () => {
+  let originalFetch: typeof global.fetch;
+
   beforeEach(async () => {
+    originalFetch = global.fetch;
     await testEnv.DB.batch([
+      testEnv.DB.prepare('DELETE FROM google_oauth_tokens'),
+      testEnv.DB.prepare('DELETE FROM project_gdrive_folders'),
       testEnv.DB.prepare('DELETE FROM project_files'),
       testEnv.DB.prepare('DELETE FROM project_work_notes'),
       testEnv.DB.prepare('DELETE FROM project_participants'),
@@ -24,6 +31,10 @@ describe('Project API Routes', () => {
       testEnv.DB.prepare('DELETE FROM persons'),
       testEnv.DB.prepare('DELETE FROM departments'),
     ]);
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   describe('POST /api/projects', () => {
@@ -409,6 +420,78 @@ describe('Project API Routes', () => {
       });
 
       expect(response.status).toBe(404);
+    });
+
+    it('should clean Drive folder mapping and soft delete project', async () => {
+      testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
+      testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
+      testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
+      testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
+
+      const now = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO google_oauth_tokens
+            (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'test@example.com',
+          'access-token',
+          'refresh-token',
+          'Bearer',
+          expiresAt,
+          'https://www.googleapis.com/auth/drive',
+          now,
+          now
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO project_gdrive_folders (project_id, gdrive_folder_id, gdrive_folder_link, created_at)
+           VALUES (?, ?, ?, ?)`
+        ).bind(projectId, 'GFOLDER-PROJECT-DELETE-1', 'https://drive.example/folder-delete', now),
+      ]);
+
+      const fetchMock = vi.fn().mockImplementation(async (input, init = {}) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        const method = (init as RequestInit).method ?? 'GET';
+
+        if (url === `${DRIVE_API_BASE}/files/GFOLDER-PROJECT-DELETE-1` && method === 'DELETE') {
+          return {
+            ok: true,
+            status: 204,
+            text: async () => '',
+          } as Response;
+        }
+
+        return originalFetch(input as RequestInfo, init as RequestInit);
+      });
+      global.fetch = fetchMock as typeof fetch;
+
+      const response = await authFetch(`http://localhost/api/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+
+      expect(response.status).toBe(204);
+
+      const deletedProject = await testEnv.DB.prepare(
+        'SELECT deleted_at as deletedAt FROM projects WHERE project_id = ?'
+      )
+        .bind(projectId)
+        .first<{ deletedAt: string | null }>();
+      expect(deletedProject?.deletedAt).toBeTruthy();
+
+      const folderMapping = await testEnv.DB.prepare(
+        'SELECT project_id as projectId FROM project_gdrive_folders WHERE project_id = ?'
+      )
+        .bind(projectId)
+        .first<{ projectId: string }>();
+      expect(folderMapping).toBeNull();
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${DRIVE_API_BASE}/files/GFOLDER-PROJECT-DELETE-1`,
+        expect.objectContaining({ method: 'DELETE' })
+      );
     });
   });
 

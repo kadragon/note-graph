@@ -152,6 +152,71 @@ describe('ProjectRepository - Associations and statistics', () => {
     });
   });
 
+  describe('getFiles()', () => {
+    it('maps storageType and Drive metadata for mixed R2/GDRIVE rows', async () => {
+      // Arrange
+      const now = new Date().toISOString();
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('PROJECT-FILES-MIXED', '파일 매핑 테스트', '진행중', now, now),
+        testEnv.DB.prepare(
+          `INSERT INTO project_files (
+            file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'FILE-R2-001',
+          'PROJECT-FILES-MIXED',
+          'projects/PROJECT-FILES-MIXED/files/FILE-R2-001',
+          'legacy.pdf',
+          'application/pdf',
+          111,
+          'tester@example.com',
+          now
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO project_files (
+            file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at,
+            storage_type, gdrive_file_id, gdrive_folder_id, gdrive_web_view_link
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'FILE-DRIVE-001',
+          'PROJECT-FILES-MIXED',
+          '',
+          'drive.pdf',
+          'application/pdf',
+          222,
+          'tester@example.com',
+          now,
+          'GDRIVE',
+          'GFILE-001',
+          'GFOLDER-001',
+          'https://drive.example/file/1'
+        ),
+      ]);
+
+      // Act
+      const result = await repository.getFiles('PROJECT-FILES-MIXED');
+      const r2File = result.find((file) => file.fileId === 'FILE-R2-001');
+      const driveFile = result.find((file) => file.fileId === 'FILE-DRIVE-001');
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(r2File).toMatchObject({
+        storageType: 'R2',
+        gdriveFileId: null,
+        gdriveFolderId: null,
+        gdriveWebViewLink: null,
+      });
+      expect(driveFile).toMatchObject({
+        storageType: 'GDRIVE',
+        gdriveFileId: 'GFILE-001',
+        gdriveFolderId: 'GFOLDER-001',
+        gdriveWebViewLink: 'https://drive.example/file/1',
+      });
+    });
+  });
+
   describe('getStatistics()', () => {
     it('should return statistics for project with work notes and todos', async () => {
       // Arrange
@@ -256,6 +321,75 @@ describe('ProjectRepository - Associations and statistics', () => {
       expect(result.totalFiles).toBe(0);
       expect(result.totalFileSize).toBe(0);
       expect(result.lastActivity).toBeNull();
+    });
+
+    it('includes both legacy R2 and GDRIVE active files in totalFiles and totalFileSize', async () => {
+      // Arrange
+      const now = new Date().toISOString();
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO projects (project_id, name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind('PROJECT-STATS-MIXED', '혼합 스토리지 통계', '진행중', now, now),
+        testEnv.DB.prepare(
+          `INSERT INTO project_files (
+            file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at, storage_type
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'FILE-R2-STATS-1',
+          'PROJECT-STATS-MIXED',
+          'projects/PROJECT-STATS-MIXED/files/FILE-R2-STATS-1',
+          'legacy.pdf',
+          'application/pdf',
+          1024,
+          'tester@example.com',
+          now,
+          'R2'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO project_files (
+            file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at,
+            storage_type, gdrive_file_id, gdrive_folder_id, gdrive_web_view_link
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'FILE-DRIVE-STATS-1',
+          'PROJECT-STATS-MIXED',
+          '',
+          'drive.pdf',
+          'application/pdf',
+          2048,
+          'tester@example.com',
+          now,
+          'GDRIVE',
+          'GFILE-STATS-1',
+          'GFOLDER-STATS-1',
+          'https://drive.example/stats-file'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO project_files (
+            file_id, project_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at,
+            storage_type, gdrive_file_id, deleted_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'FILE-DRIVE-DELETED',
+          'PROJECT-STATS-MIXED',
+          '',
+          'deleted.pdf',
+          'application/pdf',
+          4096,
+          'tester@example.com',
+          now,
+          'GDRIVE',
+          'GFILE-DELETED',
+          now
+        ),
+      ]);
+
+      // Act
+      const result = await repository.getStatistics('PROJECT-STATS-MIXED');
+
+      // Assert
+      expect(result.totalFiles).toBe(2);
+      expect(result.totalFileSize).toBe(3072);
     });
   });
 

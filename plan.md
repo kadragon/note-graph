@@ -23,15 +23,15 @@
 - [x] Add `ProjectFileService` unit test: migrateR2FilesToDrive rolls back uploaded Drive file when DB update fails.
 - [x] Add `ProjectFileService` unit test: project cleanup deletes Drive folder when project has linked Drive folder.
 
-- [ ] Add repository unit test: `ProjectRepository.getFiles` maps Drive fields and `storageType` for mixed `R2/GDRIVE` rows.
-- [ ] Add repository unit test: project statistics include both legacy `R2` and `GDRIVE` active files in `totalFiles/totalFileSize`.
+- [x] Add repository unit test: `ProjectRepository.getFiles` maps Drive fields and `storageType` for mixed `R2/GDRIVE` rows.
+- [x] Add repository unit test: project statistics include both legacy `R2` and `GDRIVE` active files in `totalFiles/totalFileSize`.
 
-- [ ] Add projects route integration test: `POST /api/projects/:projectId/files` returns Drive-backed file payload.
-- [ ] Add projects route integration test: `GET /api/projects/:projectId/files` returns Drive metadata fields.
-- [ ] Add projects route integration test: `GET /api/projects/:projectId/files/:fileId/download` redirects for `GDRIVE` and streams for legacy `R2`.
-- [ ] Add projects route integration test: `DELETE /api/projects/:projectId/files/:fileId` deletes Drive file.
-- [ ] Add projects route integration test: `POST /api/projects/:projectId/files/migrate` migrates legacy R2 files and returns summary.
-- [ ] Add projects route integration test: `DELETE /api/projects/:projectId` cleans Drive folder and soft-deletes project.
+- [x] Add projects route integration test: `POST /api/projects/:projectId/files` returns Drive-backed file payload.
+- [x] Add projects route integration test: `GET /api/projects/:projectId/files` returns Drive metadata fields.
+- [x] Add projects route integration test: `GET /api/projects/:projectId/files/:fileId/download` redirects for `GDRIVE` and streams for legacy `R2`.
+- [x] Add projects route integration test: `DELETE /api/projects/:projectId/files/:fileId` deletes Drive file.
+- [x] Add projects route integration test: `POST /api/projects/:projectId/files/migrate` migrates legacy R2 files and returns summary.
+- [x] Add projects route integration test: `DELETE /api/projects/:projectId` cleans Drive folder and soft-deletes project.
 
 - [ ] Add web API client test: project file download opens Drive link path for `GDRIVE` and keeps Blob download for `R2`.
 - [ ] Add `use-projects` mutation test: migrate hook invalidates `project-files` and `project` queries and shows summary toast.
