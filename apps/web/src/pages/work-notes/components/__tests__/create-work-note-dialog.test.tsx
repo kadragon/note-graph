@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { usePersons } from '@web/hooks/use-persons';
+import { useToast } from '@web/hooks/use-toast';
 import { useCreateWorkNote } from '@web/hooks/use-work-notes';
 import { createPerson, createTaskCategory } from '@web/test/factories';
 import { render, screen, waitFor } from '@web/test/setup';
@@ -87,11 +88,18 @@ vi.mock('@web/components/category-selector', () => ({
 }));
 
 const mockMutateAsync = vi.fn();
+const mockToast = vi.fn();
 
 vi.mock('@web/hooks/use-work-notes', () => ({
   useCreateWorkNote: vi.fn(() => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
+  })),
+}));
+
+vi.mock('@web/hooks/use-toast', () => ({
+  useToast: vi.fn(() => ({
+    toast: mockToast,
   })),
 }));
 
@@ -127,7 +135,16 @@ describe('CreateWorkNoteDialog', () => {
       data: [createPerson({ personId: 'person-1', name: '홍길동' })],
       isLoading: false,
     } as unknown as ReturnType<typeof usePersons>);
+    vi.mocked(useToast).mockReturnValue({
+      toast: mockToast,
+      dismiss: vi.fn(),
+      toasts: [],
+    });
   });
+
+  const openContentTab = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('tab', { name: '내용' }));
+  };
 
   describe('dialog rendering', () => {
     it('renders dialog when open is true', () => {
@@ -145,6 +162,13 @@ describe('CreateWorkNoteDialog', () => {
   });
 
   describe('form fields', () => {
+    it('renders basic and content tabs for reduced vertical scrolling', () => {
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      expect(screen.getByRole('tab', { name: '기본 정보' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: '내용' })).toBeInTheDocument();
+    });
+
     it('renders title input', () => {
       render(<CreateWorkNoteDialog {...defaultProps} />);
 
@@ -155,7 +179,6 @@ describe('CreateWorkNoteDialog', () => {
     it('renders content textarea', () => {
       render(<CreateWorkNoteDialog {...defaultProps} />);
 
-      expect(screen.getByLabelText('내용')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('업무노트 내용을 입력하세요')).toBeInTheDocument();
     });
 
@@ -196,7 +219,8 @@ describe('CreateWorkNoteDialog', () => {
       const user = userEvent.setup();
       render(<CreateWorkNoteDialog {...defaultProps} />);
 
-      const contentInput = screen.getByLabelText('내용');
+      await openContentTab(user);
+      const contentInput = screen.getByPlaceholderText('업무노트 내용을 입력하세요');
       await user.type(contentInput, '테스트 내용');
 
       expect(contentInput).toHaveValue('테스트 내용');
@@ -230,7 +254,11 @@ describe('CreateWorkNoteDialog', () => {
       render(<CreateWorkNoteDialog open={true} onOpenChange={onOpenChange} />);
 
       await user.type(screen.getByLabelText('제목'), '새 업무노트');
-      await user.type(screen.getByLabelText('내용'), '업무노트 내용입니다.');
+      await openContentTab(user);
+      await user.type(
+        screen.getByPlaceholderText('업무노트 내용을 입력하세요'),
+        '업무노트 내용입니다.'
+      );
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       await waitFor(() => {
@@ -250,9 +278,13 @@ describe('CreateWorkNoteDialog', () => {
       render(<CreateWorkNoteDialog {...defaultProps} />);
 
       await user.type(screen.getByLabelText('제목'), '새 업무노트');
-      await user.type(screen.getByLabelText('내용'), '업무노트 내용입니다.');
       await user.click(screen.getByText('Select Category'));
       await user.click(screen.getByText('Select Person'));
+      await openContentTab(user);
+      await user.type(
+        screen.getByPlaceholderText('업무노트 내용을 입력하세요'),
+        '업무노트 내용입니다.'
+      );
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       await waitFor(() => {
@@ -270,7 +302,8 @@ describe('CreateWorkNoteDialog', () => {
       render(<CreateWorkNoteDialog {...defaultProps} />);
 
       await user.type(screen.getByLabelText('제목'), '  업무노트  ');
-      await user.type(screen.getByLabelText('내용'), '  내용  ');
+      await openContentTab(user);
+      await user.type(screen.getByPlaceholderText('업무노트 내용을 입력하세요'), '  내용  ');
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       await waitFor(() => {
@@ -289,10 +322,25 @@ describe('CreateWorkNoteDialog', () => {
       const user = userEvent.setup();
       render(<CreateWorkNoteDialog {...defaultProps} />);
 
-      await user.type(screen.getByLabelText('내용'), '업무노트 내용입니다.');
+      await openContentTab(user);
+      await user.type(
+        screen.getByPlaceholderText('업무노트 내용을 입력하세요'),
+        '업무노트 내용입니다.'
+      );
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       expect(mockMutateAsync).not.toHaveBeenCalled();
+      expect(mockToast).toHaveBeenCalledWith({
+        variant: 'destructive',
+        title: '오류',
+        description: '제목을 입력해주세요.',
+      });
+      await waitFor(() =>
+        expect(screen.getByRole('tab', { name: '기본 정보' })).toHaveAttribute(
+          'aria-selected',
+          'true'
+        )
+      );
     });
 
     it('does not submit with empty content', async () => {
@@ -303,6 +351,14 @@ describe('CreateWorkNoteDialog', () => {
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       expect(mockMutateAsync).not.toHaveBeenCalled();
+      expect(mockToast).toHaveBeenCalledWith({
+        variant: 'destructive',
+        title: '오류',
+        description: '내용을 입력해주세요.',
+      });
+      await waitFor(() =>
+        expect(screen.getByRole('tab', { name: '내용' })).toHaveAttribute('aria-selected', 'true')
+      );
     });
 
     it('does not submit with whitespace-only title', async () => {
@@ -310,7 +366,11 @@ describe('CreateWorkNoteDialog', () => {
       render(<CreateWorkNoteDialog {...defaultProps} />);
 
       await user.type(screen.getByLabelText('제목'), '   ');
-      await user.type(screen.getByLabelText('내용'), '업무노트 내용입니다.');
+      await openContentTab(user);
+      await user.type(
+        screen.getByPlaceholderText('업무노트 내용을 입력하세요'),
+        '업무노트 내용입니다.'
+      );
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       expect(mockMutateAsync).not.toHaveBeenCalled();
@@ -321,7 +381,8 @@ describe('CreateWorkNoteDialog', () => {
       render(<CreateWorkNoteDialog {...defaultProps} />);
 
       await user.type(screen.getByLabelText('제목'), '새 업무노트');
-      await user.type(screen.getByLabelText('내용'), '   ');
+      await openContentTab(user);
+      await user.type(screen.getByPlaceholderText('업무노트 내용을 입력하세요'), '   ');
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       expect(mockMutateAsync).not.toHaveBeenCalled();
@@ -389,7 +450,11 @@ describe('CreateWorkNoteDialog', () => {
       render(<CreateWorkNoteDialog open={true} onOpenChange={onOpenChange} />);
 
       await user.type(screen.getByLabelText('제목'), '새 업무노트');
-      await user.type(screen.getByLabelText('내용'), '업무노트 내용입니다.');
+      await openContentTab(user);
+      await user.type(
+        screen.getByPlaceholderText('업무노트 내용을 입력하세요'),
+        '업무노트 내용입니다.'
+      );
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       await waitFor(() => {

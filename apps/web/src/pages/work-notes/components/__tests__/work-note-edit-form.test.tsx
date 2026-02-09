@@ -66,9 +66,15 @@ describe('WorkNoteEditForm', () => {
     render(<WorkNoteEditForm {...defaultProps} />);
 
     expect(screen.getByPlaceholderText('제목')).toHaveValue('테스트 제목');
-    expect(screen.getByPlaceholderText('마크다운 형식으로 작성하세요')).toHaveValue('테스트 내용');
     expect(screen.getByText('업무 구분')).toBeInTheDocument();
     expect(screen.getByText('담당자')).toBeInTheDocument();
+  });
+
+  it('renders basic and content tabs for edit UX', () => {
+    render(<WorkNoteEditForm {...defaultProps} />);
+
+    expect(screen.getByRole('tab', { name: '기본 정보' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '내용' })).toBeInTheDocument();
   });
 
   it('calls onChange when title changes', async () => {
@@ -85,6 +91,7 @@ describe('WorkNoteEditForm', () => {
     const user = userEvent.setup();
     render(<WorkNoteEditForm {...defaultProps} content="" />);
 
+    await user.click(screen.getByRole('tab', { name: '내용' }));
     const contentInput = screen.getByPlaceholderText('마크다운 형식으로 작성하세요');
     await user.type(contentInput, 'B');
 

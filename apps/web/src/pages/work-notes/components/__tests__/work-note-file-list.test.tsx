@@ -134,6 +134,33 @@ describe('WorkNoteFileList', () => {
     expect(driveButtons[0]).toHaveAttribute('target', '_blank');
   });
 
+  it('renders file metadata in one line with YYYY-MM-DD upload date format', () => {
+    const files = [
+      createDriveFileListItem({
+        id: 'drive-file',
+        name: 'meeting-notes.pdf',
+        size: 1024,
+        modifiedTime: '2026-03-15T12:00:00.000Z',
+      }),
+    ];
+
+    vi.mocked(useWorkNoteFiles).mockReturnValue({
+      data: {
+        files,
+        driveFolderId: 'folder-123',
+        driveFolderLink: 'https://drive.google.com/folder',
+        googleDriveConfigured: true,
+        hasLegacyFiles: false,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteFiles>);
+
+    render(<WorkNoteFileList workId="work-1" />);
+
+    expect(screen.getByText('meeting-notes.pdf')).toBeInTheDocument();
+    expect(screen.getByText('1.0 KB · 업로드일 2026-03-15')).toBeInTheDocument();
+  });
+
   it('renders folder path copy button when folder exists and createdAt is provided', () => {
     const files = [createDriveFileListItem()];
 

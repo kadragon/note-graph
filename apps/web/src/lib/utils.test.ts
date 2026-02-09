@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   cn,
+  formatDateToYYYYMMDD,
   formatDateWithYear,
   formatPersonBadge,
   formatPhoneExt,
@@ -235,5 +236,17 @@ describe('toUTCISOString', () => {
     expect(toUTCISOString('2025-01-01')).toBe('2025-01-01T00:00:00.000Z');
     expect(toUTCISOString('2025-06-15')).toBe('2025-06-15T00:00:00.000Z');
     expect(toUTCISOString('2025-12-31')).toBe('2025-12-31T00:00:00.000Z');
+  });
+});
+
+describe('formatDateToYYYYMMDD', () => {
+  it("formats ISO date strings to 'yyyy-MM-dd'", () => {
+    expect(formatDateToYYYYMMDD('2026-02-09T12:42:11Z')).toBe('2026-02-09');
+    expect(formatDateToYYYYMMDD('2025-01-01')).toBe('2025-01-01');
+  });
+
+  it("returns '-' for invalid date strings", () => {
+    expect(formatDateToYYYYMMDD('')).toBe('-');
+    expect(formatDateToYYYYMMDD('not-a-date')).toBe('-');
   });
 });

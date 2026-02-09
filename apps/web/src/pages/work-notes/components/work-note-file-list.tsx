@@ -29,6 +29,7 @@ import {
   useUploadWorkNoteFile,
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
+import { formatDateToYYYYMMDD } from '@web/lib/utils';
 import type { DriveFileListItem, WorkNoteFileMigrationResult } from '@web/types/api';
 import {
   ArrowRightLeft,
@@ -317,22 +318,19 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
             >
               <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <a
-                  href={file.webViewLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium truncate hover:underline block"
-                >
-                  {file.name}
-                </a>
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(file.size)} •{' '}
-                  {new Date(file.modifiedTime).toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
+                <div className="flex items-center gap-2 min-w-0">
+                  <a
+                    href={file.webViewLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium truncate hover:underline"
+                  >
+                    {file.name}
+                  </a>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatFileSize(file.size)} · 업로드일 {formatDateToYYYYMMDD(file.modifiedTime)}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {isModifiedToday(file.modifiedTime) && (
