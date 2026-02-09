@@ -355,3 +355,58 @@ Project deletion is soft-delete only, so FK cascade does not remove folder mappi
 
 ### Impact
 Treat Drive folder cleanup as external + DB cleanup to avoid stale `project_gdrive_folders` rows after project deletion.
+
+## 2026-02-09 Project File Web Download Branching
+
+### Decision/Learning
+Make `API.downloadProjectFile` storage-aware via an optional `storageType` argument; when `storageType` is `GDRIVE`, open the project download route in a new tab instead of fetching a Blob.
+
+### Reason
+Drive-backed download routes respond with redirects, and Blob fetch flows are not reliable for that browser navigation behavior.
+
+### Impact
+Callers handling mixed `R2/GDRIVE` project files should pass `storageType` so `GDRIVE` uses tab-open navigation while `R2` keeps Blob download behavior.
+
+## 2026-02-09 Project File Migrate Hook Pattern
+
+### Decision/Learning
+Implement `useMigrateProjectFiles` as a manual `useMutation` hook (not `createStandardMutation`) so the success toast can include migration summary counts.
+
+### Reason
+Migration UX needs result-based messaging (`migrated/skipped/failed`) and dual cache invalidation tied to `projectId`.
+
+### Impact
+For project file migration flows, invalidate both `['project-files', projectId]` and `['project', projectId]`, and keep success text aligned with backend summary payload.
+
+## 2026-02-09 ProjectFiles Download Action Branching
+
+### Decision/Learning
+In `ProjectFiles`, render storage-aware icon actions: `GDRIVE` rows use an external-link action and `R2` rows use a blob download action.
+
+### Reason
+Drive downloads are redirect-driven and should not go through local Blob URL generation; icon-only buttons also need explicit accessible names.
+
+### Impact
+Branch by `storageType` before creating object URLs, and keep per-action `sr-only` labels (`Google Drive에서 열기`, `파일 다운로드`, `파일 삭제`) for deterministic tests and accessibility.
+
+## 2026-02-09 ProjectFiles Explicit StorageType Call
+
+### Decision/Learning
+Call `API.downloadProjectFile` with explicit `{ storageType }` for both `GDRIVE` and `R2` rows from `ProjectFiles`.
+
+### Reason
+An explicit storage flag keeps route behavior deterministic and prevents accidental regressions between redirect-based Drive opens and blob-based R2 downloads.
+
+### Impact
+When wiring project file download actions, always pass `storageType` through to the API client instead of relying on implicit defaults.
+
+## 2026-02-09 ProjectFiles Legacy Migration Trigger
+
+### Decision/Learning
+Show the `R2 파일 Google Drive로 옮기기` button in `ProjectFiles` when listed files include legacy `storageType='R2'`, and trigger `useMigrateProjectFiles().mutate(projectId)` on click.
+
+### Reason
+Project file migration is project-scoped, and the migration affordance should appear only when legacy R2 rows are present.
+
+### Impact
+Use `files.some((file) => file.storageType === 'R2')` as the UI guard and route button actions through the migrate hook instead of inline API calls.

@@ -33,13 +33,13 @@
 - [x] Add projects route integration test: `POST /api/projects/:projectId/files/migrate` migrates legacy R2 files and returns summary.
 - [x] Add projects route integration test: `DELETE /api/projects/:projectId` cleans Drive folder and soft-deletes project.
 
-- [ ] Add web API client test: project file download opens Drive link path for `GDRIVE` and keeps Blob download for `R2`.
-- [ ] Add `use-projects` mutation test: migrate hook invalidates `project-files` and `project` queries and shows summary toast.
-- [ ] Add `ProjectFiles` component test: Drive file row renders external-link action instead of Blob download action.
-- [ ] Add `ProjectFiles` component test: legacy R2 file row still supports direct download action.
-- [ ] Add `ProjectFiles` component test: migration button appears when legacy R2 files exist and triggers migrate flow.
+- [x] Add web API client test: project file download opens Drive link path for `GDRIVE` and keeps Blob download for `R2`.
+- [x] Add `use-projects` mutation test: migrate hook invalidates `project-files` and `project` queries and shows summary toast.
+- [x] Add `ProjectFiles` component test: Drive file row renders external-link action instead of Blob download action.
+- [x] Add `ProjectFiles` component test: legacy R2 file row still supports direct download action.
+- [x] Add `ProjectFiles` component test: migration button appears when legacy R2 files exist and triggers migrate flow.
 
-- [ ] Add end-to-end integration test: mixed storage project shows consistent behavior across upload/list/download/delete/migrate.
+- [x] Add end-to-end integration test: mixed storage project shows consistent behavior across upload/list/download/delete/migrate.
 
 ---
 

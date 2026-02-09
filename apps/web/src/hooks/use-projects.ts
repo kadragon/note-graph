@@ -1,5 +1,6 @@
 // Trace: SPEC-project-1, TASK-043
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
 import { createStandardMutation } from '@web/lib/hooks/create-standard-mutation';
 import type {
@@ -7,6 +8,7 @@ import type {
   CreateProjectRequest,
   ProjectFilters,
   UpdateProjectRequest,
+  WorkNoteFileMigrationResult,
 } from '@web/types/api';
 
 export function useProjects(filters?: ProjectFilters) {
@@ -137,3 +139,35 @@ export const useDeleteProjectFile = createStandardMutation({
     error: '파일을 삭제할 수 없습니다.',
   },
 });
+
+// Keep manual - complex success message based on migration result
+export function useMigrateProjectFiles() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (projectId: string) => API.migrateProjectFiles(projectId),
+    onSuccess: (result: WorkNoteFileMigrationResult, projectId: string) => {
+      void queryClient.invalidateQueries({ queryKey: ['project-files', projectId] });
+      void queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+
+      const summary = `이동 ${result.migrated}개 · 건너뜀 ${result.skipped}개 · 실패 ${result.failed}개`;
+      const description =
+        result.migrated === 0 && result.skipped === 0 && result.failed === 0
+          ? '옮길 R2 파일이 없습니다.'
+          : `마이그레이션 완료: ${summary}`;
+
+      toast({
+        title: '성공',
+        description,
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error.message || '파일을 옮길 수 없습니다.',
+      });
+    },
+  });
+}

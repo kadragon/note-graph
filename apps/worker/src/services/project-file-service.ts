@@ -548,10 +548,10 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
     await this.db
       .prepare(
         `UPDATE project_files
-         SET storage_type = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
+         SET storage_type = ?, r2_key = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
          WHERE file_id = ?`
       )
-      .bind('GDRIVE', driveFile.id, folderId, driveFile.webViewLink, fileId)
+      .bind('GDRIVE', '', driveFile.id, folderId, driveFile.webViewLink, fileId)
       .run();
   }
 
