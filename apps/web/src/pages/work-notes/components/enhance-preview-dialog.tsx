@@ -26,6 +26,7 @@ interface EnhancePreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   enhanceResponse: EnhanceWorkNoteResponse;
+  existingRelatedWorkIds?: string[];
 }
 
 export function EnhancePreviewDialog({
@@ -33,11 +34,13 @@ export function EnhancePreviewDialog({
   open,
   onOpenChange,
   enhanceResponse,
+  existingRelatedWorkIds = [],
 }: EnhancePreviewDialogProps) {
   const { state, actions, data } = useEnhanceWorkNoteForm(workId, {
     onSuccess: () => {
       onOpenChange(false);
     },
+    existingRelatedWorkIds,
   });
 
   const {
@@ -45,6 +48,8 @@ export function EnhancePreviewDialog({
     content,
     selectedCategoryIds,
     selectedPersonIds,
+    references = [],
+    selectedReferenceIds = [],
     suggestedNewTodos,
     selectedNewTodoIds,
     existingTodos,
@@ -55,6 +60,7 @@ export function EnhancePreviewDialog({
     setTitle,
     setContent,
     setSelectedPersonIds,
+    setSelectedReferenceIds = () => {},
     handleCategoryToggle,
     toggleNewTodo,
     handleSubmit,
@@ -162,11 +168,11 @@ export function EnhancePreviewDialog({
             />
           </div>
 
-          {enhanceResponse.references.length > 0 && (
+          {references.length > 0 && (
             <AIReferenceList
-              references={enhanceResponse.references}
-              selectedIds={enhanceResponse.references.map((r) => r.workId)}
-              onSelectionChange={() => {}}
+              references={references}
+              selectedIds={selectedReferenceIds}
+              onSelectionChange={setSelectedReferenceIds}
             />
           )}
 

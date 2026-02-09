@@ -5,6 +5,7 @@ import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
 import type {
+  AIDraftReference,
   AIDraftTodo,
   EnhanceWorkNoteRequest,
   EnhanceWorkNoteResponse,
@@ -43,6 +44,9 @@ export interface EnhanceWorkNoteFormState {
   content: string;
   selectedCategoryIds: string[];
   selectedPersonIds: string[];
+  baseRelatedWorkIds: string[];
+  references: AIDraftReference[];
+  selectedReferenceIds: string[];
   suggestedNewTodos: SuggestedNewTodo[];
   selectedNewTodoIds: string[];
   existingTodos: ExistingTodoSummary[];
@@ -54,6 +58,7 @@ export interface EnhanceWorkNoteFormActions {
   setContent: (content: string) => void;
   setSelectedCategoryIds: (ids: string[]) => void;
   setSelectedPersonIds: (ids: string[]) => void;
+  setSelectedReferenceIds: (ids: string[]) => void;
   handleCategoryToggle: (categoryId: string) => void;
   toggleNewTodo: (uiId: string) => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
@@ -70,6 +75,7 @@ export interface EnhanceWorkNoteFormData {
 
 export interface UseEnhanceWorkNoteFormOptions {
   onSuccess?: () => void;
+  existingRelatedWorkIds?: string[];
 }
 
 export function useEnhanceWorkNoteForm(
@@ -77,10 +83,13 @@ export function useEnhanceWorkNoteForm(
   options: UseEnhanceWorkNoteFormOptions = {}
 ) {
   const { onSuccess } = options;
+  const baseRelatedWorkIds = options.existingRelatedWorkIds ?? [];
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
+  const [references, setReferences] = useState<AIDraftReference[]>([]);
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
   const [suggestedNewTodos, setSuggestedNewTodos] = useState<SuggestedNewTodo[]>([]);
   const [selectedNewTodoIds, setSelectedNewTodoIds] = useState<string[]>([]);
   const [existingTodos, setExistingTodos] = useState<ExistingTodoSummary[]>([]);
@@ -121,6 +130,8 @@ export function useEnhanceWorkNoteForm(
     setContent('');
     setSelectedCategoryIds([]);
     setSelectedPersonIds([]);
+    setReferences([]);
+    setSelectedReferenceIds([]);
     setSuggestedNewTodos([]);
     setSelectedNewTodoIds([]);
     setExistingTodos([]);
@@ -128,13 +139,15 @@ export function useEnhanceWorkNoteForm(
   }, []);
 
   const populateFromEnhanceResponse = useCallback((response: EnhanceWorkNoteResponse) => {
-    const { enhancedDraft, existingTodos: existingTodosList } = response;
+    const { enhancedDraft, existingTodos: existingTodosList, references: aiReferences } = response;
 
     setTitle(enhancedDraft.title);
     setContent(enhancedDraft.content);
     setDraftCategoryName(enhancedDraft.category || null);
     setSelectedPersonIds(enhancedDraft.relatedPersonIds || []);
     setExistingTodos(existingTodosList);
+    setReferences(aiReferences);
+    setSelectedReferenceIds(aiReferences.map((reference) => reference.workId));
 
     // Add unique IDs to todos for stable React keys
     const todosWithIds = (enhancedDraft.todos || []).map((todo) => ({
@@ -162,12 +175,28 @@ export function useEnhanceWorkNoteForm(
       setIsSubmitting(true);
 
       try {
+        const aiReferenceIds = references.map((reference) => reference.workId);
+        const relatedWorkIdsSet = new Set(baseRelatedWorkIds);
+
+        for (const aiReferenceId of aiReferenceIds) {
+          if (selectedReferenceIds.includes(aiReferenceId)) {
+            relatedWorkIdsSet.add(aiReferenceId);
+          } else {
+            relatedWorkIdsSet.delete(aiReferenceId);
+          }
+        }
+
+        const relatedWorkIds = Array.from(relatedWorkIdsSet);
+        const hasRelatedWorkSelectionSource =
+          baseRelatedWorkIds.length > 0 || aiReferenceIds.length > 0;
+
         // Update work note
         await API.updateWorkNote(workId, {
           title: title.trim(),
           content: content.trim(),
           categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
           relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+          relatedWorkIds: hasRelatedWorkSelectionSource ? relatedWorkIds : undefined,
         });
 
         // Create selected new todos
@@ -190,10 +219,6 @@ export function useEnhanceWorkNoteForm(
           ).length;
           const failedCount = todosToCreate.length - successfulCount;
 
-          if (successfulCount > 0) {
-            void queryClient.invalidateQueries({ queryKey: ['todos'] });
-          }
-
           if (failedCount > 0) {
             toast({
               variant: 'destructive',
@@ -213,9 +238,11 @@ export function useEnhanceWorkNoteForm(
           });
         }
 
+        void queryClient.invalidateQueries({ queryKey: ['todos'] });
         void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
         void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-        void queryClient.invalidateQueries({ queryKey: ['work-note', workId] });
+        void queryClient.invalidateQueries({ queryKey: ['work-note-detail', workId] });
+        void queryClient.invalidateQueries({ queryKey: ['work-note-todos', workId] });
 
         resetForm();
         onSuccess?.();
@@ -234,6 +261,9 @@ export function useEnhanceWorkNoteForm(
       content,
       selectedCategoryIds,
       selectedPersonIds,
+      baseRelatedWorkIds,
+      references,
+      selectedReferenceIds,
       suggestedNewTodos,
       selectedNewTodoIds,
       workId,
@@ -249,6 +279,9 @@ export function useEnhanceWorkNoteForm(
     content,
     selectedCategoryIds,
     selectedPersonIds,
+    baseRelatedWorkIds,
+    references,
+    selectedReferenceIds,
     suggestedNewTodos,
     selectedNewTodoIds,
     existingTodos,
@@ -260,6 +293,7 @@ export function useEnhanceWorkNoteForm(
     setContent,
     setSelectedCategoryIds,
     setSelectedPersonIds,
+    setSelectedReferenceIds,
     handleCategoryToggle,
     toggleNewTodo,
     handleSubmit,

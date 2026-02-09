@@ -11,6 +11,8 @@ import { useEnhanceWorkNote, useEnhanceWorkNoteForm } from '../use-enhance-work-
 vi.mock('@web/lib/api', () => ({
   API: {
     enhanceWorkNote: vi.fn(),
+    updateWorkNote: vi.fn(),
+    createWorkNoteTodo: vi.fn(),
   },
 }));
 
@@ -131,6 +133,9 @@ describe('useEnhanceWorkNoteForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    vi.mocked(API.updateWorkNote).mockResolvedValue({} as never);
+    vi.mocked(API.createWorkNoteTodo).mockResolvedValue({} as never);
+
     vi.mocked(usePersons).mockReturnValue({
       data: [],
       isLoading: false,
@@ -193,6 +198,162 @@ describe('useEnhanceWorkNoteForm', () => {
     expect(result.current.state.suggestedNewTodos).toHaveLength(1);
     expect(result.current.state.existingTodos).toHaveLength(1);
     expect(result.current.state.existingTodos[0].title).toBe('기존 할일');
+  });
+
+  it('stores AI references and initializes all as selected', () => {
+    const { result } = renderHookWithClient(() => useEnhanceWorkNoteForm('work-1'));
+
+    const references = [
+      {
+        workId: 'ref-1',
+        title: '참고 노트 1',
+        content: '내용 1',
+        similarityScore: 0.9,
+      },
+      {
+        workId: 'ref-2',
+        title: '참고 노트 2',
+        content: '내용 2',
+        similarityScore: 0.8,
+      },
+    ];
+
+    act(() => {
+      result.current.actions.populateFromEnhanceResponse({
+        enhancedDraft: {
+          title: '제목',
+          content: '내용',
+          category: '',
+          todos: [],
+        },
+        originalContent: '원본 내용',
+        existingTodos: [],
+        references,
+      });
+    });
+
+    expect(result.current.state.references).toEqual(references);
+    expect(result.current.state.selectedReferenceIds).toEqual(['ref-1', 'ref-2']);
+  });
+
+  it('updates selectedReferenceIds and keeps unchecked references excluded', () => {
+    const { result } = renderHookWithClient(() => useEnhanceWorkNoteForm('work-1'));
+
+    act(() => {
+      result.current.actions.populateFromEnhanceResponse({
+        enhancedDraft: {
+          title: '제목',
+          content: '내용',
+          category: '',
+          todos: [],
+        },
+        originalContent: '원본 내용',
+        existingTodos: [],
+        references: [
+          { workId: 'ref-1', title: '참고 1', content: '내용 1', similarityScore: 0.9 },
+          { workId: 'ref-2', title: '참고 2', content: '내용 2', similarityScore: 0.8 },
+          { workId: 'ref-3', title: '참고 3', content: '내용 3', similarityScore: 0.7 },
+        ],
+      });
+    });
+
+    const actions = result.current.actions as unknown as {
+      setSelectedReferenceIds: (ids: string[]) => void;
+    };
+
+    act(() => {
+      actions.setSelectedReferenceIds(['ref-1', 'ref-3']);
+    });
+
+    expect(result.current.state.selectedReferenceIds).toEqual(['ref-1', 'ref-3']);
+    expect(result.current.state.selectedReferenceIds).not.toContain('ref-2');
+
+    act(() => {
+      result.current.actions.setTitle('수정된 제목');
+    });
+
+    expect(result.current.state.selectedReferenceIds).toEqual(['ref-1', 'ref-3']);
+    expect(result.current.state.selectedReferenceIds).not.toContain('ref-2');
+  });
+
+  it('submits relatedWorkIds as base + selected references and excludes unchecked references', async () => {
+    const { result } = renderHookWithClient(() =>
+      useEnhanceWorkNoteForm('work-1', {
+        existingRelatedWorkIds: ['base-keep', 'ref-2'],
+      } as unknown as Parameters<typeof useEnhanceWorkNoteForm>[1])
+    );
+
+    act(() => {
+      result.current.actions.populateFromEnhanceResponse({
+        enhancedDraft: {
+          title: '제목',
+          content: '내용',
+          category: '',
+          todos: [],
+        },
+        originalContent: '',
+        existingTodos: [],
+        references: [
+          { workId: 'ref-1', title: '참고 1', content: '내용 1', similarityScore: 0.9 },
+          { workId: 'ref-2', title: '참고 2', content: '내용 2', similarityScore: 0.8 },
+        ],
+      });
+    });
+
+    act(() => {
+      result.current.actions.setSelectedReferenceIds(['ref-1']);
+    });
+
+    await act(async () => {
+      await result.current.actions.handleSubmit({
+        preventDefault: vi.fn(),
+      } as unknown as React.FormEvent);
+    });
+
+    expect(API.updateWorkNote).toHaveBeenCalledWith(
+      'work-1',
+      expect.objectContaining({
+        relatedWorkIds: ['base-keep', 'ref-1'],
+      })
+    );
+  });
+
+  it('invalidates detail/todo queries on submit and does not use stale work-note key', async () => {
+    const { result, queryClient } = renderHookWithClient(() => useEnhanceWorkNoteForm('work-1'));
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    act(() => {
+      result.current.actions.populateFromEnhanceResponse({
+        enhancedDraft: {
+          title: '제목',
+          content: '내용',
+          category: '',
+          todos: [],
+        },
+        originalContent: '',
+        existingTodos: [],
+        references: [],
+      });
+    });
+
+    await act(async () => {
+      await result.current.actions.handleSubmit({
+        preventDefault: vi.fn(),
+      } as unknown as React.FormEvent);
+    });
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: ['work-note-detail', 'work-1'],
+    });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: ['work-note-todos', 'work-1'],
+    });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: ['todos'],
+    });
+    expect(invalidateQueriesSpy).not.toHaveBeenCalledWith({
+      queryKey: ['work-note', 'work-1'],
+    });
   });
 
   it('toggles suggested todo selection', () => {
