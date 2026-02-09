@@ -922,13 +922,30 @@ export class APIClient {
     return this.request<ProjectFile>(`/projects/${projectId}/files/${fileId}`);
   }
 
-  downloadProjectFile(projectId: string, fileId: string): Promise<Blob> {
-    return this._downloadFile(`/projects/${projectId}/files/${fileId}/download`);
+  downloadProjectFile(
+    projectId: string,
+    fileId: string,
+    options?: Pick<ProjectFile, 'storageType'>
+  ): Promise<Blob> {
+    const downloadPath = `/projects/${projectId}/files/${fileId}/download`;
+
+    if (options?.storageType === 'GDRIVE') {
+      window.open(`${this.baseURL}${downloadPath}`, '_blank', 'noopener');
+      return Promise.resolve(new Blob());
+    }
+
+    return this._downloadFile(downloadPath);
   }
 
   deleteProjectFile(projectId: string, fileId: string) {
     return this.request<void>(`/projects/${projectId}/files/${fileId}`, {
       method: 'DELETE',
+    });
+  }
+
+  migrateProjectFiles(projectId: string) {
+    return this.request<WorkNoteFileMigrationResult>(`/projects/${projectId}/files/migrate`, {
+      method: 'POST',
     });
   }
 

@@ -799,6 +799,22 @@ describe('API.downloadProjectFile', () => {
     vi.restoreAllMocks();
   });
 
+  it('opens the project download path in a new tab for GDRIVE files', async () => {
+    const fetchMock = vi.fn();
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.downloadProjectFile('project-1', 'file-1', { storageType: 'GDRIVE' });
+
+    expect(openSpy).toHaveBeenCalledWith(
+      '/api/projects/project-1/files/file-1/download',
+      '_blank',
+      'noopener'
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('returns blob for successful downloads', async () => {
     const mockBlob = new Blob(['project file'], { type: 'text/plain' });
 

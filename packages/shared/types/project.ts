@@ -58,10 +58,16 @@ export interface ProjectWorkNote {
 /**
  * Project file attachment
  */
+export type ProjectFileStorageType = 'R2' | 'GDRIVE';
+
 export interface ProjectFile {
   fileId: string; // FILE-{nanoid}
   projectId: string;
   r2Key: string; // projects/{projectId}/files/{fileId}
+  storageType: ProjectFileStorageType; // 'R2' or 'GDRIVE'
+  gdriveFileId: string | null; // Google Drive file ID
+  gdriveFolderId: string | null; // Google Drive folder ID
+  gdriveWebViewLink: string | null; // Google Drive web view link
   originalName: string;
   fileType: string; // MIME type
   fileSize: number; // bytes

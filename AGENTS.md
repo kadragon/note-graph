@@ -277,3 +277,136 @@ Mixed `R2/GDRIVE` projects need deterministic branch behavior to avoid false 404
 
 ### Impact
 Maintain `storage_type` branching in download/delete/migrate/cleanup code paths and pass `userEmail` when invoking project cleanup that should remove Drive folders.
+
+## 2026-02-08 Project Repository File Mapping
+
+### Decision/Learning
+Normalize `ProjectRepository.getFiles` payloads to always include `storageType` and Drive metadata fields.
+For legacy rows, default `storageType` to `R2` and Drive metadata fields to `null`.
+
+### Reason
+Project detail queries can return mixed `R2/GDRIVE` files, and consumers should not infer storage from missing keys.
+
+### Impact
+Treat repository file payload shape as stable across storage backends and branch logic using `storageType`.
+
+## 2026-02-08 Project Route Drive Payload Coverage
+
+### Decision/Learning
+For project file route integration, keep at least one unmocked `ProjectFileService` test that verifies Drive fields in the POST response.
+
+### Reason
+Service-mocked route tests can pass even when the real upload response omits Drive metadata fields.
+
+### Impact
+Use real route+service execution with Drive API fetch stubs when validating response payload contracts (`storageType`, `gdriveFileId`, `gdriveFolderId`, `gdriveWebViewLink`).
+
+## 2026-02-08 Project File Service Payload Parity
+
+### Decision/Learning
+Keep `ProjectFileService` response fields aligned across upload and query paths by including `storageType` and Drive metadata in `mapDbToFile`.
+
+### Reason
+Route-level list/get endpoints rely on `mapDbToFile`; omitting Drive fields there creates payload shape drift versus upload responses.
+
+### Impact
+When extending project file payloads, update both upload return objects and `mapDbToFile` so route contracts stay consistent.
+
+## 2026-02-08 Redirect Assertion in Worker Integration Tests
+
+### Decision/Learning
+For route tests that verify redirects, call `authFetch(..., { redirect: 'manual' })`.
+
+### Reason
+Default fetch redirect-following can mask the original `302` and produce misleading downstream `404` failures in Workers tests.
+
+### Impact
+Use manual redirect mode when asserting `Location` headers for Drive redirect endpoints.
+
+## 2026-02-09 Drive Delete Integration Mock Guard
+
+### Decision/Learning
+For GDRIVE delete route integration tests, stub `DELETE https://www.googleapis.com/drive/v3/files/:id` and assert that call is made.
+
+### Reason
+Without an explicit delete stub, test fetch falls through to real Drive API calls and produces auth-driven false failures (`500` from `401`).
+
+### Impact
+Keep Drive delete mocks alongside upload/list stubs so route delete tests stay deterministic and validate the intended side effect.
+
+## 2026-02-09 Project File Migrate Route Coverage
+
+### Decision/Learning
+Add route-level integration coverage for `POST /api/projects/:projectId/files/migrate` and require a summary response (`migrated/skipped/failed`).
+
+### Reason
+`ProjectFileService.migrateR2FilesToDrive` can exist without an exposed route; service-only tests do not guarantee API accessibility.
+
+### Impact
+Keep route integration tests for migration endpoints and assert both response summary and DB storage transition (`R2` -> `GDRIVE`).
+
+## 2026-02-09 Project Drive Mapping Cleanup on Soft Delete
+
+### Decision/Learning
+After deleting a project Drive folder, also delete the corresponding `project_gdrive_folders` row.
+
+### Reason
+Project deletion is soft-delete only, so FK cascade does not remove folder mapping records automatically.
+
+### Impact
+Treat Drive folder cleanup as external + DB cleanup to avoid stale `project_gdrive_folders` rows after project deletion.
+
+## 2026-02-09 Project File Web Download Branching
+
+### Decision/Learning
+Make `API.downloadProjectFile` storage-aware via an optional `storageType` argument; when `storageType` is `GDRIVE`, open the project download route in a new tab instead of fetching a Blob.
+
+### Reason
+Drive-backed download routes respond with redirects, and Blob fetch flows are not reliable for that browser navigation behavior.
+
+### Impact
+Callers handling mixed `R2/GDRIVE` project files should pass `storageType` so `GDRIVE` uses tab-open navigation while `R2` keeps Blob download behavior.
+
+## 2026-02-09 Project File Migrate Hook Pattern
+
+### Decision/Learning
+Implement `useMigrateProjectFiles` as a manual `useMutation` hook (not `createStandardMutation`) so the success toast can include migration summary counts.
+
+### Reason
+Migration UX needs result-based messaging (`migrated/skipped/failed`) and dual cache invalidation tied to `projectId`.
+
+### Impact
+For project file migration flows, invalidate both `['project-files', projectId]` and `['project', projectId]`, and keep success text aligned with backend summary payload.
+
+## 2026-02-09 ProjectFiles Download Action Branching
+
+### Decision/Learning
+In `ProjectFiles`, render storage-aware icon actions: `GDRIVE` rows use an external-link action and `R2` rows use a blob download action.
+
+### Reason
+Drive downloads are redirect-driven and should not go through local Blob URL generation; icon-only buttons also need explicit accessible names.
+
+### Impact
+Branch by `storageType` before creating object URLs, and keep per-action `sr-only` labels (`Google Drive에서 열기`, `파일 다운로드`, `파일 삭제`) for deterministic tests and accessibility.
+
+## 2026-02-09 ProjectFiles Explicit StorageType Call
+
+### Decision/Learning
+Call `API.downloadProjectFile` with explicit `{ storageType }` for both `GDRIVE` and `R2` rows from `ProjectFiles`.
+
+### Reason
+An explicit storage flag keeps route behavior deterministic and prevents accidental regressions between redirect-based Drive opens and blob-based R2 downloads.
+
+### Impact
+When wiring project file download actions, always pass `storageType` through to the API client instead of relying on implicit defaults.
+
+## 2026-02-09 ProjectFiles Legacy Migration Trigger
+
+### Decision/Learning
+Show the `R2 파일 Google Drive로 옮기기` button in `ProjectFiles` when listed files include legacy `storageType='R2'`, and trigger `useMigrateProjectFiles().mutate(projectId)` on click.
+
+### Reason
+Project file migration is project-scoped, and the migration affordance should appear only when legacy R2 rows are present.
+
+### Impact
+Use `files.some((file) => file.storageType === 'R2')` as the UI guard and route button actions through the migrate hook instead of inline API calls.

@@ -364,6 +364,27 @@ projects.post('/:projectId/files', async (c) => {
 });
 
 /**
+ * POST /projects/:projectId/files/migrate
+ * Migrate legacy R2 files to Google Drive
+ */
+projects.post('/:projectId/files/migrate', async (c) => {
+  const projectId = c.req.param('projectId');
+  const { projects: repository } = c.get('repositories');
+  const user = getAuthUser(c);
+
+  const project = await repository.findById(projectId);
+  if (!project) {
+    throw new NotFoundError('Project', projectId);
+  }
+
+  const r2Bucket = getR2Bucket(c.env);
+  const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
+  const result = await fileService.migrateR2FilesToDrive(projectId, user.email);
+
+  return c.json(result, 200);
+});
+
+/**
  * GET /projects/:projectId/files
  * List project files
  */
@@ -408,6 +429,14 @@ projects.get('/:projectId/files/:fileId/download', async (c) => {
   const r2Bucket = getR2Bucket(c.env);
 
   const fileService = new ProjectFileService(c.env, r2Bucket, c.env.DB);
+  const file = await fileService.getFileById(fileId);
+  if (!file) {
+    throw new NotFoundError('File', fileId);
+  }
+
+  if (file.storageType === 'GDRIVE' && file.gdriveWebViewLink) {
+    return c.redirect(file.gdriveWebViewLink);
+  }
 
   const { body, headers } = await fileService.streamFile(fileId);
 
