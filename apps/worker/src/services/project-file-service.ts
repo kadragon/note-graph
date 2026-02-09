@@ -201,6 +201,10 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       fileId,
       projectId,
       r2Key,
+      storageType,
+      gdriveFileId,
+      gdriveFolderId,
+      gdriveWebViewLink,
       originalName,
       fileType: resolvedFileType,
       fileSize: file.size,
@@ -656,10 +660,14 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
    * Map database row to ProjectFile type
    */
   protected mapDbToFile(row: Record<string, unknown>): ProjectFile {
-    return {
+    const projectFile: ProjectFile = {
       fileId: row.file_id as string,
       projectId: row.project_id as string,
       r2Key: row.r2_key as string,
+      storageType: (row.storage_type as string | null) === 'GDRIVE' ? 'GDRIVE' : 'R2',
+      gdriveFileId: (row.gdrive_file_id as string | null) ?? null,
+      gdriveFolderId: (row.gdrive_folder_id as string | null) ?? null,
+      gdriveWebViewLink: (row.gdrive_web_view_link as string | null) ?? null,
       originalName: row.original_name as string,
       fileType: row.file_type as string,
       fileSize: row.file_size as number,
@@ -668,6 +676,8 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
       embeddedAt: (row.embedded_at as string) || null,
       deletedAt: (row.deleted_at as string) || null,
     };
+
+    return projectFile;
   }
 
   private async deleteProjectDriveFolder(projectId: string, userEmail?: string): Promise<void> {
@@ -677,12 +687,16 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
 
     const folderRecord = await this.db
       .prepare(
-        `SELECT gdrive_folder_id
+        `SELECT gdrive_folder_id, gdrive_folder_link, created_at
          FROM project_gdrive_folders
          WHERE project_id = ?`
       )
       .bind(projectId)
-      .first<{ gdrive_folder_id: string | null }>();
+      .first<{
+        gdrive_folder_id: string | null;
+        gdrive_folder_link: string | null;
+        created_at: string | null;
+      }>();
 
     const folderId = folderRecord?.gdrive_folder_id?.trim();
     if (!folderId) {
@@ -690,9 +704,48 @@ export class ProjectFileService extends BaseFileService<ProjectFile> {
     }
 
     try {
+      await this.db
+        .prepare(
+          `DELETE FROM project_gdrive_folders
+           WHERE project_id = ?`
+        )
+        .bind(projectId)
+        .run();
+    } catch (deleteMappingError) {
+      console.error(
+        `Failed to delete project_gdrive_folders mapping for project ${projectId}:`,
+        deleteMappingError
+      );
+      return;
+    }
+
+    try {
       await this.driveService.deleteFolder(userEmail, folderId);
-    } catch (error) {
-      console.error(`Failed to delete Google Drive folder for project ${projectId}:`, error);
+    } catch (driveDeleteError) {
+      console.error(
+        `Failed to delete Google Drive folder for project ${projectId}:`,
+        driveDeleteError
+      );
+      try {
+        await this.db
+          .prepare(
+            `INSERT OR REPLACE INTO project_gdrive_folders
+             (project_id, gdrive_folder_id, gdrive_folder_link, created_at)
+             VALUES (?, ?, ?, ?)`
+          )
+          .bind(
+            projectId,
+            folderId,
+            folderRecord?.gdrive_folder_link ?? null,
+            folderRecord?.created_at ?? new Date().toISOString()
+          )
+          .run();
+      } catch (restoreError) {
+        console.error(
+          `Failed to restore project_gdrive_folders mapping after Drive delete failure for ${projectId}:`,
+          restoreError
+        );
+      }
     }
   }
 

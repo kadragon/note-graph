@@ -829,6 +829,47 @@ describe('ProjectFileService', () => {
     );
   });
 
+  it('restores project Drive folder mapping when Drive deletion fails during cleanup', async () => {
+    const now = new Date().toISOString();
+    const projectId = 'PROJECT-CLEANUP-DRIVE-ROLLBACK';
+    await insertProject(projectId);
+
+    await baseEnv.DB.prepare(
+      `INSERT INTO project_gdrive_folders (project_id, gdrive_folder_id, gdrive_folder_link, created_at)
+       VALUES (?, ?, ?, ?)`
+    )
+      .bind(projectId, 'GFOLDER-CLEANUP-ROLLBACK-1', 'https://drive.example/folder-rollback', now)
+      .run();
+
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const method = init?.method ?? 'GET';
+
+      if (url === `${DRIVE_API_BASE}/files/GFOLDER-CLEANUP-ROLLBACK-1` && method === 'DELETE') {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => 'Drive delete failed',
+        } as Response;
+      }
+
+      return originalFetch(input, init);
+    }) as typeof fetch;
+
+    const result = await service.archiveProjectFiles(projectId, 'tester@example.com');
+
+    expect(result).toEqual({ succeeded: [], failed: [] });
+    const mapping = await baseEnv.DB.prepare(
+      `SELECT gdrive_folder_id as folderId
+       FROM project_gdrive_folders
+       WHERE project_id = ?`
+    )
+      .bind(projectId)
+      .first<{ folderId: string | null }>();
+    expect(mapping?.folderId).toBe('GFOLDER-CLEANUP-ROLLBACK-1');
+  });
+
   it('returns download URL and streams file with headers', async () => {
     // Arrange
     const now = new Date().toISOString();
