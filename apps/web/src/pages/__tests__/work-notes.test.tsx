@@ -4,6 +4,7 @@ import { createWorkNoteWithStats, resetFactoryCounter } from '@web/test/factorie
 import { render, screen, waitFor, within } from '@web/test/setup';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { startOfWeek } from 'date-fns';
+import type { ReactNode } from 'react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import WorkNotes from '../work-notes';
@@ -13,15 +14,47 @@ vi.mock('@web/hooks/use-work-notes', () => ({
   useDeleteWorkNote: vi.fn(),
 }));
 
+vi.mock('@web/components/ui/select', () => ({
+  Select: ({
+    value,
+    onValueChange,
+    children,
+  }: {
+    value?: string;
+    onValueChange?: (value: string) => void;
+    children: ReactNode;
+  }) => (
+    <select
+      data-testid="year-select"
+      value={value}
+      onChange={(event) => onValueChange?.(event.target.value)}
+    >
+      {children}
+    </select>
+  ),
+  SelectTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectItem: ({ value, children }: { value: string; children: ReactNode }) => (
+    <option value={value}>{children}</option>
+  ),
+}));
+
 vi.mock('../work-notes/components/work-notes-table', () => ({
   WorkNotesTable: ({
     workNotes,
     onDelete,
+    sortKey,
+    sortDirection,
   }: {
     workNotes: WorkNoteWithStats[];
     onDelete: (workNoteId: string) => void;
+    sortKey: 'category' | 'dueDate' | 'title' | 'assignee' | 'todo' | 'createdAt';
+    sortDirection: 'asc' | 'desc';
   }) => (
     <div data-testid="work-notes-table">
+      <div>sort-key: {sortKey}</div>
+      <div>sort-direction: {sortDirection}</div>
       <div>table-count: {workNotes.length}</div>
       {workNotes.map((note) => (
         <button key={note.id} type="button" onClick={() => onDelete(note.id)}>
@@ -141,6 +174,16 @@ describe('work-notes page', () => {
         todoStats: { total: 1, completed: 1, remaining: 0, pending: 0 },
         latestCompletedAt: previousYearDate,
       }),
+      createWorkNoteWithStats({
+        id: 'work-completed-no-date',
+        todoStats: { total: 1, completed: 1, remaining: 0, pending: 0 },
+        latestCompletedAt: null,
+      }),
+      createWorkNoteWithStats({
+        id: 'work-completed-invalid-date',
+        todoStats: { total: 1, completed: 1, remaining: 0, pending: 0 },
+        latestCompletedAt: 'not-a-date',
+      }),
     ];
 
     vi.mocked(useWorkNotesWithStats).mockReturnValue({
@@ -151,12 +194,16 @@ describe('work-notes page', () => {
     const user = userEvent.setup();
     render(<WorkNotes />);
 
+    expect(screen.getByText('sort-key: dueDate')).toBeInTheDocument();
+    expect(screen.getByText('sort-direction: asc')).toBeInTheDocument();
+
     expect(screen.getByRole('tab', { name: /진행 중 \(2\)/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /대기중 \(1\)/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /완료됨\(오늘\) \(1\)/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /완료됨\(이번주\) \(1\)/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /완료됨\(올해\) \(1\)/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /완료됨\(전체\) \(4\)/ })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /완료됨\(올해\)/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /완료됨\(전체\)/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /완료됨 \(3\)/ })).toBeInTheDocument();
 
     const activePanel = screen.getByRole('tabpanel', { name: /진행 중/ });
     expect(within(activePanel).getByText('table-count: 2')).toBeInTheDocument();
@@ -173,13 +220,16 @@ describe('work-notes page', () => {
     const completedWeekPanel = screen.getByRole('tabpanel', { name: /완료됨\(이번주\)/ });
     expect(within(completedWeekPanel).getByText('table-count: 1')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: /완료됨\(올해\) \(1\)/ }));
-    const completedYearPanel = screen.getByRole('tabpanel', { name: /완료됨\(올해\)/ });
-    expect(within(completedYearPanel).getByText('table-count: 1')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /완료됨 \(3\)/ }));
+    const completedPanel = screen.getByRole('tabpanel', { name: /완료됨/ });
+    expect(screen.getByText('연도:')).toBeInTheDocument();
+    expect(screen.getByTestId('year-select')).toHaveValue('2025');
+    expect(within(completedPanel).getByText('table-count: 3')).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /NaN년/ })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: /완료됨\(전체\) \(4\)/ }));
-    const completedAllPanel = screen.getByRole('tabpanel', { name: /완료됨\(전체\)/ });
-    expect(within(completedAllPanel).getByText('table-count: 4')).toBeInTheDocument();
+    await user.selectOptions(screen.getByTestId('year-select'), 'all');
+    expect(within(completedPanel).getByText('table-count: 6')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /완료됨 \(6\)/ })).toBeInTheDocument();
   });
 
   it('confirms deletion and calls the delete mutation', async () => {
