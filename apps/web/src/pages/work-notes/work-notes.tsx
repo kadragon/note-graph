@@ -11,6 +11,13 @@ import {
 } from '@web/components/ui/alert-dialog';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@web/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
 import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-notes';
 import type { WorkNoteWithStats } from '@web/types/api';
@@ -22,17 +29,17 @@ import { CreateFromTextDialog } from './components/create-from-text-dialog';
 import { CreateWorkNoteDialog } from './components/create-work-note-dialog';
 import { ViewWorkNoteDialog } from './components/view-work-note-dialog';
 import { type SortDirection, type SortKey, WorkNotesTable } from './components/work-notes-table';
-import { filterWorkNotes } from './lib/filter-work-notes';
+import {
+  type CompletedYearFilter,
+  filterCompletedWorkNotesByYear,
+  filterWorkNotes,
+  getCompletedYears,
+} from './lib/filter-work-notes';
 
-type WorkNoteTab =
-  | 'active'
-  | 'pending'
-  | 'completed-today'
-  | 'completed-week'
-  | 'completed-year'
-  | 'completed-all';
+type WorkNoteTab = 'active' | 'pending' | 'completed-today' | 'completed-week' | 'completed';
 
 export default function WorkNotes() {
+  const currentYear = new Date().getFullYear();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [textDialogOpen, setTextDialogOpen] = useState(false);
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
@@ -41,7 +48,10 @@ export default function WorkNotes() {
   const [selectedWorkNote, setSelectedWorkNote] = useState<WorkNoteWithStats | null>(null);
   const [workNoteToDelete, setWorkNoteToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<WorkNoteTab>('active');
-  const [sortKey, setSortKey] = useState<SortKey>('category');
+  const [completedYearFilter, setCompletedYearFilter] = useState<CompletedYearFilter>(
+    String(currentYear) as CompletedYearFilter
+  );
+  const [sortKey, setSortKey] = useState<SortKey>('dueDate');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -76,11 +86,18 @@ export default function WorkNotes() {
     pendingWorkNotes,
     completedTodayWorkNotes,
     completedWeekWorkNotes,
-    completedYearWorkNotes,
     completedAllWorkNotes,
   } = useMemo(
     () => filterWorkNotes(workNotes, sortKey, sortDirection),
     [workNotes, sortKey, sortDirection]
+  );
+  const completedYears = useMemo(
+    () => getCompletedYears(completedAllWorkNotes),
+    [completedAllWorkNotes]
+  );
+  const completedWorkNotes = useMemo(
+    () => filterCompletedWorkNotesByYear(completedAllWorkNotes, completedYearFilter),
+    [completedAllWorkNotes, completedYearFilter]
   );
 
   // Update selectedWorkNote when workNotes data changes (after edit/update)
@@ -153,13 +170,30 @@ export default function WorkNotes() {
                 <TabsTrigger value="completed-week">
                   완료됨(이번주) ({completedWeekWorkNotes.length})
                 </TabsTrigger>
-                <TabsTrigger value="completed-year">
-                  완료됨(올해) ({completedYearWorkNotes.length})
-                </TabsTrigger>
-                <TabsTrigger value="completed-all">
-                  완료됨(전체) ({completedAllWorkNotes.length})
-                </TabsTrigger>
+                <TabsTrigger value="completed">완료됨 ({completedWorkNotes.length})</TabsTrigger>
               </TabsList>
+
+              {activeTab === 'completed' && (
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="text-sm font-medium">연도:</span>
+                  <Select
+                    value={completedYearFilter}
+                    onValueChange={(value) => setCompletedYearFilter(value as CompletedYearFilter)}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">전체</SelectItem>
+                      {completedYears.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year === currentYear ? `현재연도 (${year}년)` : `${year}년`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <TabsContent value="active">
                 <WorkNotesTable
@@ -205,20 +239,9 @@ export default function WorkNotes() {
                 />
               </TabsContent>
 
-              <TabsContent value="completed-year">
+              <TabsContent value="completed">
                 <WorkNotesTable
-                  workNotes={completedYearWorkNotes}
-                  onView={handleView}
-                  onDelete={handleDeleteClick}
-                  sortKey={sortKey}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                />
-              </TabsContent>
-
-              <TabsContent value="completed-all">
-                <WorkNotesTable
-                  workNotes={completedAllWorkNotes}
+                  workNotes={completedWorkNotes}
                   onView={handleView}
                   onDelete={handleDeleteClick}
                   sortKey={sortKey}

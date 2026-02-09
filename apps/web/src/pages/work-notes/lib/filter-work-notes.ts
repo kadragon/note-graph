@@ -8,9 +8,10 @@ export interface FilteredWorkNotes {
   pendingWorkNotes: WorkNoteWithStats[];
   completedTodayWorkNotes: WorkNoteWithStats[];
   completedWeekWorkNotes: WorkNoteWithStats[];
-  completedYearWorkNotes: WorkNoteWithStats[];
   completedAllWorkNotes: WorkNoteWithStats[];
 }
+
+export type CompletedYearFilter = 'all' | `${number}`;
 
 export function isCompleted(workNote: WorkNoteWithStats): boolean {
   return (
@@ -38,7 +39,6 @@ export function filterWorkNotes(
 
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfWeekDate = startOfWeek(now, { weekStartsOn: 1 });
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
 
   // 진행 중: 할일이 없거나 현재 활성화된 할일이 있는 업무노트
   const activeWorkNotes = workNotes
@@ -59,16 +59,45 @@ export function filterWorkNotes(
   const completedWeekWorkNotes = completedAllWorkNotes.filter((wn) =>
     isInRange(getCompletedAt(wn), startOfWeekDate, startOfToday)
   );
-  const completedYearWorkNotes = completedAllWorkNotes.filter((wn) =>
-    isInRange(getCompletedAt(wn), startOfYear, startOfWeekDate)
-  );
 
   return {
     activeWorkNotes,
     pendingWorkNotes,
     completedTodayWorkNotes,
     completedWeekWorkNotes,
-    completedYearWorkNotes,
     completedAllWorkNotes,
   };
+}
+
+export function getCompletedYears(
+  completedWorkNotes: WorkNoteWithStats[],
+  now: Date = new Date()
+): number[] {
+  const years = new Set<number>([now.getFullYear()]);
+  for (const workNote of completedWorkNotes) {
+    const completedAt = getCompletedAt(workNote);
+    if (completedAt) {
+      years.add(completedAt.getFullYear());
+    }
+  }
+  return [...years].sort((a, b) => b - a);
+}
+
+export function filterCompletedWorkNotesByYear(
+  completedWorkNotes: WorkNoteWithStats[],
+  yearFilter: CompletedYearFilter
+): WorkNoteWithStats[] {
+  if (yearFilter === 'all') {
+    return completedWorkNotes;
+  }
+
+  const targetYear = Number(yearFilter);
+  if (Number.isNaN(targetYear)) {
+    return [];
+  }
+
+  return completedWorkNotes.filter((workNote) => {
+    const completedAt = getCompletedAt(workNote);
+    return Boolean(completedAt && completedAt.getFullYear() === targetYear);
+  });
 }
