@@ -1,6 +1,6 @@
 // Trace: SPEC-worknote-2, TASK-025, SPEC-ui-1, TASK-034
 import { type ClassValue, clsx } from 'clsx';
-import { format, getYear, parseISO } from 'date-fns';
+import { format, getYear, isValid, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { twMerge } from 'tailwind-merge';
 
@@ -32,6 +32,19 @@ export function formatDateWithYear(dateString: string): string {
     return format(date, 'yyyy-MM-dd', { locale: ko });
   }
   return format(date, 'MM-dd', { locale: ko });
+}
+
+/**
+ * Format ISO-like date strings as YYYY-MM-DD.
+ * Returns '-' when the value cannot be parsed as a valid date.
+ */
+export function formatDateToYYYYMMDD(dateString: string): string {
+  const date = parseISO(dateString);
+  if (!isValid(date)) {
+    return '-';
+  }
+
+  return format(date, 'yyyy-MM-dd');
 }
 
 /**

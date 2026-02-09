@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tab
 import { Textarea } from '@web/components/ui/textarea';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
+import { useToast } from '@web/hooks/use-toast';
 import { useCreateWorkNote } from '@web/hooks/use-work-notes';
 import { useState } from 'react';
 
@@ -31,6 +32,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
+  const { toast } = useToast();
 
   const createMutation = useCreateWorkNote();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
@@ -38,15 +40,33 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedTitle = title.trim();
+    const trimmedContent = content.trim();
 
-    if (!title.trim() || !content.trim()) {
+    if (!trimmedTitle) {
+      setActiveTab('basic');
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '제목을 입력해주세요.',
+      });
+      return;
+    }
+
+    if (!trimmedContent) {
+      setActiveTab('content');
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '내용을 입력해주세요.',
+      });
       return;
     }
 
     try {
       await createMutation.mutateAsync({
-        title: title.trim(),
-        content: content.trim(),
+        title: trimmedTitle,
+        content: trimmedContent,
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
       });
@@ -91,7 +111,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
               <TabsTrigger value="content">내용</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="basic" className="space-y-4">
+            <TabsContent value="basic" forceMount className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="title">제목</Label>
                 <Input
@@ -99,7 +119,6 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="업무노트 제목을 입력하세요"
-                  required
                 />
               </div>
 
@@ -131,7 +150,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
               </div>
             </TabsContent>
 
-            <TabsContent value="content" className="space-y-2">
+            <TabsContent value="content" forceMount className="space-y-2">
               <Label htmlFor="content">내용</Label>
               <Textarea
                 id="content"
@@ -139,7 +158,6 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="업무노트 내용을 입력하세요"
                 className="min-h-[220px] h-[38vh]"
-                required
               />
               <p className="text-xs text-muted-foreground">
                 내용 입력 영역을 고정해 세로 스크롤 부담을 줄였습니다.

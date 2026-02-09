@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { usePersons } from '@web/hooks/use-persons';
+import { useToast } from '@web/hooks/use-toast';
 import { useCreateWorkNote } from '@web/hooks/use-work-notes';
 import { createPerson, createTaskCategory } from '@web/test/factories';
 import { render, screen, waitFor } from '@web/test/setup';
@@ -87,11 +88,18 @@ vi.mock('@web/components/category-selector', () => ({
 }));
 
 const mockMutateAsync = vi.fn();
+const mockToast = vi.fn();
 
 vi.mock('@web/hooks/use-work-notes', () => ({
   useCreateWorkNote: vi.fn(() => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
+  })),
+}));
+
+vi.mock('@web/hooks/use-toast', () => ({
+  useToast: vi.fn(() => ({
+    toast: mockToast,
   })),
 }));
 
@@ -127,6 +135,11 @@ describe('CreateWorkNoteDialog', () => {
       data: [createPerson({ personId: 'person-1', name: '홍길동' })],
       isLoading: false,
     } as unknown as ReturnType<typeof usePersons>);
+    vi.mocked(useToast).mockReturnValue({
+      toast: mockToast,
+      dismiss: vi.fn(),
+      toasts: [],
+    });
   });
 
   const openContentTab = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -166,7 +179,7 @@ describe('CreateWorkNoteDialog', () => {
     it('renders content textarea', () => {
       render(<CreateWorkNoteDialog {...defaultProps} />);
 
-      expect(screen.queryByPlaceholderText('업무노트 내용을 입력하세요')).not.toBeInTheDocument();
+      expect(screen.getByPlaceholderText('업무노트 내용을 입력하세요')).toBeInTheDocument();
     });
 
     it('renders category selector', () => {
@@ -317,6 +330,17 @@ describe('CreateWorkNoteDialog', () => {
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       expect(mockMutateAsync).not.toHaveBeenCalled();
+      expect(mockToast).toHaveBeenCalledWith({
+        variant: 'destructive',
+        title: '오류',
+        description: '제목을 입력해주세요.',
+      });
+      await waitFor(() =>
+        expect(screen.getByRole('tab', { name: '기본 정보' })).toHaveAttribute(
+          'aria-selected',
+          'true'
+        )
+      );
     });
 
     it('does not submit with empty content', async () => {
@@ -327,6 +351,14 @@ describe('CreateWorkNoteDialog', () => {
       await user.click(screen.getByRole('button', { name: '저장' }));
 
       expect(mockMutateAsync).not.toHaveBeenCalled();
+      expect(mockToast).toHaveBeenCalledWith({
+        variant: 'destructive',
+        title: '오류',
+        description: '내용을 입력해주세요.',
+      });
+      await waitFor(() =>
+        expect(screen.getByRole('tab', { name: '내용' })).toHaveAttribute('aria-selected', 'true')
+      );
     });
 
     it('does not submit with whitespace-only title', async () => {

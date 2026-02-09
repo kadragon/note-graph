@@ -29,6 +29,7 @@ import {
   useUploadWorkNoteFile,
   useWorkNoteFiles,
 } from '@web/hooks/use-work-notes';
+import { formatDateToYYYYMMDD } from '@web/lib/utils';
 import type { DriveFileListItem, WorkNoteFileMigrationResult } from '@web/types/api';
 import {
   ArrowRightLeft,
@@ -61,12 +62,6 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatFileDate(dateString: string): string {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toISOString().slice(0, 10);
 }
 
 export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
@@ -333,7 +328,7 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
                     {file.name}
                   </a>
                   <p className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatFileSize(file.size)} · 업로드일 {formatFileDate(file.modifiedTime)}
+                    {formatFileSize(file.size)} · 업로드일 {formatDateToYYYYMMDD(file.modifiedTime)}
                   </p>
                 </div>
               </div>
