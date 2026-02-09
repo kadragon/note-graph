@@ -76,7 +76,7 @@ export function getCompletedYears(
   const years = new Set<number>([now.getFullYear()]);
   for (const workNote of completedWorkNotes) {
     const completedAt = getCompletedAt(workNote);
-    if (completedAt) {
+    if (completedAt && !Number.isNaN(completedAt.getTime())) {
       years.add(completedAt.getFullYear());
     }
   }

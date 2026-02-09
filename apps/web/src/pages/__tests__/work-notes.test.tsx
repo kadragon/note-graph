@@ -179,6 +179,11 @@ describe('work-notes page', () => {
         todoStats: { total: 1, completed: 1, remaining: 0, pending: 0 },
         latestCompletedAt: null,
       }),
+      createWorkNoteWithStats({
+        id: 'work-completed-invalid-date',
+        todoStats: { total: 1, completed: 1, remaining: 0, pending: 0 },
+        latestCompletedAt: 'not-a-date',
+      }),
     ];
 
     vi.mocked(useWorkNotesWithStats).mockReturnValue({
@@ -220,10 +225,11 @@ describe('work-notes page', () => {
     expect(screen.getByText('연도:')).toBeInTheDocument();
     expect(screen.getByTestId('year-select')).toHaveValue('2025');
     expect(within(completedPanel).getByText('table-count: 3')).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /NaN년/ })).not.toBeInTheDocument();
 
     await user.selectOptions(screen.getByTestId('year-select'), 'all');
-    expect(within(completedPanel).getByText('table-count: 5')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /완료됨 \(5\)/ })).toBeInTheDocument();
+    expect(within(completedPanel).getByText('table-count: 6')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /완료됨 \(6\)/ })).toBeInTheDocument();
   });
 
   it('confirms deletion and calls the delete mutation', async () => {
