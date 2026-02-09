@@ -93,10 +93,13 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
   // Initialize form when todo changes
   useEffect(() => {
     if (todo && open) {
+      const initialDueDate = todo.dueDate ? format(parseISO(todo.dueDate), 'yyyy-MM-dd') : '';
+      const initialWaitUntil = todo.waitUntil ? format(parseISO(todo.waitUntil), 'yyyy-MM-dd') : '';
+
       setTitle(todo.title);
       setDescription(todo.description || '');
-      setDueDate(todo.dueDate ? format(parseISO(todo.dueDate), 'yyyy-MM-dd') : '');
-      setWaitUntil(todo.waitUntil ? format(parseISO(todo.waitUntil), 'yyyy-MM-dd') : '');
+      setDueDate(getClampedDueDate(initialDueDate, initialWaitUntil));
+      setWaitUntil(initialWaitUntil);
       setStatus(todo.status);
       setRepeatRule(todo.repeatRule || 'NONE');
       setRecurrenceType(todo.recurrenceType || 'DUE_DATE');

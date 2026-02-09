@@ -132,6 +132,19 @@ describe('EditTodoDialog', () => {
 
       expect(screen.getByLabelText('반복 기준')).toHaveValue('COMPLETION_DATE');
     });
+
+    it('clamps dueDate to waitUntil on initialization when dueDate is earlier', () => {
+      const todo = createTodo({
+        title: '날짜 보정 할일',
+        dueDate: '2026-01-10T00:00:00Z',
+        waitUntil: '2026-01-15T00:00:00Z',
+      });
+
+      render(<EditTodoDialog todo={todo} open={true} onOpenChange={mockOnOpenChange} />);
+
+      expect(screen.getByLabelText('대기일 (선택사항)')).toHaveValue('2026-01-15');
+      expect(screen.getByLabelText('마감일 (선택사항)')).toHaveValue('2026-01-15');
+    });
   });
 
   describe('form submission', () => {
@@ -252,8 +265,8 @@ describe('EditTodoDialog', () => {
         expect(mockMutateAsync).toHaveBeenCalledWith({
           id: 'todo-1',
           data: expect.objectContaining({
-            dueDate: expect.stringContaining('2026-02-01'),
-            waitUntil: expect.stringContaining('2026-02-01'),
+            dueDate: '2026-02-01T00:00:00.000Z',
+            waitUntil: '2026-02-01T00:00:00.000Z',
           }),
         });
       });
@@ -295,8 +308,8 @@ describe('EditTodoDialog', () => {
         expect(mockMutateAsync).toHaveBeenCalledWith({
           id: 'todo-1',
           data: expect.objectContaining({
-            dueDate: expect.stringContaining('2026-01-15'),
-            waitUntil: expect.stringContaining('2026-01-15'),
+            dueDate: '2026-01-15T00:00:00.000Z',
+            waitUntil: '2026-01-15T00:00:00.000Z',
           }),
         });
       });
