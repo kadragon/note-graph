@@ -182,63 +182,58 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {files.map((file) => (
-                <TableRow key={file.fileId}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <File className="h-4 w-4 text-muted-foreground" />
-                      {file.originalName}
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatFileSize(file.fileSize)}</TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(file.uploadedAt), {
-                        addSuffix: true,
-                        locale: ko,
-                      })}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {file.storageType === 'GDRIVE' ? (
+              {files.map((file) => {
+                const isGoogleDriveFile = file.storageType === 'GDRIVE';
+                const downloadTitle = isGoogleDriveFile ? 'Google Drive에서 열기' : '파일 다운로드';
+
+                return (
+                  <TableRow key={file.fileId}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <File className="h-4 w-4 text-muted-foreground" />
+                        {file.originalName}
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatFileSize(file.fileSize)}</TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(file.uploadedAt), {
+                          addSuffix: true,
+                          locale: ko,
+                        })}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() =>
                             void handleDownload(file.fileId, file.originalName, file.storageType)
                           }
-                          title="Google Drive에서 열기"
+                          title={downloadTitle}
                         >
-                          <ExternalLink className="h-4 w-4" />
-                          <span className="sr-only">Google Drive에서 열기</span>
+                          {isGoogleDriveFile ? (
+                            <ExternalLink className="h-4 w-4" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                          <span className="sr-only">{downloadTitle}</span>
                         </Button>
-                      ) : (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            void handleDownload(file.fileId, file.originalName, file.storageType)
-                          }
-                          title="파일 다운로드"
+                          onClick={() => void handleDelete(file.fileId)}
+                          title="파일 삭제"
                         >
-                          <Download className="h-4 w-4" />
-                          <span className="sr-only">파일 다운로드</span>
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">파일 삭제</span>
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void handleDelete(file.fileId)}
-                        title="파일 삭제"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">파일 삭제</span>
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
