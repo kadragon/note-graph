@@ -14,7 +14,7 @@ import {
 } from '@web/components/ui/table';
 import { useDialogState } from '@web/hooks/use-dialog-state';
 import { usePersons } from '@web/hooks/use-persons';
-import { formatPhoneExt } from '@web/lib/utils';
+import { formatPhoneExt, truncateRoleDescription } from '@web/lib/utils';
 import type { Person } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -23,16 +23,6 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PersonDialog } from './components/person-dialog';
 import { PersonImportDialog } from './components/person-import-dialog';
-
-const MAX_ROLE_DESC_LENGTH = 20;
-
-function truncateRoleDescription(roleDescription: string): string {
-  if (roleDescription.length <= MAX_ROLE_DESC_LENGTH) {
-    return roleDescription;
-  }
-
-  return `${roleDescription.slice(0, MAX_ROLE_DESC_LENGTH)}...`;
-}
 
 export default function Persons() {
   const [searchParams, setSearchParams] = useSearchParams();

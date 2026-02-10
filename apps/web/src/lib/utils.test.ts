@@ -11,6 +11,7 @@ import {
   getDepartmentColor,
   preserveLineBreaksForMarkdown,
   toUTCISOString,
+  truncateRoleDescription,
 } from './utils';
 
 describe('cn', () => {
@@ -248,5 +249,16 @@ describe('formatDateToYYYYMMDD', () => {
   it("returns '-' for invalid date strings", () => {
     expect(formatDateToYYYYMMDD('')).toBe('-');
     expect(formatDateToYYYYMMDD('not-a-date')).toBe('-');
+  });
+});
+
+describe('truncateRoleDescription', () => {
+  it('returns input as-is when length is 20 or less', () => {
+    expect(truncateRoleDescription('12345678901234567890')).toBe('12345678901234567890');
+    expect(truncateRoleDescription('짧은 설명')).toBe('짧은 설명');
+  });
+
+  it("truncates input longer than 20 chars with '...'", () => {
+    expect(truncateRoleDescription('12345678901234567890가나다')).toBe('12345678901234567890...');
   });
 });
