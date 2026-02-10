@@ -122,7 +122,6 @@ export default function PwaUpdatePrompt() {
 
     try {
       await forcePwaRefresh();
-      setUpdateState('idle');
     } catch (error) {
       console.error('Failed to force refresh PWA:', error);
       setUpdateState('failed');
