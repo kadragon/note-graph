@@ -5,6 +5,7 @@ import { enhanceWorkNoteRequestSchema } from '@worker/schemas/ai-draft';
 import { createDepartmentSchema, updateDepartmentSchema } from '@worker/schemas/department';
 import { createPersonSchema, updatePersonSchema } from '@worker/schemas/person';
 import { ragQuerySchema, searchWorkNotesSchema } from '@worker/schemas/search';
+import { createTodoSchema, updateTodoSchema } from '@worker/schemas/todo';
 import {
   createWorkNoteSchema,
   listWorkNotesQuerySchema,
@@ -225,6 +226,41 @@ describe('Schema Validation', () => {
         };
 
         const result = updateDepartmentSchema.safeParse(validData);
+        expect(result.success).toBe(true);
+      });
+    });
+  });
+
+  describe('Todo Schemas', () => {
+    describe('createTodoSchema', () => {
+      it('should allow description up to 2000 characters', () => {
+        const validData = {
+          title: '할일',
+          description: `${'가A!'.repeat(666)}가A`,
+        };
+
+        const result = createTodoSchema.safeParse(validData);
+        expect(result.success).toBe(true);
+      });
+
+      it('should reject description over 2000 characters', () => {
+        const invalidData = {
+          title: '할일',
+          description: '가'.repeat(2001),
+        };
+
+        const result = createTodoSchema.safeParse(invalidData);
+        expect(result.success).toBe(false);
+      });
+    });
+
+    describe('updateTodoSchema', () => {
+      it('should allow description up to 2000 characters', () => {
+        const validData = {
+          description: `${'가A!'.repeat(666)}가A`,
+        };
+
+        const result = updateTodoSchema.safeParse(validData);
         expect(result.success).toBe(true);
       });
     });

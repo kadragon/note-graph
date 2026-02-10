@@ -2,7 +2,7 @@ import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useUpdateTodo } from '@web/hooks/use-todos';
 import { createTodo } from '@web/test/factories';
-import { render, screen } from '@web/test/setup';
+import { fireEvent, render, screen } from '@web/test/setup';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -88,11 +88,14 @@ describe('EditTodoDialog', () => {
       render(<EditTodoDialog todo={todo} open={true} onOpenChange={mockOnOpenChange} />);
 
       expect(screen.getByLabelText('제목')).toHaveValue('테스트 할일');
-      expect(screen.getByLabelText('설명 (선택사항)')).toHaveValue('상세 설명입니다');
+      const descriptionInput = screen.getByLabelText('설명 (선택사항)');
+      expect(descriptionInput).toHaveValue('상세 설명입니다');
+      expect(descriptionInput).toHaveAttribute('maxLength', '2000');
       expect(screen.getByLabelText('상태')).toHaveValue('진행중');
       expect(screen.getByLabelText('마감일 (선택사항)')).toHaveValue('2026-01-15');
       expect(screen.getByLabelText('대기일 (선택사항)')).toHaveValue('2026-01-10');
       expect(screen.getByLabelText('반복 설정')).toHaveValue('WEEKLY');
+      expect(screen.getByText('8/2000')).toBeInTheDocument();
     });
 
     it('shows custom interval fields when repeat rule is CUSTOM', () => {
@@ -148,6 +151,23 @@ describe('EditTodoDialog', () => {
   });
 
   describe('form submission', () => {
+    it('limits description input to 2000 characters and updates counter', () => {
+      const todo = createTodo({
+        title: '길이 테스트',
+        description: '',
+      });
+
+      render(<EditTodoDialog todo={todo} open={true} onOpenChange={mockOnOpenChange} />);
+
+      const descriptionInput = screen.getByLabelText('설명 (선택사항)');
+      const overLimitMixedText = '가A!'.repeat(700);
+
+      fireEvent.change(descriptionInput, { target: { value: overLimitMixedText } });
+
+      expect((descriptionInput as HTMLTextAreaElement).value).toHaveLength(2000);
+      expect(screen.getByText('2000/2000')).toBeInTheDocument();
+    });
+
     it('submits form with updated data and closes dialog', async () => {
       mockMutateAsync.mockResolvedValue({});
       const todo = createTodo({

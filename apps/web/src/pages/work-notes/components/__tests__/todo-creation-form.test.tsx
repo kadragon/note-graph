@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render, screen } from '@web/test/setup';
+import { fireEvent, render, screen } from '@web/test/setup';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TodoCreationForm } from '../todo-creation-form';
@@ -29,10 +29,13 @@ describe('TodoCreationForm', () => {
     render(<TodoCreationForm onSubmit={mockOnSubmit} isPending={false} />);
 
     expect(screen.getByLabelText('할일 제목')).toBeInTheDocument();
-    expect(screen.getByLabelText('설명 (선택사항)')).toBeInTheDocument();
+    const descriptionInput = screen.getByLabelText('설명 (선택사항)');
+    expect(descriptionInput).toBeInTheDocument();
+    expect(descriptionInput).toHaveAttribute('maxLength', '2000');
     expect(screen.getByLabelText('대기일 (선택사항)')).toBeInTheDocument();
     expect(screen.getByLabelText('마감일 (선택사항)')).toBeInTheDocument();
     expect(screen.getByLabelText('반복 설정')).toBeInTheDocument();
+    expect(screen.getByText('0/2000')).toBeInTheDocument();
   });
 
   it('submits form with correct data', async () => {
@@ -111,6 +114,18 @@ describe('TodoCreationForm', () => {
     render(<TodoCreationForm onSubmit={mockOnSubmit} isPending={true} />);
 
     expect(screen.getByRole('button', { name: '추가 중...' })).toBeDisabled();
+  });
+
+  it('shows description character counter and limits input to 2000 characters', () => {
+    render(<TodoCreationForm onSubmit={mockOnSubmit} isPending={false} />);
+
+    const descriptionInput = screen.getByLabelText('설명 (선택사항)');
+    const overLimitMixedText = '가A!'.repeat(700);
+
+    fireEvent.change(descriptionInput, { target: { value: overLimitMixedText } });
+
+    expect((descriptionInput as HTMLTextAreaElement).value).toHaveLength(2000);
+    expect(screen.getByText('2000/2000')).toBeInTheDocument();
   });
 
   it('resets form after successful submit', async () => {

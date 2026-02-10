@@ -1,3 +1,4 @@
+import { TODO_DESCRIPTION_MAX_LENGTH } from '@shared/types/todo';
 import { Button } from '@web/components/ui/button';
 import { Checkbox } from '@web/components/ui/checkbox';
 import {
@@ -13,6 +14,7 @@ import { Label } from '@web/components/ui/label';
 import { Textarea } from '@web/components/ui/textarea';
 import { TODO_STATUS } from '@web/constants/todo-status';
 import { useUpdateTodo } from '@web/hooks/use-todos';
+import { getCharacterCount, truncateToMaxCharacters } from '@web/lib/character-length';
 import { toUTCISOString } from '@web/lib/utils';
 import type {
   CustomIntervalUnit,
@@ -79,6 +81,7 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
   const [customInterval, setCustomInterval] = useState<number>(1);
   const [customUnit, setCustomUnit] = useState<CustomIntervalUnit>('MONTH');
   const [skipWeekends, setSkipWeekends] = useState(false);
+  const descriptionLength = getCharacterCount(description);
 
   const updateMutation = useUpdateTodo(workNoteId);
 
@@ -178,10 +181,18 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
               <Textarea
                 id="description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) =>
+                  setDescription(
+                    truncateToMaxCharacters(e.target.value, TODO_DESCRIPTION_MAX_LENGTH)
+                  )
+                }
+                maxLength={TODO_DESCRIPTION_MAX_LENGTH}
                 placeholder="상세 설명"
                 className="min-h-[80px]"
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {descriptionLength}/{TODO_DESCRIPTION_MAX_LENGTH}
+              </p>
             </div>
 
             <div className="grid gap-2">
