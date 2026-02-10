@@ -24,6 +24,16 @@ import { useSearchParams } from 'react-router-dom';
 import { PersonDialog } from './components/person-dialog';
 import { PersonImportDialog } from './components/person-import-dialog';
 
+const MAX_ROLE_DESC_LENGTH = 20;
+
+function truncateRoleDescription(roleDescription: string): string {
+  if (roleDescription.length <= MAX_ROLE_DESC_LENGTH) {
+    return roleDescription;
+  }
+
+  return `${roleDescription.slice(0, MAX_ROLE_DESC_LENGTH)}...`;
+}
+
 export default function Persons() {
   const [searchParams, setSearchParams] = useSearchParams();
   const createDialog = useDialogState();
@@ -189,7 +199,9 @@ export default function Persons() {
                           </TableCell>
                           <TableCell>
                             {person.currentRoleDesc ? (
-                              <span className="text-sm">{person.currentRoleDesc}</span>
+                              <span className="text-sm" title={person.currentRoleDesc}>
+                                {truncateRoleDescription(person.currentRoleDesc)}
+                              </span>
                             ) : (
                               <span className="text-muted-foreground text-sm">-</span>
                             )}

@@ -66,4 +66,34 @@ describe('WorkNotesTable', () => {
       expect(deleteButton).toBeInTheDocument();
     });
   });
+
+  it('renders assignee as affiliation/name without contact info', () => {
+    const workNote = createWorkNoteWithStats({
+      title: 'Test Note',
+      persons: [
+        {
+          personId: 'P001',
+          personName: '홍길동',
+          role: 'OWNER',
+          currentDept: '개발팀',
+          phoneExt: '3346',
+        },
+      ],
+    });
+
+    render(
+      <WorkNotesTable
+        workNotes={[workNote]}
+        onView={vi.fn()}
+        onDelete={vi.fn()}
+        sortKey="createdAt"
+        sortDirection="asc"
+        onSort={vi.fn()}
+      />
+    );
+
+    const row = screen.getByRole('row', { name: /Test Note/ });
+    expect(within(row).getByText('개발팀/홍길동')).toBeInTheDocument();
+    expect(within(row).queryByText(/3346/)).not.toBeInTheDocument();
+  });
 });

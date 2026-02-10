@@ -2,7 +2,6 @@ import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { TableCell, TableRow } from '@web/components/ui/table';
 import { useDownloadWorkNote } from '@web/hooks/use-download-work-note';
-import { formatPhoneExt } from '@web/lib/utils';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
 import { Download, Loader2, Trash2 } from 'lucide-react';
@@ -74,13 +73,7 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
         {workNote.persons && workNote.persons.length > 0 ? (
           <div className="flex flex-wrap gap-1 text-sm">
             {workNote.persons.map((person, index, arr) => {
-              const personInfo = [
-                person.currentDept,
-                person.personName,
-                formatPhoneExt(person.phoneExt),
-              ]
-                .filter(Boolean)
-                .join(' / ');
+              const personInfo = [person.currentDept, person.personName].filter(Boolean).join('/');
               return (
                 <span key={person.personId}>
                   {personInfo}
