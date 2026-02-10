@@ -53,6 +53,10 @@ vi.mock('@web/pages/statistics', () => ({
   default: () => <div>Statistics Page</div>,
 }));
 
+vi.mock('@web/pages/ai-logs', () => ({
+  default: () => <div>AI Logs Page</div>,
+}));
+
 // Mock layout to simplify testing
 vi.mock('@web/components/layout/app-layout', () => ({
   default: ({ children }: { children: React.ReactNode }) => (
@@ -88,5 +92,11 @@ describe('App', () => {
     renderApp('/work-notes');
 
     expect(await screen.findByText('Work Notes Page')).toBeInTheDocument();
+  });
+
+  it('renders ai logs page on /ai-logs route', async () => {
+    renderApp('/ai-logs');
+
+    expect(await screen.findByText('AI Logs Page')).toBeInTheDocument();
   });
 });
