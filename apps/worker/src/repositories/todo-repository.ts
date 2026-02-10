@@ -14,6 +14,7 @@ import type {
 import { nanoid } from 'nanoid';
 import type { CreateTodoInput, ListTodosQuery, UpdateTodoInput } from '../schemas/todo';
 import { NotFoundError } from '../types/errors';
+import type { OpenTodoDueDateContextForAI, TodoDueDateCount } from '../types/todo-due-date-context';
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -299,6 +300,51 @@ export class TodoRepository {
     const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<TodoWithWorkNote>();
 
     return (result.results || []).map((todo) => this.convertTodoFromDb(todo));
+  }
+
+  /**
+   * Get open todo due date distribution context for AI prompt guidance.
+   * Includes all non-completed statuses (진행중, 보류, 중단).
+   */
+  async getOpenTodoDueDateContextForAI(limit: number = 10): Promise<OpenTodoDueDateContextForAI> {
+    const normalizedLimit = Math.max(1, Math.floor(limit));
+    const openStatuses = ['진행중', '보류', '중단'] as const;
+
+    const [summaryResult, distributionResult] = await Promise.all([
+      this.db
+        .prepare(
+          `SELECT COUNT(*) as totalOpenTodos,
+                  SUM(CASE WHEN due_date IS NULL THEN 1 ELSE 0 END) as undatedOpenTodos
+           FROM todos
+           WHERE status IN (?, ?, ?)`
+        )
+        .bind(...openStatuses)
+        .first<{ totalOpenTodos: number; undatedOpenTodos: number | null }>(),
+      this.db
+        .prepare(
+          `SELECT date(due_date) as dueDate,
+                  COUNT(*) as count
+           FROM todos
+           WHERE status IN (?, ?, ?)
+             AND date(due_date) IS NOT NULL
+           GROUP BY date(due_date)
+           ORDER BY count DESC, dueDate ASC
+           LIMIT ?`
+        )
+        .bind(...openStatuses, normalizedLimit)
+        .all<{ dueDate: string; count: number }>(),
+    ]);
+
+    const topDueDateCounts: TodoDueDateCount[] = (distributionResult.results || []).map((row) => ({
+      dueDate: row.dueDate,
+      count: Number(row.count),
+    }));
+
+    return {
+      totalOpenTodos: Number(summaryResult?.totalOpenTodos || 0),
+      undatedOpenTodos: Number(summaryResult?.undatedOpenTodos || 0),
+      topDueDateCounts,
+    };
   }
 
   /**
