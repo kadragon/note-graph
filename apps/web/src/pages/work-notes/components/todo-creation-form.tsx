@@ -73,6 +73,7 @@ export function TodoCreationForm({ onSubmit, isPending }: TodoCreationFormProps)
               truncateToMaxCharacters(e.target.value, TODO_DESCRIPTION_MAX_LENGTH)
             )
           }
+          maxLength={TODO_DESCRIPTION_MAX_LENGTH}
           placeholder="상세 설명"
           className="min-h-[80px]"
         />

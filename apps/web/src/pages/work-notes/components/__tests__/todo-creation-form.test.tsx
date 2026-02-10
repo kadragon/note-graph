@@ -29,7 +29,9 @@ describe('TodoCreationForm', () => {
     render(<TodoCreationForm onSubmit={mockOnSubmit} isPending={false} />);
 
     expect(screen.getByLabelText('할일 제목')).toBeInTheDocument();
-    expect(screen.getByLabelText('설명 (선택사항)')).toBeInTheDocument();
+    const descriptionInput = screen.getByLabelText('설명 (선택사항)');
+    expect(descriptionInput).toBeInTheDocument();
+    expect(descriptionInput).toHaveAttribute('maxLength', '2000');
     expect(screen.getByLabelText('대기일 (선택사항)')).toBeInTheDocument();
     expect(screen.getByLabelText('마감일 (선택사항)')).toBeInTheDocument();
     expect(screen.getByLabelText('반복 설정')).toBeInTheDocument();
@@ -122,7 +124,7 @@ describe('TodoCreationForm', () => {
 
     fireEvent.change(descriptionInput, { target: { value: overLimitMixedText } });
 
-    expect(Array.from((descriptionInput as HTMLTextAreaElement).value)).toHaveLength(2000);
+    expect((descriptionInput as HTMLTextAreaElement).value).toHaveLength(2000);
     expect(screen.getByText('2000/2000')).toBeInTheDocument();
   });
 

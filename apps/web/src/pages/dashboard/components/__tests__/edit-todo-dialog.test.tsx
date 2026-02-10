@@ -88,7 +88,9 @@ describe('EditTodoDialog', () => {
       render(<EditTodoDialog todo={todo} open={true} onOpenChange={mockOnOpenChange} />);
 
       expect(screen.getByLabelText('제목')).toHaveValue('테스트 할일');
-      expect(screen.getByLabelText('설명 (선택사항)')).toHaveValue('상세 설명입니다');
+      const descriptionInput = screen.getByLabelText('설명 (선택사항)');
+      expect(descriptionInput).toHaveValue('상세 설명입니다');
+      expect(descriptionInput).toHaveAttribute('maxLength', '2000');
       expect(screen.getByLabelText('상태')).toHaveValue('진행중');
       expect(screen.getByLabelText('마감일 (선택사항)')).toHaveValue('2026-01-15');
       expect(screen.getByLabelText('대기일 (선택사항)')).toHaveValue('2026-01-10');
@@ -162,7 +164,7 @@ describe('EditTodoDialog', () => {
 
       fireEvent.change(descriptionInput, { target: { value: overLimitMixedText } });
 
-      expect(Array.from((descriptionInput as HTMLTextAreaElement).value)).toHaveLength(2000);
+      expect((descriptionInput as HTMLTextAreaElement).value).toHaveLength(2000);
       expect(screen.getByText('2000/2000')).toBeInTheDocument();
     });
 
