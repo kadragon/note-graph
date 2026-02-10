@@ -322,15 +322,12 @@ export class TodoRepository {
         .first<{ totalOpenTodos: number; undatedOpenTodos: number | null }>(),
       this.db
         .prepare(
-          `SELECT substr(due_date, 1, 10) as dueDate,
+          `SELECT date(due_date) as dueDate,
                   COUNT(*) as count
            FROM todos
            WHERE status IN (?, ?, ?)
-             AND due_date IS NOT NULL
-             AND length(due_date) >= 10
-             AND substr(due_date, 5, 1) = '-'
-             AND substr(due_date, 8, 1) = '-'
-           GROUP BY substr(due_date, 1, 10)
+             AND date(due_date) IS NOT NULL
+           GROUP BY date(due_date)
            ORDER BY count DESC, dueDate ASC
            LIMIT ?`
         )

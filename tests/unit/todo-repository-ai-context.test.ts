@@ -101,4 +101,22 @@ describe('TodoRepository.getOpenTodoDueDateContextForAI', () => {
     const limited = await repository.getOpenTodoDueDateContextForAI(1);
     expect(limited.topDueDateCounts).toEqual([{ dueDate: '2026-05-01', count: 2 }]);
   });
+
+  it('normalizes timezone-aware due dates using sqlite date() buckets', async () => {
+    const now = new Date().toISOString();
+
+    await testEnv.DB.batch([
+      testEnv.DB.prepare(
+        `INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule, due_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).bind('TODO-AI-TZ-1', workId, 'TZ1', now, '진행중', 'NONE', '2026-03-01T00:30:00+09:00'),
+      testEnv.DB.prepare(
+        `INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule, due_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).bind('TODO-AI-TZ-2', workId, 'TZ2', now, '진행중', 'NONE', '2026-02-28T15:30:00Z'),
+    ]);
+
+    const result = await repository.getOpenTodoDueDateContextForAI(10);
+    expect(result.topDueDateCounts).toEqual([{ dueDate: '2026-02-28', count: 2 }]);
+  });
 });

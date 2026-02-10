@@ -58,6 +58,35 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     expect(options?.todoDueDateContext).toEqual(TODO_DUE_DATE_CONTEXT);
   });
 
+  it('passes due date context to draft-from-text-with-similar generation', async () => {
+    const dueContextSpy = vi
+      .spyOn(TodoRepository.prototype, 'getOpenTodoDueDateContextForAI')
+      .mockResolvedValue(TODO_DUE_DATE_CONTEXT);
+    vi.spyOn(WorkNoteService.prototype, 'findSimilarNotes').mockResolvedValue([
+      {
+        workId: 'WORK-REF-1',
+        title: '참고 노트',
+        content: '참고 내용',
+        category: '업무',
+        similarityScore: 0.8,
+      },
+    ]);
+    const generateSpy = vi
+      .spyOn(AIDraftService.prototype, 'generateDraftFromTextWithContext')
+      .mockResolvedValue(DRAFT_RESPONSE);
+
+    const response = await authFetch('/api/ai/work-notes/draft-from-text-with-similar', {
+      method: 'POST',
+      body: JSON.stringify({ inputText: '유사노트 포함 초안 생성 테스트' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(dueContextSpy).toHaveBeenCalledWith(10);
+    expect(generateSpy).toHaveBeenCalled();
+    const options = generateSpy.mock.calls[0]?.[2];
+    expect(options?.todoDueDateContext).toEqual(TODO_DUE_DATE_CONTEXT);
+  });
+
   it('passes due date context to todo suggestions generation', async () => {
     const now = new Date().toISOString();
     await testEnv.DB.prepare(
