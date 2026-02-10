@@ -63,6 +63,12 @@ export const CF_ACCESS_CONFIG = {
 export const PWA_CONFIG = {
   /** Interval for checking service worker updates (1 hour) */
   UPDATE_CHECK_INTERVAL_MS: 60 * 60 * 1000,
+
+  /** Timeout for waiting service worker controller change after update (8 seconds) */
+  UPDATE_APPLY_TIMEOUT_MS: 8000,
+
+  /** Session storage key to prevent force refresh loops */
+  FORCE_REFRESH_SESSION_KEY: 'pwa-force-refresh-attempted',
 } as const;
 
 // -----------------------------------------------------------------------------
