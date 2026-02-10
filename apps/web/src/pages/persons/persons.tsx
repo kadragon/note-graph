@@ -14,7 +14,7 @@ import {
 } from '@web/components/ui/table';
 import { useDialogState } from '@web/hooks/use-dialog-state';
 import { usePersons } from '@web/hooks/use-persons';
-import { formatPhoneExt } from '@web/lib/utils';
+import { formatPhoneExt, truncateRoleDescription } from '@web/lib/utils';
 import type { Person } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -189,7 +189,9 @@ export default function Persons() {
                           </TableCell>
                           <TableCell>
                             {person.currentRoleDesc ? (
-                              <span className="text-sm">{person.currentRoleDesc}</span>
+                              <span className="text-sm" title={person.currentRoleDesc}>
+                                {truncateRoleDescription(person.currentRoleDesc)}
+                              </span>
                             ) : (
                               <span className="text-muted-foreground text-sm">-</span>
                             )}
