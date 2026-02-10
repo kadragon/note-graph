@@ -31,6 +31,18 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
   const dueDateColor = getDueDateColor(workNote.latestTodoDate);
   const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
   const { downloadWorkNote, isDownloading } = useDownloadWorkNote();
+  const assigneeEntries =
+    workNote.persons
+      ?.map(
+        (person) =>
+          ({
+            personId: person.personId,
+            label: [person.currentDept, person.personName]
+              .filter((part): part is string => Boolean(part?.trim()))
+              .join('/'),
+          }) as const
+      )
+      .filter((entry) => entry.label.length > 0) ?? [];
 
   return (
     <TableRow>
@@ -70,13 +82,12 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
         </button>
       </TableCell>
       <TableCell>
-        {workNote.persons && workNote.persons.length > 0 ? (
+        {assigneeEntries.length > 0 ? (
           <div className="flex flex-wrap gap-1 text-sm">
-            {workNote.persons.map((person, index, arr) => {
-              const personInfo = [person.currentDept, person.personName].filter(Boolean).join('/');
+            {assigneeEntries.map((entry, index, arr) => {
               return (
-                <span key={person.personId}>
-                  {personInfo}
+                <span key={entry.personId}>
+                  {entry.label}
                   {index < arr.length - 1 && ', '}
                 </span>
               );
