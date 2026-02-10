@@ -1,9 +1,11 @@
+import { TODO_DESCRIPTION_MAX_LENGTH } from '@shared/types/todo';
 import { Button } from '@web/components/ui/button';
 import { Checkbox } from '@web/components/ui/checkbox';
 import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { Textarea } from '@web/components/ui/textarea';
 import { useTodoForm } from '@web/hooks/use-todo-form';
+import { getCharacterCount, truncateToMaxCharacters } from '@web/lib/character-length';
 import type {
   CreateTodoRequest,
   CustomIntervalUnit,
@@ -40,6 +42,7 @@ interface TodoCreationFormProps {
 
 export function TodoCreationForm({ onSubmit, isPending }: TodoCreationFormProps) {
   const { values, setField, isValid, getData } = useTodoForm();
+  const descriptionLength = getCharacterCount(values.description);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,10 +67,18 @@ export function TodoCreationForm({ onSubmit, isPending }: TodoCreationFormProps)
         <Textarea
           id="todo-description"
           value={values.description}
-          onChange={(e) => setField('description', e.target.value)}
+          onChange={(e) =>
+            setField(
+              'description',
+              truncateToMaxCharacters(e.target.value, TODO_DESCRIPTION_MAX_LENGTH)
+            )
+          }
           placeholder="상세 설명"
           className="min-h-[80px]"
         />
+        <p className="text-xs text-muted-foreground text-right">
+          {descriptionLength}/{TODO_DESCRIPTION_MAX_LENGTH}
+        </p>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="todo-wait-until">대기일 (선택사항)</Label>

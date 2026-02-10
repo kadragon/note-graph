@@ -3,6 +3,7 @@
  * Zod validation schemas for Todo entities
  */
 
+import { TODO_DESCRIPTION_MAX_LENGTH } from '@shared/types/todo';
 import { z } from 'zod';
 
 /**
@@ -45,7 +46,7 @@ const dateOrDatetimeSchema = z
  */
 export const createTodoSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
-  description: z.string().max(1000).optional(),
+  description: z.string().max(TODO_DESCRIPTION_MAX_LENGTH).optional(),
   dueDate: dateOrDatetimeSchema.optional(),
   waitUntil: z
     .string()
@@ -63,7 +64,7 @@ export const createTodoSchema = z.object({
  */
 export const updateTodoSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  description: z.string().max(1000).optional(),
+  description: z.string().max(TODO_DESCRIPTION_MAX_LENGTH).optional(),
   status: todoStatusSchema.optional(),
   dueDate: dateOrDatetimeSchema.optional(),
   waitUntil: z

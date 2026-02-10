@@ -9,6 +9,11 @@
 export type TodoStatus = '진행중' | '완료' | '보류' | '중단';
 
 /**
+ * Max description length for todo fields (character count)
+ */
+export const TODO_DESCRIPTION_MAX_LENGTH = 2000;
+
+/**
  * Repeat rule for recurring todos
  */
 export type RepeatRule = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM';
