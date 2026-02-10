@@ -107,6 +107,95 @@ describe('CloudflareAIGatewayLogService', () => {
     expect((result.logs[0] as Record<string, unknown>).response_body).toBeUndefined();
   });
 
+  it('parses logs when Cloudflare returns result as a direct array', async () => {
+    const service = new CloudflareAIGatewayLogService(createEnv());
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          result: [
+            {
+              id: 'log-array',
+              created_at: '2026-02-10T12:00:00.000Z',
+              status_code: 200,
+            },
+          ],
+          result_info: {
+            page: 1,
+            per_page: 20,
+            count: 1,
+            total_count: 1,
+            total_pages: 1,
+          },
+        }),
+        { status: 200 }
+      )
+    );
+
+    const result = await service.listLogs({
+      page: 1,
+      perPage: 20,
+      order: 'desc',
+      orderBy: 'created_at',
+    });
+
+    expect(result.logs).toHaveLength(1);
+    expect(result.logs[0]).toEqual(
+      expect.objectContaining({
+        id: 'log-array',
+        createdAt: '2026-02-10T12:00:00.000Z',
+        statusCode: 200,
+      })
+    );
+    expect(result.pagination).toEqual({
+      page: 1,
+      perPage: 20,
+      count: 1,
+      totalCount: 1,
+      totalPages: 1,
+    });
+  });
+
+  it('filters out malformed entries missing created timestamp', async () => {
+    const service = new CloudflareAIGatewayLogService(createEnv());
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          result: {
+            logs: [
+              {
+                id: 'missing-created-at',
+                status_code: 200,
+              },
+              {
+                id: 'valid-created-at',
+                created_at: '2026-02-10T12:00:00.000Z',
+                status_code: 200,
+              },
+            ],
+          },
+        }),
+        { status: 200 }
+      )
+    );
+
+    const result = await service.listLogs({
+      page: 1,
+      perPage: 20,
+      order: 'desc',
+      orderBy: 'created_at',
+    });
+
+    expect(result.logs).toHaveLength(1);
+    expect(result.logs[0].id).toBe('valid-created-at');
+    expect(result.logs[0].createdAt).toBe('2026-02-10T12:00:00.000Z');
+    expect(result.pagination.count).toBe(1);
+    expect(result.pagination.totalCount).toBe(1);
+  });
+
   it('throws CONFIGURATION_ERROR when token is missing', async () => {
     const service = new CloudflareAIGatewayLogService(
       createEnv({ CLOUDFLARE_API_TOKEN: undefined })

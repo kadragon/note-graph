@@ -958,13 +958,11 @@ export class APIClient {
 
   getAIGatewayLogs(params: AIGatewayLogQueryParams = {}) {
     const queryParams = new URLSearchParams();
-    if (params.page) queryParams.set('page', params.page.toString());
-    if (params.perPage) queryParams.set('perPage', params.perPage.toString());
-    if (params.order) queryParams.set('order', params.order);
-    if (params.orderBy) queryParams.set('orderBy', params.orderBy);
-    if (params.search) queryParams.set('search', params.search);
-    if (params.startDate) queryParams.set('startDate', params.startDate);
-    if (params.endDate) queryParams.set('endDate', params.endDate);
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.set(key, String(value));
+      }
+    }
 
     const queryString = queryParams.toString();
     return this.request<AIGatewayLogsResponse>(

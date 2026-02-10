@@ -92,38 +92,38 @@ export class CloudflareAIGatewayLogService {
       );
     }
 
-    const result = this.getResultContainer(payload.result);
-    const rawLogs = this.getRawLogs(result);
-    const logs = rawLogs.map((entry, index) => this.mapLogItem(entry, index));
+    const rawLogs = this.getRawLogs(payload.result);
+    const logs = rawLogs
+      .map((entry, index) => this.mapLogItem(entry, index))
+      .filter((entry): entry is AIGatewayLogItem => entry !== null);
 
-    const paginationSource = this.getPaginationSource(payload, result);
+    const paginationSource = this.getPaginationSource(payload, payload.result);
     const pagination = this.mapPagination(paginationSource, query.page, query.perPage, logs.length);
 
     return { logs, pagination };
   }
 
-  private getResultContainer(result: unknown): Record<string, unknown> {
-    if (result && typeof result === 'object' && !Array.isArray(result)) {
-      return result as Record<string, unknown>;
-    }
-    return {};
-  }
-
-  private getRawLogs(result: Record<string, unknown>): CloudflareLogPayload[] {
-    if (Array.isArray(result.logs)) {
-      return result.logs as CloudflareLogPayload[];
-    }
-
-    if (Array.isArray(result.result)) {
-      return result.result as CloudflareLogPayload[];
-    }
-
-    if (Array.isArray(result.items)) {
-      return result.items as CloudflareLogPayload[];
-    }
-
+  private getRawLogs(result: unknown): CloudflareLogPayload[] {
     if (Array.isArray(result)) {
-      return result as unknown as CloudflareLogPayload[];
+      return this.toLogPayloadArray(result);
+    }
+
+    if (!result || typeof result !== 'object') {
+      return [];
+    }
+
+    const container = result as Record<string, unknown>;
+
+    if (Array.isArray(container.logs)) {
+      return this.toLogPayloadArray(container.logs);
+    }
+
+    if (Array.isArray(container.result)) {
+      return this.toLogPayloadArray(container.result);
+    }
+
+    if (Array.isArray(container.items)) {
+      return this.toLogPayloadArray(container.items);
     }
 
     return [];
@@ -131,14 +131,17 @@ export class CloudflareAIGatewayLogService {
 
   private getPaginationSource(
     payload: CloudflareApiResponse,
-    result: Record<string, unknown>
+    result: unknown
   ): Record<string, unknown> {
-    if (result.pagination && typeof result.pagination === 'object') {
-      return result.pagination as Record<string, unknown>;
-    }
+    if (result && typeof result === 'object' && !Array.isArray(result)) {
+      const container = result as Record<string, unknown>;
+      if (container.pagination && typeof container.pagination === 'object') {
+        return container.pagination as Record<string, unknown>;
+      }
 
-    if (result.result_info && typeof result.result_info === 'object') {
-      return result.result_info as Record<string, unknown>;
+      if (container.result_info && typeof container.result_info === 'object') {
+        return container.result_info as Record<string, unknown>;
+      }
     }
 
     if (payload.result_info && typeof payload.result_info === 'object') {
@@ -180,12 +183,16 @@ export class CloudflareAIGatewayLogService {
     };
   }
 
-  private mapLogItem(raw: CloudflareLogPayload, index: number): AIGatewayLogItem {
+  private mapLogItem(raw: CloudflareLogPayload, index: number): AIGatewayLogItem | null {
     const createdAt =
       this.toStringOrNull(raw.created_at) ??
       this.toStringOrNull(raw.createdAt) ??
-      this.toStringOrNull(raw.timestamp) ??
-      new Date().toISOString();
+      this.toStringOrNull(raw.timestamp);
+
+    if (!createdAt) {
+      return null;
+    }
+
     const startedAt = this.toStringOrNull(raw.started_at) ?? this.toStringOrNull(raw.startedAt);
 
     const statusCode =
@@ -300,5 +307,12 @@ export class CloudflareAIGatewayLogService {
       if (value.toLowerCase() === 'false') return false;
     }
     return null;
+  }
+
+  private toLogPayloadArray(value: unknown[]): CloudflareLogPayload[] {
+    return value.filter(
+      (entry): entry is CloudflareLogPayload =>
+        entry !== null && typeof entry === 'object' && !Array.isArray(entry)
+    );
   }
 }
