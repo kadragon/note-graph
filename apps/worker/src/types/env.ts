@@ -16,6 +16,7 @@ export interface Env {
   OPENAI_MODEL_LIGHTWEIGHT: string; // gpt-5-mini for simple tasks
   OPENAI_API_KEY: string;
   CF_AIG_AUTHORIZATION?: string;
+  CLOUDFLARE_API_TOKEN?: string; // Optional: needed only for Cloudflare account API calls
   // Google OAuth for Drive integration
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;

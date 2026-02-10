@@ -985,3 +985,43 @@ describe('API.enhanceWorkNote', () => {
     expect(result.originalContent).toBe('원본 내용');
   });
 });
+
+describe('API.getAIGatewayLogs', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('sends query parameters for ai gateway logs list', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        logs: [],
+        pagination: {
+          page: 2,
+          perPage: 10,
+          count: 0,
+          totalCount: 0,
+          totalPages: 1,
+        },
+      }),
+    });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.getAIGatewayLogs({
+      page: 2,
+      perPage: 10,
+      order: 'asc',
+      orderBy: 'started_at',
+      search: 'chat',
+      startDate: '2026-02-10T00:00:00.000Z',
+      endDate: '2026-02-10T23:59:59.000Z',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/admin/ai-gateway/logs?page=2&perPage=10&order=asc&orderBy=started_at&search=chat&startDate=2026-02-10T00%3A00%3A00.000Z&endDate=2026-02-10T23%3A59%3A59.000Z',
+      expect.any(Object)
+    );
+  });
+});

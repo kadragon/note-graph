@@ -2,6 +2,8 @@ import { CF_ACCESS_CONFIG } from '@web/lib/config';
 import { type BackendTodo, transformTodoFromBackend } from '@web/lib/mappers/todo';
 import { type BackendWorkNote, transformWorkNoteFromBackend } from '@web/lib/mappers/work-note';
 import type {
+  AIGatewayLogQueryParams,
+  AIGatewayLogsResponse,
   AIGenerateDraftRequest,
   AIGenerateDraftResponse,
   AssignWorkNoteRequest,
@@ -952,6 +954,22 @@ export class APIClient {
   // Admin - Vector Store Management
   getEmbeddingStats() {
     return this.request<EmbeddingStats>('/admin/embedding-stats');
+  }
+
+  getAIGatewayLogs(params: AIGatewayLogQueryParams = {}) {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.set('page', params.page.toString());
+    if (params.perPage) queryParams.set('perPage', params.perPage.toString());
+    if (params.order) queryParams.set('order', params.order);
+    if (params.orderBy) queryParams.set('orderBy', params.orderBy);
+    if (params.search) queryParams.set('search', params.search);
+    if (params.startDate) queryParams.set('startDate', params.startDate);
+    if (params.endDate) queryParams.set('endDate', params.endDate);
+
+    const queryString = queryParams.toString();
+    return this.request<AIGatewayLogsResponse>(
+      `/admin/ai-gateway/logs${queryString ? `?${queryString}` : ''}`
+    );
   }
 
   reindexAll(batchSize?: number) {

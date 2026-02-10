@@ -22,3 +22,4 @@ GDRIVE_ROOT_FOLDER_ID=your-folder-id
 
 # 기타 (선택)
 # OPENAI_API_KEY=your-openai-api-key
+# CLOUDFLARE_API_TOKEN=your-cloudflare-api-token  # Optional: required for /api/admin/ai-gateway/logs

@@ -80,6 +80,7 @@ GOOGLE_REDIRECT_URI = "https://note.kadragon.work/api/auth/google/callback"
 # CLOUDFLARE_ACCOUNT_ID - Set via: wrangler secret put CLOUDFLARE_ACCOUNT_ID
 # OPENAI_API_KEY - Set via: wrangler secret put OPENAI_API_KEY
 # CF_AIG_AUTHORIZATION - (Optional) Set via: wrangler secret put CF_AIG_AUTHORIZATION
+# CLOUDFLARE_API_TOKEN - (Optional) Set via: wrangler secret put CLOUDFLARE_API_TOKEN (required for /api/admin/ai-gateway/logs)
 # GOOGLE_CLIENT_ID - (Required) Set via: wrangler secret put GOOGLE_CLIENT_ID
 # GOOGLE_CLIENT_SECRET - (Required) Set via: wrangler secret put GOOGLE_CLIENT_SECRET
 # GDRIVE_ROOT_FOLDER_ID - (Required) Set via: wrangler secret put GDRIVE_ROOT_FOLDER_ID
@@ -132,3 +133,4 @@ head_sampling_rate = 1
 #    - wrangler secret put CLOUDFLARE_ACCOUNT_ID
 #    - wrangler secret put OPENAI_API_KEY
 #    - wrangler secret put CF_AIG_AUTHORIZATION (optional, if gateway requires auth)
+#    - wrangler secret put CLOUDFLARE_API_TOKEN (optional, needed for AI Gateway log viewer)

@@ -67,6 +67,9 @@ if (!testEnv.GOOGLE_REDIRECT_URI) {
 if (!testEnv.GDRIVE_ROOT_FOLDER_ID) {
   testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
 }
+if (!testEnv.CLOUDFLARE_API_TOKEN) {
+  testEnv.CLOUDFLARE_API_TOKEN = 'test-cloudflare-api-token';
+}
 
 const migrationModules = import.meta.glob('../migrations/*.sql', {
   eager: true,

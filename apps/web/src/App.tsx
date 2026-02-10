@@ -17,6 +17,7 @@ const PDFUpload = lazy(() => import('@web/pages/pdf-upload'));
 const VectorStore = lazy(() => import('@web/pages/vector-store'));
 const Projects = lazy(() => import('@web/pages/projects'));
 const Statistics = lazy(() => import('@web/pages/statistics'));
+const AILogs = lazy(() => import('@web/pages/ai-logs'));
 
 function App() {
   const location = useLocation();
@@ -44,6 +45,7 @@ function App() {
               <Route path="/rag" element={<RAG />} />
               <Route path="/pdf" element={<PDFUpload />} />
               <Route path="/vector-store" element={<VectorStore />} />
+              <Route path="/ai-logs" element={<AILogs />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>

@@ -34,6 +34,7 @@ export default defineWorkersConfig({
             GOOGLE_CLIENT_SECRET: "test-client-secret",
             GOOGLE_REDIRECT_URI: "https://example.test/oauth/callback",
             GDRIVE_ROOT_FOLDER_ID: "test-gdrive-root-folder-id",
+            CLOUDFLARE_API_TOKEN: "test-cloudflare-api-token",
           },
         },
       },

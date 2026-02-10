@@ -147,6 +147,7 @@ bun run dev
    ```bash
    # .dev.vars
    CLOUDFLARE_ACCOUNT_ID=your-actual-cloudflare-account-id
+   CLOUDFLARE_API_TOKEN=your-cloudflare-api-token  # Optional, for AI Gateway log viewer API
    GOOGLE_CLIENT_ID=your-client-id
    GOOGLE_CLIENT_SECRET=your-client-secret
    GOOGLE_REDIRECT_URI=https://example.test/oauth/callback
@@ -173,6 +174,7 @@ wrangler secret put GOOGLE_CLIENT_SECRET
 wrangler secret put GDRIVE_ROOT_FOLDER_ID
 wrangler secret put OPENAI_API_KEY
 wrangler secret put CF_AIG_AUTHORIZATION  # Optional, if AI Gateway requires auth
+wrangler secret put CLOUDFLARE_API_TOKEN  # Optional, required for /api/admin/ai-gateway/logs
 ```
 
 ## Testing

@@ -16,6 +16,7 @@ import {
   Link,
   LogOut,
   NotebookPen,
+  ScrollText,
   Search,
   Settings2,
   Tag,
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { path: '/departments', label: '부서 관리', icon: Building2 },
   { path: '/search', label: '검색', icon: Search },
   { path: '/rag', label: 'AI 챗봇', icon: BotMessageSquare },
+  { path: '/ai-logs', label: 'AI 로그', icon: ScrollText },
   { path: '/vector-store', label: '벡터 스토어', icon: DatabaseZap },
 ];
 
