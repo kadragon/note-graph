@@ -140,7 +140,7 @@ pdf.post('/', async (c) => {
   // Initialize services
   const extractionService = new PdfExtractionService();
   const aiDraftService = new AIDraftService(c.env);
-  const { pdfJobs: repository } = c.get('repositories');
+  const { pdfJobs: repository, todos: todoRepository } = c.get('repositories');
 
   // Create job with PENDING status before processing
   await repository.create(jobId, fileName, metadata);
@@ -149,6 +149,7 @@ pdf.post('/', async (c) => {
     // Validate PDF
     extractionService.validatePdfBuffer(pdfBuffer);
     const extractedText = await extractionService.extractText(pdfBuffer);
+    const todoDueDateContext = await todoRepository.getOpenTodoDueDateContextForAI(10);
     const workNoteService = new WorkNoteService(c.env);
     const similarNotes = await workNoteService.findSimilarNotes(extractedText, SIMILAR_NOTES_TOP_K);
     const draft =
@@ -157,11 +158,13 @@ pdf.post('/', async (c) => {
             category: metadata.category,
             personIds: metadata.personIds,
             deptName: metadata.deptName,
+            todoDueDateContext,
           })
         : await aiDraftService.generateDraftFromText(extractedText, {
             category: metadata.category,
             personIds: metadata.personIds,
             deptName: metadata.deptName,
+            todoDueDateContext,
           });
 
     const references: SimilarWorkNoteReference[] = similarNotes.map((note) => ({

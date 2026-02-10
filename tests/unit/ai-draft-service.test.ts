@@ -5,6 +5,7 @@ import type { WorkNote } from '@shared/types/work-note';
 import { AIDraftService } from '@worker/services/ai-draft-service';
 import type { Env } from '@worker/types/env';
 import { RateLimitError } from '@worker/types/errors';
+import type { OpenTodoDueDateContextForAI } from '@worker/types/todo-due-date-context';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const testEnv = env as unknown as Env;
@@ -609,6 +610,166 @@ describe('AIDraftService', () => {
       const callBody = mockFetch.mock.calls[0][1].body;
       expect(callBody).toContain('테스트 제목');
       expect(callBody).toContain('테스트 내용');
+    });
+  });
+
+  describe('due date distribution context prompts', () => {
+    const todoDueDateContext: OpenTodoDueDateContextForAI = {
+      totalOpenTodos: 12,
+      undatedOpenTodos: 3,
+      topDueDateCounts: [
+        { dueDate: '2026-02-14', count: 5 },
+        { dueDate: '2026-02-15', count: 2 },
+      ],
+    };
+
+    it('includes due date distribution context in draft prompt', async () => {
+      const mockDraft = {
+        title: '제목',
+        content: '내용',
+        category: '업무',
+        todos: [],
+      };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      await service.generateDraftFromText('업무 텍스트', { todoDueDateContext });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('마감일 혼잡 Top 10'),
+        })
+      );
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('2026-02-14: 5건'),
+        })
+      );
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('과밀한 날짜를 피해서 제안'),
+        })
+      );
+    });
+
+    it('includes due date distribution context in contextual draft prompt', async () => {
+      const mockDraft = {
+        title: '제목',
+        content: '내용',
+        category: '업무',
+        todos: [],
+      };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      await service.generateDraftFromTextWithContext(
+        '업무 텍스트',
+        [{ workId: 'WORK-1', title: '참고', content: '내용' }],
+        { todoDueDateContext }
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('총 미완료 할일: 12건'),
+        })
+      );
+    });
+
+    it('includes due date distribution context in todo suggestions prompt', async () => {
+      const workNote: WorkNote = {
+        workId: 'WORK-001',
+        title: '업무',
+        contentRaw: '내용',
+        category: '업무',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+      const mockTodos = [{ title: '할 일', description: '설명', dueDateSuggestion: null }];
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockTodos) } }],
+        }),
+      });
+
+      await service.generateTodoSuggestions(workNote, undefined, { todoDueDateContext });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('기준: 완료 제외(진행중/보류/중단), 전체 할일 범위'),
+        })
+      );
+    });
+
+    it('includes due date distribution context in enhance prompt', async () => {
+      const workNote: WorkNote = {
+        workId: 'WORK-001',
+        title: '프로젝트 기획',
+        contentRaw: '기존 내용',
+        category: '기획',
+        projectId: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        embeddedAt: null,
+      };
+      const mockDraft = {
+        title: '업데이트 제목',
+        content: '업데이트 내용',
+        category: '기획',
+        todos: [],
+      };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      await service.enhanceExistingWorkNote(workNote, [], '새 내용', { todoDueDateContext });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('마감일 미정: 3건'),
+        })
+      );
+    });
+
+    it('shows no-distribution message when context data is not provided', async () => {
+      const mockDraft = {
+        title: '제목',
+        content: '내용',
+        category: '업무',
+        todos: [],
+      };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      await service.generateDraftFromText('업무 텍스트');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('분포 데이터 없음'),
+        })
+      );
     });
   });
 

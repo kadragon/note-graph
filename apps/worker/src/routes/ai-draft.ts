@@ -48,6 +48,11 @@ const activeCategoriesMiddleware = async (c: Context<AiDraftContext>, next: Next
   await next();
 };
 
+async function getTodoDueDateContext(c: Context<AiDraftContext>) {
+  const { todos: todoRepository } = c.get('repositories');
+  return todoRepository.getOpenTodoDueDateContextForAI(10);
+}
+
 /**
  * POST /ai/work-notes/draft-from-text
  * Generate work note draft from unstructured text
@@ -59,6 +64,7 @@ app.post(
   async (c) => {
     const body = getValidatedBody<typeof DraftFromTextRequestSchema>(c);
     const activeCategoryNames = c.get('activeCategoryNames');
+    const todoDueDateContext = await getTodoDueDateContext(c);
 
     const aiDraftService = new AIDraftService(c.env);
     const draft = await aiDraftService.generateDraftFromText(body.inputText, {
@@ -66,6 +72,7 @@ app.post(
       personIds: body.personIds,
       deptName: body.deptName,
       activeCategories: activeCategoryNames,
+      todoDueDateContext,
     });
 
     return c.json({ draft, references: [] });
@@ -83,6 +90,7 @@ app.post(
   async (c) => {
     const body = getValidatedBody<typeof DraftFromTextRequestSchema>(c);
     const activeCategoryNames = c.get('activeCategoryNames');
+    const todoDueDateContext = await getTodoDueDateContext(c);
 
     // Search for similar work notes using shared service
     const workNoteService = new WorkNoteService(c.env);
@@ -100,12 +108,14 @@ app.post(
             personIds: body.personIds,
             deptName: body.deptName,
             activeCategories: activeCategoryNames,
+            todoDueDateContext,
           })
         : await aiDraftService.generateDraftFromText(body.inputText, {
             category: body.category,
             personIds: body.personIds,
             deptName: body.deptName,
             activeCategories: activeCategoryNames,
+            todoDueDateContext,
           });
 
     const references = similarNotes.map((note) => ({
@@ -129,6 +139,7 @@ app.post(
   async (c) => {
     const workId = c.req.param('workId');
     const body = getValidatedBody<typeof TodoSuggestionsRequestSchema>(c);
+    const todoDueDateContext = await getTodoDueDateContext(c);
 
     // Fetch work note
     const workNoteService = new WorkNoteService(c.env);
@@ -140,7 +151,9 @@ app.post(
 
     // Generate todo suggestions
     const aiDraftService = new AIDraftService(c.env);
-    const todos = await aiDraftService.generateTodoSuggestions(workNote, body.contextText);
+    const todos = await aiDraftService.generateTodoSuggestions(workNote, body.contextText, {
+      todoDueDateContext,
+    });
 
     return c.json(todos);
   }
@@ -154,6 +167,7 @@ app.post('/work-notes/:workId/enhance', activeCategoriesMiddleware, async (c) =>
   const workId = c.req.param('workId');
   const activeCategoryNames = c.get('activeCategoryNames');
   const { todos: todoRepository } = c.get('repositories');
+  const todoDueDateContext = await getTodoDueDateContext(c);
 
   // Parse multipart form data
   const formData = await c.req.formData();
@@ -218,6 +232,7 @@ app.post('/work-notes/:workId/enhance', activeCategoriesMiddleware, async (c) =>
     {
       similarNotes,
       activeCategories: activeCategoryNames,
+      todoDueDateContext,
     }
   );
 
