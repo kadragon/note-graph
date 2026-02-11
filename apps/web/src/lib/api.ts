@@ -648,6 +648,126 @@ export class APIClient {
     });
   }
 
+  // Meeting Minutes
+  getMeetingMinutes(params?: {
+    q?: string;
+    meetingDateFrom?: string;
+    meetingDateTo?: string;
+    categoryId?: string;
+    attendeePersonId?: string;
+    page?: number;
+    pageSize?: number;
+  }) {
+    const query = new URLSearchParams();
+    if (params?.q) query.set('q', params.q);
+    if (params?.meetingDateFrom) query.set('meetingDateFrom', params.meetingDateFrom);
+    if (params?.meetingDateTo) query.set('meetingDateTo', params.meetingDateTo);
+    if (params?.categoryId) query.set('categoryId', params.categoryId);
+    if (params?.attendeePersonId) query.set('attendeePersonId', params.attendeePersonId);
+    if (params?.page !== undefined) query.set('page', params.page.toString());
+    if (params?.pageSize !== undefined) query.set('pageSize', params.pageSize.toString());
+    const qs = query.toString();
+
+    return this.request<{
+      items: Array<{
+        meetingId: string;
+        meetingDate: string;
+        topic: string;
+        detailsRaw: string;
+        keywords: string[];
+        createdAt: string;
+        updatedAt: string;
+      }>;
+      total: number;
+      page: number;
+      pageSize: number;
+    }>(`/meeting-minutes${qs ? `?${qs}` : ''}`);
+  }
+
+  createMeetingMinute(data: {
+    meetingDate: string;
+    topic: string;
+    detailsRaw: string;
+    attendeePersonIds: string[];
+    categoryIds?: string[];
+  }) {
+    return this.request<{
+      meetingId: string;
+      meetingDate: string;
+      topic: string;
+      detailsRaw: string;
+      keywords: string[];
+      attendees: Array<{ personId: string; name: string }>;
+      categories: Array<{ categoryId: string; name: string }>;
+      createdAt: string;
+      updatedAt: string;
+    }>('/meeting-minutes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  getMeetingMinute(meetingId: string) {
+    return this.request<{
+      meetingId: string;
+      meetingDate: string;
+      topic: string;
+      detailsRaw: string;
+      keywords: string[];
+      attendees: Array<{ personId: string; name: string }>;
+      categories: Array<{ categoryId: string; name: string }>;
+      createdAt: string;
+      updatedAt: string;
+    }>(`/meeting-minutes/${meetingId}`);
+  }
+
+  updateMeetingMinute(
+    meetingId: string,
+    data: {
+      meetingDate?: string;
+      topic?: string;
+      detailsRaw?: string;
+      attendeePersonIds?: string[];
+      categoryIds?: string[];
+    }
+  ) {
+    return this.request<{
+      meetingId: string;
+      meetingDate: string;
+      topic: string;
+      detailsRaw: string;
+      keywords: string[];
+      attendees: Array<{ personId: string; name: string }>;
+      categories: Array<{ categoryId: string; name: string }>;
+      createdAt: string;
+      updatedAt: string;
+    }>(`/meeting-minutes/${meetingId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteMeetingMinute(meetingId: string) {
+    return this.request<void>(`/meeting-minutes/${meetingId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  suggestMeetingMinutes(data: { query: string; limit?: number }) {
+    return this.request<{
+      meetingReferences: Array<{
+        meetingId: string;
+        meetingDate: string;
+        topic: string;
+        keywords: string[];
+        score: number;
+      }>;
+    }>('/meeting-minutes/suggest', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Todos
   async getTodos(view: TodoView = 'today', year?: number, workIds?: string[]) {
     const params = new URLSearchParams();

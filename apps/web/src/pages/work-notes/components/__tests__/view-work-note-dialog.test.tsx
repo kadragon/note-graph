@@ -342,6 +342,44 @@ describe('ViewWorkNoteDialog', () => {
     expect(markdownContainer).not.toHaveAttribute('data-color-mode');
   });
 
+  it('renders linked meeting minute section with detail link', () => {
+    const workNote = {
+      ...createWorkNote({
+        id: 'work-meeting-link',
+        title: '회의 연계 업무노트',
+        content: '내용',
+      }),
+      relatedMeetingMinutes: [
+        {
+          meetingId: 'MEET-001',
+          meetingDate: '2026-02-11',
+          topic: '주간 회의',
+          keywords: ['주간', '공유'],
+        },
+      ],
+    };
+
+    mockGetWorkNote.mockResolvedValue(workNote);
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    render(
+      <ViewWorkNoteDialog
+        workNote={workNote as Parameters<typeof ViewWorkNoteDialog>[0]['workNote']}
+        open={true}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: '연결된 회의록' })).toBeInTheDocument();
+
+    const meetingLink = screen.getByRole('link', { name: '주간 회의' });
+    expect(meetingLink).toHaveAttribute('href', '/meeting-minutes?id=MEET-001');
+  });
+
   it('uses placeholderData from list cache to show work note immediately', async () => {
     const workNote = createWorkNote({
       id: 'work-1',
@@ -478,19 +516,7 @@ describe('ViewWorkNoteDialog', () => {
       content: '내용',
       relatedWorkNotes: [],
     });
-    const detailedWorkNote = createWorkNote({
-      id: 'work-1',
-      title: 'AI 업데이트 테스트',
-      content: '내용',
-      relatedWorkNotes: [{ relatedWorkId: 'ref-1', relatedWorkTitle: '참고 1' }],
-    });
-
-    mockGetWorkNote.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          setTimeout(() => resolve(detailedWorkNote), 100);
-        })
-    );
+    mockGetWorkNote.mockReturnValue(new Promise(() => {}));
 
     vi.mocked(useTaskCategories).mockReturnValue({
       data: [],

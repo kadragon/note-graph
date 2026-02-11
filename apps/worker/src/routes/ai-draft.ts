@@ -22,6 +22,7 @@ import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
+const MEETING_REFERENCES_TOP_K = 5;
 
 type Variables = {
   activeCategoryNames: string[];
@@ -31,6 +32,20 @@ type Variables = {
 type AiDraftContext = { Bindings: AppContext['Bindings']; Variables: Variables };
 
 const app = new Hono<AiDraftContext>();
+
+function buildMeetingMinutesFtsQuery(rawQuery: string): string {
+  const terms = rawQuery
+    .trim()
+    .split(/\s+/)
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0);
+
+  if (terms.length === 0) {
+    return '';
+  }
+
+  return terms.join(' OR ');
+}
 
 // All AI draft routes require authentication
 app.use('*', authMiddleware);
@@ -131,7 +146,49 @@ app.post(
       similarityScore: note.similarityScore,
     }));
 
-    return c.json({ draft, references });
+    const ftsQuery = buildMeetingMinutesFtsQuery(body.inputText);
+    const meetingReferences =
+      ftsQuery.length > 0
+        ? (
+            await c.env.DB.prepare(
+              `WITH fts_matches AS (
+                 SELECT rowid, rank
+                 FROM meeting_minutes_fts
+                 WHERE meeting_minutes_fts MATCH ?
+                 LIMIT ?
+               )
+               SELECT
+                 mm.meeting_id as meetingId,
+                 mm.meeting_date as meetingDate,
+                 mm.topic as topic,
+                 mm.keywords_json as keywordsJson,
+                 fts.rank as ftsRank
+               FROM fts_matches fts
+               INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
+               ORDER BY fts.rank DESC`
+            )
+              .bind(ftsQuery, MEETING_REFERENCES_TOP_K)
+              .all<{
+                meetingId: string;
+                meetingDate: string;
+                topic: string;
+                keywordsJson: string;
+                ftsRank: number;
+              }>()
+          ).results || []
+        : [];
+
+    return c.json({
+      draft,
+      references,
+      meetingReferences: meetingReferences.map((row) => ({
+        meetingId: row.meetingId,
+        meetingDate: row.meetingDate,
+        topic: row.topic,
+        keywords: JSON.parse(row.keywordsJson || '[]') as string[],
+        score: Math.max(0, 1 + (Number(row.ftsRank) || 0) / 10),
+      })),
+    });
   }
 );
 

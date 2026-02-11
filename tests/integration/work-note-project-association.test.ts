@@ -111,6 +111,60 @@ describe('Work Note Project Association', () => {
       const workNote = await response.json<WorkNoteDetail>();
       expect(workNote.projectId).toBe('PROJECT-001');
     });
+
+    it('should include linked meeting minute summaries in detail response', async () => {
+      // Arrange
+      const now = new Date().toISOString();
+      const workId = 'WORK-MEETING-DETAIL-001';
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind(workId, '회의 연계 업무', '회의 기반 내용', now, now),
+        testEnv.DB.prepare(
+          `INSERT INTO work_note_versions (work_id, version_no, title, content_raw, created_at) VALUES (?, ?, ?, ?, ?)`
+        ).bind(workId, 1, '회의 연계 업무', '회의 기반 내용', now),
+        testEnv.DB.prepare(
+          `INSERT INTO meeting_minutes (
+            meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'MEET-WORK-DET-001',
+          '2026-02-11',
+          '주간 이슈 점검',
+          '세부 내용',
+          JSON.stringify(['이슈', '점검']),
+          '이슈 점검',
+          now,
+          now
+        ),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES (?, ?)'
+        ).bind(workId, 'MEET-WORK-DET-001'),
+      ]);
+
+      // Act
+      const response = await authFetch(`http://localhost/api/work-notes/${workId}`);
+
+      // Assert
+      expect(response.status).toBe(200);
+      const workNote = await response.json<{
+        relatedMeetingMinutes?: Array<{
+          meetingId: string;
+          meetingDate: string;
+          topic: string;
+          keywords: string[];
+        }>;
+      }>();
+
+      expect(workNote.relatedMeetingMinutes).toEqual([
+        {
+          meetingId: 'MEET-WORK-DET-001',
+          meetingDate: '2026-02-11',
+          topic: '주간 이슈 점검',
+          keywords: ['이슈', '점검'],
+        },
+      ]);
+    });
   });
 
   describe('PUT /work-notes/:workId with projectId', () => {

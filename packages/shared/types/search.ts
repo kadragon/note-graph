@@ -153,12 +153,30 @@ export interface DepartmentSearchItem {
 }
 
 /**
+ * Meeting minute unified-search source type
+ */
+export type MeetingMinuteSearchSource = 'MEETING_FTS';
+
+/**
+ * Meeting minute search result item for unified search
+ */
+export interface MeetingMinuteSearchItem {
+  meetingId: string;
+  meetingDate: string; // YYYY-MM-DD
+  topic: string;
+  keywords: string[];
+  score: number;
+  source: MeetingMinuteSearchSource;
+}
+
+/**
  * Unified search response with all result types
  */
 export interface UnifiedSearchResponse {
   workNotes: SearchResultItem[];
   persons: PersonSearchItem[];
   departments: DepartmentSearchItem[];
+  meetingMinutes: MeetingMinuteSearchItem[];
   query: string;
 }
 

@@ -161,6 +161,15 @@ export interface RAGResponse {
 export interface AIGenerateDraftResponse {
   draft: AIDraftPayload;
   references: AIDraftReference[];
+  meetingReferences?: AIDraftMeetingReference[];
+}
+
+export interface AIDraftMeetingReference {
+  meetingId: string;
+  meetingDate: string;
+  topic: string;
+  keywords: string[];
+  score: number;
 }
 
 // Vector Store types

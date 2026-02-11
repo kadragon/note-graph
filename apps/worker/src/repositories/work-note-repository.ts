@@ -75,8 +75,8 @@ export class WorkNoteRepository {
       return null;
     }
 
-    // Get associated persons, related work notes, and categories in parallel
-    const [personsResult, relationsResult, categoriesResult] = await Promise.all([
+    // Get associated persons, related work notes, categories, and meeting links in parallel
+    const [personsResult, relationsResult, categoriesResult, meetingsResult] = await Promise.all([
       this.db
         .prepare(
           `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
@@ -107,6 +107,22 @@ export class WorkNoteRepository {
         )
         .bind(workId)
         .all<TaskCategory>(),
+      this.db
+        .prepare(
+          `SELECT mm.meeting_id as meetingId, mm.meeting_date as meetingDate, mm.topic,
+                  mm.keywords_json as keywordsJson
+           FROM work_note_meeting_minute wnmm
+           INNER JOIN meeting_minutes mm ON mm.meeting_id = wnmm.meeting_id
+           WHERE wnmm.work_id = ?
+           ORDER BY mm.meeting_date DESC, mm.updated_at DESC, mm.meeting_id DESC`
+        )
+        .bind(workId)
+        .all<{
+          meetingId: string;
+          meetingDate: string;
+          topic: string;
+          keywordsJson: string;
+        }>(),
     ]);
 
     return {
@@ -114,6 +130,19 @@ export class WorkNoteRepository {
       persons: personsResult.results || [],
       relatedWorkNotes: relationsResult.results || [],
       categories: categoriesResult.results || [],
+      relatedMeetingMinutes: (meetingsResult.results || []).map((meeting) => ({
+        meetingId: meeting.meetingId,
+        meetingDate: meeting.meetingDate,
+        topic: meeting.topic,
+        keywords: (() => {
+          try {
+            const parsed = JSON.parse(meeting.keywordsJson);
+            return Array.isArray(parsed) ? parsed.filter((value) => typeof value === 'string') : [];
+          } catch {
+            return [];
+          }
+        })(),
+      })),
     };
   }
 
@@ -482,6 +511,20 @@ export class WorkNoteRepository {
       }
     }
 
+    // Add related meeting minute associations
+    if (data.relatedMeetingIds && data.relatedMeetingIds.length > 0) {
+      for (const meetingId of data.relatedMeetingIds) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT INTO work_note_meeting_minute (work_id, meeting_id)
+               VALUES (?, ?)`
+            )
+            .bind(workId, meetingId)
+        );
+      }
+    }
+
     // Add task category associations
     if (data.categoryIds && data.categoryIds.length > 0) {
       for (const categoryId of data.categoryIds) {
@@ -684,6 +727,26 @@ export class WorkNoteRepository {
                VALUES (?, ?)`
             )
             .bind(workId, relatedWorkId)
+        );
+      }
+    }
+
+    // Update meeting minute references if provided
+    if (data.relatedMeetingIds !== undefined) {
+      // Delete existing meeting links
+      statements.push(
+        this.db.prepare(`DELETE FROM work_note_meeting_minute WHERE work_id = ?`).bind(workId)
+      );
+
+      // Add new meeting links
+      for (const meetingId of data.relatedMeetingIds) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT INTO work_note_meeting_minute (work_id, meeting_id)
+               VALUES (?, ?)`
+            )
+            .bind(workId, meetingId)
         );
       }
     }

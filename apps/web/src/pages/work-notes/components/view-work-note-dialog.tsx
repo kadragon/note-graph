@@ -619,6 +619,36 @@ export function ViewWorkNoteDialog({
               </div>
             </div>
 
+            {/* Linked Meeting Minutes */}
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-2">연결된 회의록</h3>
+              <div className="rounded-md border bg-muted/30 p-3">
+                {currentWorkNote.relatedMeetingMinutes &&
+                currentWorkNote.relatedMeetingMinutes.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {currentWorkNote.relatedMeetingMinutes.map((meeting) => (
+                      <div
+                        key={meeting.meetingId}
+                        className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-sm"
+                      >
+                        <a
+                          href={`/meeting-minutes?id=${meeting.meetingId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="max-w-[220px] truncate font-medium hover:underline"
+                        >
+                          {meeting.topic}
+                        </a>
+                        <span className="text-xs text-muted-foreground">{meeting.meetingDate}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">연결된 회의록이 없습니다.</p>
+                )}
+              </div>
+            </div>
+
             {/* Files Section */}
             <div className="border-t pt-4">
               <WorkNoteFileList workId={currentWorkNote.id} createdAt={currentWorkNote.createdAt} />

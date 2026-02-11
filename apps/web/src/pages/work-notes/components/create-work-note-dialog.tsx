@@ -15,6 +15,7 @@ import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
 import { Textarea } from '@web/components/ui/textarea';
+import { useMeetingMinutes } from '@web/hooks/use-meeting-minutes';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
@@ -31,12 +32,24 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
   const [title, setTitle] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
+  const [selectedMeetingIds, setSelectedMeetingIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
   const { toast } = useToast();
 
   const createMutation = useCreateWorkNote();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
+  const { data: meetingMinutesData, isLoading: meetingMinutesLoading } = useMeetingMinutes(
+    { page: 1, pageSize: 20 },
+    open
+  );
+  const meetingMinutes = meetingMinutesData?.items ?? [];
+
+  const toggleMeetingSelection = (meetingId: string) => {
+    setSelectedMeetingIds((prev) =>
+      prev.includes(meetingId) ? prev.filter((id) => id !== meetingId) : [...prev, meetingId]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,12 +82,14 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
         content: trimmedContent,
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+        ...(selectedMeetingIds.length > 0 ? { relatedMeetingIds: selectedMeetingIds } : {}),
       });
 
       // Reset form and close dialog
       setTitle('');
       setSelectedCategoryIds([]);
       setSelectedPersonIds([]);
+      setSelectedMeetingIds([]);
       setContent('');
       setActiveTab('basic');
       onOpenChange(false);
@@ -146,6 +161,36 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
                     onSelectionChange={setSelectedPersonIds}
                     isLoading={personsLoading}
                   />
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label>관련 회의록 (선택사항)</Label>
+                {meetingMinutesLoading ? (
+                  <p className="text-sm text-muted-foreground">회의록 로딩 중...</p>
+                ) : meetingMinutes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">등록된 회의록이 없습니다.</p>
+                ) : (
+                  <div className="grid gap-2 border rounded-md p-3 max-h-[140px] overflow-y-auto">
+                    {meetingMinutes.map((meeting) => {
+                      const isSelected = selectedMeetingIds.includes(meeting.meetingId);
+                      return (
+                        <label
+                          key={meeting.meetingId}
+                          htmlFor={`create-related-meeting-${meeting.meetingId}`}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <input
+                            id={`create-related-meeting-${meeting.meetingId}`}
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleMeetingSelection(meeting.meetingId)}
+                          />
+                          <span>{meeting.topic}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </TabsContent>

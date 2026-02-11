@@ -985,3 +985,203 @@ describe('API.enhanceWorkNote', () => {
     expect(result.originalContent).toBe('원본 내용');
   });
 });
+
+describe('API meeting minutes methods', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('maps meeting-minute CRUD and suggest request/response payloads', async () => {
+    const now = new Date().toISOString();
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          items: [
+            {
+              meetingId: 'MEET-001',
+              meetingDate: '2026-02-11',
+              topic: '주간 회의',
+              detailsRaw: '상세 내용',
+              keywords: ['주간', '회의'],
+              createdAt: now,
+              updatedAt: now,
+            },
+          ],
+          total: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue({
+          meetingId: 'MEET-001',
+          meetingDate: '2026-02-11',
+          topic: '주간 회의',
+          detailsRaw: '상세 내용',
+          keywords: ['주간', '회의'],
+          attendees: [{ personId: '123456', name: '홍길동' }],
+          categories: [{ categoryId: 'CAT-001', name: '회의' }],
+          createdAt: now,
+          updatedAt: now,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          meetingId: 'MEET-001',
+          meetingDate: '2026-02-11',
+          topic: '주간 회의',
+          detailsRaw: '상세 내용',
+          keywords: ['주간', '회의'],
+          attendees: [{ personId: '123456', name: '홍길동' }],
+          categories: [{ categoryId: 'CAT-001', name: '회의' }],
+          createdAt: now,
+          updatedAt: now,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          meetingId: 'MEET-001',
+          meetingDate: '2026-02-12',
+          topic: '수정된 회의',
+          detailsRaw: '수정 내용',
+          keywords: ['수정', '회의'],
+          attendees: [{ personId: '654321', name: '김철수' }],
+          categories: [{ categoryId: 'CAT-002', name: '실행' }],
+          createdAt: now,
+          updatedAt: now,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          meetingReferences: [
+            {
+              meetingId: 'MEET-001',
+              meetingDate: '2026-02-12',
+              topic: '수정된 회의',
+              keywords: ['수정', '회의'],
+              score: 1.2,
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        json: vi.fn(),
+      });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    const listResult = await API.getMeetingMinutes({
+      q: '회의',
+      meetingDateFrom: '2026-02-01',
+      meetingDateTo: '2026-02-29',
+      categoryId: 'CAT-001',
+      attendeePersonId: '123456',
+      page: 1,
+      pageSize: 10,
+    });
+    const createResult = await API.createMeetingMinute({
+      meetingDate: '2026-02-11',
+      topic: '주간 회의',
+      detailsRaw: '상세 내용',
+      attendeePersonIds: ['123456'],
+      categoryIds: ['CAT-001'],
+    });
+    const detailResult = await API.getMeetingMinute('MEET-001');
+    const updateResult = await API.updateMeetingMinute('MEET-001', {
+      meetingDate: '2026-02-12',
+      topic: '수정된 회의',
+      detailsRaw: '수정 내용',
+      attendeePersonIds: ['654321'],
+      categoryIds: ['CAT-002'],
+    });
+    const suggestResult = await API.suggestMeetingMinutes({
+      query: '수정 회의',
+      limit: 3,
+    });
+    const deleteResult = await API.deleteMeetingMinute('MEET-001');
+
+    expect(listResult.total).toBe(1);
+    expect(listResult.items[0]?.meetingId).toBe('MEET-001');
+    expect(createResult.meetingId).toBe('MEET-001');
+    expect(detailResult.attendees[0]?.personId).toBe('123456');
+    expect(updateResult.topic).toBe('수정된 회의');
+    expect(suggestResult.meetingReferences[0]?.meetingId).toBe('MEET-001');
+    expect(deleteResult).toBeNull();
+
+    const listParams = new URLSearchParams({
+      q: '회의',
+      meetingDateFrom: '2026-02-01',
+      meetingDateTo: '2026-02-29',
+      categoryId: 'CAT-001',
+      attendeePersonId: '123456',
+      page: '1',
+      pageSize: '10',
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      `/api/meeting-minutes?${listParams.toString()}`,
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/meeting-minutes',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          meetingDate: '2026-02-11',
+          topic: '주간 회의',
+          detailsRaw: '상세 내용',
+          attendeePersonIds: ['123456'],
+          categoryIds: ['CAT-001'],
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/meeting-minutes/MEET-001',
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/meeting-minutes/MEET-001',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({
+          meetingDate: '2026-02-12',
+          topic: '수정된 회의',
+          detailsRaw: '수정 내용',
+          attendeePersonIds: ['654321'],
+          categoryIds: ['CAT-002'],
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/api/meeting-minutes/suggest',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ query: '수정 회의', limit: 3 }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
+      '/api/meeting-minutes/MEET-001',
+      expect.objectContaining({ method: 'DELETE' })
+    );
+  });
+});

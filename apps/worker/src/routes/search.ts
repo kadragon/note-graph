@@ -2,6 +2,7 @@
 
 import type {
   DepartmentSearchItem,
+  MeetingMinuteSearchItem,
   PersonSearchItem,
   UnifiedSearchResponse,
 } from '@shared/types/search';
@@ -15,6 +16,20 @@ import { HybridSearchService } from '../services/hybrid-search-service';
 import type { AppContext } from '../types/context';
 
 const search = new Hono<AppContext>();
+
+function buildMeetingMinutesFtsQuery(rawQuery: string): string {
+  const tokens = rawQuery
+    .trim()
+    .split(/\s+/)
+    .map((token) => token.replace(/["']/g, '').trim())
+    .filter((token) => token.length >= 2);
+
+  if (tokens.length === 0) {
+    return '';
+  }
+
+  return tokens.map((token) => `${token}*`).join(' OR ');
+}
 
 // Apply authentication to all search routes
 search.use('*', authMiddleware);
@@ -65,7 +80,7 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
   const { persons: personRepository, departments: departmentRepository } = c.get('repositories');
 
   // Execute searches in parallel
-  const [workNoteResults, persons, departments] = await Promise.all([
+  const [workNoteResults, persons, departments, meetingMinutes] = await Promise.all([
     // Work notes search (hybrid FTS + Vectorize)
     hybridSearchService.search(query, {
       personId: body.personId,
@@ -79,6 +94,48 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
     personRepository.findAll(query),
     // Department search
     departmentRepository.findAll(query),
+    // Meeting minutes search (FTS)
+    (async (): Promise<MeetingMinuteSearchItem[]> => {
+      const ftsQuery = buildMeetingMinutesFtsQuery(query);
+      if (ftsQuery.length === 0) {
+        return [];
+      }
+
+      const result = await c.env.DB.prepare(
+        `WITH fts_matches AS (
+           SELECT rowid, rank
+           FROM meeting_minutes_fts
+           WHERE meeting_minutes_fts MATCH ?
+           LIMIT ?
+         )
+         SELECT
+           mm.meeting_id as meetingId,
+           mm.meeting_date as meetingDate,
+           mm.topic as topic,
+           mm.keywords_json as keywordsJson,
+           fts.rank as ftsRank
+         FROM fts_matches fts
+         INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
+         ORDER BY fts.rank DESC`
+      )
+        .bind(ftsQuery, body.limit)
+        .all<{
+          meetingId: string;
+          meetingDate: string;
+          topic: string;
+          keywordsJson: string;
+          ftsRank: number;
+        }>();
+
+      return (result.results || []).map((row) => ({
+        meetingId: row.meetingId,
+        meetingDate: row.meetingDate,
+        topic: row.topic,
+        keywords: JSON.parse(row.keywordsJson || '[]') as string[],
+        score: Math.max(0, 1 + (Number(row.ftsRank) || 0) / 10),
+        source: 'MEETING_FTS' as const,
+      }));
+    })(),
   ]);
 
   // Transform person results
@@ -102,6 +159,7 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
     workNotes: workNoteResults,
     persons: personResults,
     departments: departmentResults,
+    meetingMinutes,
     query: body.query,
   };
 

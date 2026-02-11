@@ -12,6 +12,7 @@ export interface CreateWorkNoteRequest {
   relatedPersonIds?: string[];
   relatedDepartmentIds?: string[];
   relatedWorkIds?: string[];
+  relatedMeetingIds?: string[];
 }
 
 export interface UpdateWorkNoteRequest {
@@ -22,6 +23,7 @@ export interface UpdateWorkNoteRequest {
   relatedPersonIds?: string[];
   relatedDepartmentIds?: string[];
   relatedWorkIds?: string[];
+  relatedMeetingIds?: string[];
 }
 
 // Person requests

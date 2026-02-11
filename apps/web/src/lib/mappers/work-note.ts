@@ -27,6 +27,12 @@ export interface BackendWorkNote {
     relatedWorkId: string;
     relatedWorkTitle?: string;
   }>;
+  relatedMeetingMinutes?: Array<{
+    meetingId: string;
+    meetingDate: string;
+    topic: string;
+    keywords: string[];
+  }>;
   files?: WorkNoteFile[];
   createdAt: string;
   updatedAt: string;
@@ -44,6 +50,7 @@ export function transformWorkNoteFromBackend(backendWorkNote: BackendWorkNote): 
     categories: backendWorkNote.categories || [],
     persons: backendWorkNote.persons || [],
     relatedWorkNotes: backendWorkNote.relatedWorkNotes || [],
+    relatedMeetingMinutes: backendWorkNote.relatedMeetingMinutes || [],
     files: backendWorkNote.files || [],
     createdAt: backendWorkNote.createdAt,
     updatedAt: backendWorkNote.updatedAt,

@@ -87,6 +87,54 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     expect(options?.todoDueDateContext).toEqual(TODO_DUE_DATE_CONTEXT);
   });
 
+  it('returns meetingReferences when meeting minute suggestions exist', async () => {
+    const now = new Date().toISOString();
+    await testEnv.DB.prepare(
+      `INSERT INTO meeting_minutes (
+        meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        'MEET-DRAFT-001',
+        '2026-02-11',
+        'API latency review',
+        'Investigated unicornlatency spikes and mitigation',
+        JSON.stringify(['unicornlatency', 'api']),
+        'unicornlatency api',
+        now,
+        now
+      )
+      .run();
+
+    vi.spyOn(WorkNoteService.prototype, 'findSimilarNotes').mockResolvedValue([]);
+    vi.spyOn(AIDraftService.prototype, 'generateDraftFromText').mockResolvedValue(DRAFT_RESPONSE);
+
+    const response = await authFetch('/api/ai/work-notes/draft-from-text-with-similar', {
+      method: 'POST',
+      body: JSON.stringify({ inputText: 'Please summarize unicornlatency findings' }),
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json<{
+      meetingReferences?: Array<{
+        meetingId: string;
+        meetingDate: string;
+        topic: string;
+        keywords: string[];
+        score: number;
+      }>;
+    }>();
+
+    expect(data.meetingReferences).toHaveLength(1);
+    expect(data.meetingReferences?.[0]).toMatchObject({
+      meetingId: 'MEET-DRAFT-001',
+      meetingDate: '2026-02-11',
+      topic: 'API latency review',
+      keywords: ['unicornlatency', 'api'],
+    });
+    expect(data.meetingReferences?.[0]?.score).toBeGreaterThan(0);
+  });
+
   it('passes due date context to todo suggestions generation', async () => {
     const now = new Date().toISOString();
     await testEnv.DB.prepare(
