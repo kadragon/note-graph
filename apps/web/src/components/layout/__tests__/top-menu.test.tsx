@@ -36,11 +36,24 @@ describe('top-menu', () => {
   it('renders main navigation links', () => {
     render(<TopMenu />);
 
-    expect(screen.getByRole('link', { name: '대시보드' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '회의록' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'AI 로그' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '업무노트' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '사람 관리' })).toBeInTheDocument();
+    const navLinks = [
+      '대시보드',
+      '통계',
+      '업무노트',
+      '회의록',
+      '업무 구분',
+      '프로젝트',
+      '사람 관리',
+      '부서 관리',
+      '검색',
+      'AI 챗봇',
+      'AI 로그',
+      '벡터 스토어',
+    ];
+
+    navLinks.forEach((name) => {
+      expect(screen.getByRole('link', { name })).toBeInTheDocument();
+    });
   });
 
   it('renders icon-only status indicators and disables connect/disconnect actions', () => {
