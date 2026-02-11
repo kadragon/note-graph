@@ -4,6 +4,9 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
+import { getValidatedQuery, queryValidator } from '../middleware/validation-middleware';
+import { aiGatewayLogsQuerySchema } from '../schemas/ai-gateway-logs';
+import { CloudflareAIGatewayLogService } from '../services/cloudflare-ai-gateway-log-service';
 import { EmbeddingProcessor } from '../services/embedding-processor';
 import type { AppContext } from '../types/context';
 import { NotFoundError } from '../types/errors';
@@ -91,6 +94,17 @@ admin.get('/embedding-failures', async (c) => {
   const result = await repositories.embeddingRetryQueue.findDeadLetterItems(limit, offset);
 
   return c.json(result);
+});
+
+/**
+ * GET /admin/ai-gateway/logs
+ * List Cloudflare AI Gateway logs (metadata only)
+ */
+admin.get('/ai-gateway/logs', queryValidator(aiGatewayLogsQuerySchema), async (c) => {
+  const query = getValidatedQuery<typeof aiGatewayLogsQuerySchema>(c);
+  const service = new CloudflareAIGatewayLogService(c.env);
+  const logs = await service.listLogs(query);
+  return c.json(logs);
 });
 
 /**

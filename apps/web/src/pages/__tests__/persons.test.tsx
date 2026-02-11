@@ -71,4 +71,23 @@ describe('persons page', () => {
     await user.click(screen.getByRole('button', { name: '필터 해제' }));
     expect(setSearchParams).toHaveBeenCalledWith({});
   });
+
+  it('truncates long role descriptions in the table', () => {
+    vi.mocked(usePersons).mockReturnValue({
+      data: [
+        createPerson({
+          name: '김개발',
+          currentDept: '개발',
+          personId: '111111',
+          currentRoleDesc: '12345678901234567890가나다',
+        }),
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof usePersons>);
+
+    render(<Persons />);
+
+    expect(screen.getByText('12345678901234567890...')).toBeInTheDocument();
+    expect(screen.queryByText('12345678901234567890가나다')).not.toBeInTheDocument();
+  });
 });

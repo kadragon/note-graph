@@ -77,6 +77,7 @@ api.get('/', (c) => {
       ai: '/api/ai',
       pdfJobs: '/api/pdf-jobs',
       admin: '/api/admin',
+      aiGatewayLogs: '/api/admin/ai-gateway/logs',
       statistics: '/api/statistics',
       authGoogle: '/api/auth/google',
       calendar: '/api/calendar',

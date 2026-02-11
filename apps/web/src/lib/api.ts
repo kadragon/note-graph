@@ -2,6 +2,8 @@ import { CF_ACCESS_CONFIG } from '@web/lib/config';
 import { type BackendTodo, transformTodoFromBackend } from '@web/lib/mappers/todo';
 import { type BackendWorkNote, transformWorkNoteFromBackend } from '@web/lib/mappers/work-note';
 import type {
+  AIGatewayLogQueryParams,
+  AIGatewayLogsResponse,
   AIGenerateDraftRequest,
   AIGenerateDraftResponse,
   AssignWorkNoteRequest,
@@ -1072,6 +1074,20 @@ export class APIClient {
   // Admin - Vector Store Management
   getEmbeddingStats() {
     return this.request<EmbeddingStats>('/admin/embedding-stats');
+  }
+
+  getAIGatewayLogs(params: AIGatewayLogQueryParams = {}) {
+    const queryParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.set(key, String(value));
+      }
+    }
+
+    const queryString = queryParams.toString();
+    return this.request<AIGatewayLogsResponse>(
+      `/admin/ai-gateway/logs${queryString ? `?${queryString}` : ''}`
+    );
   }
 
   reindexAll(batchSize?: number) {

@@ -37,6 +37,7 @@ describe('top-menu', () => {
     render(<TopMenu />);
 
     expect(screen.getByRole('link', { name: '대시보드' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'AI 로그' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '업무노트' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '사람 관리' })).toBeInTheDocument();
   });

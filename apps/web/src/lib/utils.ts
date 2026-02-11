@@ -47,6 +47,19 @@ export function formatDateToYYYYMMDD(dateString: string): string {
   return format(date, 'yyyy-MM-dd');
 }
 
+export const MAX_ROLE_DESC_LENGTH = 20;
+
+/**
+ * Truncate role descriptions to keep table cells compact.
+ */
+export function truncateRoleDescription(roleDescription: string): string {
+  if (roleDescription.length <= MAX_ROLE_DESC_LENGTH) {
+    return roleDescription;
+  }
+
+  return `${roleDescription.slice(0, MAX_ROLE_DESC_LENGTH)}...`;
+}
+
 /**
  * Format person display text based on available fields
  * Priority: dept/position/name/personId/phone > dept/name/personId/phone > name/personId/phone

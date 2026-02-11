@@ -1,3 +1,4 @@
+import type { AIGatewayLogOrder, AIGatewayLogOrderBy } from '@shared/types/ai-gateway-log';
 import type { EmploymentStatus } from '@shared/types/person';
 import type { ProjectStatus } from '@shared/types/project';
 import type { RagScope } from '@shared/types/search';
@@ -163,4 +164,15 @@ export interface StatisticsQueryParams {
   personId?: string;
   deptName?: string;
   category?: string;
+}
+
+// AI Gateway logs requests
+export interface AIGatewayLogQueryParams {
+  page?: number;
+  perPage?: number;
+  order?: AIGatewayLogOrder;
+  orderBy?: AIGatewayLogOrderBy;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
 }

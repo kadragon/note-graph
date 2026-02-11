@@ -25,6 +25,7 @@ export type { WorkNote, WorkNoteWithStats } from './models/work-note';
 // Request/Response types
 // =============================================================================
 export type {
+  AIGatewayLogQueryParams,
   AIGenerateDraftRequest,
   AssignWorkNoteRequest,
   CreateDepartmentRequest,
@@ -46,6 +47,11 @@ export type {
   UpdateWorkNoteRequest,
 } from './requests';
 
+import type {
+  AIGatewayLogItem,
+  AIGatewayLogsPagination,
+  AIGatewayLogsResponse,
+} from '@shared/types/ai-gateway-log';
 // =============================================================================
 // Shared type re-exports from @shared
 // =============================================================================
@@ -86,6 +92,7 @@ import type {
 
 export type { Department, TaskCategory };
 export type { EmploymentStatus, Person, PersonDeptHistory };
+export type { AIGatewayLogItem, AIGatewayLogsPagination, AIGatewayLogsResponse };
 export type {
   DriveFileListItem,
   WorkNoteFile,
