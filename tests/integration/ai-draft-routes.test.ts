@@ -135,6 +135,80 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     expect(data.meetingReferences?.[0]?.score).toBeGreaterThan(0);
   });
 
+  it('returns meetingReferences ordered by FTS relevance with higher score first', async () => {
+    const now = new Date().toISOString();
+    await testEnv.DB.batch([
+      testEnv.DB.prepare(
+        `INSERT INTO meeting_minutes (
+          meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        'MEET-DRAFT-R1',
+        '2026-02-11',
+        'Roadmap budget review',
+        'Roadmap and budget alignment',
+        JSON.stringify(['roadmap', 'budget']),
+        'roadmap budget',
+        now,
+        now
+      ),
+      testEnv.DB.prepare(
+        `INSERT INTO meeting_minutes (
+          meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        'MEET-DRAFT-R2',
+        '2026-02-10',
+        'Roadmap staffing',
+        'Roadmap with staffing topics',
+        JSON.stringify(['roadmap', 'staffing']),
+        'roadmap staffing',
+        now,
+        now
+      ),
+    ]);
+
+    vi.spyOn(WorkNoteService.prototype, 'findSimilarNotes').mockResolvedValue([]);
+    vi.spyOn(AIDraftService.prototype, 'generateDraftFromText').mockResolvedValue(DRAFT_RESPONSE);
+
+    const response = await authFetch('/api/ai/work-notes/draft-from-text-with-similar', {
+      method: 'POST',
+      body: JSON.stringify({ inputText: 'roadmap budget' }),
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json<{
+      meetingReferences?: Array<{
+        meetingId: string;
+        score: number;
+      }>;
+    }>();
+
+    expect(data.meetingReferences).toHaveLength(2);
+    expect(data.meetingReferences?.[0]?.meetingId).toBe('MEET-DRAFT-R1');
+    expect(data.meetingReferences?.[1]?.meetingId).toBe('MEET-DRAFT-R2');
+    expect(data.meetingReferences?.[0]?.score).toBeGreaterThan(
+      data.meetingReferences?.[1]?.score ?? 0
+    );
+  });
+
+  it('sanitizes punctuation-heavy meeting reference queries without MATCH errors', async () => {
+    vi.spyOn(WorkNoteService.prototype, 'findSimilarNotes').mockResolvedValue([]);
+    vi.spyOn(AIDraftService.prototype, 'generateDraftFromText').mockResolvedValue(DRAFT_RESPONSE);
+
+    const response = await authFetch('/api/ai/work-notes/draft-from-text-with-similar', {
+      method: 'POST',
+      body: JSON.stringify({ inputText: '!!! ((( ))) :::' }),
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json<{
+      meetingReferences?: Array<{ meetingId: string }>;
+    }>();
+
+    expect(data.meetingReferences).toEqual([]);
+  });
+
   it('passes due date context to todo suggestions generation', async () => {
     const now = new Date().toISOString();
     await testEnv.DB.prepare(

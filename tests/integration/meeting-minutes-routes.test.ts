@@ -1,3 +1,5 @@
+import { PersonRepository } from '@worker/repositories/person-repository';
+import { TaskCategoryRepository } from '@worker/repositories/task-category-repository';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { authFetch, testEnv } from '../test-setup';
@@ -34,6 +36,11 @@ describe('Meeting Minutes API Routes', () => {
           'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES (?, ?, ?, ?)'
         ).bind('CAT001', 'Planning', 1, now),
       ]);
+
+      const findPersonByIdSpy = vi.spyOn(PersonRepository.prototype, 'findById');
+      const findPersonByIdsSpy = vi.spyOn(PersonRepository.prototype, 'findByIds');
+      const findCategoryByIdSpy = vi.spyOn(TaskCategoryRepository.prototype, 'findById');
+      const findCategoryByIdsSpy = vi.spyOn(TaskCategoryRepository.prototype, 'findByIds');
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -83,6 +90,12 @@ describe('Meeting Minutes API Routes', () => {
         { personId: 'PRS002', name: 'Bob Lee' },
       ]);
       expect(created.categories).toEqual([{ categoryId: 'CAT001', name: 'Planning' }]);
+      expect(findPersonByIdsSpy).toHaveBeenCalledTimes(1);
+      expect(findPersonByIdsSpy).toHaveBeenCalledWith(['PRS001', 'PRS002']);
+      expect(findCategoryByIdsSpy).toHaveBeenCalledTimes(1);
+      expect(findCategoryByIdsSpy).toHaveBeenCalledWith(['CAT001']);
+      expect(findPersonByIdSpy).not.toHaveBeenCalled();
+      expect(findCategoryByIdSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -568,15 +581,33 @@ describe('Meeting Minutes API Routes', () => {
       }>();
 
       expect(result.meetingReferences).toHaveLength(2);
-      const returnedIds = result.meetingReferences.map((item) => item.meetingId).sort();
-      expect(returnedIds).toEqual(['MEET-S1', 'MEET-S2']);
-      expect(result.meetingReferences[0].score).toBeGreaterThanOrEqual(
-        result.meetingReferences[1].score
+      expect(result.meetingReferences[0]?.meetingId).toBe('MEET-S1');
+      expect(result.meetingReferences[1]?.meetingId).toBe('MEET-S2');
+      expect(result.meetingReferences[0]?.score).toBeGreaterThan(
+        result.meetingReferences[1]?.score ?? 0
       );
 
       const byId = new Map(result.meetingReferences.map((item) => [item.meetingId, item]));
       expect(byId.get('MEET-S1')?.keywords).toEqual(['roadmap', 'budget']);
       expect(byId.get('MEET-S2')?.keywords).toEqual(['roadmap', 'hiring']);
+    });
+
+    it('sanitizes punctuation-heavy query text and avoids MATCH syntax errors', async () => {
+      const response = await authFetch('http://localhost/api/meeting-minutes/suggest', {
+        method: 'POST',
+        body: JSON.stringify({
+          query: '!!! ((( ))) :::',
+          limit: 5,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+
+      const result = await response.json<{
+        meetingReferences: Array<{ meetingId: string }>;
+      }>();
+
+      expect(result.meetingReferences).toEqual([]);
     });
   });
 });

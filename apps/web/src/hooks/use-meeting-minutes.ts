@@ -4,6 +4,7 @@ import { createStandardMutation } from '@web/lib/hooks/create-standard-mutation'
 
 type MeetingMinutesQuery = Parameters<typeof API.getMeetingMinutes>[0];
 type MeetingMinutesListResponse = Awaited<ReturnType<typeof API.getMeetingMinutes>>;
+type MeetingMinuteDetailResponse = Awaited<ReturnType<typeof API.getMeetingMinute>>;
 type CreateMeetingMinuteRequest = Parameters<typeof API.createMeetingMinute>[0];
 type UpdateMeetingMinuteRequest = Parameters<typeof API.updateMeetingMinute>[1];
 
@@ -12,6 +13,19 @@ export function useMeetingMinutes(query?: MeetingMinutesQuery, enabled: boolean 
     queryKey: ['meeting-minutes', query ?? {}],
     queryFn: () => API.getMeetingMinutes(query),
     enabled,
+  });
+}
+
+export function useMeetingMinute(meetingId?: string, enabled: boolean = true) {
+  return useQuery<MeetingMinuteDetailResponse>({
+    queryKey: ['meeting-minute-detail', meetingId],
+    queryFn: () => {
+      if (!meetingId) {
+        throw new Error('meetingId is required');
+      }
+      return API.getMeetingMinute(meetingId);
+    },
+    enabled: enabled && Boolean(meetingId),
   });
 }
 

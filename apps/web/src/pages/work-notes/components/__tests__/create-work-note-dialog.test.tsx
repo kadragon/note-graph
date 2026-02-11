@@ -131,8 +131,17 @@ vi.mock('@web/hooks/use-meeting-minutes', () => ({
           createdAt: '2026-02-11T09:00:00.000Z',
           updatedAt: '2026-02-11T09:00:00.000Z',
         },
+        {
+          meetingId: 'MEET-002',
+          meetingDate: '2026-02-12',
+          topic: '기획 리뷰',
+          detailsRaw: '기획 검토 회의',
+          keywords: ['기획'],
+          createdAt: '2026-02-12T09:00:00.000Z',
+          updatedAt: '2026-02-12T09:00:00.000Z',
+        },
       ],
-      total: 1,
+      total: 2,
       page: 1,
       pageSize: 20,
     },
@@ -175,8 +184,17 @@ describe('CreateWorkNoteDialog', () => {
             createdAt: '2026-02-11T09:00:00.000Z',
             updatedAt: '2026-02-11T09:00:00.000Z',
           },
+          {
+            meetingId: 'MEET-002',
+            meetingDate: '2026-02-12',
+            topic: '기획 리뷰',
+            detailsRaw: '기획 검토 회의',
+            keywords: ['기획'],
+            createdAt: '2026-02-12T09:00:00.000Z',
+            updatedAt: '2026-02-12T09:00:00.000Z',
+          },
         ],
-        total: 1,
+        total: 2,
         page: 1,
         pageSize: 20,
       },
@@ -286,6 +304,28 @@ describe('CreateWorkNoteDialog', () => {
       // After clicking, the selected count should show
       const assigneeSelector = screen.getByTestId('assignee-selector');
       expect(assigneeSelector).toHaveTextContent('Selected: 1');
+    });
+
+    it('filters meeting references with search input', async () => {
+      const user = userEvent.setup();
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      expect(screen.getByLabelText('주간 회의')).toBeInTheDocument();
+      expect(screen.getByLabelText('기획 리뷰')).toBeInTheDocument();
+
+      await user.type(screen.getByRole('textbox', { name: '회의록 필터' }), '기획');
+
+      expect(screen.queryByLabelText('주간 회의')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('기획 리뷰')).toBeInTheDocument();
+    });
+
+    it('shows empty message when no meetings match filter', async () => {
+      const user = userEvent.setup();
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      await user.type(screen.getByRole('textbox', { name: '회의록 필터' }), '없는회의');
+
+      expect(screen.getByText('검색 결과가 없습니다.')).toBeInTheDocument();
     });
   });
 

@@ -10,6 +10,10 @@ import { TaskCategoryRepository } from '../repositories/task-category-repository
 import { createMeetingMinuteSchema, updateMeetingMinuteSchema } from '../schemas/meeting-minute';
 import { MeetingMinuteKeywordService } from '../services/meeting-minute-keyword-service';
 import type { AppContext, AppVariables } from '../types/context';
+import {
+  buildMeetingMinutesFtsQuery,
+  mapMeetingMinutesFtsScores,
+} from '../utils/meeting-minutes-fts';
 
 type MeetingMinutesContext = {
   Bindings: AppContext['Bindings'];
@@ -21,20 +25,6 @@ const suggestMeetingMinutesSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(20).optional(),
 });
-
-function buildMeetingMinutesFtsQuery(rawQuery: string): string {
-  const terms = rawQuery
-    .trim()
-    .split(/\s+/)
-    .map((term) => term.trim())
-    .filter((term) => term.length > 0);
-
-  if (terms.length === 0) {
-    return '';
-  }
-
-  return terms.join(' OR ');
-}
 
 function normalizeTopicForDuplicateGuard(topic: string): string {
   return topic
@@ -102,31 +92,17 @@ meetingMinutes.get('/', async (c) => {
   const pageSize = Math.max(1, Number.parseInt(pageSizeRaw || '20', 10) || 20);
 
   const repository = new MeetingMinuteRepository(c.env.DB);
-  const allItems = await repository.findAll({
+  const result = await repository.findPaginated({
     q,
     meetingDateFrom,
     meetingDateTo,
     categoryId,
     attendeePersonId,
-  });
-
-  const sorted = allItems.sort(
-    (a, b) =>
-      b.meetingDate.localeCompare(a.meetingDate) ||
-      b.updatedAt.localeCompare(a.updatedAt) ||
-      b.meetingId.localeCompare(a.meetingId)
-  );
-
-  const total = sorted.length;
-  const offset = (page - 1) * pageSize;
-  const items = sorted.slice(offset, offset + pageSize);
-
-  return c.json({
-    items,
-    total,
     page,
     pageSize,
   });
+
+  return c.json(result);
 });
 
 meetingMinutes.post('/suggest', bodyValidator(suggestMeetingMinutesSchema), async (c) => {
@@ -134,11 +110,16 @@ meetingMinutes.post('/suggest', bodyValidator(suggestMeetingMinutesSchema), asyn
   const limit = body.limit ?? 5;
   const ftsQuery = buildMeetingMinutesFtsQuery(body.query);
 
+  if (ftsQuery.length === 0) {
+    return c.json({ meetingReferences: [] });
+  }
+
   const result = await c.env.DB.prepare(
     `WITH fts_matches AS (
        SELECT rowid, rank
        FROM meeting_minutes_fts
        WHERE meeting_minutes_fts MATCH ?
+       ORDER BY rank ASC
        LIMIT ?
      )
      SELECT
@@ -149,7 +130,7 @@ meetingMinutes.post('/suggest', bodyValidator(suggestMeetingMinutesSchema), asyn
        fts.rank as ftsRank
      FROM fts_matches fts
      INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
-     ORDER BY fts.rank DESC`
+     ORDER BY fts.rank ASC`
   )
     .bind(ftsQuery, limit)
     .all<{
@@ -160,12 +141,12 @@ meetingMinutes.post('/suggest', bodyValidator(suggestMeetingMinutesSchema), asyn
       ftsRank: number;
     }>();
 
-  const meetingReferences = (result.results || []).map((row) => ({
+  const meetingReferences = mapMeetingMinutesFtsScores(result.results || []).map((row) => ({
     meetingId: row.meetingId,
     meetingDate: row.meetingDate,
     topic: row.topic,
     keywords: JSON.parse(row.keywordsJson || '[]') as string[],
-    score: Math.max(0, 1 + (Number(row.ftsRank) || 0) / 10),
+    score: row.score,
   }));
 
   return c.json({ meetingReferences });
@@ -365,25 +346,20 @@ meetingMinutes.post('/', bodyValidator(createMeetingMinuteSchema), async (c) => 
     keywords,
   });
 
-  const attendees = (
-    await Promise.all(data.attendeePersonIds.map((personId) => personRepository.findById(personId)))
-  )
-    .filter((person): person is NonNullable<typeof person> => person !== null)
-    .map((person) => ({
-      personId: person.personId,
-      name: person.name,
-    }));
+  const [persons, taskCategories] = await Promise.all([
+    personRepository.findByIds(data.attendeePersonIds),
+    categoryRepository.findByIds(data.categoryIds || []),
+  ]);
 
-  const categories = (
-    await Promise.all(
-      (data.categoryIds || []).map((categoryId) => categoryRepository.findById(categoryId))
-    )
-  )
-    .filter((category): category is NonNullable<typeof category> => category !== null)
-    .map((category) => ({
-      categoryId: category.categoryId,
-      name: category.name,
-    }));
+  const attendees = persons.map((person) => ({
+    personId: person.personId,
+    name: person.name,
+  }));
+
+  const categories = taskCategories.map((category) => ({
+    categoryId: category.categoryId,
+    name: category.name,
+  }));
 
   return c.json(
     {

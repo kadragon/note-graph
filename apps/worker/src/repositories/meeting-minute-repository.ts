@@ -2,6 +2,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { nanoid } from 'nanoid';
 import type { CreateMeetingMinuteInput, UpdateMeetingMinuteInput } from '../schemas/meeting-minute';
 import { NotFoundError } from '../types/errors';
+import { buildMeetingMinutesFtsQuery } from '../utils/meeting-minutes-fts';
 
 export interface MeetingMinute {
   meetingId: string;
@@ -19,6 +20,18 @@ export interface ListMeetingMinutesQuery {
   meetingDateTo?: string;
   categoryId?: string;
   attendeePersonId?: string;
+}
+
+export interface PaginatedMeetingMinutesQuery extends ListMeetingMinutesQuery {
+  page: number;
+  pageSize: number;
+}
+
+export interface PaginatedMeetingMinutesResult {
+  items: MeetingMinute[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export class MeetingMinuteRepository {
@@ -212,43 +225,53 @@ export class MeetingMinuteRepository {
     };
   }
 
-  async findAll(query: ListMeetingMinutesQuery = {}): Promise<MeetingMinute[]> {
-    let sql = `
-      SELECT DISTINCT
-        mm.meeting_id as meetingId,
-        mm.meeting_date as meetingDate,
-        mm.topic,
-        mm.details_raw as detailsRaw,
-        mm.keywords_json as keywordsJson,
-        mm.created_at as createdAt,
-        mm.updated_at as updatedAt
-      FROM meeting_minutes mm
-    `;
+  async findPaginated(query: PaginatedMeetingMinutesQuery): Promise<PaginatedMeetingMinutesResult> {
+    const page = Math.max(1, query.page || 1);
+    const pageSize = Math.max(1, query.pageSize || 20);
+    const offset = (page - 1) * pageSize;
+
+    let withClause = '';
+    const joins: string[] = [];
     const conditions: string[] = [];
-    const params: string[] = [];
+    const params: (string | number)[] = [];
+
+    if (query.q && query.q.trim().length > 0) {
+      const ftsQuery = buildMeetingMinutesFtsQuery(query.q);
+      if (!ftsQuery) {
+        return {
+          items: [],
+          total: 0,
+          page,
+          pageSize,
+        };
+      }
+
+      withClause = `
+      WITH fts_matches AS (
+        SELECT rowid
+        FROM meeting_minutes_fts
+        WHERE meeting_minutes_fts MATCH ?
+      )`;
+      joins.push('INNER JOIN fts_matches fts ON fts.rowid = mm.rowid');
+      params.push(ftsQuery);
+    }
 
     if (query.categoryId) {
-      sql += `
-        INNER JOIN meeting_minute_task_category mmtc
-          ON mm.meeting_id = mmtc.meeting_id
-      `;
+      joins.push(
+        `INNER JOIN meeting_minute_task_category mmtc
+          ON mm.meeting_id = mmtc.meeting_id`
+      );
       conditions.push('mmtc.category_id = ?');
       params.push(query.categoryId);
     }
 
     if (query.attendeePersonId) {
-      sql += `
-        INNER JOIN meeting_minute_person mmp
-          ON mm.meeting_id = mmp.meeting_id
-      `;
+      joins.push(
+        `INNER JOIN meeting_minute_person mmp
+          ON mm.meeting_id = mmp.meeting_id`
+      );
       conditions.push('mmp.person_id = ?');
       params.push(query.attendeePersonId);
-    }
-
-    if (query.q) {
-      conditions.push('(mm.topic LIKE ? OR mm.details_raw LIKE ? OR mm.keywords_text LIKE ?)');
-      const qLike = `%${query.q}%`;
-      params.push(qLike, qLike, qLike);
     }
 
     if (query.meetingDateFrom) {
@@ -261,15 +284,40 @@ export class MeetingMinuteRepository {
       params.push(query.meetingDateTo);
     }
 
-    if (conditions.length > 0) {
-      sql += ` WHERE ${conditions.join(' AND ')}`;
-    }
+    const joinClause = joins.length > 0 ? `\n${joins.join('\n')}` : '';
+    const whereClause = conditions.length > 0 ? `\nWHERE ${conditions.join(' AND ')}` : '';
 
-    sql += ` ORDER BY mm.meeting_date DESC, mm.updated_at DESC`;
+    const totalSql = `
+      ${withClause}
+      SELECT COUNT(DISTINCT mm.meeting_id) as total
+      FROM meeting_minutes mm${joinClause}${whereClause}
+    `;
+
+    const totalRow = await this.db
+      .prepare(totalSql)
+      .bind(...params)
+      .first<{ total: number }>();
+
+    let sql = `
+      ${withClause}
+      SELECT DISTINCT
+        mm.meeting_id as meetingId,
+        mm.meeting_date as meetingDate,
+        mm.topic,
+        mm.details_raw as detailsRaw,
+        mm.keywords_json as keywordsJson,
+        mm.created_at as createdAt,
+        mm.updated_at as updatedAt
+      FROM meeting_minutes mm
+    `;
+    sql += joinClause;
+    sql += whereClause;
+    sql += ` ORDER BY mm.meeting_date DESC, mm.updated_at DESC, mm.meeting_id DESC`;
+    sql += ` LIMIT ? OFFSET ?`;
 
     const result = await this.db
       .prepare(sql)
-      .bind(...params)
+      .bind(...params, pageSize, offset)
       .all<{
         meetingId: string;
         meetingDate: string;
@@ -280,7 +328,7 @@ export class MeetingMinuteRepository {
         updatedAt: string;
       }>();
 
-    return (result.results || []).map((row) => ({
+    const items = (result.results || []).map((row) => ({
       meetingId: row.meetingId,
       meetingDate: row.meetingDate,
       topic: row.topic,
@@ -289,6 +337,22 @@ export class MeetingMinuteRepository {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));
+
+    return {
+      items,
+      total: Number(totalRow?.total || 0),
+      page,
+      pageSize,
+    };
+  }
+
+  async findAll(query: ListMeetingMinutesQuery = {}): Promise<MeetingMinute[]> {
+    const result = await this.findPaginated({
+      ...query,
+      page: 1,
+      pageSize: 1000000,
+    });
+    return result.items;
   }
 
   async delete(meetingId: string): Promise<void> {

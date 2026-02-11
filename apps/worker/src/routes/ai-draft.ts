@@ -19,6 +19,10 @@ import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext, AppVariables } from '../types/context';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
+import {
+  buildMeetingMinutesFtsQuery,
+  mapMeetingMinutesFtsScores,
+} from '../utils/meeting-minutes-fts';
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
@@ -32,20 +36,6 @@ type Variables = {
 type AiDraftContext = { Bindings: AppContext['Bindings']; Variables: Variables };
 
 const app = new Hono<AiDraftContext>();
-
-function buildMeetingMinutesFtsQuery(rawQuery: string): string {
-  const terms = rawQuery
-    .trim()
-    .split(/\s+/)
-    .map((term) => term.trim())
-    .filter((term) => term.length > 0);
-
-  if (terms.length === 0) {
-    return '';
-  }
-
-  return terms.join(' OR ');
-}
 
 // All AI draft routes require authentication
 app.use('*', authMiddleware);
@@ -155,6 +145,7 @@ app.post(
                  SELECT rowid, rank
                  FROM meeting_minutes_fts
                  WHERE meeting_minutes_fts MATCH ?
+                 ORDER BY rank ASC
                  LIMIT ?
                )
                SELECT
@@ -165,7 +156,7 @@ app.post(
                  fts.rank as ftsRank
                FROM fts_matches fts
                INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
-               ORDER BY fts.rank DESC`
+               ORDER BY fts.rank ASC`
             )
               .bind(ftsQuery, MEETING_REFERENCES_TOP_K)
               .all<{
@@ -178,15 +169,17 @@ app.post(
           ).results || []
         : [];
 
+    const scoredMeetingReferences = mapMeetingMinutesFtsScores(meetingReferences);
+
     return c.json({
       draft,
       references,
-      meetingReferences: meetingReferences.map((row) => ({
+      meetingReferences: scoredMeetingReferences.map((row) => ({
         meetingId: row.meetingId,
         meetingDate: row.meetingDate,
         topic: row.topic,
         keywords: JSON.parse(row.keywordsJson || '[]') as string[],
-        score: Math.max(0, 1 + (Number(row.ftsRank) || 0) / 10),
+        score: row.score,
       })),
     });
   }

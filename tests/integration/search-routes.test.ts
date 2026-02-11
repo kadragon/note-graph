@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { HybridSearchService } from '@worker/services/hybrid-search-service';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { authFetch, testEnv } from '../test-setup';
 
@@ -21,12 +22,12 @@ describe('Search API Routes', () => {
   describe('POST /api/search/unified', () => {
     it('includes meeting minute result group with source-specific payload shape', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        `INSERT INTO meeting_minutes (
-          meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-        .bind(
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO meeting_minutes (
+            meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
           'MEET-SEARCH-001',
           '2026-02-11',
           'API latency review',
@@ -35,8 +36,22 @@ describe('Search API Routes', () => {
           'latency api',
           now,
           now
-        )
-        .run();
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO meeting_minutes (
+            meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'MEET-SEARCH-002',
+          '2026-02-10',
+          'Latency and caching follow-up',
+          'Focused mostly on cache warmup strategy',
+          JSON.stringify(['latency', 'cache']),
+          'latency cache',
+          now,
+          now
+        ),
+      ]);
 
       const response = await authFetch('/api/search/unified', {
         method: 'POST',
@@ -63,7 +78,7 @@ describe('Search API Routes', () => {
       }>();
 
       expect(data.query).toBe('latency');
-      expect(data.meetingMinutes).toHaveLength(1);
+      expect(data.meetingMinutes).toHaveLength(2);
       expect(data.meetingMinutes?.[0]).toMatchObject({
         meetingId: 'MEET-SEARCH-001',
         meetingDate: '2026-02-11',
@@ -71,7 +86,26 @@ describe('Search API Routes', () => {
         keywords: ['latency', 'api'],
         source: 'MEETING_FTS',
       });
-      expect(data.meetingMinutes?.[0]?.score).toBeGreaterThan(0);
+      expect(data.meetingMinutes?.[0]?.score).toBeGreaterThan(data.meetingMinutes?.[1]?.score ?? 0);
+    });
+
+    it('sanitizes punctuation-heavy query for meeting minute references', async () => {
+      vi.spyOn(HybridSearchService.prototype, 'search').mockResolvedValue([]);
+
+      const response = await authFetch('/api/search/unified', {
+        method: 'POST',
+        body: JSON.stringify({
+          query: '!!! ((( ))) :::',
+          limit: 10,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json<{
+        meetingMinutes?: Array<{ meetingId: string }>;
+      }>();
+
+      expect(data.meetingMinutes).toEqual([]);
     });
   });
 });

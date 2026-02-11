@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   useCreateMeetingMinute,
   useDeleteMeetingMinute,
+  useMeetingMinute,
   useMeetingMinutes,
   useUpdateMeetingMinute,
 } from '../use-meeting-minutes';
@@ -12,6 +13,7 @@ import {
 vi.mock('@web/lib/api', () => ({
   API: {
     getMeetingMinutes: vi.fn(),
+    getMeetingMinute: vi.fn(),
     createMeetingMinute: vi.fn(),
     updateMeetingMinute: vi.fn(),
     deleteMeetingMinute: vi.fn(),
@@ -68,6 +70,43 @@ describe('useMeetingMinutes', () => {
     expect(disabledResult.current.fetchStatus).toBe('idle');
     expect(disabledResult.current.data).toBeUndefined();
     expect(API.getMeetingMinutes).toHaveBeenCalledTimes(1);
+  });
+
+  it('fetches detail by id and respects enabled=false', async () => {
+    const detail = {
+      meetingId: 'MEET-001',
+      meetingDate: '2026-02-11',
+      topic: '주간 회의',
+      detailsRaw: '내용',
+      keywords: ['주간', '회의'],
+      attendees: [{ personId: 'P1', name: '홍길동' }],
+      categories: [{ categoryId: 'C1', name: '기획' }],
+      createdAt: '2026-02-11T09:00:00.000Z',
+      updatedAt: '2026-02-11T09:00:00.000Z',
+      linkedWorkNoteCount: 2,
+    };
+    vi.mocked(API.getMeetingMinute).mockResolvedValue(detail);
+
+    const queryClient = createTestQueryClient();
+    const { result } = renderHookWithClient(() => useMeetingMinute('MEET-001'), { queryClient });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(API.getMeetingMinute).toHaveBeenCalledWith('MEET-001');
+    expect(queryClient.getQueryData(['meeting-minute-detail', 'MEET-001'])).toEqual(detail);
+
+    const { result: disabledResult } = renderHookWithClient(
+      () => useMeetingMinute('MEET-002', false),
+      {
+        queryClient,
+      }
+    );
+
+    expect(disabledResult.current.fetchStatus).toBe('idle');
+    expect(disabledResult.current.data).toBeUndefined();
+    expect(API.getMeetingMinute).toHaveBeenCalledTimes(1);
   });
 
   it('invalidates list/detail query keys for create/update/delete mutations', async () => {

@@ -14,22 +14,12 @@ import { bodyValidator, getValidatedBody } from '../middleware/validation-middle
 import { searchWorkNotesSchema } from '../schemas/search';
 import { HybridSearchService } from '../services/hybrid-search-service';
 import type { AppContext } from '../types/context';
+import {
+  buildMeetingMinutesFtsQuery,
+  mapMeetingMinutesFtsScores,
+} from '../utils/meeting-minutes-fts';
 
 const search = new Hono<AppContext>();
-
-function buildMeetingMinutesFtsQuery(rawQuery: string): string {
-  const tokens = rawQuery
-    .trim()
-    .split(/\s+/)
-    .map((token) => token.replace(/["']/g, '').trim())
-    .filter((token) => token.length >= 2);
-
-  if (tokens.length === 0) {
-    return '';
-  }
-
-  return tokens.map((token) => `${token}*`).join(' OR ');
-}
 
 // Apply authentication to all search routes
 search.use('*', authMiddleware);
@@ -106,6 +96,7 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
            SELECT rowid, rank
            FROM meeting_minutes_fts
            WHERE meeting_minutes_fts MATCH ?
+           ORDER BY rank ASC
            LIMIT ?
          )
          SELECT
@@ -116,7 +107,7 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
            fts.rank as ftsRank
          FROM fts_matches fts
          INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
-         ORDER BY fts.rank DESC`
+         ORDER BY fts.rank ASC`
       )
         .bind(ftsQuery, body.limit)
         .all<{
@@ -127,12 +118,12 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
           ftsRank: number;
         }>();
 
-      return (result.results || []).map((row) => ({
+      return mapMeetingMinutesFtsScores(result.results || []).map((row) => ({
         meetingId: row.meetingId,
         meetingDate: row.meetingDate,
         topic: row.topic,
         keywords: JSON.parse(row.keywordsJson || '[]') as string[],
-        score: Math.max(0, 1 + (Number(row.ftsRank) || 0) / 10),
+        score: row.score,
         source: 'MEETING_FTS' as const,
       }));
     })(),

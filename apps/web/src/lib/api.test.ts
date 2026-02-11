@@ -111,6 +111,7 @@ describe('API.getWorkNotes', () => {
       categories: [],
       persons: [],
       relatedWorkNotes: [],
+      relatedMeetingMinutes: [],
       files: [],
       createdAt: now,
       updatedAt: now,
@@ -1042,6 +1043,7 @@ describe('API meeting minutes methods', () => {
           keywords: ['주간', '회의'],
           attendees: [{ personId: '123456', name: '홍길동' }],
           categories: [{ categoryId: 'CAT-001', name: '회의' }],
+          linkedWorkNoteCount: 2,
           createdAt: now,
           updatedAt: now,
         }),
@@ -1118,6 +1120,7 @@ describe('API meeting minutes methods', () => {
     expect(listResult.items[0]?.meetingId).toBe('MEET-001');
     expect(createResult.meetingId).toBe('MEET-001');
     expect(detailResult.attendees[0]?.personId).toBe('123456');
+    expect(detailResult.linkedWorkNoteCount).toBe(2);
     expect(updateResult.topic).toBe('수정된 회의');
     expect(suggestResult.meetingReferences[0]?.meetingId).toBe('MEET-001');
     expect(deleteResult).toBeNull();

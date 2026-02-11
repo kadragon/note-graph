@@ -718,6 +718,7 @@ export class APIClient {
       keywords: string[];
       attendees: Array<{ personId: string; name: string }>;
       categories: Array<{ categoryId: string; name: string }>;
+      linkedWorkNoteCount?: number;
       createdAt: string;
       updatedAt: string;
     }>(`/meeting-minutes/${meetingId}`);

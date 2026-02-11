@@ -238,6 +238,69 @@ describe('MeetingMinuteRepository', () => {
 
       const attendeeResults = await repository.findAll({ attendeePersonId: '111111' });
       expect(attendeeResults.map((m) => m.meetingId)).toEqual([meeting1.meetingId]);
+
+      const nonTokenSubstringResults = await repository.findAll({ q: 'oadm' });
+      expect(nonTokenSubstringResults).toHaveLength(0);
+    });
+  });
+
+  describe('findPaginated()', () => {
+    it('returns paginated items and total count from database filtering', async () => {
+      await testEnv.DB.batch([
+        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
+          '111111',
+          '참석자1'
+        ),
+        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
+          'CAT-FIN',
+          '재무'
+        ),
+      ]);
+
+      const newer = await repository.create({
+        meetingDate: '2026-03-20',
+        topic: 'Budget roadmap sync',
+        detailsRaw: 'Q2 budget and roadmap alignment',
+        attendeePersonIds: ['111111'],
+        categoryIds: ['CAT-FIN'],
+      });
+      const older = await repository.create({
+        meetingDate: '2026-03-10',
+        topic: 'Budget retrospective',
+        detailsRaw: 'Reviewed budget usage',
+        attendeePersonIds: ['111111'],
+        categoryIds: ['CAT-FIN'],
+      });
+
+      const page1 = await repository.findPaginated({
+        q: 'budget',
+        attendeePersonId: '111111',
+        categoryId: 'CAT-FIN',
+        meetingDateFrom: '2026-03-01',
+        meetingDateTo: '2026-03-31',
+        page: 1,
+        pageSize: 1,
+      });
+
+      expect(page1.total).toBe(2);
+      expect(page1.page).toBe(1);
+      expect(page1.pageSize).toBe(1);
+      expect(page1.items).toHaveLength(1);
+      expect(page1.items[0]?.meetingId).toBe(newer.meetingId);
+
+      const page2 = await repository.findPaginated({
+        q: 'budget',
+        attendeePersonId: '111111',
+        categoryId: 'CAT-FIN',
+        meetingDateFrom: '2026-03-01',
+        meetingDateTo: '2026-03-31',
+        page: 2,
+        pageSize: 1,
+      });
+
+      expect(page2.total).toBe(2);
+      expect(page2.items).toHaveLength(1);
+      expect(page2.items[0]?.meetingId).toBe(older.meetingId);
     });
   });
 
