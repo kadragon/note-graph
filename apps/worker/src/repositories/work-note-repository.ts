@@ -55,7 +55,7 @@ export class WorkNoteRepository {
     const result = await this.db
       .prepare(
         `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, project_id as projectId, created_at as createdAt,
+                category, created_at as createdAt,
                 updated_at as updatedAt, embedded_at as embeddedAt
          FROM work_notes
          WHERE work_id = ?`
@@ -125,7 +125,7 @@ export class WorkNoteRepository {
       const result = await this.db
         .prepare(
           `SELECT work_id as workId, title, content_raw as contentRaw,
-                  category, project_id as projectId, created_at as createdAt,
+                  category, created_at as createdAt,
                   updated_at as updatedAt, embedded_at as embeddedAt
            FROM work_notes
            WHERE work_id IN (${placeholders})`
@@ -189,7 +189,7 @@ export class WorkNoteRepository {
         const result = await this.db
           .prepare(
             `SELECT work_id as workId, title, content_raw as contentRaw,
-                    category, project_id as projectId, created_at as createdAt,
+                    category, created_at as createdAt,
                     updated_at as updatedAt, embedded_at as embeddedAt
              FROM work_notes
              WHERE work_id IN (${placeholders})`
@@ -251,7 +251,7 @@ export class WorkNoteRepository {
   async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
     let sql = `
       SELECT DISTINCT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
-             wn.category, wn.project_id as projectId, wn.created_at as createdAt,
+             wn.category, wn.created_at as createdAt,
              wn.updated_at as updatedAt, wn.embedded_at as embeddedAt
       FROM work_notes wn
     `;
@@ -398,18 +398,10 @@ export class WorkNoteRepository {
       // Insert work note
       this.db
         .prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, category, project_id, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)`
         )
-        .bind(
-          workId,
-          data.title,
-          data.contentRaw,
-          data.category || null,
-          data.projectId || null,
-          now,
-          now
-        ),
+        .bind(workId, data.title, data.contentRaw, data.category || null, now, now),
 
       // Insert first version
       this.db
@@ -496,18 +488,6 @@ export class WorkNoteRepository {
       }
     }
 
-    // Add project association if projectId provided
-    if (data.projectId) {
-      statements.push(
-        this.db
-          .prepare(
-            `INSERT INTO project_work_notes (project_id, work_id, assigned_at)
-             VALUES (?, ?, ?)`
-          )
-          .bind(data.projectId, workId, now)
-      );
-    }
-
     await this.executeBatched(statements);
 
     // Return the created work note without extra DB roundtrip
@@ -516,7 +496,6 @@ export class WorkNoteRepository {
       title: data.title,
       contentRaw: data.contentRaw,
       category: data.category || null,
-      projectId: data.projectId || null,
       createdAt: now,
       updatedAt: now,
       embeddedAt: null,
@@ -551,11 +530,6 @@ export class WorkNoteRepository {
       updateFields.push('category = ?');
       updateParams.push(data.category || null);
     }
-    if (data.projectId !== undefined) {
-      updateFields.push('project_id = ?');
-      updateParams.push(data.projectId || null);
-    }
-
     if (updateFields.length > 0) {
       updateFields.push('updated_at = ?');
       updateFields.push('embedded_at = NULL'); // Reset embedding status on content change
@@ -708,26 +682,6 @@ export class WorkNoteRepository {
       }
     }
 
-    // Update project association if provided
-    if (data.projectId !== undefined) {
-      // Delete existing project association
-      statements.push(
-        this.db.prepare(`DELETE FROM project_work_notes WHERE work_id = ?`).bind(workId)
-      );
-
-      // Add new project association if projectId is not null
-      if (data.projectId) {
-        statements.push(
-          this.db
-            .prepare(
-              `INSERT INTO project_work_notes (project_id, work_id, assigned_at)
-               VALUES (?, ?, ?)`
-            )
-            .bind(data.projectId, workId, now)
-        );
-      }
-    }
-
     await this.executeBatched(statements);
 
     // Return the updated work note without extra DB roundtrip
@@ -737,7 +691,6 @@ export class WorkNoteRepository {
       title: data.title !== undefined ? data.title : existing.title,
       contentRaw: data.contentRaw !== undefined ? data.contentRaw : existing.contentRaw,
       category: data.category !== undefined ? data.category || null : existing.category,
-      projectId: data.projectId !== undefined ? data.projectId || null : existing.projectId,
       updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
       embeddedAt: updateFields.length > 0 ? null : existing.embeddedAt,
     };

@@ -32,13 +32,6 @@ export interface GDriveFolderRecord {
   createdAt: string;
 }
 
-export interface ProjectGDriveFolderRecord {
-  projectId: string;
-  gdriveFolderId: string;
-  gdriveFolderLink: string;
-  createdAt: string;
-}
-
 export class GoogleDriveService {
   private oauthService: GoogleOAuthService;
 
@@ -228,69 +221,6 @@ export class GoogleDriveService {
 
     return {
       workId,
-      gdriveFolderId: folder.id,
-      gdriveFolderLink: folder.webViewLink,
-      createdAt: now,
-    };
-  }
-
-  /**
-   * Get or create a folder for a project
-   */
-  async getOrCreateProjectFolder(
-    userEmail: string,
-    projectId: string
-  ): Promise<ProjectGDriveFolderRecord> {
-    const existing = await this.db
-      .prepare(
-        `SELECT project_id as projectId, gdrive_folder_id as gdriveFolderId,
-                gdrive_folder_link as gdriveFolderLink, created_at as createdAt
-         FROM project_gdrive_folders
-         WHERE project_id = ?`
-      )
-      .bind(projectId)
-      .first<ProjectGDriveFolderRecord>();
-
-    const project = await this.db
-      .prepare(
-        'SELECT created_at as createdAt FROM projects WHERE project_id = ? AND deleted_at IS NULL'
-      )
-      .bind(projectId)
-      .first<{ createdAt: string }>();
-
-    if (!project?.createdAt) {
-      throw new Error(`Project not found for projectId: ${projectId}`);
-    }
-
-    const year = this.buildYearFolderName(project.createdAt);
-    const rootFolderId = this.env.GDRIVE_ROOT_FOLDER_ID;
-
-    if (!rootFolderId) {
-      throw new Error('GDRIVE_ROOT_FOLDER_ID is required to create Drive folders.');
-    }
-
-    const yearFolder =
-      (await this.findFolderByNameInParent(userEmail, year, rootFolderId)) ??
-      (await this.createFolder(userEmail, year, rootFolderId));
-
-    if (existing) {
-      await this.ensureFolderInParent(userEmail, existing.gdriveFolderId, yearFolder.id);
-      return existing;
-    }
-
-    const folder = await this.createFolder(userEmail, projectId, yearFolder.id);
-    const now = new Date().toISOString();
-
-    await this.db
-      .prepare(
-        `INSERT OR IGNORE INTO project_gdrive_folders (project_id, gdrive_folder_id, gdrive_folder_link, created_at)
-         VALUES (?, ?, ?, ?)`
-      )
-      .bind(projectId, folder.id, folder.webViewLink, now)
-      .run();
-
-    return {
-      projectId,
       gdriveFolderId: folder.id,
       gdriveFolderLink: folder.webViewLink,
       createdAt: now,

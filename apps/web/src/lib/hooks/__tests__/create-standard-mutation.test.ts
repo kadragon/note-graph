@@ -185,9 +185,9 @@ describe('createStandardMutation', () => {
 
     const useTestMutation = createStandardMutation({
       mutationFn: mockMutationFn,
-      invalidateKeys: (_data, variables: { projectId: string }) => [
-        ['projects'],
-        ['project', variables.projectId],
+      invalidateKeys: (_data, variables: { itemId: string }) => [
+        ['items'],
+        ['item', variables.itemId],
       ],
       messages: {
         success: '성공',
@@ -201,15 +201,15 @@ describe('createStandardMutation', () => {
     const { result } = renderHookWithClient(() => useTestMutation(), { queryClient });
 
     await act(async () => {
-      result.current.mutate({ projectId: 'proj-123' });
+      result.current.mutate({ itemId: 'item-123' });
     });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['projects'] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['project', 'proj-123'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['items'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['item', 'item-123'] });
   });
 
   it('works with empty invalidateKeys array', async () => {

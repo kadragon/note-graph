@@ -23,10 +23,8 @@
 - `tests/unit/person-repository.test.ts` (668)
 - `tests/unit/work-note-file-service.test.ts` (661)
 - `tests/search.test.ts` (614)
-- `tests/integration/project-crud.test.ts` (568)
 - `tests/unit/department-repository.test.ts` (550)
 - `tests/unit/google-calendar-service.test.ts` (550)
-- `apps/web/src/hooks/__tests__/use-projects.mutations.test.ts` (518)
 
 ## Backend (Workers) Tests
 
@@ -47,15 +45,9 @@
 - `tests/unit/group-recurring-todos.test.ts`
 - `tests/unit/hybrid-search-service.test.ts`
 - `tests/unit/migrate-r2-to-gdrive.test.ts`
-- `tests/unit/migration-project-management.test.ts`
 - `tests/unit/pdf-extraction-service.test.ts`
 - `tests/unit/pdf-job-repository.test.ts`
 - `tests/unit/person-repository.test.ts`
-- `tests/unit/project-file-service.test.ts`
-- `tests/unit/project-repository.associations.test.ts`
-- `tests/unit/project-repository.crud.test.ts`
-- `tests/unit/project-repository.query.test.ts`
-- `tests/unit/rag-service.project.test.ts`
 - `tests/unit/schemas.test.ts`
 - `tests/unit/statistics-repository.test.ts`
 - `tests/unit/todo-grouping.test.ts`
@@ -77,15 +69,10 @@
 - `tests/integration/admin-embedding-failures.test.ts`
 - `tests/integration/calendar-routes.test.ts`
 - `tests/integration/error-handling.test.ts`
-- `tests/integration/project-crud.test.ts`
-- `tests/integration/project-files.test.ts`
-- `tests/integration/project-participants.test.ts`
-- `tests/integration/project-work-notes.test.ts`
 - `tests/integration/statistics-routes.test.ts`
 - `tests/integration/system-routes.test.ts`
 - `tests/integration/work-note-file-view.test.ts`
 - `tests/integration/work-note-gdrive-integration.test.ts`
-- `tests/integration/work-note-project-association.test.ts`
 
 ### Top-level Tests (1 file)
 - `tests/search.test.ts`
@@ -102,9 +89,6 @@
 - `apps/web/src/hooks/__tests__/use-persons.errors.test.ts`
 - `apps/web/src/hooks/__tests__/use-persons.mutations.test.ts`
 - `apps/web/src/hooks/__tests__/use-persons.query.test.ts`
-- `apps/web/src/hooks/__tests__/use-projects.errors.test.ts`
-- `apps/web/src/hooks/__tests__/use-projects.mutations.test.ts`
-- `apps/web/src/hooks/__tests__/use-projects.query.test.ts`
 - `apps/web/src/hooks/__tests__/use-pdf.test.ts`
 - `apps/web/src/hooks/__tests__/use-rag.test.ts`
 - `apps/web/src/hooks/__tests__/use-search.test.ts`
@@ -121,7 +105,6 @@
 - `apps/web/src/pages/__tests__/pdf-upload.test.tsx`
 - `apps/web/src/pages/__tests__/person-dialog.test.tsx`
 - `apps/web/src/pages/__tests__/persons.test.tsx`
-- `apps/web/src/pages/__tests__/projects.test.tsx`
 - `apps/web/src/pages/__tests__/rag.test.tsx`
 - `apps/web/src/pages/__tests__/search.test.tsx`
 - `apps/web/src/pages/__tests__/statistics.test.tsx`
@@ -149,7 +132,7 @@
 
 ## Coverage by Area (Summary)
 - Repository and service layer: unit tests for repositories, services, and utilities (D1, R2, Drive, search, embeddings).
-- API route coverage: integration tests for REST endpoints, file handling, project associations, and error mapping.
+- API route coverage: integration tests for REST endpoints, file handling, and error mapping.
 - Frontend hooks: query/mutation hooks validated for data, cache invalidation, and error toasts.
 - UI flows: page-level tests for dashboards, CRUD screens, and modal behaviors.
 - Utilities: frontend helpers (date utils, mappers, PDFs, PWA setup).

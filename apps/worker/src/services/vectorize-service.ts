@@ -64,10 +64,6 @@ export class VectorizeService {
       encoded.created_at_bucket = metadata.created_at_bucket;
     }
 
-    if (metadata.project_id) {
-      encoded.project_id = metadata.project_id;
-    }
-
     return encoded;
   }
 

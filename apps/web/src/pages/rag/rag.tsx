@@ -29,7 +29,6 @@ const SCOPE_DESCRIPTIONS: Record<Exclude<RAGScope, 'global'>, string> = {
   person: '특정 사람을 선택하면 해당 사람과 관련된 대화만 검색합니다.',
   department: '특정 부서를 선택하면 해당 부서와 관련된 대화만 검색합니다.',
   work: '특정 업무를 선택하면 해당 업무와 관련된 대화만 검색합니다.',
-  project: '특정 프로젝트를 선택하면 해당 프로젝트와 관련된 대화만 검색합니다.',
 };
 
 export default function RAG() {

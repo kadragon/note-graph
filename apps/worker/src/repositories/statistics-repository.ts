@@ -92,7 +92,6 @@ export class StatisticsRepository {
         wn.title,
         wn.content_raw as contentRaw,
         wn.category,
-        wn.project_id as projectId,
         wn.created_at as createdAt,
         wn.updated_at as updatedAt,
         wn.embedded_at as embeddedAt,

@@ -27,21 +27,17 @@ export type { WorkNote, WorkNoteWithStats } from './models/work-note';
 export type {
   AIGatewayLogQueryParams,
   AIGenerateDraftRequest,
-  AssignWorkNoteRequest,
   CreateDepartmentRequest,
   CreatePersonRequest,
-  CreateProjectRequest,
   CreateTaskCategoryRequest,
   CreateTodoRequest,
   CreateWorkNoteRequest,
   ImportPersonFromTextRequest,
-  ProjectFilters,
   RAGQueryRequest,
   SearchRequest,
   StatisticsQueryParams,
   UpdateDepartmentRequest,
   UpdatePersonRequest,
-  UpdateProjectRequest,
   UpdateTaskCategoryRequest,
   UpdateTodoRequest,
   UpdateWorkNoteRequest,
@@ -58,15 +54,7 @@ import type {
 import type { Department } from '@shared/types/department';
 import type { PdfJobResponse, PdfJobStatus, WorkNoteDraft } from '@shared/types/pdf';
 import type { EmploymentStatus, Person, PersonDeptHistory } from '@shared/types/person';
-import type {
-  Project,
-  ProjectDetail,
-  ProjectFile,
-  ProjectParticipant,
-  ProjectParticipantRole,
-  ProjectStats,
-  ProjectStatus,
-} from '@shared/types/project';
+
 import type {
   DepartmentSearchItem,
   ExistingTodoSummary,
@@ -104,15 +92,7 @@ export interface WorkNoteFilesResponse {
   files: WorkNoteFile[];
   googleDriveConfigured: boolean;
 }
-export type {
-  Project,
-  ProjectDetail,
-  ProjectFile,
-  ProjectParticipant,
-  ProjectParticipantRole,
-  ProjectStats,
-  ProjectStatus,
-};
+
 export type { CategoryDistribution, DepartmentDistribution, PersonDistribution, StatisticsPeriod };
 
 // Type aliases for legacy compatibility
@@ -189,7 +169,6 @@ export interface WorkNoteStatisticsItem {
   title: string;
   contentRaw: string;
   category: string | null;
-  projectId: string | null;
   createdAt: string;
   updatedAt: string;
   embeddedAt: string | null;

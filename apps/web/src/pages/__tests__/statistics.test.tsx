@@ -89,7 +89,6 @@ describe('statistics page', () => {
             contentRaw: '',
             category: '일반',
             categoryName: null,
-            projectId: null,
             createdAt: '2025-01-01T09:00:00.000Z',
             completedTodoCount: 1,
             totalTodoCount: 2,

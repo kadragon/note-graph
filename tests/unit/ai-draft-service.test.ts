@@ -720,7 +720,6 @@ describe('AIDraftService', () => {
         title: '프로젝트 기획',
         contentRaw: '기존 내용',
         category: '기획',
-        projectId: null,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         embeddedAt: null,
@@ -892,7 +891,7 @@ describe('AIDraftService', () => {
         title: '프로젝트 기획',
         contentRaw: '기존 프로젝트 내용입니다.',
         category: '기획',
-        projectId: null,
+
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         embeddedAt: null,
@@ -943,7 +942,7 @@ describe('AIDraftService', () => {
         title: '테스트 제목',
         contentRaw: '테스트 내용',
         category: '테스트',
-        projectId: null,
+
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         embeddedAt: null,
@@ -987,7 +986,7 @@ describe('AIDraftService', () => {
         title: '업무',
         contentRaw: '내용',
         category: '업무',
-        projectId: null,
+
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         embeddedAt: null,
@@ -1012,7 +1011,7 @@ describe('AIDraftService', () => {
         title: '업무',
         contentRaw: '내용',
         category: '업무',
-        projectId: null,
+
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         embeddedAt: null,

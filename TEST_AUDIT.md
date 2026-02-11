@@ -31,8 +31,7 @@
 1. `tests/unit/person-repository.test.ts` - 259
 2. `tests/unit/work-note-file-service.test.ts` - 251
 3. `tests/unit/department-repository.test.ts` - 245
-4. `tests/integration/project-crud.test.ts` - 210
-5. `tests/unit/work-note-repository.crud.test.ts` - 201
+4. `tests/unit/work-note-repository.crud.test.ts` - 201
 6. `tests/unit/schemas.test.ts` - 167
 7. `tests/unit/pdf-job-repository.test.ts` - 163
 8. `tests/search.test.ts` - 156
@@ -42,13 +41,11 @@
 ### Slowest Files (Web Top 10, ms)
 1. `apps/web/src/pages/work-notes/components/__tests__/create-work-note-dialog.test.tsx` - 1539
 2. `apps/web/src/pages/__tests__/person-dialog.test.tsx` - 1258
-3. `apps/web/src/hooks/__tests__/use-projects.mutations.test.ts` - 1184
-4. `apps/web/src/hooks/__tests__/use-todos.test.ts` - 1097
+3. `apps/web/src/hooks/__tests__/use-todos.test.ts` - 1097
 5. `apps/web/src/pages/work-notes/components/__tests__/view-work-note-dialog.test.tsx` - 1094
 6. `apps/web/src/pages/work-notes/components/__tests__/work-note-file-list.test.tsx` - 924
 7. `apps/web/src/pages/dashboard/components/__tests__/edit-todo-dialog.test.tsx` - 783
-8. `apps/web/src/hooks/__tests__/use-projects.query.test.ts` - 752
-9. `apps/web/src/components/__tests__/draft-editor-form.test.tsx` - 666
+8. `apps/web/src/components/__tests__/draft-editor-form.test.tsx` - 666
 10. `apps/web/src/App.test.tsx` - 654
 
 ### Target
@@ -87,10 +84,8 @@ Note: Domain tagging is based on file naming patterns; confirm during validity r
   - `apps/web/src/pages/__tests__/work-notes.test.tsx`
   - `apps/web/src/pages/work-notes/components/__tests__/view-work-note-dialog.test.tsx`
   - `apps/web/src/pages/work-notes/components/__tests__/work-note-file-list.test.tsx`
-  - `tests/integration/project-work-notes.test.ts`
   - `tests/integration/work-note-file-view.test.ts`
   - `tests/integration/work-note-gdrive-integration.test.ts`
-  - `tests/integration/work-note-project-association.test.ts`
   - `tests/unit/pdf-extraction-service.test.ts`
   - `tests/unit/pdf-job-repository.test.ts`
   - `tests/unit/work-note-file-service.test.ts`
@@ -101,21 +96,6 @@ Note: Domain tagging is based on file naming patterns; confirm during validity r
   - `tests/unit/work-note-repository.versions.test.ts`
   - `tests/unit/work-note-service.test.ts`
   - `tests/unit/work-notes-sort.test.ts`
-
-- projects (13)
-  - `apps/web/src/hooks/__tests__/use-projects.errors.test.ts`
-  - `apps/web/src/hooks/__tests__/use-projects.mutations.test.ts`
-  - `apps/web/src/hooks/__tests__/use-projects.query.test.ts`
-  - `apps/web/src/pages/__tests__/projects.test.tsx`
-  - `tests/integration/project-crud.test.ts`
-  - `tests/integration/project-files.test.ts`
-  - `tests/integration/project-participants.test.ts`
-  - `tests/unit/migration-project-management.test.ts`
-  - `tests/unit/project-file-service.test.ts`
-  - `tests/unit/project-repository.associations.test.ts`
-  - `tests/unit/project-repository.crud.test.ts`
-  - `tests/unit/project-repository.query.test.ts`
-  - `tests/unit/rag-service.project.test.ts`
 
 - todos (10)
   - `apps/web/src/hooks/__tests__/use-task-categories.test.ts`
@@ -330,19 +310,6 @@ Same assertions tested across multiple files or in similar structures.
   3. `todo-repository.filtering.test.ts`
   4. `todo-repository.grouping.test.ts`
 
-#### `tests/unit/project-repository.test.ts` (782 lines)
-- **Verdict**: **SPLIT into 3 suites**:
-  1. `project-repository.crud.test.ts`
-  2. `project-repository.associations.test.ts`
-  3. `project-repository.files.test.ts`
-
-#### `apps/web/src/hooks/__tests__/use-projects.test.ts` (990 lines)
-- **Current Coverage**: fetch list, CRUD mutations, error handling, filtering, pagination.
-- **Verdict**: **SPLIT into 4 suites**:
-  1. `use-projects.query.test.ts` (fetch, filtering, pagination)
-  2. `use-projects.mutations.test.ts` (create, update, delete)
-  3. `use-projects.errors.test.ts` (error handling, toast feedback)
-
 #### `apps/web/src/hooks/__tests__/use-work-notes.test.ts` (717 lines)
 - **Verdict**: **SPLIT into 3 suites**:
   1. `use-work-notes.query.test.ts`
@@ -388,10 +355,6 @@ Tests that only verify internal implementation details (mocks, private methods) 
 - Tests batch operation internals.
 - **Verdict**: Keep **only** end-to-end batch behavior; remove internal queue/timing assertions.
 
-#### `tests/unit/migration-project-management.test.ts` (329 lines)
-- Migration-specific logic.
-- **Verdict**: Keep if covers post-migration state; remove if only mocks upstreamAPIs.
-
 ---
 
 ## Redundancy Summary Table
@@ -404,8 +367,6 @@ Tests that only verify internal implementation details (mocks, private methods) 
 | `apps/web/src/test/factories.test.ts` | 180 | Trivial builder tests | DELETE |
 | `tests/unit/work-note-repository.test.ts` | 908 | Oversized (5 concerns) | SPLIT into 5 suites |
 | `tests/unit/todo-repository.test.ts` | 887 | Oversized (4 concerns) | SPLIT into 4 suites |
-| `tests/unit/project-repository.test.ts` | 782 | Oversized (3 concerns) | SPLIT into 3 suites |
-| `apps/web/src/hooks/__tests__/use-projects.test.ts` | 990 | Oversized (3 concerns) | SPLIT into 3 suites |
 | `apps/web/src/hooks/__tests__/use-work-notes.test.ts` | 717 | Oversized (3 concerns) | SPLIT into 3 suites |
 | `apps/web/src/hooks/__tests__/use-persons.test.ts` | 609 | Oversized (3 concerns) | SPLIT into 3 suites |
 
@@ -424,8 +385,8 @@ Tests that only verify internal implementation details (mocks, private methods) 
 3. **Savings**: ~100 lines of redundant assertions
 
 ### Phase 3: Split Oversized Suites
-1. Split repository tests (work-note, todo, project): 2,577 → 4,000 lines (more readable, focused suites)
-2. Split hook tests (use-projects, use-work-notes, use-persons): 2,316 → 3,000+ lines
+1. Split repository tests (work-note, todo): 1,795 → 3,000 lines (more readable, focused suites)
+2. Split hook tests (use-work-notes, use-persons): 1,326 → 2,000+ lines
 3. **Impact**: Reduce cognitive load; keep test count same but organize by behavior
 
 ### Phase 4: Establish Test Structure Standard

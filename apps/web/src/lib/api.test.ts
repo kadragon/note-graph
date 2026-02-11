@@ -118,44 +118,6 @@ describe('API.getWorkNotes', () => {
   });
 });
 
-describe('API.getProjects', () => {
-  let fetchMock: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue([]),
-    });
-    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
-  });
-
-  it('sends status and year-range filters as query params', async () => {
-    await API.getProjects({
-      status: '진행중',
-      startDateFrom: '2026-01-01',
-      startDateTo: '2026-12-31',
-    });
-
-    const params = new URLSearchParams({
-      status: '진행중',
-      startDateFrom: '2026-01-01',
-      startDateTo: '2026-12-31',
-    });
-    expect(fetchMock).toHaveBeenCalledWith(
-      `/api/projects?${params.toString()}`,
-      expect.any(Object)
-    );
-  });
-
-  it('uses base endpoint when no filters are provided', async () => {
-    await API.getProjects();
-
-    expect(fetchMock).toHaveBeenCalledWith('/api/projects', expect.any(Object));
-  });
-});
-
 describe('API.request error handling', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -669,92 +631,6 @@ describe('API.getTodos', () => {
   });
 });
 
-describe('API.getProjectWorkNotes', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('transforms backend format work notes', async () => {
-    const now = new Date().toISOString();
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue([
-        {
-          workId: 'work-1',
-          title: '프로젝트 업무노트',
-          contentRaw: '내용',
-          category: '업무',
-          createdAt: now,
-          updatedAt: now,
-        },
-      ]),
-    });
-
-    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
-
-    const [note] = await API.getProjectWorkNotes('project-1');
-
-    expect(note.id).toBe('work-1');
-    expect(note.content).toBe('내용');
-  });
-
-  it('passes through already-transformed frontend format', async () => {
-    const now = new Date().toISOString();
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue([
-        {
-          id: 'work-1',
-          title: '프로젝트 업무노트',
-          content: '이미 변환된 내용',
-          category: '업무',
-          createdAt: now,
-          updatedAt: now,
-        },
-      ]),
-    });
-
-    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
-
-    const [note] = await API.getProjectWorkNotes('project-1');
-
-    expect(note.id).toBe('work-1');
-    expect(note.content).toBe('이미 변환된 내용');
-  });
-
-  it('handles mixed format responses using fallbacks', async () => {
-    const now = new Date().toISOString();
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue([
-        {
-          // Has id but no content - needs transformation via fallback
-          id: 'work-1',
-          workId: 'work-1',
-          title: '혼합 형식',
-          contentRaw: '원본 내용',
-          category: null,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ]),
-    });
-
-    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
-
-    const [note] = await API.getProjectWorkNotes('project-1');
-
-    expect(note.id).toBe('work-1');
-    expect(note.content).toBe('원본 내용');
-  });
-});
-
 describe('API.downloadWorkNoteFile', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -790,61 +666,6 @@ describe('API.downloadWorkNoteFile', () => {
 
     await expect(API.downloadWorkNoteFile('work-1', 'file-1')).rejects.toThrow(
       '파일 다운로드 실패: 404'
-    );
-  });
-});
-
-describe('API.downloadProjectFile', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('opens the project download path in a new tab for GDRIVE files', async () => {
-    const fetchMock = vi.fn();
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-
-    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
-
-    await API.downloadProjectFile('project-1', 'file-1', { storageType: 'GDRIVE' });
-
-    expect(openSpy).toHaveBeenCalledWith(
-      '/api/projects/project-1/files/file-1/download',
-      '_blank',
-      'noopener'
-    );
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('returns blob for successful downloads', async () => {
-    const mockBlob = new Blob(['project file'], { type: 'text/plain' });
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      blob: vi.fn().mockResolvedValue(mockBlob),
-    });
-
-    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
-
-    const result = await API.downloadProjectFile('project-1', 'file-1');
-
-    expect(result).toBe(mockBlob);
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/projects/project-1/files/file-1/download',
-      expect.any(Object)
-    );
-  });
-
-  it('throws error with status for failed downloads', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-    });
-
-    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
-
-    await expect(API.downloadProjectFile('project-1', 'file-1')).rejects.toThrow(
-      '파일 다운로드 실패: 500'
     );
   });
 });

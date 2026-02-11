@@ -15,7 +15,7 @@ const Search = lazy(() => import('@web/pages/search'));
 const RAG = lazy(() => import('@web/pages/rag'));
 const PDFUpload = lazy(() => import('@web/pages/pdf-upload'));
 const VectorStore = lazy(() => import('@web/pages/vector-store'));
-const Projects = lazy(() => import('@web/pages/projects'));
+
 const Statistics = lazy(() => import('@web/pages/statistics'));
 const AILogs = lazy(() => import('@web/pages/ai-logs'));
 
@@ -39,7 +39,7 @@ function App() {
               <Route path="/persons" element={<Persons />} />
               <Route path="/departments" element={<Departments />} />
               <Route path="/task-categories" element={<TaskCategories />} />
-              <Route path="/projects" element={<Projects />} />
+
               <Route path="/statistics" element={<Statistics />} />
               <Route path="/search" element={<Search />} />
               <Route path="/rag" element={<RAG />} />

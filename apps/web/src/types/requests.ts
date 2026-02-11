@@ -1,6 +1,5 @@
 import type { AIGatewayLogOrder, AIGatewayLogOrderBy } from '@shared/types/ai-gateway-log';
 import type { EmploymentStatus } from '@shared/types/person';
-import type { ProjectStatus } from '@shared/types/project';
 import type { RagScope } from '@shared/types/search';
 import type { StatisticsPeriod } from '@shared/types/statistics';
 
@@ -110,7 +109,6 @@ export interface RAGQueryRequest {
   personId?: string;
   deptName?: string;
   workId?: string;
-  projectId?: string;
   topK?: number;
 }
 
@@ -120,37 +118,6 @@ export interface AIGenerateDraftRequest {
   category?: string;
   personIds?: string[];
   deptName?: string;
-}
-
-// Project requests
-export interface ProjectFilters {
-  status?: ProjectStatus;
-  startDateFrom?: string;
-  startDateTo?: string;
-}
-
-export interface CreateProjectRequest {
-  name: string;
-  description?: string;
-  status?: ProjectStatus;
-  tags?: string;
-  startDate?: string;
-  deptName?: string;
-  participantIds?: string[];
-}
-
-export interface UpdateProjectRequest {
-  name?: string;
-  description?: string;
-  status?: ProjectStatus;
-  tags?: string;
-  startDate?: string;
-  actualEndDate?: string;
-  deptName?: string;
-}
-
-export interface AssignWorkNoteRequest {
-  workId: string;
 }
 
 // Statistics requests

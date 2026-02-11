@@ -23,7 +23,6 @@ export const createWorkNoteSchema = z.object({
   categoryIds: z.array(z.string()).optional(),
   persons: z.array(workNotePersonSchema).optional(),
   relatedWorkIds: z.array(z.string()).optional(),
-  projectId: z.string().optional(), // Optional project assignment
 });
 
 /**
@@ -36,7 +35,6 @@ export const updateWorkNoteSchema = z.object({
   categoryIds: z.array(z.string()).optional(),
   persons: z.array(workNotePersonSchema).optional(),
   relatedWorkIds: z.array(z.string()).optional(),
-  projectId: z.string().nullable().optional(), // Optional project assignment (use null to unassign)
 });
 
 /**

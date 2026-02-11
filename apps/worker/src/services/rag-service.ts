@@ -110,11 +110,6 @@ export class RagService {
         vectorFilter.work_id = filters.workId as string;
         break;
 
-      case 'project':
-        // projectId is guaranteed to exist due to route-level validation
-        vectorFilter.project_id = filters.projectId as string;
-        break;
-
       case 'person':
         // personId is guaranteed to exist due to route-level validation
         // Note: person_ids is a comma-separated string in metadata
