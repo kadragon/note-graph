@@ -3,6 +3,10 @@
 
 import { enhanceWorkNoteRequestSchema } from '@worker/schemas/ai-draft';
 import { createDepartmentSchema, updateDepartmentSchema } from '@worker/schemas/department';
+import {
+  createMeetingMinuteSchema,
+  updateMeetingMinuteSchema,
+} from '@worker/schemas/meeting-minute';
 import { createPersonSchema, updatePersonSchema } from '@worker/schemas/person';
 import { ragQuerySchema, searchWorkNotesSchema } from '@worker/schemas/search';
 import { createTodoSchema, updateTodoSchema } from '@worker/schemas/todo';
@@ -15,6 +19,49 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('Schema Validation', () => {
+  describe('Meeting Minute Schemas', () => {
+    describe('createMeetingMinuteSchema', () => {
+      it('should require meetingDate, topic, detailsRaw, and at least one attendeePersonId', () => {
+        const invalidData = {
+          meetingDate: '2026-02-10',
+          topic: '주간 회의',
+          detailsRaw: '회의 내용',
+          attendeePersonIds: [],
+        };
+
+        const result = createMeetingMinuteSchema.safeParse(invalidData);
+        expect(result.success).toBe(false);
+
+        if (!result.success) {
+          const paths = result.error.issues.map((issue) => issue.path.join('.'));
+          expect(paths).toContain('attendeePersonIds');
+        }
+      });
+    });
+
+    describe('updateMeetingMinuteSchema', () => {
+      it('should accept partial payload but reject invalid date/topic/details/attendee formats', () => {
+        const validPartial = {
+          topic: '업데이트된 회의 주제',
+        };
+
+        expect(updateMeetingMinuteSchema.safeParse(validPartial).success).toBe(true);
+
+        const invalidCases = [
+          { meetingDate: '2026-2-10' },
+          { topic: '' },
+          { detailsRaw: '' },
+          { attendeePersonIds: ['12345'] },
+          { attendeePersonIds: [] },
+        ];
+
+        for (const invalidCase of invalidCases) {
+          expect(updateMeetingMinuteSchema.safeParse(invalidCase).success).toBe(false);
+        }
+      });
+    });
+  });
+
   describe('Work Note Schemas', () => {
     describe('createWorkNoteSchema', () => {
       it('should validate valid work note creation', () => {
@@ -52,6 +99,26 @@ describe('Schema Validation', () => {
 
         const result = createWorkNoteSchema.safeParse(invalidData);
         expect(result.success).toBe(false);
+      });
+
+      it('should accept relatedMeetingIds in create and update payloads', () => {
+        const createResult = createWorkNoteSchema.safeParse({
+          title: '회의 연계 업무',
+          contentRaw: '회의 내용 기반 업무 정리',
+          relatedMeetingIds: ['MEET-001', 'MEET-002'],
+        });
+        expect(createResult.success).toBe(true);
+        if (createResult.success) {
+          expect(createResult.data.relatedMeetingIds).toEqual(['MEET-001', 'MEET-002']);
+        }
+
+        const updateResult = updateWorkNoteSchema.safeParse({
+          relatedMeetingIds: ['MEET-003'],
+        });
+        expect(updateResult.success).toBe(true);
+        if (updateResult.success) {
+          expect(updateResult.data.relatedMeetingIds).toEqual(['MEET-003']);
+        }
       });
     });
 

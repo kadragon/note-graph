@@ -3,14 +3,21 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { authMiddleware, getAuthUser } from '../middleware/auth';
 import { errorHandler } from '../middleware/error-handler';
+import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { GoogleCalendarService } from '../services/google-calendar-service';
 import { GoogleOAuthService } from '../services/google-oauth-service';
 import type { AppContext } from '../types/context';
 import { DomainError } from '../types/errors';
 
 const calendar = new Hono<AppContext>();
+const calendarMeetingMinuteDraftSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  summary: z.string().optional(),
+  description: z.string().optional(),
+});
 
 // All routes require authentication
 calendar.use('*', authMiddleware);
@@ -63,6 +70,20 @@ calendar.get('/events', async (c) => {
   const events = await calendarService.getEvents(user.email, startDate, endDate, timezoneOffset);
 
   return c.json({ events });
+});
+
+/**
+ * POST /calendar/meeting-minute-draft
+ * Map calendar event fields to meeting-minute draft payload
+ */
+calendar.post('/meeting-minute-draft', bodyValidator(calendarMeetingMinuteDraftSchema), (c) => {
+  const body = getValidatedBody<typeof calendarMeetingMinuteDraftSchema>(c);
+
+  return c.json({
+    meetingDate: body.date,
+    topic: body.summary ?? '',
+    detailsRaw: body.description ?? '',
+  });
 });
 
 export { calendar };

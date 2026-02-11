@@ -51,6 +51,34 @@ export class TaskCategoryRepository {
   }
 
   /**
+   * Find task categories by IDs in a single query
+   */
+  async findByIds(categoryIds: string[]): Promise<TaskCategory[]> {
+    if (categoryIds.length === 0) {
+      return [];
+    }
+
+    const uniqueCategoryIds = [...new Set(categoryIds)];
+    const placeholders = uniqueCategoryIds.map(() => '?').join(', ');
+
+    const result = await this.db
+      .prepare(
+        `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
+         FROM task_categories
+         WHERE category_id IN (${placeholders})`
+      )
+      .bind(...uniqueCategoryIds)
+      .all<TaskCategoryRow>();
+
+    const categoryById = new Map(
+      (result.results || []).map((row) => [row.categoryId, this.toTaskCategory(row)])
+    );
+    return uniqueCategoryIds
+      .map((categoryId) => categoryById.get(categoryId))
+      .filter((category): category is TaskCategory => category !== undefined);
+  }
+
+  /**
    * Find task category by name
    */
   async findByName(name: string): Promise<TaskCategory | null> {

@@ -147,6 +147,64 @@ describe('WorkNoteRepository - CRUD operations', () => {
       expect(details?.relatedWorkNotes[0].relatedWorkId).toBe(relatedWorkId);
     });
 
+    it('should create work note with related meeting references', async () => {
+      // Arrange
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO meeting_minutes (
+            meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'MEET-REL-001',
+          '2026-02-11',
+          '주간 동기화',
+          '회의 내용 1',
+          JSON.stringify(['동기화']),
+          '동기화',
+          '2026-02-11T09:00:00.000Z',
+          '2026-02-11T09:00:00.000Z'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO meeting_minutes (
+            meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'MEET-REL-002',
+          '2026-02-12',
+          '이슈 점검',
+          '회의 내용 2',
+          JSON.stringify(['이슈']),
+          '이슈',
+          '2026-02-12T09:00:00.000Z',
+          '2026-02-12T09:00:00.000Z'
+        ),
+      ]);
+
+      const input: CreateWorkNoteInput = {
+        title: 'Meeting linked note',
+        contentRaw: 'Content',
+        relatedMeetingIds: ['MEET-REL-001', 'MEET-REL-002'],
+      };
+
+      // Act
+      const result = await repository.create(input);
+
+      // Assert
+      const rows = await testEnv.DB.prepare(
+        `SELECT meeting_id as meetingId
+           FROM work_note_meeting_minute
+           WHERE work_id = ?
+           ORDER BY meeting_id ASC`
+      )
+        .bind(result.workId)
+        .all<{ meetingId: string }>();
+
+      expect((rows.results || []).map((row) => row.meetingId)).toEqual([
+        'MEET-REL-001',
+        'MEET-REL-002',
+      ]);
+    });
+
     it('should create first version when creating work note', async () => {
       // Arrange
       const input: CreateWorkNoteInput = {
@@ -343,6 +401,62 @@ describe('WorkNoteRepository - CRUD operations', () => {
       const details = await repository.findByIdWithDetails(existingWorkId);
       expect(details?.relatedWorkNotes.length).toBe(1);
       expect(details?.relatedWorkNotes[0].relatedWorkId).toBe(relatedWorkId);
+    });
+
+    it('should replace meeting links when relatedMeetingIds is provided', async () => {
+      // Arrange
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          `INSERT INTO meeting_minutes (
+            meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'MEET-OLD-001',
+          '2026-02-11',
+          '기존 회의',
+          '기존 내용',
+          JSON.stringify(['기존']),
+          '기존',
+          '2026-02-11T09:00:00.000Z',
+          '2026-02-11T09:00:00.000Z'
+        ),
+        testEnv.DB.prepare(
+          `INSERT INTO meeting_minutes (
+            meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          'MEET-NEW-001',
+          '2026-02-12',
+          '신규 회의',
+          '신규 내용',
+          JSON.stringify(['신규']),
+          '신규',
+          '2026-02-12T09:00:00.000Z',
+          '2026-02-12T09:00:00.000Z'
+        ),
+        testEnv.DB.prepare(
+          'INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES (?, ?)'
+        ).bind(existingWorkId, 'MEET-OLD-001'),
+      ]);
+
+      const update: UpdateWorkNoteInput = {
+        relatedMeetingIds: ['MEET-NEW-001'],
+      };
+
+      // Act
+      await repository.update(existingWorkId, update);
+
+      // Assert
+      const rows = await testEnv.DB.prepare(
+        `SELECT meeting_id as meetingId
+           FROM work_note_meeting_minute
+           WHERE work_id = ?
+           ORDER BY meeting_id ASC`
+      )
+        .bind(existingWorkId)
+        .all<{ meetingId: string }>();
+
+      expect((rows.results || []).map((row) => row.meetingId)).toEqual(['MEET-NEW-001']);
     });
 
     it('should prune old versions after 5 versions', async () => {

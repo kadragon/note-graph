@@ -26,6 +26,7 @@ describe('transformWorkNoteFromBackend', () => {
       categories: [],
       persons: [],
       relatedWorkNotes: [],
+      relatedMeetingMinutes: [],
       files: [],
       createdAt: '2026-01-31T10:00:00Z',
       updatedAt: '2026-01-31T12:00:00Z',

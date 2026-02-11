@@ -15,11 +15,12 @@ import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
 import { Textarea } from '@web/components/ui/textarea';
+import { useMeetingMinutes } from '@web/hooks/use-meeting-minutes';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { useCreateWorkNote } from '@web/hooks/use-work-notes';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 interface CreateWorkNoteDialogProps {
   open: boolean;
@@ -31,12 +32,37 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
   const [title, setTitle] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
+  const [selectedMeetingIds, setSelectedMeetingIds] = useState<string[]>([]);
+  const [meetingFilterQuery, setMeetingFilterQuery] = useState('');
   const [content, setContent] = useState('');
   const { toast } = useToast();
 
   const createMutation = useCreateWorkNote();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
+  const { data: meetingMinutesData, isLoading: meetingMinutesLoading } = useMeetingMinutes(
+    { page: 1, pageSize: 20 },
+    open
+  );
+  const meetingMinutes = meetingMinutesData?.items ?? [];
+  const filteredMeetingMinutes = useMemo(() => {
+    const keyword = meetingFilterQuery.trim().toLowerCase();
+    if (!keyword) {
+      return meetingMinutes;
+    }
+
+    return meetingMinutes.filter((meeting) => {
+      const searchableText =
+        `${meeting.meetingDate} ${meeting.topic} ${meeting.keywords.join(' ')}`.toLowerCase();
+      return searchableText.includes(keyword);
+    });
+  }, [meetingFilterQuery, meetingMinutes]);
+
+  const toggleMeetingSelection = (meetingId: string) => {
+    setSelectedMeetingIds((prev) =>
+      prev.includes(meetingId) ? prev.filter((id) => id !== meetingId) : [...prev, meetingId]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,12 +95,15 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
         content: trimmedContent,
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+        ...(selectedMeetingIds.length > 0 ? { relatedMeetingIds: selectedMeetingIds } : {}),
       });
 
       // Reset form and close dialog
       setTitle('');
       setSelectedCategoryIds([]);
       setSelectedPersonIds([]);
+      setSelectedMeetingIds([]);
+      setMeetingFilterQuery('');
       setContent('');
       setActiveTab('basic');
       onOpenChange(false);
@@ -86,6 +115,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
   const handleDialogOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setActiveTab('basic');
+      setMeetingFilterQuery('');
     }
     onOpenChange(nextOpen);
   };
@@ -146,6 +176,48 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
                     onSelectionChange={setSelectedPersonIds}
                     isLoading={personsLoading}
                   />
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label>관련 회의록 (선택사항)</Label>
+                {meetingMinutesLoading ? (
+                  <p className="text-sm text-muted-foreground">회의록 로딩 중...</p>
+                ) : meetingMinutes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">등록된 회의록이 없습니다.</p>
+                ) : (
+                  <div className="grid gap-2">
+                    <Input
+                      aria-label="회의록 필터"
+                      placeholder="회의록 검색"
+                      value={meetingFilterQuery}
+                      onChange={(e) => setMeetingFilterQuery(e.target.value)}
+                    />
+                    <div className="grid gap-2 border rounded-md p-3 max-h-[140px] overflow-y-auto">
+                      {filteredMeetingMinutes.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
+                      ) : (
+                        filteredMeetingMinutes.map((meeting) => {
+                          const isSelected = selectedMeetingIds.includes(meeting.meetingId);
+                          return (
+                            <label
+                              key={meeting.meetingId}
+                              htmlFor={`create-related-meeting-${meeting.meetingId}`}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <input
+                                id={`create-related-meeting-${meeting.meetingId}`}
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleMeetingSelection(meeting.meetingId)}
+                              />
+                              <span>{meeting.topic}</span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </TabsContent>

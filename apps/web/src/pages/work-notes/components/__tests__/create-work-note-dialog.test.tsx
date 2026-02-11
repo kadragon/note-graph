@@ -1,4 +1,5 @@
 import userEvent from '@testing-library/user-event';
+import { useMeetingMinutes } from '@web/hooks/use-meeting-minutes';
 import { usePersons } from '@web/hooks/use-persons';
 import { useToast } from '@web/hooks/use-toast';
 import { useCreateWorkNote } from '@web/hooks/use-work-notes';
@@ -117,6 +118,37 @@ vi.mock('@web/hooks/use-persons', () => ({
   })),
 }));
 
+vi.mock('@web/hooks/use-meeting-minutes', () => ({
+  useMeetingMinutes: vi.fn(() => ({
+    data: {
+      items: [
+        {
+          meetingId: 'MEET-001',
+          meetingDate: '2026-02-11',
+          topic: '주간 회의',
+          detailsRaw: '주간 진행 공유',
+          keywords: ['주간'],
+          createdAt: '2026-02-11T09:00:00.000Z',
+          updatedAt: '2026-02-11T09:00:00.000Z',
+        },
+        {
+          meetingId: 'MEET-002',
+          meetingDate: '2026-02-12',
+          topic: '기획 리뷰',
+          detailsRaw: '기획 검토 회의',
+          keywords: ['기획'],
+          createdAt: '2026-02-12T09:00:00.000Z',
+          updatedAt: '2026-02-12T09:00:00.000Z',
+        },
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 20,
+    },
+    isLoading: false,
+  })),
+}));
+
 describe('CreateWorkNoteDialog', () => {
   const defaultProps = {
     open: true,
@@ -140,6 +172,34 @@ describe('CreateWorkNoteDialog', () => {
       dismiss: vi.fn(),
       toasts: [],
     });
+    vi.mocked(useMeetingMinutes).mockReturnValue({
+      data: {
+        items: [
+          {
+            meetingId: 'MEET-001',
+            meetingDate: '2026-02-11',
+            topic: '주간 회의',
+            detailsRaw: '주간 진행 공유',
+            keywords: ['주간'],
+            createdAt: '2026-02-11T09:00:00.000Z',
+            updatedAt: '2026-02-11T09:00:00.000Z',
+          },
+          {
+            meetingId: 'MEET-002',
+            meetingDate: '2026-02-12',
+            topic: '기획 리뷰',
+            detailsRaw: '기획 검토 회의',
+            keywords: ['기획'],
+            createdAt: '2026-02-12T09:00:00.000Z',
+            updatedAt: '2026-02-12T09:00:00.000Z',
+          },
+        ],
+        total: 2,
+        page: 1,
+        pageSize: 20,
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMeetingMinutes>);
   });
 
   const openContentTab = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -245,6 +305,28 @@ describe('CreateWorkNoteDialog', () => {
       const assigneeSelector = screen.getByTestId('assignee-selector');
       expect(assigneeSelector).toHaveTextContent('Selected: 1');
     });
+
+    it('filters meeting references with search input', async () => {
+      const user = userEvent.setup();
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      expect(screen.getByLabelText('주간 회의')).toBeInTheDocument();
+      expect(screen.getByLabelText('기획 리뷰')).toBeInTheDocument();
+
+      await user.type(screen.getByRole('textbox', { name: '회의록 필터' }), '기획');
+
+      expect(screen.queryByLabelText('주간 회의')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('기획 리뷰')).toBeInTheDocument();
+    });
+
+    it('shows empty message when no meetings match filter', async () => {
+      const user = userEvent.setup();
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      await user.type(screen.getByRole('textbox', { name: '회의록 필터' }), '없는회의');
+
+      expect(screen.getByText('검색 결과가 없습니다.')).toBeInTheDocument();
+    });
   });
 
   describe('form submission', () => {
@@ -293,6 +375,30 @@ describe('CreateWorkNoteDialog', () => {
           content: '업무노트 내용입니다.',
           categoryIds: ['cat-1'],
           relatedPersonIds: ['person-1'],
+        });
+      });
+    });
+
+    it('submits selected meeting references as relatedMeetingIds', async () => {
+      const user = userEvent.setup();
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      await user.type(screen.getByLabelText('제목'), '회의 연계 업무노트');
+      await user.click(screen.getByLabelText('주간 회의'));
+      await openContentTab(user);
+      await user.type(
+        screen.getByPlaceholderText('업무노트 내용을 입력하세요'),
+        '회의에서 논의된 작업 정리'
+      );
+      await user.click(screen.getByRole('button', { name: '저장' }));
+
+      await waitFor(() => {
+        expect(mockMutateAsync).toHaveBeenCalledWith({
+          title: '회의 연계 업무노트',
+          content: '회의에서 논의된 작업 정리',
+          categoryIds: undefined,
+          relatedPersonIds: undefined,
+          relatedMeetingIds: ['MEET-001'],
         });
       });
     });

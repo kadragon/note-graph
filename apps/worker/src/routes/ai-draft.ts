@@ -19,9 +19,14 @@ import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext, AppVariables } from '../types/context';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
+import {
+  buildMeetingMinutesFtsQuery,
+  mapMeetingMinutesFtsScores,
+} from '../utils/meeting-minutes-fts';
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
+const MEETING_REFERENCES_TOP_K = 5;
 
 type Variables = {
   activeCategoryNames: string[];
@@ -131,7 +136,52 @@ app.post(
       similarityScore: note.similarityScore,
     }));
 
-    return c.json({ draft, references });
+    const ftsQuery = buildMeetingMinutesFtsQuery(body.inputText);
+    const meetingReferences =
+      ftsQuery.length > 0
+        ? (
+            await c.env.DB.prepare(
+              `WITH fts_matches AS (
+                 SELECT rowid, rank
+                 FROM meeting_minutes_fts
+                 WHERE meeting_minutes_fts MATCH ?
+                 ORDER BY rank ASC
+                 LIMIT ?
+               )
+               SELECT
+                 mm.meeting_id as meetingId,
+                 mm.meeting_date as meetingDate,
+                 mm.topic as topic,
+                 mm.keywords_json as keywordsJson,
+                 fts.rank as ftsRank
+               FROM fts_matches fts
+               INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
+               ORDER BY fts.rank ASC`
+            )
+              .bind(ftsQuery, MEETING_REFERENCES_TOP_K)
+              .all<{
+                meetingId: string;
+                meetingDate: string;
+                topic: string;
+                keywordsJson: string;
+                ftsRank: number;
+              }>()
+          ).results || []
+        : [];
+
+    const scoredMeetingReferences = mapMeetingMinutesFtsScores(meetingReferences);
+
+    return c.json({
+      draft,
+      references,
+      meetingReferences: scoredMeetingReferences.map((row) => ({
+        meetingId: row.meetingId,
+        meetingDate: row.meetingDate,
+        topic: row.topic,
+        keywords: JSON.parse(row.keywordsJson || '[]') as string[],
+        score: row.score,
+      })),
+    });
   }
 );
 
