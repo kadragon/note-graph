@@ -45,7 +45,6 @@ export default function WorkNoteGroups() {
   const handleToggleActive = (group: WorkNoteGroup) => {
     toggleActiveMutation.mutate({
       groupId: group.groupId,
-      isActive: !group.isActive,
     });
   };
 

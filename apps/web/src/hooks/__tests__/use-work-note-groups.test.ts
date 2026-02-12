@@ -133,7 +133,7 @@ describe('useWorkNoteGroups', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ groupId: 'grp-1', isActive: false });
+      result.current.mutate({ groupId: 'grp-1' });
     });
 
     await waitFor(() => {

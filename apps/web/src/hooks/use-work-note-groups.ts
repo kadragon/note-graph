@@ -39,19 +39,20 @@ export const useDeleteWorkNoteGroup = createStandardMutation({
   },
 });
 
-// Keep manual implementation - conditional success message based on isActive
+// Keep manual implementation - conditional success message based on server response
 export function useToggleWorkNoteGroupActive() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ groupId }: { groupId: string; isActive: boolean }) =>
-      API.toggleWorkNoteGroupActive(groupId),
-    onSuccess: (_, { isActive }) => {
+    mutationFn: ({ groupId }: { groupId: string }) => API.toggleWorkNoteGroupActive(groupId),
+    onSuccess: (updatedGroup) => {
       void queryClient.invalidateQueries({ queryKey: ['workNoteGroups'] });
       toast({
         title: '성공',
-        description: isActive ? '업무 그룹이 활성화되었습니다.' : '업무 그룹이 비활성화되었습니다.',
+        description: updatedGroup.isActive
+          ? '업무 그룹이 활성화되었습니다.'
+          : '업무 그룹이 비활성화되었습니다.',
       });
     },
     onError: (error: Error) => {
