@@ -135,6 +135,31 @@ describe('AIDraftService', () => {
       );
     });
 
+    it('should include writer role context in draft prompt', async () => {
+      // Arrange
+      const inputText = '업무 내용';
+      const mockDraft = {
+        title: '제목',
+        content: '내용',
+        category: '업무',
+        todos: [],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockDraft) } }],
+        }),
+      });
+
+      // Act
+      await service.generateDraftFromText(inputText);
+
+      // Assert
+      const callBody = mockFetch.mock.calls[0][1].body as string;
+      expect(callBody).toContain('국립대학 정보전산원 전산주사(팀장)');
+    });
+
     it('should throw error when draft is missing required fields', async () => {
       // Arrange
       const inputText = '텍스트';
@@ -611,6 +636,40 @@ describe('AIDraftService', () => {
       expect(callBody).toContain('테스트 제목');
       expect(callBody).toContain('테스트 내용');
     });
+
+    it('should include writer role context in todo suggestion prompt', async () => {
+      // Arrange
+      const workNote: WorkNote = {
+        workId: 'WORK-001',
+        title: '테스트 제목',
+        contentRaw: '테스트 내용',
+        category: '업무',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      const mockTodos = [
+        {
+          title: '할 일',
+          description: '설명',
+          dueDateSuggestion: null,
+        },
+      ];
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockTodos) } }],
+        }),
+      });
+
+      // Act
+      await service.generateTodoSuggestions(workNote);
+
+      // Assert
+      const callBody = mockFetch.mock.calls[0][1].body as string;
+      expect(callBody).toContain('국립대학 정보전산원 전산주사(팀장)');
+    });
   });
 
   describe('due date distribution context prompts', () => {
@@ -978,6 +1037,7 @@ describe('AIDraftService', () => {
       expect(callBody).toContain('테스트 내용');
       expect(callBody).toContain('기존 할 일');
       expect(callBody).toContain('새 내용');
+      expect(callBody).toContain('국립대학 정보전산원 전산주사(팀장)');
     });
 
     it('should throw RateLimitError on 429 status', async () => {
