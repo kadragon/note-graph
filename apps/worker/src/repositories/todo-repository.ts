@@ -57,14 +57,7 @@ export class TodoRepository {
   }
 
   private isEarlierDateValue(left: string, right: string): boolean {
-    const leftMs = Date.parse(left);
-    const rightMs = Date.parse(right);
-
-    if (!Number.isNaN(leftMs) && !Number.isNaN(rightMs)) {
-      return leftMs < rightMs;
-    }
-
-    return left < right;
+    return Date.parse(left) < Date.parse(right);
   }
 
   /**
