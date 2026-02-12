@@ -140,7 +140,7 @@ describe('useWorkNoteGroups', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(API.toggleWorkNoteGroupActive).toHaveBeenCalledWith('grp-1', false);
+    expect(API.toggleWorkNoteGroupActive).toHaveBeenCalledWith('grp-1');
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['workNoteGroups'] });
     expect(mockToast).toHaveBeenCalledWith({
       title: '성공',

@@ -13,6 +13,7 @@ import type {
   WorkNoteRelation,
   WorkNoteVersion,
 } from '@shared/types/work-note';
+import type { WorkNoteGroup } from '@shared/types/work-note-group';
 import { nanoid } from 'nanoid';
 import type {
   CreateWorkNoteInput,
@@ -75,8 +76,8 @@ export class WorkNoteRepository {
       return null;
     }
 
-    // Get associated persons, related work notes, and categories in parallel
-    const [personsResult, relationsResult, categoriesResult] = await Promise.all([
+    // Get associated persons, related work notes, categories, and groups in parallel
+    const [personsResult, relationsResult, categoriesResult, groupsResult] = await Promise.all([
       this.db
         .prepare(
           `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
@@ -107,6 +108,16 @@ export class WorkNoteRepository {
         )
         .bind(workId)
         .all<TaskCategory>(),
+      this.db
+        .prepare(
+          `SELECT g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
+           FROM work_note_groups g
+           INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
+           WHERE wngi.work_id = ?
+           ORDER BY g.name ASC`
+        )
+        .bind(workId)
+        .all<{ groupId: string; name: string; isActive: number; createdAt: string }>(),
     ]);
 
     return {
@@ -114,6 +125,12 @@ export class WorkNoteRepository {
       persons: personsResult.results || [],
       relatedWorkNotes: relationsResult.results || [],
       categories: categoriesResult.results || [],
+      groups: (groupsResult.results || []).map((g) => ({
+        groupId: g.groupId,
+        name: g.name,
+        isActive: g.isActive === 1,
+        createdAt: g.createdAt,
+      })),
     };
   }
 
@@ -240,6 +257,7 @@ export class WorkNoteRepository {
         persons: personsByWorkId.get(workNote.workId) || [],
         relatedWorkNotes: [],
         categories: [],
+        groups: [],
       });
     }
     return result;
@@ -315,9 +333,9 @@ export class WorkNoteRepository {
       return [];
     }
 
-    // Batch fetch categories and persons in parallel using json_each to avoid SQL variable limits
+    // Batch fetch categories, persons, and groups in parallel using json_each to avoid SQL variable limits
     const workIdsJson = JSON.stringify(workIds);
-    const [categoriesResult, personsResult] = await Promise.all([
+    const [categoriesResult, personsResult, groupsResult] = await Promise.all([
       this.db
         .prepare(
           `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
@@ -344,9 +362,26 @@ export class WorkNoteRepository {
         )
         .bind(workIdsJson)
         .all<WorkNotePersonAssociation & { workId: string }>(),
+      this.db
+        .prepare(
+          `SELECT wngi.work_id as workId, g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
+           FROM work_note_groups g
+           INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
+           WHERE wngi.work_id IN (SELECT value FROM json_each(?))
+           ORDER BY g.name ASC`
+        )
+        .bind(workIdsJson)
+        .all<{
+          workId: string;
+          groupId: string;
+          name: string;
+          isActive: number;
+          createdAt: string;
+        }>(),
     ]);
     const categories = categoriesResult.results || [];
     const persons = personsResult.results || [];
+    const groups = groupsResult.results || [];
 
     // Group by workId
     const categoriesByWorkId = new Map<string, TaskCategory[]>();
@@ -379,11 +414,25 @@ export class WorkNoteRepository {
       });
     }
 
+    const groupsByWorkId = new Map<string, WorkNoteGroup[]>();
+    for (const group of groups) {
+      if (!groupsByWorkId.has(group.workId)) {
+        groupsByWorkId.set(group.workId, []);
+      }
+      groupsByWorkId.get(group.workId)?.push({
+        groupId: group.groupId,
+        name: group.name,
+        isActive: group.isActive === 1,
+        createdAt: group.createdAt,
+      });
+    }
+
     return workNotes.map((workNote) => ({
       ...workNote,
       persons: personsByWorkId.get(workNote.workId) || [],
       relatedWorkNotes: [],
       categories: categoriesByWorkId.get(workNote.workId) || [],
+      groups: groupsByWorkId.get(workNote.workId) || [],
     }));
   }
 
@@ -484,6 +533,20 @@ export class WorkNoteRepository {
                VALUES (?, ?)`
             )
             .bind(workId, categoryId)
+        );
+      }
+    }
+
+    // Add group associations
+    if (data.groupIds && data.groupIds.length > 0) {
+      for (const groupId of data.groupIds) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT OR IGNORE INTO work_note_group_items (work_id, group_id)
+               VALUES (?, ?)`
+            )
+            .bind(workId, groupId)
         );
       }
     }
@@ -678,6 +741,26 @@ export class WorkNoteRepository {
                VALUES (?, ?)`
             )
             .bind(workId, categoryId)
+        );
+      }
+    }
+
+    // Update group associations if provided
+    if (data.groupIds !== undefined) {
+      // Delete existing group associations
+      statements.push(
+        this.db.prepare(`DELETE FROM work_note_group_items WHERE work_id = ?`).bind(workId)
+      );
+
+      // Add new group associations
+      for (const groupId of data.groupIds) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT OR IGNORE INTO work_note_group_items (work_id, group_id)
+               VALUES (?, ?)`
+            )
+            .bind(workId, groupId)
         );
       }
     }

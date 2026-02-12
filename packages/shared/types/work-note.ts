@@ -4,6 +4,7 @@
  */
 
 import type { TaskCategory } from './task-category';
+import type { WorkNoteGroup } from './work-note-group';
 
 /**
  * Work note entity
@@ -119,6 +120,7 @@ export interface WorkNoteDetail extends WorkNote {
   persons: WorkNotePersonAssociation[];
   relatedWorkNotes: WorkNoteRelation[];
   categories: TaskCategory[];
+  groups: WorkNoteGroup[];
   versions?: WorkNoteVersion[];
   files?: WorkNoteFile[];
 }

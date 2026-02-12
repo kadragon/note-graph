@@ -9,6 +9,7 @@ export interface CreateWorkNoteRequest {
   content: string; // Will be sent as contentRaw to backend
   category?: string;
   categoryIds?: string[];
+  groupIds?: string[];
   relatedPersonIds?: string[];
   relatedDepartmentIds?: string[];
   relatedWorkIds?: string[];
@@ -19,6 +20,7 @@ export interface UpdateWorkNoteRequest {
   content?: string;
   category?: string;
   categoryIds?: string[];
+  groupIds?: string[];
   relatedPersonIds?: string[];
   relatedDepartmentIds?: string[];
   relatedWorkIds?: string[];

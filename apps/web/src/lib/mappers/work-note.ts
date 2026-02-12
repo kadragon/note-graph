@@ -3,6 +3,7 @@
 
 import type { TaskCategory } from '@shared/types/task-category';
 import type { WorkNoteFile } from '@shared/types/work-note';
+import type { WorkNoteGroup } from '@shared/types/work-note-group';
 import type { WorkNote } from '@web/types/models/work-note';
 
 /**
@@ -15,6 +16,7 @@ export interface BackendWorkNote {
   contentRaw: string;
   category: string | null;
   categories?: TaskCategory[];
+  groups?: WorkNoteGroup[];
   persons?: Array<{
     personId: string;
     personName: string;
@@ -42,6 +44,7 @@ export function transformWorkNoteFromBackend(backendWorkNote: BackendWorkNote): 
     content: backendWorkNote.contentRaw,
     category: backendWorkNote.category || '',
     categories: backendWorkNote.categories || [],
+    groups: backendWorkNote.groups || [],
     persons: backendWorkNote.persons || [],
     relatedWorkNotes: backendWorkNote.relatedWorkNotes || [],
     files: backendWorkNote.files || [],

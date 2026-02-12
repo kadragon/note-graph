@@ -72,6 +72,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
         title: trimmedTitle,
         content: trimmedContent,
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+        groupIds: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
       });
 

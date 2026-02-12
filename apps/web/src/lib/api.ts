@@ -452,12 +452,16 @@ export class APIClient {
 
   async createWorkNote(data: CreateWorkNoteRequest) {
     // Transform content to contentRaw for backend
-    const { content, relatedPersonIds, relatedWorkIds, ...rest } = data;
+    const { content, relatedPersonIds, relatedWorkIds, groupIds, ...rest } = data;
 
     const payload: Record<string, unknown> = {
       ...rest,
       contentRaw: content,
     };
+
+    if (groupIds !== undefined) {
+      payload.groupIds = groupIds;
+    }
 
     this.appendRelationPayload(payload, relatedPersonIds, relatedWorkIds);
 
@@ -470,13 +474,17 @@ export class APIClient {
 
   async updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
     // Transform content to contentRaw for backend if present
-    const { content, relatedPersonIds, relatedWorkIds, ...rest } = data;
+    const { content, relatedPersonIds, relatedWorkIds, groupIds, ...rest } = data;
 
     // Build payload with proper transformations
     const payload: Record<string, unknown> = { ...rest };
 
     if (content !== undefined) {
       payload.contentRaw = content;
+    }
+
+    if (groupIds !== undefined) {
+      payload.groupIds = groupIds;
     }
 
     this.appendRelationPayload(payload, relatedPersonIds, relatedWorkIds);

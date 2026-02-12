@@ -357,6 +357,7 @@ export function ViewWorkNoteDialog({
           title: editTitle.trim(),
           content: editContent.trim(),
           categoryIds: editCategoryIds.length > 0 ? editCategoryIds : undefined,
+          groupIds: editGroupIds,
           // Always send relatedPersonIds (including empty array) to allow clearing all assignees
           relatedPersonIds: editPersonIds,
           ...(relatedWorkNotesLoaded ? { relatedWorkIds } : {}),

@@ -109,6 +109,7 @@ describe('API.getWorkNotes', () => {
       content: '원문 내용',
       category: '',
       categories: [],
+      groups: [],
       persons: [],
       relatedWorkNotes: [],
       files: [],
