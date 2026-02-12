@@ -166,6 +166,24 @@ describe('PersonRepository', () => {
     });
   });
 
+  describe('findByIds()', () => {
+    it('should return persons in input ID order and ignore missing IDs', async () => {
+      const now = new Date().toISOString();
+      await testEnv.DB.batch([
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind('100001', '김가', now, now),
+        testEnv.DB.prepare(
+          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
+        ).bind('100002', '박나', now, now),
+      ]);
+
+      const result = await repository.findByIds(['100002', 'MISSING', '100001']);
+
+      expect(result.map((person) => person.personId)).toEqual(['100002', '100001']);
+    });
+  });
+
   describe('create()', () => {
     it('should create person with minimal fields', async () => {
       // Arrange

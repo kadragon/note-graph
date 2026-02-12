@@ -14,6 +14,7 @@ import aiDraft from './routes/ai-draft';
 import { authGoogle } from './routes/auth-google';
 import { calendar } from './routes/calendar';
 import departments from './routes/departments';
+import meetingMinutes from './routes/meeting-minutes';
 import pdf from './routes/pdf';
 // Route imports
 import persons from './routes/persons';
@@ -68,6 +69,7 @@ api.get('/', (c) => {
       departments: '/api/departments',
       taskCategories: '/api/task-categories',
       workNoteGroups: '/api/work-note-groups',
+      meetingMinutes: '/api/meeting-minutes',
       workNotes: '/api/work-notes',
       todos: '/api/todos',
       search: '/api/search',
@@ -91,6 +93,7 @@ api.route('/persons', persons);
 api.route('/departments', departments);
 api.route('/task-categories', taskCategories);
 api.route('/work-note-groups', workNoteGroups);
+api.route('/meeting-minutes', meetingMinutes);
 api.route('/work-notes', workNotes);
 api.route('/todos', todos);
 api.route('/search', search);

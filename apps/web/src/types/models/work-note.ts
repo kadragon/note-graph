@@ -22,6 +22,12 @@ export interface WorkNote {
     relatedWorkId: string;
     relatedWorkTitle?: string;
   }>;
+  relatedMeetingMinutes?: Array<{
+    meetingId: string;
+    meetingDate: string;
+    topic: string;
+    keywords: string[];
+  }>;
   files?: WorkNoteFile[];
   createdAt: string;
   updatedAt: string;

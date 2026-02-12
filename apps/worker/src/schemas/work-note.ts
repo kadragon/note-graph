@@ -24,6 +24,7 @@ export const createWorkNoteSchema = z.object({
   groupIds: z.array(z.string()).optional(),
   persons: z.array(workNotePersonSchema).optional(),
   relatedWorkIds: z.array(z.string()).optional(),
+  relatedMeetingIds: z.array(z.string()).optional(),
 });
 
 /**
@@ -37,6 +38,7 @@ export const updateWorkNoteSchema = z.object({
   groupIds: z.array(z.string()).optional(),
   persons: z.array(workNotePersonSchema).optional(),
   relatedWorkIds: z.array(z.string()).optional(),
+  relatedMeetingIds: z.array(z.string()).optional(),
 });
 
 /**

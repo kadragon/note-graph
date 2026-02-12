@@ -84,6 +84,36 @@ export class PersonRepository {
   }
 
   /**
+   * Find persons by IDs in a single query
+   */
+  async findByIds(personIds: string[]): Promise<Person[]> {
+    if (personIds.length === 0) {
+      return [];
+    }
+
+    const uniquePersonIds = [...new Set(personIds)];
+    const placeholders = uniquePersonIds.map(() => '?').join(', ');
+
+    const result = await this.db
+      .prepare(
+        `SELECT person_id as personId, name, phone_ext as phoneExt,
+                current_dept as currentDept, current_position as currentPosition,
+                current_role_desc as currentRoleDesc,
+                employment_status as employmentStatus,
+                created_at as createdAt, updated_at as updatedAt
+         FROM persons
+         WHERE person_id IN (${placeholders})`
+      )
+      .bind(...uniquePersonIds)
+      .all<Person>();
+
+    const personById = new Map((result.results || []).map((person) => [person.personId, person]));
+    return uniquePersonIds
+      .map((personId) => personById.get(personId))
+      .filter((person): person is Person => person !== undefined);
+  }
+
+  /**
    * Find all persons with optional search query
    * Sorted by dept → name → position → personId → phoneExt → createdAt
    */

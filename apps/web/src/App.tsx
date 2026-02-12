@@ -8,6 +8,7 @@ import { Route, Routes, useLocation } from 'react-router-dom';
 // Lazy load page components
 const Dashboard = lazy(() => import('@web/pages/dashboard'));
 const WorkNotes = lazy(() => import('@web/pages/work-notes'));
+const MeetingMinutes = lazy(() => import('@web/pages/meeting-minutes'));
 const Persons = lazy(() => import('@web/pages/persons'));
 const Departments = lazy(() => import('@web/pages/departments'));
 const TaskCategories = lazy(() => import('@web/pages/task-categories/task-categories'));
@@ -37,6 +38,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/work-notes" element={<WorkNotes />} />
+              <Route path="/meeting-minutes" element={<MeetingMinutes />} />
               <Route path="/persons" element={<Persons />} />
               <Route path="/departments" element={<Departments />} />
               <Route path="/task-categories" element={<TaskCategories />} />

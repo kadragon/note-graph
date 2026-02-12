@@ -9,6 +9,7 @@ import {
   BotMessageSquare,
   Building2,
   Calendar,
+  ClipboardList,
   Cloud,
   DatabaseZap,
   FolderOpen,
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
   { path: '/', label: '대시보드', icon: Home },
   { path: '/statistics', label: '통계', icon: BarChart3 },
   { path: '/work-notes', label: '업무노트', icon: NotebookPen },
+  { path: '/meeting-minutes', label: '회의록', icon: ClipboardList },
   { path: '/task-categories', label: '업무 구분', icon: Tag },
   { path: '/work-note-groups', label: '업무 그룹', icon: FolderOpen },
 

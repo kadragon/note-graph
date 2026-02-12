@@ -57,6 +57,16 @@ export interface WorkNoteRelation {
 }
 
 /**
+ * Linked meeting minute summary on a work note
+ */
+export interface WorkNoteMeetingMinuteSummary {
+  meetingId: string;
+  meetingDate: string; // YYYY-MM-DD
+  topic: string;
+  keywords: string[];
+}
+
+/**
  * Storage type for work note files
  */
 export type WorkNoteFileStorageType = 'R2' | 'GDRIVE';
@@ -119,6 +129,7 @@ export interface WorkNoteFilesListResponse {
 export interface WorkNoteDetail extends WorkNote {
   persons: WorkNotePersonAssociation[];
   relatedWorkNotes: WorkNoteRelation[];
+  relatedMeetingMinutes?: WorkNoteMeetingMinuteSummary[];
   categories: TaskCategory[];
   groups: WorkNoteGroup[];
   versions?: WorkNoteVersion[];

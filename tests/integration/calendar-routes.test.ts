@@ -289,4 +289,30 @@ describe('Calendar API Routes', () => {
       expect(timeMax).toBe('2026-02-01T14:59:59.000Z');
     });
   });
+
+  describe('POST /api/calendar/meeting-minute-draft', () => {
+    it('maps calendar event date, summary, and description to meeting-minute draft fields', async () => {
+      const response = await authFetch('/api/calendar/meeting-minute-draft', {
+        method: 'POST',
+        body: JSON.stringify({
+          date: '2026-02-14',
+          summary: '주간 점검 회의',
+          description: '주요 이슈와 액션 아이템을 정리합니다.',
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json<{
+        meetingDate: string;
+        topic: string;
+        detailsRaw: string;
+      }>();
+
+      expect(data).toEqual({
+        meetingDate: '2026-02-14',
+        topic: '주간 점검 회의',
+        detailsRaw: '주요 이슈와 액션 아이템을 정리합니다.',
+      });
+    });
+  });
 });

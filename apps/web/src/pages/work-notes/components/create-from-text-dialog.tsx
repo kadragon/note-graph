@@ -53,7 +53,7 @@ export function CreateFromTextDialog({ open, onOpenChange }: CreateFromTextDialo
         personIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
       });
 
-      actions.populateDraft(result.draft, result.references);
+      actions.populateDraft(result.draft, result.references, result.meetingReferences);
       setDraftGenerated(true);
     } catch {
       // Error handled by mutation hook
