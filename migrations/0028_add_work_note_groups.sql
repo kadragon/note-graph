@@ -1,4 +1,4 @@
--- Migration: 0027_add_work_note_groups
+-- Migration: 0028_add_work_note_groups
 -- Description: Add work note groups table and N:M relationship with work notes
 
 -- ============================================================================
