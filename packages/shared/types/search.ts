@@ -40,7 +40,7 @@ export interface RagContextSnippet {
 /**
  * RAG query scope
  */
-export type RagScope = 'global' | 'person' | 'department' | 'work' | 'project';
+export type RagScope = 'global' | 'person' | 'department' | 'work';
 
 /**
  * RAG query filters
@@ -50,7 +50,6 @@ export interface RagQueryFilters {
   personId?: string;
   deptName?: string;
   workId?: string;
-  projectId?: string;
   topK?: number;
 }
 
@@ -117,7 +116,6 @@ export interface ChunkMetadata {
   scope: string;
   person_ids?: string;
   dept_name?: string;
-  project_id?: string;
   category?: string;
   created_at_bucket: string; // YYYY-MM-DD format
   chunk_index: number;

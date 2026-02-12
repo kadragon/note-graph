@@ -174,25 +174,6 @@ const manualSchemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_person_dept_history_is_active ON person_dept_history(is_active)`,
   `CREATE INDEX IF NOT EXISTS idx_person_dept_history_person_active ON person_dept_history(person_id, is_active)`,
 
-  `CREATE TABLE IF NOT EXISTS projects (
-     project_id TEXT PRIMARY KEY,
-     name TEXT NOT NULL,
-     description TEXT,
-     status TEXT NOT NULL DEFAULT '진행중' CHECK (status IN ('진행중', '완료', '보류', '중단')),
-     tags TEXT,
-     start_date TEXT,
-     actual_end_date TEXT,
-     dept_name TEXT REFERENCES departments(dept_name) ON DELETE SET NULL,
-     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-     deleted_at TEXT
-   )`,
-  `CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status) WHERE deleted_at IS NULL`,
-  `CREATE INDEX IF NOT EXISTS idx_projects_dept ON projects(dept_name) WHERE deleted_at IS NULL`,
-  `CREATE INDEX IF NOT EXISTS idx_projects_start_date ON projects(start_date) WHERE deleted_at IS NULL`,
-  `CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at) WHERE deleted_at IS NULL`,
-  `CREATE INDEX IF NOT EXISTS idx_projects_deleted_at ON projects(deleted_at)`,
-
   `CREATE TABLE IF NOT EXISTS work_notes (
      work_id TEXT PRIMARY KEY,
      title TEXT NOT NULL,
@@ -206,9 +187,6 @@ const manualSchemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_work_notes_created_at ON work_notes(created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_work_notes_updated_at ON work_notes(updated_at)`,
   `CREATE INDEX IF NOT EXISTS idx_work_notes_embedded_at ON work_notes(embedded_at)`,
-
-  `ALTER TABLE work_notes ADD COLUMN project_id TEXT REFERENCES projects(project_id) ON DELETE SET NULL`,
-  `CREATE INDEX IF NOT EXISTS idx_work_notes_project_id ON work_notes(project_id)`,
 
   `CREATE TABLE IF NOT EXISTS work_note_person (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -309,43 +287,6 @@ const manualSchemaStatements: string[] = [
      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
    )`,
 
-  `CREATE TABLE IF NOT EXISTS project_participants (
-     id INTEGER PRIMARY KEY AUTOINCREMENT,
-     project_id TEXT NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
-     person_id TEXT NOT NULL REFERENCES persons(person_id) ON DELETE CASCADE,
-     role TEXT NOT NULL DEFAULT '참여자',
-     joined_at TEXT NOT NULL DEFAULT (datetime('now')),
-     UNIQUE(project_id, person_id)
-   )`,
-  `CREATE INDEX IF NOT EXISTS idx_project_participants_project ON project_participants(project_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_project_participants_person ON project_participants(person_id)`,
-
-  `CREATE TABLE IF NOT EXISTS project_work_notes (
-     id INTEGER PRIMARY KEY AUTOINCREMENT,
-     project_id TEXT NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
-     work_id TEXT NOT NULL REFERENCES work_notes(work_id) ON DELETE CASCADE,
-     assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
-     UNIQUE(work_id)
-   )`,
-  `CREATE INDEX IF NOT EXISTS idx_project_work_notes_project ON project_work_notes(project_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_project_work_notes_work ON project_work_notes(work_id)`,
-
-  `CREATE TABLE IF NOT EXISTS project_files (
-     file_id TEXT PRIMARY KEY,
-     project_id TEXT NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
-     r2_key TEXT NOT NULL,
-     original_name TEXT NOT NULL,
-     file_type TEXT NOT NULL,
-     file_size INTEGER NOT NULL,
-     uploaded_by TEXT NOT NULL,
-     uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
-     embedded_at TEXT,
-     deleted_at TEXT
-   )`,
-  `CREATE INDEX IF NOT EXISTS idx_project_files_project ON project_files(project_id) WHERE deleted_at IS NULL`,
-  `CREATE INDEX IF NOT EXISTS idx_project_files_r2_key ON project_files(r2_key)`,
-  `CREATE INDEX IF NOT EXISTS idx_project_files_deleted_at ON project_files(deleted_at)`,
-
   `CREATE TABLE IF NOT EXISTS task_categories (
      category_id TEXT PRIMARY KEY,
      name TEXT NOT NULL UNIQUE,
@@ -402,6 +343,24 @@ const manualSchemaStatements: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_work_note_files_work ON work_note_files(work_id) WHERE deleted_at IS NULL`,
   `CREATE INDEX IF NOT EXISTS idx_work_note_files_r2_key ON work_note_files(r2_key)`,
   `CREATE INDEX IF NOT EXISTS idx_work_note_files_deleted_at ON work_note_files(deleted_at)`,
+
+  // Migration 0027: Work note groups
+  `CREATE TABLE IF NOT EXISTS work_note_groups (
+     group_id TEXT PRIMARY KEY,
+     name TEXT NOT NULL UNIQUE,
+     is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_work_note_groups_name ON work_note_groups(name)`,
+  `CREATE INDEX IF NOT EXISTS idx_work_note_groups_is_active ON work_note_groups(is_active)`,
+  `CREATE TABLE IF NOT EXISTS work_note_group_items (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     work_id TEXT NOT NULL REFERENCES work_notes(work_id) ON DELETE CASCADE,
+     group_id TEXT NOT NULL REFERENCES work_note_groups(group_id) ON DELETE CASCADE,
+     UNIQUE(work_id, group_id)
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_work_note_group_items_work_id ON work_note_group_items(work_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_work_note_group_items_group_id ON work_note_group_items(group_id)`,
 ];
 
 async function executeBatch(db: D1Database, statements: string[]): Promise<void> {

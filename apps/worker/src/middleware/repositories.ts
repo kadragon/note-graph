@@ -12,7 +12,7 @@
  *
  * @description
  * **Repository Instantiation:**
- * - Instantiates 8 repositories (departments, embeddingRetryQueue, pdfJobs, persons, projects, taskCategories, todos)
+ * - Instantiates 7 repositories (departments, embeddingRetryQueue, pdfJobs, persons, taskCategories, todos, workNotes)
  * - Creates a special PersonRepository variant with autoCreateDepartment option
  * - All repositories require a valid database connection (c.env.DB)
  *
@@ -35,9 +35,10 @@ import { DepartmentRepository } from '../repositories/department-repository';
 import { EmbeddingRetryQueueRepository } from '../repositories/embedding-retry-queue-repository';
 import { PdfJobRepository } from '../repositories/pdf-job-repository';
 import { PersonRepository } from '../repositories/person-repository';
-import { ProjectRepository } from '../repositories/project-repository';
+
 import { TaskCategoryRepository } from '../repositories/task-category-repository';
 import { TodoRepository } from '../repositories/todo-repository';
+import { WorkNoteGroupRepository } from '../repositories/work-note-group-repository';
 import type { AppContext, Repositories } from '../types/context';
 
 export async function repositoriesMiddleware(c: Context<AppContext>, next: Next): Promise<void> {
@@ -53,9 +54,10 @@ export async function repositoriesMiddleware(c: Context<AppContext>, next: Next)
     personsWithAutoCreateDepartment: new PersonRepository(c.env.DB, {
       autoCreateDepartment: true,
     }),
-    projects: new ProjectRepository(c.env.DB),
+
     taskCategories: new TaskCategoryRepository(c.env.DB),
     todos: new TodoRepository(c.env.DB),
+    workNoteGroups: new WorkNoteGroupRepository(c.env.DB),
   };
 
   c.set('repositories', repositories);

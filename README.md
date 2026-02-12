@@ -220,7 +220,6 @@ bun run deploy
 - **Departments**: `GET|POST /departments`, `GET|PUT /departments/{deptName}`
 - **Work Notes**: `GET|POST /work-notes`, `GET|PUT|DELETE /work-notes/{workId}`
 - **Todos**: `GET /todos`, `PATCH /todos/{todoId}`
-- **Projects**: `GET|POST /projects`, `GET|PUT|DELETE /projects/{projectId}`
 - **Search**: `POST /search/work-notes`
 - **RAG**: `POST /rag/query`
 - **AI Draft**: `POST /ai/work-notes/draft-from-text`

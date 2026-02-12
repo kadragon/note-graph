@@ -1,6 +1,5 @@
 import type { AIGatewayLogOrder, AIGatewayLogOrderBy } from '@shared/types/ai-gateway-log';
 import type { EmploymentStatus } from '@shared/types/person';
-import type { ProjectStatus } from '@shared/types/project';
 import type { RagScope } from '@shared/types/search';
 import type { StatisticsPeriod } from '@shared/types/statistics';
 
@@ -10,6 +9,7 @@ export interface CreateWorkNoteRequest {
   content: string; // Will be sent as contentRaw to backend
   category?: string;
   categoryIds?: string[];
+  groupIds?: string[];
   relatedPersonIds?: string[];
   relatedDepartmentIds?: string[];
   relatedWorkIds?: string[];
@@ -21,6 +21,7 @@ export interface UpdateWorkNoteRequest {
   content?: string;
   category?: string;
   categoryIds?: string[];
+  groupIds?: string[];
   relatedPersonIds?: string[];
   relatedDepartmentIds?: string[];
   relatedWorkIds?: string[];
@@ -72,6 +73,16 @@ export interface UpdateTaskCategoryRequest {
   isActive?: boolean;
 }
 
+// Work Note Group requests
+export interface CreateWorkNoteGroupRequest {
+  name: string;
+}
+
+export interface UpdateWorkNoteGroupRequest {
+  name?: string;
+  isActive?: boolean;
+}
+
 // Todo requests
 import type { CustomIntervalUnit, RecurrenceType, RepeatRule, TodoStatus } from './models/todo';
 
@@ -112,7 +123,6 @@ export interface RAGQueryRequest {
   personId?: string;
   deptName?: string;
   workId?: string;
-  projectId?: string;
   topK?: number;
 }
 
@@ -122,37 +132,6 @@ export interface AIGenerateDraftRequest {
   category?: string;
   personIds?: string[];
   deptName?: string;
-}
-
-// Project requests
-export interface ProjectFilters {
-  status?: ProjectStatus;
-  startDateFrom?: string;
-  startDateTo?: string;
-}
-
-export interface CreateProjectRequest {
-  name: string;
-  description?: string;
-  status?: ProjectStatus;
-  tags?: string;
-  startDate?: string;
-  deptName?: string;
-  participantIds?: string[];
-}
-
-export interface UpdateProjectRequest {
-  name?: string;
-  description?: string;
-  status?: ProjectStatus;
-  tags?: string;
-  startDate?: string;
-  actualEndDate?: string;
-  deptName?: string;
-}
-
-export interface AssignWorkNoteRequest {
-  workId: string;
 }
 
 // Statistics requests

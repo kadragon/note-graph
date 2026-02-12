@@ -2,6 +2,7 @@
 
 import { AssigneeSelector } from '@web/components/assignee-selector';
 import { CategorySelector } from '@web/components/category-selector';
+import { GroupSelector } from '@web/components/group-selector';
 import { Button } from '@web/components/ui/button';
 import {
   Dialog,
@@ -19,6 +20,7 @@ import { useMeetingMinutes } from '@web/hooks/use-meeting-minutes';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
+import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { useCreateWorkNote } from '@web/hooks/use-work-notes';
 import { useMemo, useState } from 'react';
 
@@ -31,6 +33,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
   const [activeTab, setActiveTab] = useState<'basic' | 'content'>('basic');
   const [title, setTitle] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [selectedMeetingIds, setSelectedMeetingIds] = useState<string[]>([]);
   const [meetingFilterQuery, setMeetingFilterQuery] = useState('');
@@ -39,6 +42,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
 
   const createMutation = useCreateWorkNote();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
+  const { data: workNoteGroups = [], isLoading: groupsLoading } = useWorkNoteGroups(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
   const { data: meetingMinutesData, isLoading: meetingMinutesLoading } = useMeetingMinutes(
     { page: 1, pageSize: 20 },
@@ -94,6 +98,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
         title: trimmedTitle,
         content: trimmedContent,
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+        groupIds: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
         relatedPersonIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
         ...(selectedMeetingIds.length > 0 ? { relatedMeetingIds: selectedMeetingIds } : {}),
       });
@@ -101,6 +106,7 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
       // Reset form and close dialog
       setTitle('');
       setSelectedCategoryIds([]);
+      setSelectedGroupIds([]);
       setSelectedPersonIds([]);
       setSelectedMeetingIds([]);
       setMeetingFilterQuery('');
@@ -160,6 +166,17 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
                   onSelectionChange={setSelectedCategoryIds}
                   isLoading={categoriesLoading}
                   idPrefix="create-category"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>업무 그룹 (선택사항)</Label>
+                <GroupSelector
+                  groups={workNoteGroups}
+                  selectedIds={selectedGroupIds}
+                  onSelectionChange={setSelectedGroupIds}
+                  isLoading={groupsLoading}
+                  idPrefix="create-group"
                 />
               </div>
 

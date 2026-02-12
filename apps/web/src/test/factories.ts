@@ -7,16 +7,12 @@ import type {
   Department,
   DriveFileListItem,
   Person,
-  Project,
-  ProjectDetail,
-  ProjectFile,
-  ProjectParticipant,
-  ProjectStats,
   SearchResult,
   TaskCategory,
   Todo,
   WorkNote,
   WorkNoteFile,
+  WorkNoteGroup,
   WorkNoteWithStats,
 } from '@web/types/api';
 
@@ -129,71 +125,14 @@ export function createTaskCategory(overrides: Partial<TaskCategory> = {}): TaskC
 }
 
 /**
- * Create a mock Project
+ * Create a mock WorkNoteGroup
  */
-export function createProject(overrides: Partial<Project> = {}): Project {
-  const now = generateTimestamp();
+export function createWorkNoteGroup(overrides: Partial<WorkNoteGroup> = {}): WorkNoteGroup {
   return {
-    projectId: generateId('PROJECT'),
-    name: 'Test Project',
-    description: null,
-    status: '진행중',
-    tags: null,
-    startDate: null,
-    actualEndDate: null,
-    deptName: null,
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
-    ...overrides,
-  };
-}
-
-/**
- * Create a mock ProjectStats
- */
-export function createProjectStats(overrides: Partial<ProjectStats> = {}): ProjectStats {
-  return {
-    projectId: generateId('PROJECT'),
-    totalWorkNotes: 0,
-    totalTodos: 0,
-    completedTodos: 0,
-    pendingTodos: 0,
-    onHoldTodos: 0,
-    totalFiles: 0,
-    totalFileSize: 0,
-    lastActivity: null,
-    ...overrides,
-  };
-}
-
-/**
- * Create a mock ProjectParticipant
- */
-export function createProjectParticipant(
-  overrides: Partial<ProjectParticipant> = {}
-): ProjectParticipant {
-  return {
-    id: ++idCounter,
-    projectId: generateId('PROJECT'),
-    personId: String(100000 + idCounter).slice(-6),
-    role: '참여자',
-    joinedAt: generateTimestamp(),
-    ...overrides,
-  };
-}
-
-/**
- * Create a mock ProjectDetail
- */
-export function createProjectDetail(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
-  const project = createProject(overrides);
-  return {
-    ...project,
-    participants: [],
-    workNotes: [],
-    files: [],
-    stats: createProjectStats({ projectId: project.projectId }),
+    groupId: generateId('grp'),
+    name: `Group ${idCounter}`,
+    isActive: true,
+    createdAt: generateTimestamp(),
     ...overrides,
   };
 }
@@ -247,31 +186,6 @@ export function createWorkNoteFile(overrides: Partial<WorkNoteFile> = {}): WorkN
     fileSize: 1024,
     uploadedBy: 'test@example.com',
     uploadedAt: generateTimestamp(),
-    deletedAt: null,
-    ...overrides,
-  };
-}
-
-/**
- * Create a mock ProjectFile
- */
-export function createProjectFile(overrides: Partial<ProjectFile> = {}): ProjectFile {
-  const fileId = generateId('FILE');
-  const projectId = overrides.projectId ?? 'PROJECT-1';
-  return {
-    fileId,
-    projectId,
-    r2Key: `projects/${projectId}/files/${fileId}`,
-    storageType: 'R2',
-    gdriveFileId: null,
-    gdriveFolderId: null,
-    gdriveWebViewLink: null,
-    originalName: 'test-file.pdf',
-    fileType: 'application/pdf',
-    fileSize: 1024,
-    uploadedBy: 'test@example.com',
-    uploadedAt: generateTimestamp(),
-    embeddedAt: null,
     deletedAt: null,
     ...overrides,
   };

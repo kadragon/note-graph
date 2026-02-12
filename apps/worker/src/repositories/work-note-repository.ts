@@ -13,6 +13,7 @@ import type {
   WorkNoteRelation,
   WorkNoteVersion,
 } from '@shared/types/work-note';
+import type { WorkNoteGroup } from '@shared/types/work-note-group';
 import { nanoid } from 'nanoid';
 import type {
   CreateWorkNoteInput,
@@ -55,7 +56,7 @@ export class WorkNoteRepository {
     const result = await this.db
       .prepare(
         `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, project_id as projectId, created_at as createdAt,
+                category, created_at as createdAt,
                 updated_at as updatedAt, embedded_at as embeddedAt
          FROM work_notes
          WHERE work_id = ?`
@@ -75,61 +76,78 @@ export class WorkNoteRepository {
       return null;
     }
 
-    // Get associated persons, related work notes, categories, and meeting links in parallel
-    const [personsResult, relationsResult, categoriesResult, meetingsResult] = await Promise.all([
-      this.db
-        .prepare(
-          `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
+    // Get associated persons, related work notes, categories, groups, and meeting links in parallel
+    const [personsResult, relationsResult, categoriesResult, groupsResult, meetingsResult] =
+      await Promise.all([
+        this.db
+          .prepare(
+            `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
                   wnp.role, p.name as personName, p.current_dept as currentDept,
                   p.current_position as currentPosition, p.phone_ext as phoneExt
            FROM work_note_person wnp
            INNER JOIN persons p ON wnp.person_id = p.person_id
            WHERE wnp.work_id = ?`
-        )
-        .bind(workId)
-        .all<WorkNotePersonAssociation>(),
-      this.db
-        .prepare(
-          `SELECT wnr.id, wnr.work_id as workId, wnr.related_work_id as relatedWorkId,
+          )
+          .bind(workId)
+          .all<WorkNotePersonAssociation>(),
+        this.db
+          .prepare(
+            `SELECT wnr.id, wnr.work_id as workId, wnr.related_work_id as relatedWorkId,
                   wn.title as relatedWorkTitle
            FROM work_note_relation wnr
            LEFT JOIN work_notes wn ON wnr.related_work_id = wn.work_id
            WHERE wnr.work_id = ?`
-        )
-        .bind(workId)
-        .all<WorkNoteRelation>(),
-      this.db
-        .prepare(
-          `SELECT tc.category_id as categoryId, tc.name, tc.created_at as createdAt
+          )
+          .bind(workId)
+          .all<WorkNoteRelation>(),
+        this.db
+          .prepare(
+            `SELECT tc.category_id as categoryId, tc.name, tc.created_at as createdAt
            FROM task_categories tc
            INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
            WHERE wntc.work_id = ?`
-        )
-        .bind(workId)
-        .all<TaskCategory>(),
-      this.db
-        .prepare(
-          `SELECT mm.meeting_id as meetingId, mm.meeting_date as meetingDate, mm.topic,
+          )
+          .bind(workId)
+          .all<TaskCategory>(),
+        this.db
+          .prepare(
+            `SELECT g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
+           FROM work_note_groups g
+           INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
+           WHERE wngi.work_id = ?
+           ORDER BY g.name ASC`
+          )
+          .bind(workId)
+          .all<{ groupId: string; name: string; isActive: number; createdAt: string }>(),
+        this.db
+          .prepare(
+            `SELECT mm.meeting_id as meetingId, mm.meeting_date as meetingDate, mm.topic,
                   mm.keywords_json as keywordsJson
            FROM work_note_meeting_minute wnmm
            INNER JOIN meeting_minutes mm ON mm.meeting_id = wnmm.meeting_id
            WHERE wnmm.work_id = ?
            ORDER BY mm.meeting_date DESC, mm.updated_at DESC, mm.meeting_id DESC`
-        )
-        .bind(workId)
-        .all<{
-          meetingId: string;
-          meetingDate: string;
-          topic: string;
-          keywordsJson: string;
-        }>(),
-    ]);
+          )
+          .bind(workId)
+          .all<{
+            meetingId: string;
+            meetingDate: string;
+            topic: string;
+            keywordsJson: string;
+          }>(),
+      ]);
 
     return {
       ...workNote,
       persons: personsResult.results || [],
       relatedWorkNotes: relationsResult.results || [],
       categories: categoriesResult.results || [],
+      groups: (groupsResult.results || []).map((g) => ({
+        groupId: g.groupId,
+        name: g.name,
+        isActive: g.isActive === 1,
+        createdAt: g.createdAt,
+      })),
       relatedMeetingMinutes: (meetingsResult.results || []).map((meeting) => ({
         meetingId: meeting.meetingId,
         meetingDate: meeting.meetingDate,
@@ -154,7 +172,7 @@ export class WorkNoteRepository {
       const result = await this.db
         .prepare(
           `SELECT work_id as workId, title, content_raw as contentRaw,
-                  category, project_id as projectId, created_at as createdAt,
+                  category, created_at as createdAt,
                   updated_at as updatedAt, embedded_at as embeddedAt
            FROM work_notes
            WHERE work_id IN (${placeholders})`
@@ -218,7 +236,7 @@ export class WorkNoteRepository {
         const result = await this.db
           .prepare(
             `SELECT work_id as workId, title, content_raw as contentRaw,
-                    category, project_id as projectId, created_at as createdAt,
+                    category, created_at as createdAt,
                     updated_at as updatedAt, embedded_at as embeddedAt
              FROM work_notes
              WHERE work_id IN (${placeholders})`
@@ -269,6 +287,7 @@ export class WorkNoteRepository {
         persons: personsByWorkId.get(workNote.workId) || [],
         relatedWorkNotes: [],
         categories: [],
+        groups: [],
       });
     }
     return result;
@@ -280,7 +299,7 @@ export class WorkNoteRepository {
   async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
     let sql = `
       SELECT DISTINCT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
-             wn.category, wn.project_id as projectId, wn.created_at as createdAt,
+             wn.category, wn.created_at as createdAt,
              wn.updated_at as updatedAt, wn.embedded_at as embeddedAt
       FROM work_notes wn
     `;
@@ -344,9 +363,9 @@ export class WorkNoteRepository {
       return [];
     }
 
-    // Batch fetch categories and persons in parallel using json_each to avoid SQL variable limits
+    // Batch fetch categories, persons, and groups in parallel using json_each to avoid SQL variable limits
     const workIdsJson = JSON.stringify(workIds);
-    const [categoriesResult, personsResult] = await Promise.all([
+    const [categoriesResult, personsResult, groupsResult] = await Promise.all([
       this.db
         .prepare(
           `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
@@ -373,9 +392,26 @@ export class WorkNoteRepository {
         )
         .bind(workIdsJson)
         .all<WorkNotePersonAssociation & { workId: string }>(),
+      this.db
+        .prepare(
+          `SELECT wngi.work_id as workId, g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
+           FROM work_note_groups g
+           INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
+           WHERE wngi.work_id IN (SELECT value FROM json_each(?))
+           ORDER BY g.name ASC`
+        )
+        .bind(workIdsJson)
+        .all<{
+          workId: string;
+          groupId: string;
+          name: string;
+          isActive: number;
+          createdAt: string;
+        }>(),
     ]);
     const categories = categoriesResult.results || [];
     const persons = personsResult.results || [];
+    const groups = groupsResult.results || [];
 
     // Group by workId
     const categoriesByWorkId = new Map<string, TaskCategory[]>();
@@ -408,11 +444,25 @@ export class WorkNoteRepository {
       });
     }
 
+    const groupsByWorkId = new Map<string, WorkNoteGroup[]>();
+    for (const group of groups) {
+      if (!groupsByWorkId.has(group.workId)) {
+        groupsByWorkId.set(group.workId, []);
+      }
+      groupsByWorkId.get(group.workId)?.push({
+        groupId: group.groupId,
+        name: group.name,
+        isActive: group.isActive === 1,
+        createdAt: group.createdAt,
+      });
+    }
+
     return workNotes.map((workNote) => ({
       ...workNote,
       persons: personsByWorkId.get(workNote.workId) || [],
       relatedWorkNotes: [],
       categories: categoriesByWorkId.get(workNote.workId) || [],
+      groups: groupsByWorkId.get(workNote.workId) || [],
     }));
   }
 
@@ -427,18 +477,10 @@ export class WorkNoteRepository {
       // Insert work note
       this.db
         .prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, category, project_id, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)`
         )
-        .bind(
-          workId,
-          data.title,
-          data.contentRaw,
-          data.category || null,
-          data.projectId || null,
-          now,
-          now
-        ),
+        .bind(workId, data.title, data.contentRaw, data.category || null, now, now),
 
       // Insert first version
       this.db
@@ -539,16 +581,18 @@ export class WorkNoteRepository {
       }
     }
 
-    // Add project association if projectId provided
-    if (data.projectId) {
-      statements.push(
-        this.db
-          .prepare(
-            `INSERT INTO project_work_notes (project_id, work_id, assigned_at)
-             VALUES (?, ?, ?)`
-          )
-          .bind(data.projectId, workId, now)
-      );
+    // Add group associations
+    if (data.groupIds && data.groupIds.length > 0) {
+      for (const groupId of data.groupIds) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT OR IGNORE INTO work_note_group_items (work_id, group_id)
+               VALUES (?, ?)`
+            )
+            .bind(workId, groupId)
+        );
+      }
     }
 
     await this.executeBatched(statements);
@@ -559,7 +603,6 @@ export class WorkNoteRepository {
       title: data.title,
       contentRaw: data.contentRaw,
       category: data.category || null,
-      projectId: data.projectId || null,
       createdAt: now,
       updatedAt: now,
       embeddedAt: null,
@@ -594,11 +637,6 @@ export class WorkNoteRepository {
       updateFields.push('category = ?');
       updateParams.push(data.category || null);
     }
-    if (data.projectId !== undefined) {
-      updateFields.push('project_id = ?');
-      updateParams.push(data.projectId || null);
-    }
-
     if (updateFields.length > 0) {
       updateFields.push('updated_at = ?');
       updateFields.push('embedded_at = NULL'); // Reset embedding status on content change
@@ -771,22 +809,22 @@ export class WorkNoteRepository {
       }
     }
 
-    // Update project association if provided
-    if (data.projectId !== undefined) {
-      // Delete existing project association
+    // Update group associations if provided
+    if (data.groupIds !== undefined) {
+      // Delete existing group associations
       statements.push(
-        this.db.prepare(`DELETE FROM project_work_notes WHERE work_id = ?`).bind(workId)
+        this.db.prepare(`DELETE FROM work_note_group_items WHERE work_id = ?`).bind(workId)
       );
 
-      // Add new project association if projectId is not null
-      if (data.projectId) {
+      // Add new group associations
+      for (const groupId of data.groupIds) {
         statements.push(
           this.db
             .prepare(
-              `INSERT INTO project_work_notes (project_id, work_id, assigned_at)
-               VALUES (?, ?, ?)`
+              `INSERT OR IGNORE INTO work_note_group_items (work_id, group_id)
+               VALUES (?, ?)`
             )
-            .bind(data.projectId, workId, now)
+            .bind(workId, groupId)
         );
       }
     }
@@ -800,7 +838,6 @@ export class WorkNoteRepository {
       title: data.title !== undefined ? data.title : existing.title,
       contentRaw: data.contentRaw !== undefined ? data.contentRaw : existing.contentRaw,
       category: data.category !== undefined ? data.category || null : existing.category,
-      projectId: data.projectId !== undefined ? data.projectId || null : existing.projectId,
       updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
       embeddedAt: updateFields.length > 0 ? null : existing.embeddedAt,
     };

@@ -1,7 +1,7 @@
 // Trace: SPEC-worknote-attachments-1, SPEC-refactor-file-service, TASK-057, TASK-058, TASK-066, TASK-REFACTOR-003
 /**
  * Service for managing work note file uploads and Google Drive storage
- * Note: No automatic text extraction or embedding (unlike project files)
+ * Note: No automatic text extraction or embedding
  */
 
 import type {

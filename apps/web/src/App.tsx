@@ -12,11 +12,12 @@ const MeetingMinutes = lazy(() => import('@web/pages/meeting-minutes'));
 const Persons = lazy(() => import('@web/pages/persons'));
 const Departments = lazy(() => import('@web/pages/departments'));
 const TaskCategories = lazy(() => import('@web/pages/task-categories/task-categories'));
+const WorkNoteGroups = lazy(() => import('@web/pages/work-note-groups/work-note-groups'));
 const Search = lazy(() => import('@web/pages/search'));
 const RAG = lazy(() => import('@web/pages/rag'));
 const PDFUpload = lazy(() => import('@web/pages/pdf-upload'));
 const VectorStore = lazy(() => import('@web/pages/vector-store'));
-const Projects = lazy(() => import('@web/pages/projects'));
+
 const Statistics = lazy(() => import('@web/pages/statistics'));
 const AILogs = lazy(() => import('@web/pages/ai-logs'));
 
@@ -41,7 +42,8 @@ function App() {
               <Route path="/persons" element={<Persons />} />
               <Route path="/departments" element={<Departments />} />
               <Route path="/task-categories" element={<TaskCategories />} />
-              <Route path="/projects" element={<Projects />} />
+              <Route path="/work-note-groups" element={<WorkNoteGroups />} />
+
               <Route path="/statistics" element={<Statistics />} />
               <Route path="/search" element={<Search />} />
               <Route path="/rag" element={<RAG />} />

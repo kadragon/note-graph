@@ -45,10 +45,6 @@ vi.mock('@web/pages/vector-store', () => ({
   default: () => <div>Vector Store Page</div>,
 }));
 
-vi.mock('@web/pages/projects', () => ({
-  default: () => <div>Projects Page</div>,
-}));
-
 vi.mock('@web/pages/statistics', () => ({
   default: () => <div>Statistics Page</div>,
 }));

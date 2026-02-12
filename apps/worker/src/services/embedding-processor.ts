@@ -31,7 +31,6 @@ interface ChunkToEmbed {
     chunk_index: number;
     person_ids?: string;
     dept_name?: string;
-    project_id?: string;
     category?: string;
     created_at_bucket: string;
   };
@@ -195,7 +194,7 @@ export class EmbeddingProcessor {
    * Shared logic for retry processing and bulk reindex
    */
   private async embedWorkNote(workNote: WorkNote): Promise<void> {
-    // Get work note details for person_ids, dept_name, and project_id
+    // Get work note details for person_ids and dept_name
     const details = await this.repository.findByIdWithDetails(workNote.workId);
     const personIds = details?.persons.map((p) => p.personId) || [];
     const deptName = await this.repository.getDeptNameForPerson(personIds[0] || '');
@@ -203,7 +202,6 @@ export class EmbeddingProcessor {
     const metadata = {
       person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
       dept_name: deptName || undefined,
-      project_id: workNote.projectId || undefined,
       category: workNote.category || undefined,
       created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
     };
@@ -372,7 +370,6 @@ export class EmbeddingProcessor {
     const metadata = {
       person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
       dept_name: deptName,
-      project_id: workNote.projectId || undefined,
       category: workNote.category || undefined,
       created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
     };
@@ -470,7 +467,7 @@ export class EmbeddingProcessor {
 
   /**
    * Upsert chunks into Vectorize with embeddings
-   * Public method for reuse across services (WorkNoteService, ProjectFileService)
+   * Public method for reuse across services (WorkNoteService)
    */
   async upsertChunks(
     chunks: Array<{ id: string; text: string; metadata: ChunkMetadata }>
@@ -499,7 +496,7 @@ export class EmbeddingProcessor {
 
   /**
    * Delete stale chunks for a work note (chunks not in the new chunk ID set)
-   * Public method for reuse across services (WorkNoteService, ProjectFileService)
+   * Public method for reuse across services (WorkNoteService)
    */
   async deleteStaleChunks(workId: string, newChunkIds: Set<string>): Promise<void> {
     try {

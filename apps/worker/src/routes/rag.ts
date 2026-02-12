@@ -30,10 +30,6 @@ app.post('/query', bodyValidator(RagQueryRequestSchema), async (c) => {
   if (body.scope === 'work' && !body.workId) {
     throw new BadRequestError('workId is required for work scope');
   }
-  if (body.scope === 'project' && !body.projectId) {
-    throw new BadRequestError('projectId is required for project scope');
-  }
-
   // Execute RAG query
   const ragService = new RagService(c.env);
 
@@ -42,7 +38,6 @@ app.post('/query', bodyValidator(RagQueryRequestSchema), async (c) => {
     personId: body.personId,
     deptName: body.deptName,
     workId: body.workId,
-    projectId: body.projectId,
     topK: body.topK,
   });
 

@@ -18,12 +18,13 @@ import meetingMinutes from './routes/meeting-minutes';
 import pdf from './routes/pdf';
 // Route imports
 import persons from './routes/persons';
-import { projects } from './routes/projects';
+
 import rag from './routes/rag';
 import search from './routes/search';
 import statistics from './routes/statistics';
 import taskCategories from './routes/task-categories';
 import todos from './routes/todos';
+import workNoteGroups from './routes/work-note-groups';
 import workNotes from './routes/work-notes';
 import type { AppContext } from './types/context';
 import type { Env } from './types/env';
@@ -67,9 +68,8 @@ api.get('/', (c) => {
       persons: '/api/persons',
       departments: '/api/departments',
       taskCategories: '/api/task-categories',
+      workNoteGroups: '/api/work-note-groups',
       meetingMinutes: '/api/meeting-minutes',
-      projects: '/api/projects',
-      projectFiles: '/api/projects/:projectId/files',
       workNotes: '/api/work-notes',
       todos: '/api/todos',
       search: '/api/search',
@@ -92,8 +92,8 @@ api.get('/me', authMiddleware, getMeHandler);
 api.route('/persons', persons);
 api.route('/departments', departments);
 api.route('/task-categories', taskCategories);
+api.route('/work-note-groups', workNoteGroups);
 api.route('/meeting-minutes', meetingMinutes);
-api.route('/projects', projects);
 api.route('/work-notes', workNotes);
 api.route('/todos', todos);
 api.route('/search', search);

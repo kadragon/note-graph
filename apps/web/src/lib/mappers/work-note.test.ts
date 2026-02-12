@@ -24,6 +24,7 @@ describe('transformWorkNoteFromBackend', () => {
       content: '업무 내용입니다.',
       category: '일반',
       categories: [],
+      groups: [],
       persons: [],
       relatedWorkNotes: [],
       relatedMeetingMinutes: [],

@@ -4,8 +4,14 @@ import { TODO_STATUS } from '@web/constants/todo-status';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useDeleteTodo, useToggleTodo } from '@web/hooks/use-todos';
+import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { useUpdateWorkNote } from '@web/hooks/use-work-notes';
-import { createTaskCategory, createTodo, createWorkNote } from '@web/test/factories';
+import {
+  createTaskCategory,
+  createTodo,
+  createWorkNote,
+  createWorkNoteGroup,
+} from '@web/test/factories';
 import { render, screen } from '@web/test/setup';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -126,6 +132,10 @@ vi.mock('@web/hooks/use-task-categories', () => ({
   useTaskCategories: vi.fn(),
 }));
 
+vi.mock('@web/hooks/use-work-note-groups', () => ({
+  useWorkNoteGroups: vi.fn(),
+}));
+
 vi.mock('@web/hooks/use-persons', () => ({
   usePersons: vi.fn(),
 }));
@@ -190,6 +200,11 @@ describe('ViewWorkNoteDialog', () => {
       data: [],
       isLoading: false,
     } as unknown as ReturnType<typeof usePersons>);
+
+    vi.mocked(useWorkNoteGroups).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteGroups>);
   });
 
   it('shows selected inactive categories in edit mode', async () => {
@@ -651,5 +666,34 @@ describe('ViewWorkNoteDialog', () => {
       // Should only render 1 item (진행중), not 3 (보류/중단 filtered out)
       expect(todoItems).toHaveLength(1);
     });
+  });
+
+  it('displays group badges in view mode', async () => {
+    const groups = [
+      createWorkNoteGroup({ groupId: 'grp-1', name: '프로젝트 A' }),
+      createWorkNoteGroup({ groupId: 'grp-2', name: '위원회' }),
+    ];
+    const workNote = createWorkNote({
+      id: 'work-1',
+      title: '업무노트',
+      content: '내용',
+      groups,
+    });
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    mockGetWorkNote.mockResolvedValue({ ...workNote, groups });
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('프로젝트 A')).toBeInTheDocument();
+      expect(screen.getByText('위원회')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('업무 그룹')).toBeInTheDocument();
   });
 });

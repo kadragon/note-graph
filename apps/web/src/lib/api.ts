@@ -6,14 +6,13 @@ import type {
   AIGatewayLogsResponse,
   AIGenerateDraftRequest,
   AIGenerateDraftResponse,
-  AssignWorkNoteRequest,
   BatchProcessResult,
   CalendarEventsResponse,
   CreateDepartmentRequest,
   CreatePersonRequest,
-  CreateProjectRequest,
   CreateTaskCategoryRequest,
   CreateTodoRequest,
+  CreateWorkNoteGroupRequest,
   CreateWorkNoteRequest,
   Department,
   DepartmentSearchResult,
@@ -29,30 +28,25 @@ import type {
   Person,
   PersonDeptHistory,
   PersonSearchResult,
-  Project,
-  ProjectDetail,
-  ProjectFile,
-  ProjectFilters,
-  ProjectStats,
   RAGQueryRequest,
   RAGResponse,
   SearchRequest,
   SearchResult,
   StatisticsQueryParams,
   TaskCategory,
-  Todo,
   TodoView,
   UnifiedSearchResult,
   UpdateDepartmentRequest,
   UpdatePersonRequest,
-  UpdateProjectRequest,
   UpdateTaskCategoryRequest,
   UpdateTodoRequest,
+  UpdateWorkNoteGroupRequest,
   UpdateWorkNoteRequest,
   User,
-  WorkNote,
   WorkNoteFileMigrationResult,
   WorkNoteFilesListResponse,
+  WorkNoteGroup,
+  WorkNoteGroupWorkNote,
   WorkNoteStatistics,
 } from '@web/types/api';
 
@@ -458,12 +452,16 @@ export class APIClient {
 
   async createWorkNote(data: CreateWorkNoteRequest) {
     // Transform content to contentRaw for backend
-    const { content, relatedPersonIds, relatedWorkIds, ...rest } = data;
+    const { content, relatedPersonIds, relatedWorkIds, groupIds, ...rest } = data;
 
     const payload: Record<string, unknown> = {
       ...rest,
       contentRaw: content,
     };
+
+    if (groupIds !== undefined) {
+      payload.groupIds = groupIds;
+    }
 
     this.appendRelationPayload(payload, relatedPersonIds, relatedWorkIds);
 
@@ -476,13 +474,17 @@ export class APIClient {
 
   async updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
     // Transform content to contentRaw for backend if present
-    const { content, relatedPersonIds, relatedWorkIds, ...rest } = data;
+    const { content, relatedPersonIds, relatedWorkIds, groupIds, ...rest } = data;
 
     // Build payload with proper transformations
     const payload: Record<string, unknown> = { ...rest };
 
     if (content !== undefined) {
       payload.contentRaw = content;
+    }
+
+    if (groupIds !== undefined) {
+      payload.groupIds = groupIds;
     }
 
     this.appendRelationPayload(payload, relatedPersonIds, relatedWorkIds);
@@ -646,6 +648,58 @@ export class APIClient {
 
   deleteTaskCategory(categoryId: string) {
     return this.request<void>(`/task-categories/${categoryId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Work Note Groups
+  getWorkNoteGroups(activeOnly?: boolean) {
+    const params = new URLSearchParams();
+    if (activeOnly) params.set('activeOnly', 'true');
+    const queryString = params.toString();
+    return this.request<WorkNoteGroup[]>(
+      `/work-note-groups${queryString ? `?${queryString}` : ''}`
+    );
+  }
+
+  createWorkNoteGroup(data: CreateWorkNoteGroupRequest) {
+    return this.request<WorkNoteGroup>('/work-note-groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  updateWorkNoteGroup(groupId: string, data: UpdateWorkNoteGroupRequest) {
+    return this.request<WorkNoteGroup>(`/work-note-groups/${groupId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteWorkNoteGroup(groupId: string) {
+    return this.request<void>(`/work-note-groups/${groupId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  toggleWorkNoteGroupActive(groupId: string) {
+    return this.request<WorkNoteGroup>(`/work-note-groups/${groupId}/toggle-active`, {
+      method: 'PATCH',
+    });
+  }
+
+  getWorkNoteGroupWorkNotes(groupId: string) {
+    return this.request<WorkNoteGroupWorkNote[]>(`/work-note-groups/${groupId}/work-notes`);
+  }
+
+  addWorkNoteToGroup(groupId: string, workId: string) {
+    return this.request<void>(`/work-note-groups/${groupId}/work-notes/${workId}`, {
+      method: 'POST',
+    });
+  }
+
+  removeWorkNoteFromGroup(groupId: string, workId: string) {
+    return this.request<void>(`/work-note-groups/${groupId}/work-notes/${workId}`, {
       method: 'DELETE',
     });
   }
@@ -957,119 +1011,6 @@ export class APIClient {
 
   getPDFJob(jobId: string) {
     return this.request<PDFJob>(`/pdf-jobs/${jobId}`);
-  }
-
-  // Projects
-  getProjects(filters?: ProjectFilters) {
-    const params = new URLSearchParams();
-    if (filters?.status) params.set('status', filters.status);
-    if (filters?.startDateFrom) params.set('startDateFrom', filters.startDateFrom);
-    if (filters?.startDateTo) params.set('startDateTo', filters.startDateTo);
-    const qs = params.toString();
-    return this.request<Project[]>(`/projects${qs ? `?${qs}` : ''}`);
-  }
-
-  getProject(projectId: string) {
-    return this.request<ProjectDetail>(`/projects/${projectId}`);
-  }
-
-  createProject(data: CreateProjectRequest) {
-    return this.request<Project>('/projects', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  updateProject(projectId: string, data: UpdateProjectRequest) {
-    return this.request<Project>(`/projects/${projectId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  deleteProject(projectId: string) {
-    return this.request<void>(`/projects/${projectId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  getProjectStats(projectId: string) {
-    return this.request<ProjectStats>(`/projects/${projectId}/stats`);
-  }
-
-  getProjectTodos(projectId: string) {
-    return this.request<Todo[]>(`/projects/${projectId}/todos`);
-  }
-
-  // Project Work Notes
-  getProjectWorkNotes(projectId: string) {
-    return this.request<Array<BackendWorkNote & Partial<WorkNote>>>(
-      `/projects/${projectId}/work-notes`
-    ).then((items) =>
-      items.map((wn) => {
-        if ((wn as unknown as WorkNote).content && (wn as unknown as WorkNote).id) {
-          return wn as unknown as WorkNote;
-        }
-        return transformWorkNoteFromBackend({
-          ...wn,
-          workId: wn.workId ?? wn.id,
-          contentRaw: wn.contentRaw ?? wn.content ?? '',
-        } as BackendWorkNote);
-      })
-    );
-  }
-
-  assignWorkNoteToProject(projectId: string, data: AssignWorkNoteRequest) {
-    return this.request<void>(`/projects/${projectId}/work-notes`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  removeWorkNoteFromProject(projectId: string, workId: string) {
-    return this.request<void>(`/projects/${projectId}/work-notes/${workId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Project Files
-  getProjectFiles(projectId: string) {
-    return this.request<ProjectFile[]>(`/projects/${projectId}/files`);
-  }
-
-  uploadProjectFile(projectId: string, file: File) {
-    return this.uploadFile<ProjectFile>(`/projects/${projectId}/files`, file);
-  }
-
-  getProjectFile(projectId: string, fileId: string) {
-    return this.request<ProjectFile>(`/projects/${projectId}/files/${fileId}`);
-  }
-
-  downloadProjectFile(
-    projectId: string,
-    fileId: string,
-    options?: Pick<ProjectFile, 'storageType'>
-  ): Promise<Blob> {
-    const downloadPath = `/projects/${projectId}/files/${fileId}/download`;
-
-    if (options?.storageType === 'GDRIVE') {
-      window.open(`${this.baseURL}${downloadPath}`, '_blank', 'noopener');
-      return Promise.resolve(new Blob());
-    }
-
-    return this._downloadFile(downloadPath);
-  }
-
-  deleteProjectFile(projectId: string, fileId: string) {
-    return this.request<void>(`/projects/${projectId}/files/${fileId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  migrateProjectFiles(projectId: string) {
-    return this.request<WorkNoteFileMigrationResult>(`/projects/${projectId}/files/migrate`, {
-      method: 'POST',
-    });
   }
 
   // Admin - Vector Store Management

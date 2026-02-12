@@ -12,7 +12,7 @@ import {
   ClipboardList,
   Cloud,
   DatabaseZap,
-  FolderKanban,
+  FolderOpen,
   Home,
   Link,
   LogOut,
@@ -38,7 +38,8 @@ const navItems: NavItem[] = [
   { path: '/work-notes', label: '업무노트', icon: NotebookPen },
   { path: '/meeting-minutes', label: '회의록', icon: ClipboardList },
   { path: '/task-categories', label: '업무 구분', icon: Tag },
-  { path: '/projects', label: '프로젝트', icon: FolderKanban },
+  { path: '/work-note-groups', label: '업무 그룹', icon: FolderOpen },
+
   { path: '/persons', label: '사람 관리', icon: Users },
   { path: '/departments', label: '부서 관리', icon: Building2 },
   { path: '/search', label: '검색', icon: Search },

@@ -4,6 +4,7 @@
  */
 
 import type { TaskCategory } from './task-category';
+import type { WorkNoteGroup } from './work-note-group';
 
 /**
  * Work note entity
@@ -13,7 +14,6 @@ export interface WorkNote {
   title: string;
   contentRaw: string;
   category: string | null;
-  projectId: string | null; // FK to projects (optional)
   createdAt: string; // ISO 8601 timestamp
   updatedAt: string; // ISO 8601 timestamp
   embeddedAt: string | null; // ISO 8601 timestamp, null = not embedded
@@ -131,6 +131,7 @@ export interface WorkNoteDetail extends WorkNote {
   relatedWorkNotes: WorkNoteRelation[];
   relatedMeetingMinutes?: WorkNoteMeetingMinuteSummary[];
   categories: TaskCategory[];
+  groups: WorkNoteGroup[];
   versions?: WorkNoteVersion[];
   files?: WorkNoteFile[];
 }

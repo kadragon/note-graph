@@ -1,6 +1,6 @@
-// Trace: SPEC-project-1, TASK-042
+// Trace: TASK-042
 /**
- * File text extraction service for project files
+ * File text extraction service
  * Supports PDF and TXT files in Cloudflare Workers environment
  */
 

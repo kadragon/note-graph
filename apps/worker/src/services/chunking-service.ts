@@ -111,15 +111,9 @@ export class ChunkingService {
    * @param fileId - File ID
    * @param fileName - File name
    * @param content - File text content
-   * @param metadata - Additional metadata (project_id, etc.)
    * @returns Array of text chunks with metadata
    */
-  chunkFileContent(
-    fileId: string,
-    fileName: string,
-    content: string,
-    metadata: { project_id?: string }
-  ): TextChunk[] {
+  chunkFileContent(fileId: string, fileName: string, content: string): TextChunk[] {
     // Include filename for context
     const fullText = `파일명: ${fileName}\n\n${content}`;
 
@@ -137,7 +131,6 @@ export class ChunkingService {
           work_id: fileId, // Use fileId as work_id for consistency
           scope: 'FILE',
           chunk_index: 0,
-          project_id: metadata.project_id,
           created_at_bucket: '', // Empty for file chunks
         },
       });
@@ -160,7 +153,6 @@ export class ChunkingService {
           work_id: fileId, // Use fileId as work_id for consistency
           scope: 'FILE',
           chunk_index: chunkIndex,
-          project_id: metadata.project_id,
           created_at_bucket: '', // Empty for file chunks
         },
       });

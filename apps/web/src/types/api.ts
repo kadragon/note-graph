@@ -27,23 +27,21 @@ export type { WorkNote, WorkNoteWithStats } from './models/work-note';
 export type {
   AIGatewayLogQueryParams,
   AIGenerateDraftRequest,
-  AssignWorkNoteRequest,
   CreateDepartmentRequest,
   CreatePersonRequest,
-  CreateProjectRequest,
   CreateTaskCategoryRequest,
   CreateTodoRequest,
+  CreateWorkNoteGroupRequest,
   CreateWorkNoteRequest,
   ImportPersonFromTextRequest,
-  ProjectFilters,
   RAGQueryRequest,
   SearchRequest,
   StatisticsQueryParams,
   UpdateDepartmentRequest,
   UpdatePersonRequest,
-  UpdateProjectRequest,
   UpdateTaskCategoryRequest,
   UpdateTodoRequest,
+  UpdateWorkNoteGroupRequest,
   UpdateWorkNoteRequest,
 } from './requests';
 
@@ -58,15 +56,7 @@ import type {
 import type { Department } from '@shared/types/department';
 import type { PdfJobResponse, PdfJobStatus, WorkNoteDraft } from '@shared/types/pdf';
 import type { EmploymentStatus, Person, PersonDeptHistory } from '@shared/types/person';
-import type {
-  Project,
-  ProjectDetail,
-  ProjectFile,
-  ProjectParticipant,
-  ProjectParticipantRole,
-  ProjectStats,
-  ProjectStatus,
-} from '@shared/types/project';
+
 import type {
   DepartmentSearchItem,
   ExistingTodoSummary,
@@ -90,7 +80,10 @@ import type {
   WorkNoteFilesListResponse,
 } from '@shared/types/work-note';
 
+import type { WorkNoteGroup, WorkNoteGroupWorkNote } from '@shared/types/work-note-group';
+
 export type { Department, TaskCategory };
+export type { WorkNoteGroup, WorkNoteGroupWorkNote };
 export type { EmploymentStatus, Person, PersonDeptHistory };
 export type { AIGatewayLogItem, AIGatewayLogsPagination, AIGatewayLogsResponse };
 export type {
@@ -104,15 +97,7 @@ export interface WorkNoteFilesResponse {
   files: WorkNoteFile[];
   googleDriveConfigured: boolean;
 }
-export type {
-  Project,
-  ProjectDetail,
-  ProjectFile,
-  ProjectParticipant,
-  ProjectParticipantRole,
-  ProjectStats,
-  ProjectStatus,
-};
+
 export type { CategoryDistribution, DepartmentDistribution, PersonDistribution, StatisticsPeriod };
 
 // Type aliases for legacy compatibility
@@ -198,7 +183,6 @@ export interface WorkNoteStatisticsItem {
   title: string;
   contentRaw: string;
   category: string | null;
-  projectId: string | null;
   createdAt: string;
   updatedAt: string;
   embeddedAt: string | null;
