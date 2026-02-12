@@ -56,6 +56,10 @@ export class TodoRepository {
     return result;
   }
 
+  private isEarlierDateValue(left: string, right: string): boolean {
+    return Date.parse(left) < Date.parse(right);
+  }
+
   /**
    * Calculate next due date based on recurrence strategy
    */
@@ -448,6 +452,12 @@ export class TodoRepository {
     }
     const nextWaitUntil =
       data.waitUntil !== undefined ? data.waitUntil || null : existing.waitUntil;
+    const nextDueDate = data.dueDate !== undefined ? data.dueDate || null : existing.dueDate;
+    const shouldClampDueDateToWaitUntil =
+      nextDueDate !== null &&
+      nextWaitUntil !== null &&
+      this.isEarlierDateValue(nextDueDate, nextWaitUntil);
+
     // Auto-fill due_date from wait_until when:
     // 1. User is setting wait_until in this update
     // 2. User didn't provide due_date in this update
@@ -458,11 +468,11 @@ export class TodoRepository {
       data.waitUntil !== undefined &&
       data.dueDate === undefined &&
       nextWaitUntil !== null &&
-      (!existing.dueDate || existing.dueDate < nextWaitUntil);
+      (!existing.dueDate || this.isEarlierDateValue(existing.dueDate, nextWaitUntil));
 
     if (data.dueDate !== undefined) {
       updateFields.push('due_date = ?');
-      updateParams.push(data.dueDate || null);
+      updateParams.push(shouldClampDueDateToWaitUntil ? nextWaitUntil : nextDueDate);
     } else if (shouldAutoFillDueDate) {
       updateFields.push('due_date = ?');
       updateParams.push(nextWaitUntil);
@@ -554,7 +564,9 @@ export class TodoRepository {
 
     const resultingDueDate =
       data.dueDate !== undefined
-        ? data.dueDate || null
+        ? shouldClampDueDateToWaitUntil
+          ? nextWaitUntil
+          : nextDueDate
         : shouldAutoFillDueDate
           ? nextWaitUntil
           : existing.dueDate;

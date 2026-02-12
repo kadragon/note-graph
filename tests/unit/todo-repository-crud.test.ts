@@ -239,6 +239,22 @@ describe('TodoRepository - CRUD Operations', () => {
       expect(result.dueDate).toBe(newWaitUntil);
     });
 
+    it('should clamp dueDate to waitUntil when both fields are provided and dueDate is earlier', async () => {
+      // Arrange
+      const earlierDueDate = new Date('2025-12-01T00:00:00.000Z').toISOString();
+      const laterWaitUntil = new Date('2025-12-10T00:00:00.000Z').toISOString();
+
+      // Act
+      const result = await repository.update(existingTodoId, {
+        dueDate: earlierDueDate,
+        waitUntil: laterWaitUntil,
+      });
+
+      // Assert
+      expect(result.waitUntil).toBe(laterWaitUntil);
+      expect(result.dueDate).toBe(laterWaitUntil);
+    });
+
     it('should update status', async () => {
       // Arrange
       const update: UpdateTodoInput = {
