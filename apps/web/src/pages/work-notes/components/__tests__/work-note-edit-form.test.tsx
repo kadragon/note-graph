@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { createPerson, createTaskCategory } from '@web/test/factories';
+import { createPerson, createTaskCategory, createWorkNoteGroup } from '@web/test/factories';
 import { render, screen } from '@web/test/setup';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -50,11 +50,14 @@ describe('WorkNoteEditForm', () => {
     title: '테스트 제목',
     content: '테스트 내용',
     categoryIds: [] as string[],
+    groupIds: [] as string[],
     personIds: [] as string[],
     categories: [createTaskCategory({ categoryId: 'cat-1', name: '기본', isActive: true })],
+    groups: [createWorkNoteGroup({ groupId: 'grp-1', name: '프로젝트 A', isActive: true })],
     persons: [createPerson({ personId: 'person-1', name: '홍길동' })],
     onChange: mockOnChange,
     categoriesLoading: false,
+    groupsLoading: false,
     personsLoading: false,
   };
 

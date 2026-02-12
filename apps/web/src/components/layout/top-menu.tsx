@@ -11,6 +11,7 @@ import {
   Calendar,
   Cloud,
   DatabaseZap,
+  FolderOpen,
   Home,
   Link,
   LogOut,
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
   { path: '/statistics', label: '통계', icon: BarChart3 },
   { path: '/work-notes', label: '업무노트', icon: NotebookPen },
   { path: '/task-categories', label: '업무 구분', icon: Tag },
+  { path: '/work-note-groups', label: '업무 그룹', icon: FolderOpen },
 
   { path: '/persons', label: '사람 관리', icon: Users },
   { path: '/departments', label: '부서 관리', icon: Building2 },

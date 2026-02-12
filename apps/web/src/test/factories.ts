@@ -12,6 +12,7 @@ import type {
   Todo,
   WorkNote,
   WorkNoteFile,
+  WorkNoteGroup,
   WorkNoteWithStats,
 } from '@web/types/api';
 
@@ -117,6 +118,19 @@ export function createTaskCategory(overrides: Partial<TaskCategory> = {}): TaskC
   return {
     categoryId: generateId('cat'),
     name: `Category ${idCounter}`,
+    isActive: true,
+    createdAt: generateTimestamp(),
+    ...overrides,
+  };
+}
+
+/**
+ * Create a mock WorkNoteGroup
+ */
+export function createWorkNoteGroup(overrides: Partial<WorkNoteGroup> = {}): WorkNoteGroup {
+  return {
+    groupId: generateId('grp'),
+    name: `Group ${idCounter}`,
     isActive: true,
     createdAt: generateTimestamp(),
     ...overrides,

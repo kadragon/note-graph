@@ -44,17 +44,17 @@
 
 ## PR 3: Work Note Groups — Frontend (Behavioral, TDD)
 
-- [ ] Hook: useWorkNoteGroups fetches groups list
-- [ ] Hook: useCreateWorkNoteGroup creates group
-- [ ] Hook: useUpdateWorkNoteGroup updates group
-- [ ] Hook: useDeleteWorkNoteGroup deletes group
-- [ ] Hook: error toast on mutation failure
-- [ ] API client: add work note group methods
-- [ ] Types: add WorkNoteGroup types to api.ts and requests.ts
-- [ ] GroupSelector component: multi-checkbox selector
-- [ ] Work note groups management page
-- [ ] Create/edit group dialogs
-- [ ] App.tsx: add route /work-note-groups
-- [ ] top-menu.tsx: add nav item
-- [ ] Work note create/edit forms: add GroupSelector
-- [ ] Work note detail view: display group badges
+- [x] Hook: useWorkNoteGroups fetches groups list
+- [x] Hook: useCreateWorkNoteGroup creates group
+- [x] Hook: useUpdateWorkNoteGroup updates group
+- [x] Hook: useDeleteWorkNoteGroup deletes group
+- [x] Hook: error toast on mutation failure
+- [x] API client: add work note group methods
+- [x] Types: add WorkNoteGroup types to api.ts and requests.ts
+- [x] GroupSelector component: multi-checkbox selector
+- [x] Work note groups management page
+- [x] Create/edit group dialogs
+- [x] App.tsx: add route /work-note-groups
+- [x] top-menu.tsx: add nav item
+- [x] Work note create/edit forms: add GroupSelector
+- [x] Work note detail view: display group badges

@@ -69,6 +69,16 @@ export interface UpdateTaskCategoryRequest {
   isActive?: boolean;
 }
 
+// Work Note Group requests
+export interface CreateWorkNoteGroupRequest {
+  name: string;
+}
+
+export interface UpdateWorkNoteGroupRequest {
+  name?: string;
+  isActive?: boolean;
+}
+
 // Todo requests
 import type { CustomIntervalUnit, RecurrenceType, RepeatRule, TodoStatus } from './models/todo';
 

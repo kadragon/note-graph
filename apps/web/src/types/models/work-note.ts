@@ -1,5 +1,6 @@
 import type { TaskCategory } from '@shared/types/task-category';
 import type { WorkNoteFile } from '@shared/types/work-note';
+import type { WorkNoteGroup } from '@shared/types/work-note-group';
 
 // Work Note types (Frontend View Model)
 export interface WorkNote {
@@ -8,6 +9,7 @@ export interface WorkNote {
   content: string;
   category: string;
   categories?: TaskCategory[];
+  groups?: WorkNoteGroup[];
   persons?: Array<{
     personId: string;
     personName: string;

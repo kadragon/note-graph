@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { usePersons } from '@web/hooks/use-persons';
 import { useToast } from '@web/hooks/use-toast';
 import { useCreateWorkNote } from '@web/hooks/use-work-notes';
-import { createPerson, createTaskCategory } from '@web/test/factories';
+import { createPerson, createTaskCategory, createWorkNoteGroup } from '@web/test/factories';
 import { render, screen, waitFor } from '@web/test/setup';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -59,6 +59,34 @@ vi.mock('@web/components/assignee-selector', () => ({
   ),
 }));
 
+vi.mock('@web/components/group-selector', () => ({
+  GroupSelector: ({
+    groups,
+    selectedIds,
+    onSelectionChange,
+    isLoading,
+  }: {
+    groups: Array<{ groupId: string; name: string }>;
+    selectedIds: string[];
+    onSelectionChange: (ids: string[]) => void;
+    isLoading?: boolean;
+  }) => (
+    <div data-testid="group-selector">
+      {isLoading ? (
+        <span>그룹 로딩 중...</span>
+      ) : (
+        <>
+          <span>Groups: {groups.length}</span>
+          <span>Selected: {selectedIds.length}</span>
+          <button type="button" onClick={() => onSelectionChange(['grp-1'])}>
+            Select Group
+          </button>
+        </>
+      )}
+    </div>
+  ),
+}));
+
 vi.mock('@web/components/category-selector', () => ({
   CategorySelector: ({
     categories,
@@ -106,6 +134,13 @@ vi.mock('@web/hooks/use-toast', () => ({
 vi.mock('@web/hooks/use-task-categories', () => ({
   useTaskCategories: vi.fn(() => ({
     data: [createTaskCategory({ categoryId: 'cat-1', name: '기본' })],
+    isLoading: false,
+  })),
+}));
+
+vi.mock('@web/hooks/use-work-note-groups', () => ({
+  useWorkNoteGroups: vi.fn(() => ({
+    data: [createWorkNoteGroup({ groupId: 'grp-1', name: '프로젝트 A' })],
     isLoading: false,
   })),
 }));
@@ -187,6 +222,13 @@ describe('CreateWorkNoteDialog', () => {
 
       expect(screen.getByTestId('category-selector')).toBeInTheDocument();
       expect(screen.getByText('업무 구분 (선택사항)')).toBeInTheDocument();
+    });
+
+    it('renders group selector', () => {
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      expect(screen.getByTestId('group-selector')).toBeInTheDocument();
+      expect(screen.getByText('업무 그룹 (선택사항)')).toBeInTheDocument();
     });
 
     it('renders assignee selector', () => {

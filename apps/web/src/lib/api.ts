@@ -12,6 +12,7 @@ import type {
   CreatePersonRequest,
   CreateTaskCategoryRequest,
   CreateTodoRequest,
+  CreateWorkNoteGroupRequest,
   CreateWorkNoteRequest,
   Department,
   DepartmentSearchResult,
@@ -39,10 +40,13 @@ import type {
   UpdatePersonRequest,
   UpdateTaskCategoryRequest,
   UpdateTodoRequest,
+  UpdateWorkNoteGroupRequest,
   UpdateWorkNoteRequest,
   User,
   WorkNoteFileMigrationResult,
   WorkNoteFilesListResponse,
+  WorkNoteGroup,
+  WorkNoteGroupWorkNote,
   WorkNoteStatistics,
 } from '@web/types/api';
 
@@ -636,6 +640,58 @@ export class APIClient {
 
   deleteTaskCategory(categoryId: string) {
     return this.request<void>(`/task-categories/${categoryId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Work Note Groups
+  getWorkNoteGroups(activeOnly?: boolean) {
+    const params = new URLSearchParams();
+    if (activeOnly) params.set('activeOnly', 'true');
+    const queryString = params.toString();
+    return this.request<WorkNoteGroup[]>(
+      `/work-note-groups${queryString ? `?${queryString}` : ''}`
+    );
+  }
+
+  createWorkNoteGroup(data: CreateWorkNoteGroupRequest) {
+    return this.request<WorkNoteGroup>('/work-note-groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  updateWorkNoteGroup(groupId: string, data: UpdateWorkNoteGroupRequest) {
+    return this.request<WorkNoteGroup>(`/work-note-groups/${groupId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteWorkNoteGroup(groupId: string) {
+    return this.request<void>(`/work-note-groups/${groupId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  toggleWorkNoteGroupActive(groupId: string) {
+    return this.request<WorkNoteGroup>(`/work-note-groups/${groupId}/toggle-active`, {
+      method: 'PATCH',
+    });
+  }
+
+  getWorkNoteGroupWorkNotes(groupId: string) {
+    return this.request<WorkNoteGroupWorkNote[]>(`/work-note-groups/${groupId}/work-notes`);
+  }
+
+  addWorkNoteToGroup(groupId: string, workId: string) {
+    return this.request<void>(`/work-note-groups/${groupId}/work-notes/${workId}`, {
+      method: 'POST',
+    });
+  }
+
+  removeWorkNoteFromGroup(groupId: string, workId: string) {
+    return this.request<void>(`/work-note-groups/${groupId}/work-notes/${workId}`, {
       method: 'DELETE',
     });
   }

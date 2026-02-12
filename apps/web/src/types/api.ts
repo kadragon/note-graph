@@ -31,6 +31,7 @@ export type {
   CreatePersonRequest,
   CreateTaskCategoryRequest,
   CreateTodoRequest,
+  CreateWorkNoteGroupRequest,
   CreateWorkNoteRequest,
   ImportPersonFromTextRequest,
   RAGQueryRequest,
@@ -40,6 +41,7 @@ export type {
   UpdatePersonRequest,
   UpdateTaskCategoryRequest,
   UpdateTodoRequest,
+  UpdateWorkNoteGroupRequest,
   UpdateWorkNoteRequest,
 } from './requests';
 
@@ -78,7 +80,10 @@ import type {
   WorkNoteFilesListResponse,
 } from '@shared/types/work-note';
 
+import type { WorkNoteGroup, WorkNoteGroupWorkNote } from '@shared/types/work-note-group';
+
 export type { Department, TaskCategory };
+export type { WorkNoteGroup, WorkNoteGroupWorkNote };
 export type { EmploymentStatus, Person, PersonDeptHistory };
 export type { AIGatewayLogItem, AIGatewayLogsPagination, AIGatewayLogsResponse };
 export type {

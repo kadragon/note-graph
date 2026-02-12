@@ -40,6 +40,7 @@ describe('top-menu', () => {
     expect(screen.getByRole('link', { name: 'AI 로그' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '업무노트' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '사람 관리' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '업무 그룹' })).toBeInTheDocument();
   });
 
   it('renders icon-only status indicators and disables connect/disconnect actions', () => {

@@ -1,24 +1,28 @@
 import { AssigneeSelector } from '@web/components/assignee-selector';
 import { CategorySelector } from '@web/components/category-selector';
+import { GroupSelector } from '@web/components/group-selector';
 import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
 import { Textarea } from '@web/components/ui/textarea';
-import type { Person, TaskCategory } from '@web/types/api';
+import type { Person, TaskCategory, WorkNoteGroup } from '@web/types/api';
 import type { RefObject } from 'react';
 
 interface WorkNoteEditFormProps {
   title?: string;
   content: string;
   categoryIds: string[];
+  groupIds: string[];
   personIds: string[];
   categories: TaskCategory[];
+  groups: WorkNoteGroup[];
   persons: Person[];
   onChange: (
-    field: 'title' | 'content' | 'categoryIds' | 'personIds',
+    field: 'title' | 'content' | 'categoryIds' | 'groupIds' | 'personIds',
     value: string | string[]
   ) => void;
   categoriesLoading: boolean;
+  groupsLoading: boolean;
   personsLoading: boolean;
   categorySectionRef?: RefObject<HTMLDivElement | null>;
   assigneeSectionRef?: RefObject<HTMLDivElement | null>;
@@ -29,11 +33,14 @@ export function WorkNoteEditForm({
   title = '',
   content,
   categoryIds,
+  groupIds,
   personIds,
   categories,
+  groups,
   persons,
   onChange,
   categoriesLoading,
+  groupsLoading,
   personsLoading,
   categorySectionRef,
   assigneeSectionRef,
@@ -71,6 +78,18 @@ export function WorkNoteEditForm({
               isLoading={categoriesLoading}
               idPrefix="edit-category"
               containerRef={categorySectionRef}
+            />
+          </div>
+
+          {/* Groups Section */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">업무 그룹</Label>
+            <GroupSelector
+              groups={groups}
+              selectedIds={groupIds}
+              onSelectionChange={(ids) => onChange('groupIds', ids)}
+              isLoading={groupsLoading}
+              idPrefix="edit-group"
             />
           </div>
 

@@ -27,6 +27,7 @@ import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { useDeleteTodo, useToggleTodo } from '@web/hooks/use-todos';
+import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { useUpdateWorkNote } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
 import { buildAssigneeEmailTemplate } from '@web/lib/assignee-email-template';
@@ -90,6 +91,7 @@ export function ViewWorkNoteDialog({
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
+  const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
   const [editPersonIds, setEditPersonIds] = useState<string[]>([]);
   const [editRelatedWorkNotes, setEditRelatedWorkNotes] = useState<RelatedWorkNote[]>([]);
 
@@ -117,6 +119,7 @@ export function ViewWorkNoteDialog({
   const toggleTodoMutation = useToggleTodo(workNote?.id);
   const deleteTodoMutation = useDeleteTodo(workNote?.id);
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
+  const { data: workNoteGroups = [], isLoading: groupsLoading } = useWorkNoteGroups(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
   // Fetch todos for this work note
@@ -173,6 +176,7 @@ export function ViewWorkNoteDialog({
       setEditTitle(currentWorkNote.title);
       setEditContent(currentWorkNote.content);
       setEditCategoryIds(currentWorkNote.categories?.map((c) => c.categoryId) || []);
+      setEditGroupIds(currentWorkNote.groups?.map((g) => g.groupId) || []);
       setEditPersonIds(currentWorkNote.persons?.map((p) => p.personId) || []);
       setEditRelatedWorkNotes(currentWorkNote.relatedWorkNotes || []);
     }
@@ -266,7 +270,10 @@ export function ViewWorkNoteDialog({
   };
 
   const handleFormFieldChange = useCallback(
-    (field: 'title' | 'content' | 'categoryIds' | 'personIds', value: string | string[]) => {
+    (
+      field: 'title' | 'content' | 'categoryIds' | 'groupIds' | 'personIds',
+      value: string | string[]
+    ) => {
       switch (field) {
         case 'title':
           setEditTitle(value as string);
@@ -276,6 +283,9 @@ export function ViewWorkNoteDialog({
           break;
         case 'categoryIds':
           setEditCategoryIds(value as string[]);
+          break;
+        case 'groupIds':
+          setEditGroupIds(value as string[]);
           break;
         case 'personIds':
           setEditPersonIds(value as string[]);
@@ -478,11 +488,14 @@ export function ViewWorkNoteDialog({
               <WorkNoteEditForm
                 content={editContent}
                 categoryIds={editCategoryIds}
+                groupIds={editGroupIds}
                 personIds={editPersonIds}
                 categories={editableCategories}
+                groups={workNoteGroups}
                 persons={persons}
                 onChange={handleFormFieldChange}
                 categoriesLoading={categoriesLoading}
+                groupsLoading={groupsLoading}
                 personsLoading={personsLoading}
                 categorySectionRef={categorySectionRef}
                 assigneeSectionRef={assigneeSectionRef}
@@ -510,6 +523,22 @@ export function ViewWorkNoteDialog({
                         <Badge variant="outline">업무 구분 없음</Badge>
                         <span className="text-xs">클릭하여 추가</span>
                       </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Groups Section */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">업무 그룹</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {currentWorkNote.groups && currentWorkNote.groups.length > 0 ? (
+                      currentWorkNote.groups.map((group) => (
+                        <Badge key={group.groupId} variant="secondary">
+                          {group.name}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge variant="outline">업무 그룹 없음</Badge>
                     )}
                   </div>
                 </div>
