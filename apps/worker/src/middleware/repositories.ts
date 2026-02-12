@@ -38,6 +38,7 @@ import { PersonRepository } from '../repositories/person-repository';
 
 import { TaskCategoryRepository } from '../repositories/task-category-repository';
 import { TodoRepository } from '../repositories/todo-repository';
+import { WorkNoteGroupRepository } from '../repositories/work-note-group-repository';
 import type { AppContext, Repositories } from '../types/context';
 
 export async function repositoriesMiddleware(c: Context<AppContext>, next: Next): Promise<void> {
@@ -56,6 +57,7 @@ export async function repositoriesMiddleware(c: Context<AppContext>, next: Next)
 
     taskCategories: new TaskCategoryRepository(c.env.DB),
     todos: new TodoRepository(c.env.DB),
+    workNoteGroups: new WorkNoteGroupRepository(c.env.DB),
   };
 
   c.set('repositories', repositories);

@@ -21,26 +21,26 @@
 
 ## PR 2: Work Note Groups — Backend (Behavioral, TDD)
 
-- [ ] Create migration 0027_add_work_note_groups.sql
-- [ ] Repository: findById returns group by ID
-- [ ] Repository: create inserts new group
-- [ ] Repository: create duplicate name returns error
-- [ ] Repository: findByName returns group by name
-- [ ] Repository: findAll returns all groups
-- [ ] Repository: findAll with search filters by name
-- [ ] Repository: findAll with activeOnly filters inactive
-- [ ] Repository: update modifies group
-- [ ] Repository: update duplicate name returns error
-- [ ] Repository: update nonexistent returns error
-- [ ] Repository: toggleActive flips is_active
-- [ ] Repository: delete removes group
-- [ ] Repository: delete cascades to junction
-- [ ] Repository: addWorkNote creates junction record
-- [ ] Repository: addWorkNote is idempotent
-- [ ] Repository: removeWorkNote deletes junction record
-- [ ] Repository: getWorkNotes returns work notes for group
-- [ ] Repository: getByWorkNoteId returns groups for a work note
-- [ ] Route integration: all endpoints return correct responses
+- [x] Create migration 0027_add_work_note_groups.sql
+- [x] Repository: findById returns group by ID
+- [x] Repository: create inserts new group
+- [x] Repository: create duplicate name returns error
+- [x] Repository: findByName returns group by name
+- [x] Repository: findAll returns all groups
+- [x] Repository: findAll with search filters by name
+- [x] Repository: findAll with activeOnly filters inactive
+- [x] Repository: update modifies group
+- [x] Repository: update duplicate name returns error
+- [x] Repository: update nonexistent returns error
+- [x] Repository: toggleActive flips is_active
+- [x] Repository: delete removes group
+- [x] Repository: delete cascades to junction
+- [x] Repository: addWorkNote creates junction record
+- [x] Repository: addWorkNote is idempotent
+- [x] Repository: removeWorkNote deletes junction record
+- [x] Repository: getWorkNotes returns work notes for group
+- [x] Repository: getByWorkNoteId returns groups for a work note
+- [x] Route integration: all endpoints return correct responses
 
 ## PR 3: Work Note Groups — Frontend (Behavioral, TDD)
 

@@ -11,6 +11,7 @@ import type { PersonRepository } from '../repositories/person-repository';
 
 import type { TaskCategoryRepository } from '../repositories/task-category-repository';
 import type { TodoRepository } from '../repositories/todo-repository';
+import type { WorkNoteGroupRepository } from '../repositories/work-note-group-repository';
 import type { Env } from './env';
 
 export interface Repositories {
@@ -19,9 +20,9 @@ export interface Repositories {
   pdfJobs: PdfJobRepository;
   persons: PersonRepository;
   personsWithAutoCreateDepartment: PersonRepository;
-
   taskCategories: TaskCategoryRepository;
   todos: TodoRepository;
+  workNoteGroups: WorkNoteGroupRepository;
 }
 
 /**
