@@ -395,6 +395,34 @@ describe('ViewWorkNoteDialog', () => {
     expect(meetingLink).toHaveAttribute('href', '/meeting-minutes?id=MEET-001');
   });
 
+  it('hides group, reference, and meeting sections in view mode when data is empty', async () => {
+    const workNote = createWorkNote({
+      id: 'work-empty-sections',
+      title: '빈 섹션 테스트',
+      content: '내용',
+      groups: [],
+      relatedWorkNotes: [],
+      relatedMeetingMinutes: [],
+    });
+
+    mockGetWorkNote.mockResolvedValue(workNote);
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(mockGetWorkNote).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByText('업무 그룹')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '참고한 업무노트' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '연결된 회의록' })).not.toBeInTheDocument();
+  });
+
   it('uses placeholderData from list cache to show work note immediately', async () => {
     const workNote = createWorkNote({
       id: 'work-1',
@@ -428,14 +456,44 @@ describe('ViewWorkNoteDialog', () => {
     // Title should be visible immediately (from placeholderData/prop)
     expect(screen.getByText('캐시된 업무노트')).toBeInTheDocument();
 
-    // Initially shows no references (from list data)
-    expect(screen.getByText('저장된 참고 업무노트가 없습니다.')).toBeInTheDocument();
+    // Initially hides empty references section (from list data)
+    expect(screen.queryByRole('heading', { name: '참고한 업무노트' })).not.toBeInTheDocument();
+    expect(screen.queryByText('저장된 참고 업무노트가 없습니다.')).not.toBeInTheDocument();
 
     // Wait for detail fetch to complete
     await screen.findByText('참조 노트', {}, { timeout: 200 });
 
     // After detail fetch, references should be shown
+    expect(screen.getByRole('heading', { name: '참고한 업무노트' })).toBeInTheDocument();
     expect(screen.getByText('참조 노트')).toBeInTheDocument();
+  });
+
+  it('shows empty reference and meeting messages in edit mode', async () => {
+    const workNote = createWorkNote({
+      id: 'work-edit-empty-sections',
+      title: '수정 모드 빈 섹션 테스트',
+      content: '내용',
+      relatedWorkNotes: [],
+      relatedMeetingMinutes: [],
+    });
+
+    mockGetWorkNote.mockResolvedValue(workNote);
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    const user = userEvent.setup();
+
+    render(<ViewWorkNoteDialog workNote={workNote} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: '수정' }));
+
+    expect(screen.getByRole('heading', { name: '참고한 업무노트' })).toBeInTheDocument();
+    expect(screen.getByText('저장된 참고 업무노트가 없습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '연결된 회의록' })).toBeInTheDocument();
+    expect(screen.getByText('연결된 회의록이 없습니다.')).toBeInTheDocument();
   });
 
   it('does not refetch detail when reopening dialog within stale window', async () => {

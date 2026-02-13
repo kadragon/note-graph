@@ -152,6 +152,11 @@ export function ViewWorkNoteDialog({
   const relatedWorkNotesToDisplay = isEditing
     ? editRelatedWorkNotes
     : currentWorkNote?.relatedWorkNotes || [];
+  const hasGroups = (currentWorkNote?.groups?.length ?? 0) > 0;
+  const hasRelatedWorkNotes = relatedWorkNotesToDisplay.length > 0;
+  const hasRelatedMeetingMinutes = (currentWorkNote?.relatedMeetingMinutes?.length ?? 0) > 0;
+  const showRelatedWorkNotesSection = isEditing || hasRelatedWorkNotes;
+  const showMeetingSection = isEditing || hasRelatedMeetingMinutes;
 
   // For editing: show active categories + already selected inactive categories
   const editableCategories = useMemo(() => {
@@ -529,20 +534,18 @@ export function ViewWorkNoteDialog({
                 </div>
 
                 {/* Groups Section */}
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">업무 그룹</Label>
-                  <div className="flex flex-wrap gap-1">
-                    {currentWorkNote.groups && currentWorkNote.groups.length > 0 ? (
-                      currentWorkNote.groups.map((group) => (
+                {hasGroups && (
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">업무 그룹</Label>
+                    <div className="flex flex-wrap gap-1">
+                      {currentWorkNote.groups?.map((group) => (
                         <Badge key={group.groupId} variant="secondary">
                           {group.name}
                         </Badge>
-                      ))
-                    ) : (
-                      <Badge variant="outline">업무 그룹 없음</Badge>
-                    )}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Assignees Section */}
                 <div>
@@ -606,78 +609,89 @@ export function ViewWorkNoteDialog({
             )}
 
             {/* References */}
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-2">참고한 업무노트</h3>
-              <div className="rounded-md border bg-muted/30 p-3">
-                {relatedWorkNotesToDisplay.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {relatedWorkNotesToDisplay.map((ref) => (
-                      <div
-                        key={ref.relatedWorkId}
-                        className="flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-sm"
-                      >
-                        <a
-                          href={`/work-notes?id=${ref.relatedWorkId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="max-w-[240px] truncate font-medium hover:underline"
+            {showRelatedWorkNotesSection && (
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-2">참고한 업무노트</h3>
+                <div className="rounded-md border bg-muted/30 p-3">
+                  {hasRelatedWorkNotes ? (
+                    <div className="flex flex-wrap gap-2">
+                      {relatedWorkNotesToDisplay.map((ref) => (
+                        <div
+                          key={ref.relatedWorkId}
+                          className="flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-sm"
                         >
-                          {ref.relatedWorkTitle || ref.relatedWorkId}
-                        </a>
-                        {isEditing && relatedWorkNotesLoaded && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 text-muted-foreground hover:text-destructive"
-                            aria-label="참고 업무노트 삭제"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              handleRemoveRelatedWorkNote(ref.relatedWorkId);
-                            }}
+                          <a
+                            href={`/work-notes?id=${ref.relatedWorkId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="max-w-[240px] truncate font-medium hover:underline"
                           >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">저장된 참고 업무노트가 없습니다.</p>
-                )}
+                            {ref.relatedWorkTitle || ref.relatedWorkId}
+                          </a>
+                          {isEditing && relatedWorkNotesLoaded && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                              aria-label="참고 업무노트 삭제"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                handleRemoveRelatedWorkNote(ref.relatedWorkId);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    isEditing && (
+                      <p className="text-sm text-muted-foreground">
+                        저장된 참고 업무노트가 없습니다.
+                      </p>
+                    )
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Linked Meeting Minutes */}
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-2">연결된 회의록</h3>
-              <div className="rounded-md border bg-muted/30 p-3">
-                {currentWorkNote.relatedMeetingMinutes &&
-                currentWorkNote.relatedMeetingMinutes.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {currentWorkNote.relatedMeetingMinutes.map((meeting) => (
-                      <div
-                        key={meeting.meetingId}
-                        className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-sm"
-                      >
-                        <a
-                          href={`/meeting-minutes?id=${meeting.meetingId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="max-w-[220px] truncate font-medium hover:underline"
+            {showMeetingSection && (
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-2">연결된 회의록</h3>
+                <div className="rounded-md border bg-muted/30 p-3">
+                  {hasRelatedMeetingMinutes ? (
+                    <div className="flex flex-wrap gap-2">
+                      {currentWorkNote.relatedMeetingMinutes?.map((meeting) => (
+                        <div
+                          key={meeting.meetingId}
+                          className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-sm"
                         >
-                          {meeting.topic}
-                        </a>
-                        <span className="text-xs text-muted-foreground">{meeting.meetingDate}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">연결된 회의록이 없습니다.</p>
-                )}
+                          <a
+                            href={`/meeting-minutes?id=${meeting.meetingId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="max-w-[220px] truncate font-medium hover:underline"
+                          >
+                            {meeting.topic}
+                          </a>
+                          <span className="text-xs text-muted-foreground">
+                            {meeting.meetingDate}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    isEditing && (
+                      <p className="text-sm text-muted-foreground">연결된 회의록이 없습니다.</p>
+                    )
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Files Section */}
             <div className="border-t pt-4">
