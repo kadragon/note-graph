@@ -139,8 +139,6 @@ describe('EnhanceWorkNoteDialog', () => {
 
       await waitFor(() => {
         expect(onEnhanceSuccess).toHaveBeenCalled();
-      });
-      await waitFor(() => {
         expect(API.uploadWorkNoteFile).toHaveBeenCalledWith('work-1', pdfFile);
       });
     });
@@ -158,8 +156,6 @@ describe('EnhanceWorkNoteDialog', () => {
 
       await waitFor(() => {
         expect(onEnhanceSuccess).toHaveBeenCalled();
-      });
-      await waitFor(() => {
         expect(API.uploadWorkNoteFile).toHaveBeenCalledWith('work-1', pdfFileWithoutMime);
       });
     });
@@ -178,11 +174,7 @@ describe('EnhanceWorkNoteDialog', () => {
 
       await waitFor(() => {
         expect(onEnhanceSuccess).toHaveBeenCalled();
-      });
-      await waitFor(() => {
         expect(API.uploadWorkNoteFile).toHaveBeenCalledWith('work-1', pdfFile);
-      });
-      await waitFor(() => {
         expect(mockToast).toHaveBeenCalledWith({
           variant: 'destructive',
           title: '주의',

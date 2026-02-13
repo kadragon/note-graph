@@ -66,7 +66,8 @@ export function EnhanceWorkNoteDialog({
       onEnhanceSuccess(result);
 
       if (selectedFile && isPdfFile(selectedFile)) {
-        void API.uploadWorkNoteFile(workId, selectedFile).catch(() => {
+        void API.uploadWorkNoteFile(workId, selectedFile).catch((error) => {
+          console.error('PDF attachment upload failed:', error);
           toast({
             variant: 'destructive',
             title: '주의',
