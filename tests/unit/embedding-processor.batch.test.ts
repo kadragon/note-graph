@@ -12,7 +12,9 @@ interface TestEmbeddingProcessor extends EmbeddingProcessor {
     findByIdsWithDetails: ReturnType<typeof vi.fn>;
     getDeptNameForPerson: ReturnType<typeof vi.fn>;
     getVersions: ReturnType<typeof vi.fn>;
+    findById: ReturnType<typeof vi.fn>;
     updateEmbeddedAt: ReturnType<typeof vi.fn>;
+    updateEmbeddedAtIfUpdatedAtMatches: ReturnType<typeof vi.fn>;
   };
   upsertChunks: ReturnType<typeof vi.fn>;
   deleteStaleChunks: ReturnType<typeof vi.fn>;
@@ -34,7 +36,9 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
       findByIdsWithDetails: vi.fn(),
       getDeptNameForPerson: vi.fn(),
       getVersions: vi.fn().mockResolvedValue([]),
+      findById: vi.fn(),
       updateEmbeddedAt: vi.fn().mockResolvedValue(undefined),
+      updateEmbeddedAtIfUpdatedAtMatches: vi.fn().mockResolvedValue(true),
     };
 
     // Mock embedding/vectorize operations
@@ -148,18 +152,19 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
           callOrder.push(`delete-${workId}`);
         });
 
-      // Mock updateEmbeddedAt with immediate resolution
-      (processor as TestEmbeddingProcessor).repository.updateEmbeddedAt = vi
+      // Mock conditional embedded_at update with immediate resolution
+      (processor as TestEmbeddingProcessor).repository.updateEmbeddedAtIfUpdatedAtMatches = vi
         .fn()
         .mockImplementation(async (workId: string) => {
           callOrder.push(`update-${workId}`);
+          return true;
         });
 
       // Create a chunk map for 3 work notes
-      const workNoteChunkMap = new Map<string, string[]>([
-        ['WORK-A', ['WORK-A#chunk0']],
-        ['WORK-B', ['WORK-B#chunk0']],
-        ['WORK-C', ['WORK-C#chunk0']],
+      const workNoteChunkMap = new Map<string, { chunkIds: string[]; expectedUpdatedAt: string }>([
+        ['WORK-A', { chunkIds: ['WORK-A#chunk0'], expectedUpdatedAt: '2024-01-01T00:00:00.000Z' }],
+        ['WORK-B', { chunkIds: ['WORK-B#chunk0'], expectedUpdatedAt: '2024-01-02T00:00:00.000Z' }],
+        ['WORK-C', { chunkIds: ['WORK-C#chunk0'], expectedUpdatedAt: '2024-01-03T00:00:00.000Z' }],
       ]);
 
       const chunks = [
@@ -215,9 +220,9 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
       // Assert: All deleteStaleChunks called
       expect((processor as TestEmbeddingProcessor).deleteStaleChunks).toHaveBeenCalledTimes(3);
 
-      // Assert: All updateEmbeddedAt called
+      // Assert: All conditional timestamp updates called
       expect(
-        (processor as TestEmbeddingProcessor).repository.updateEmbeddedAt
+        (processor as TestEmbeddingProcessor).repository.updateEmbeddedAtIfUpdatedAtMatches
       ).toHaveBeenCalledTimes(3);
 
       // Assert: If parallel, WORK-C (shortest delay) should complete first

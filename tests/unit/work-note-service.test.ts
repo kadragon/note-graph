@@ -238,7 +238,9 @@ describe('WorkNoteService.delete', () => {
     const service = new WorkNoteService(dummyEnv);
 
     const deleteWorkNoteFiles = vi.fn().mockResolvedValue(undefined);
-    const deleteByIds = vi.fn().mockResolvedValue(undefined);
+    const deleteChunkRange = vi.fn().mockResolvedValue(undefined);
+    const estimateChunkCount = vi.fn().mockReturnValue(1);
+    const getMaxKnownChunkCount = vi.fn().mockResolvedValue(1);
     const findById = vi.fn().mockResolvedValue({
       workId: 'WORK-123',
       title: 'short title',
@@ -248,7 +250,6 @@ describe('WorkNoteService.delete', () => {
       updatedAt: '2025-01-01T00:00:00.000Z',
       embeddedAt: null,
     } satisfies WorkNote);
-    const getVersions = vi.fn().mockResolvedValue([]);
     const repositoryDelete = vi.fn().mockResolvedValue(undefined);
 
     (service as unknown as { fileService: unknown }).fileService = {
@@ -256,18 +257,19 @@ describe('WorkNoteService.delete', () => {
     };
     (service as unknown as { repository: unknown }).repository = {
       findById,
-      getVersions,
       delete: repositoryDelete,
     };
-    (service as unknown as { vectorizeService: unknown }).vectorizeService = {
-      delete: deleteByIds,
+    (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = {
+      estimateChunkCount,
+      getMaxKnownChunkCount,
+      deleteChunkRange,
     };
 
     const { cleanupPromise } = await service.delete('WORK-123', 'tester@example.com');
     await cleanupPromise;
 
     expect(deleteWorkNoteFiles).toHaveBeenCalledWith('WORK-123', 'tester@example.com');
-    expect(deleteByIds).toHaveBeenCalledWith(['WORK-123#chunk0']);
+    expect(deleteChunkRange).toHaveBeenCalledWith('WORK-123', 0, 1);
     expect(repositoryDelete).toHaveBeenCalledWith('WORK-123');
   });
 });
@@ -288,16 +290,16 @@ describe('WorkNoteService embedding guards and deterministic stale deletion', ()
     const updateEmbeddedAtIfUpdatedAtMatches = vi.fn().mockResolvedValue(true);
     const getDeptNameForPerson = vi.fn().mockResolvedValue(null);
     const upsertChunks = vi.fn().mockResolvedValue(undefined);
-    const deleteByIds = vi.fn().mockResolvedValue(undefined);
+    const deleteChunkRange = vi.fn().mockResolvedValue(undefined);
 
     (service as unknown as { repository: unknown }).repository = {
       findById,
       updateEmbeddedAtIfUpdatedAtMatches,
       getDeptNameForPerson,
     };
-    (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = { upsertChunks };
-    (service as unknown as { vectorizeService: unknown }).vectorizeService = {
-      delete: deleteByIds,
+    (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = {
+      upsertChunks,
+      deleteChunkRange,
     };
 
     const performChunkingAndEmbedding = (
@@ -332,7 +334,7 @@ describe('WorkNoteService embedding guards and deterministic stale deletion', ()
       }
     );
 
-    expect(deleteByIds).toHaveBeenCalledWith(['WORK-1#chunk1', 'WORK-1#chunk2']);
+    expect(deleteChunkRange).toHaveBeenCalledWith('WORK-1', 1, 3);
     expect(updateEmbeddedAtIfUpdatedAtMatches).toHaveBeenCalledWith(
       'WORK-1',
       '2025-01-01T00:00:00.000Z'
@@ -364,7 +366,7 @@ describe('WorkNoteService embedding guards and deterministic stale deletion', ()
       } satisfies WorkNote);
     const getDeptNameForPerson = vi.fn().mockResolvedValue(null);
     const upsertChunks = vi.fn().mockResolvedValue(undefined);
-    const deleteByIds = vi.fn().mockResolvedValue(undefined);
+    const deleteChunkIdsInBatches = vi.fn().mockResolvedValue(undefined);
     const updateEmbeddedAtIfUpdatedAtMatches = vi.fn();
 
     (service as unknown as { repository: unknown }).repository = {
@@ -372,9 +374,9 @@ describe('WorkNoteService embedding guards and deterministic stale deletion', ()
       getDeptNameForPerson,
       updateEmbeddedAtIfUpdatedAtMatches,
     };
-    (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = { upsertChunks };
-    (service as unknown as { vectorizeService: unknown }).vectorizeService = {
-      delete: deleteByIds,
+    (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = {
+      upsertChunks,
+      deleteChunkIdsInBatches,
     };
 
     const performChunkingAndEmbedding = (
@@ -408,6 +410,6 @@ describe('WorkNoteService embedding guards and deterministic stale deletion', ()
     );
 
     expect(updateEmbeddedAtIfUpdatedAtMatches).not.toHaveBeenCalled();
-    expect(deleteByIds).toHaveBeenCalledWith(['WORK-1#chunk0']);
+    expect(deleteChunkIdsInBatches).toHaveBeenCalledWith(['WORK-1#chunk0']);
   });
 });

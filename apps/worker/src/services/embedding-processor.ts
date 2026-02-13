@@ -16,8 +16,19 @@ export interface ReindexResult {
   processed: number;
   succeeded: number;
   failed: number;
-  errors: Array<{ workId: string; error: string }>;
+  errors: Array<{ workId: string; error: string; reason: EmbeddingFailureReason }>;
 }
+
+export const EMBEDDING_FAILURE_REASON = {
+  UNKNOWN: 'UNKNOWN',
+  NOT_FOUND: 'NOT_FOUND',
+  STALE_VERSION: 'STALE_VERSION',
+  PREPARE_FAILED: 'PREPARE_FAILED',
+  UPSERT_FAILED: 'UPSERT_FAILED',
+} as const;
+
+export type EmbeddingFailureReason =
+  (typeof EMBEDDING_FAILURE_REASON)[keyof typeof EMBEDDING_FAILURE_REASON];
 
 // OpenAI embedding API can handle up to 2048 inputs, but we use smaller batches for reliability
 const MAX_CHUNKS_PER_BATCH = 100;
@@ -36,6 +47,21 @@ interface ChunkToEmbed {
     created_at_bucket: string;
   };
   workId: string; // Track which work note this chunk belongs to
+}
+
+interface PendingChunkState {
+  chunkIds: string[];
+  expectedUpdatedAt: string;
+}
+
+class EmbeddingSkipError extends Error {
+  constructor(
+    public readonly reason: EmbeddingFailureReason,
+    message: string
+  ) {
+    super(message);
+    this.name = 'EmbeddingSkipError';
+  }
 }
 
 /**
@@ -157,6 +183,7 @@ export class EmbeddingProcessor {
           result.errors.push({
             workId: workNote.workId,
             error: errorMessage,
+            reason: this.classifyFailureReason(error),
           });
 
           console.error(`[EmbeddingProcessor] Failed to embed ${workNote.workId}: ${errorMessage}`);
@@ -272,7 +299,7 @@ export class EmbeddingProcessor {
 
     // Collect chunks from multiple work notes
     let allChunks: ChunkToEmbed[] = [];
-    let workNoteChunkMap: Map<string, string[]> = new Map(); // workId -> chunkIds
+    let workNoteChunkMap: Map<string, PendingChunkState> = new Map();
 
     // Process in batches
     while (result.processed < result.total) {
@@ -306,7 +333,10 @@ export class EmbeddingProcessor {
 
           // Track chunk IDs for this work note
           const chunkIds = chunks.map((c) => c.id);
-          workNoteChunkMap.set(workNote.workId, chunkIds);
+          workNoteChunkMap.set(workNote.workId, {
+            chunkIds,
+            expectedUpdatedAt: workNote.updatedAt,
+          });
 
           // Add to batch
           allChunks.push(...chunks);
@@ -337,6 +367,7 @@ export class EmbeddingProcessor {
           result.errors.push({
             workId: workNote.workId,
             error: errorMessage,
+            reason: this.classifyFailureReason(error, EMBEDDING_FAILURE_REASON.PREPARE_FAILED),
           });
           failedIds.add(workNote.workId);
           console.error(
@@ -403,18 +434,18 @@ export class EmbeddingProcessor {
    */
   private async processBatch(
     chunks: ChunkToEmbed[],
-    workNoteChunkMap: Map<string, string[]>
+    workNoteChunkMap: Map<string, PendingChunkState>
   ): Promise<{
     processed: number;
     succeeded: number;
     failed: number;
-    errors: Array<{ workId: string; error: string }>;
+    errors: Array<{ workId: string; error: string; reason: EmbeddingFailureReason }>;
   }> {
     const batchResult = {
       processed: 0,
       succeeded: 0,
       failed: 0,
-      errors: [] as Array<{ workId: string; error: string }>,
+      errors: [] as Array<{ workId: string; error: string; reason: EmbeddingFailureReason }>,
     };
 
     const workIds = Array.from(workNoteChunkMap.keys());
@@ -431,14 +462,36 @@ export class EmbeddingProcessor {
 
       // Update embedded_at for all work notes in this batch (in parallel)
       const updatePromises = workIds.map(async (workId) => {
-        const newChunkCount = (workNoteChunkMap.get(workId) || []).length;
+        const chunkState = workNoteChunkMap.get(workId);
+        if (!chunkState) {
+          throw new Error(`Missing chunk state for work note ${workId}`);
+        }
+
+        const newChunkCount = chunkState.chunkIds.length;
         const previousChunkCount = await this.getMaxKnownChunkCount(workId, newChunkCount);
 
         // Delete stale chunks deterministically
         await this.deleteStaleChunks(workId, newChunkCount, previousChunkCount);
 
-        // Update timestamp
-        await this.repository.updateEmbeddedAt(workId);
+        // Update timestamp only if this is still the current version
+        const updated = await this.repository.updateEmbeddedAtIfUpdatedAtMatches(
+          workId,
+          chunkState.expectedUpdatedAt
+        );
+        if (!updated) {
+          const current = await this.repository.findById(workId);
+          if (!current) {
+            throw new EmbeddingSkipError(
+              EMBEDDING_FAILURE_REASON.NOT_FOUND,
+              `Work note ${workId} not found`
+            );
+          }
+          throw new EmbeddingSkipError(
+            EMBEDDING_FAILURE_REASON.STALE_VERSION,
+            `Work note ${workId} is stale (expected ${chunkState.expectedUpdatedAt}, got ${current.updatedAt})`
+          );
+        }
+
         return workId;
       });
 
@@ -457,7 +510,11 @@ export class EmbeddingProcessor {
           const errorMessage =
             result.reason instanceof Error ? result.reason.message : String(result.reason);
           batchResult.failed++;
-          batchResult.errors.push({ workId, error: errorMessage });
+          batchResult.errors.push({
+            workId,
+            error: errorMessage,
+            reason: this.classifyFailureReason(result.reason),
+          });
         }
       }
     } catch (error) {
@@ -466,7 +523,11 @@ export class EmbeddingProcessor {
       for (const workId of workIds) {
         batchResult.failed++;
         batchResult.processed++;
-        batchResult.errors.push({ workId, error: errorMessage });
+        batchResult.errors.push({
+          workId,
+          error: errorMessage,
+          reason: this.classifyFailureReason(error, EMBEDDING_FAILURE_REASON.UPSERT_FAILED),
+        });
       }
       console.error(`[EmbeddingProcessor] Batch embedding failed: ${errorMessage}`);
     }
@@ -522,12 +583,12 @@ export class EmbeddingProcessor {
     }
   }
 
-  private estimateChunkCount(workId: string, title: string, contentRaw: string): number {
+  estimateChunkCount(workId: string, title: string, contentRaw: string): number {
     return this.chunkingService.chunkWorkNote(workId, title, contentRaw, { created_at_bucket: '' })
       .length;
   }
 
-  private async getMaxKnownChunkCount(workId: string, fallbackCount: number): Promise<number> {
+  async getMaxKnownChunkCount(workId: string, fallbackCount: number): Promise<number> {
     if (fallbackCount <= 0) {
       return fallbackCount;
     }
@@ -561,7 +622,7 @@ export class EmbeddingProcessor {
     return chunkIds;
   }
 
-  private async deleteChunkIdsInBatches(chunkIds: string[]): Promise<void> {
+  async deleteChunkIdsInBatches(chunkIds: string[]): Promise<void> {
     if (chunkIds.length === 0) {
       return;
     }
@@ -572,16 +633,22 @@ export class EmbeddingProcessor {
     }
   }
 
-  private async deleteChunkRange(
-    workId: string,
-    startIndex: number,
-    endExclusive: number
-  ): Promise<void> {
+  async deleteChunkRange(workId: string, startIndex: number, endExclusive: number): Promise<void> {
     if (endExclusive <= startIndex) {
       return;
     }
 
     await this.deleteChunkIdsInBatches(this.buildChunkIds(workId, startIndex, endExclusive));
+  }
+
+  private classifyFailureReason(
+    error: unknown,
+    fallback: EmbeddingFailureReason = EMBEDDING_FAILURE_REASON.UNKNOWN
+  ): EmbeddingFailureReason {
+    if (error instanceof EmbeddingSkipError) {
+      return error.reason;
+    }
+    return fallback;
   }
 
   /**

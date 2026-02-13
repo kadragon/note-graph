@@ -26,7 +26,7 @@ import taskCategories from './routes/task-categories';
 import todos from './routes/todos';
 import workNoteGroups from './routes/work-note-groups';
 import workNotes from './routes/work-notes';
-import { EmbeddingProcessor } from './services/embedding-processor';
+import { EMBEDDING_FAILURE_REASON, EmbeddingProcessor } from './services/embedding-processor';
 import type { AppContext } from './types/context';
 import type { Env } from './types/env';
 import { DomainError } from './types/errors';
@@ -209,10 +209,9 @@ async function runScheduledEmbedPending(env: Env): Promise<void> {
   };
 
   for (const error of result.errors) {
-    const message = error.error.toLowerCase();
-    if (message.includes('not found')) {
+    if (error.reason === EMBEDDING_FAILURE_REASON.NOT_FOUND) {
       skipReasons.deleted++;
-    } else if (message.includes('stale')) {
+    } else if (error.reason === EMBEDDING_FAILURE_REASON.STALE_VERSION) {
       skipReasons.staleVersion++;
     }
   }

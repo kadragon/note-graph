@@ -20,8 +20,6 @@ import { OpenAIEmbeddingService } from './openai-embedding-service';
 import { VectorizeService } from './vectorize-service';
 import { WorkNoteFileService } from './work-note-file-service';
 
-const VECTOR_DELETE_BATCH_SIZE = 100;
-
 interface EmbeddingRunOptions {
   deleteStaleChunks?: boolean;
   previousChunkCount?: number;
@@ -121,9 +119,16 @@ export class WorkNoteService {
   ): Promise<{ workNote: WorkNote; embeddingPromise?: Promise<void> }> {
     const previousWorkNote = await this.repository.findById(workId);
     const previousChunkCount = previousWorkNote
-      ? this.estimateChunkCount(workId, previousWorkNote.title, previousWorkNote.contentRaw)
+      ? this.embeddingProcessor.estimateChunkCount(
+          workId,
+          previousWorkNote.title,
+          previousWorkNote.contentRaw
+        )
       : 0;
-    const maxKnownChunkCount = await this.getMaxKnownChunkCount(workId, previousChunkCount);
+    const maxKnownChunkCount = await this.embeddingProcessor.getMaxKnownChunkCount(
+      workId,
+      previousChunkCount
+    );
 
     const workNote = await this.repository.update(workId, data);
     const embeddingResult = await this.handleEmbedding(
@@ -144,8 +149,15 @@ export class WorkNoteService {
       return { cleanupPromise: Promise.resolve() };
     }
 
-    const currentChunkCount = this.estimateChunkCount(workId, existing.title, existing.contentRaw);
-    const maxKnownChunkCount = await this.getMaxKnownChunkCount(workId, currentChunkCount);
+    const currentChunkCount = this.embeddingProcessor.estimateChunkCount(
+      workId,
+      existing.title,
+      existing.contentRaw
+    );
+    const maxKnownChunkCount = await this.embeddingProcessor.getMaxKnownChunkCount(
+      workId,
+      currentChunkCount
+    );
 
     const fileCleanupPromise = this.fileService
       ? this.fileService.deleteWorkNoteFiles(workId, userEmail).catch((error) => {
@@ -347,7 +359,7 @@ export class WorkNoteService {
       options.previousChunkCount !== undefined &&
       options.previousChunkCount > chunksToEmbed.length
     ) {
-      await this.deleteChunkRange(
+      await this.embeddingProcessor.deleteChunkRange(
         workNote.workId,
         chunksToEmbed.length,
         options.previousChunkCount
@@ -381,7 +393,7 @@ export class WorkNoteService {
       return;
     }
 
-    await this.deleteChunkRange(workId, 0, maxChunkCount);
+    await this.embeddingProcessor.deleteChunkRange(workId, 0, maxChunkCount);
   }
 
   /**
@@ -406,8 +418,15 @@ export class WorkNoteService {
     // Get work note details for person_ids
     const details = await this.repository.findByIdWithDetails(workId);
     const personIds = details?.persons.map((p) => p.personId) || [];
-    const currentChunkCount = this.estimateChunkCount(workId, workNote.title, workNote.contentRaw);
-    const maxKnownChunkCount = await this.getMaxKnownChunkCount(workId, currentChunkCount);
+    const currentChunkCount = this.embeddingProcessor.estimateChunkCount(
+      workId,
+      workNote.title,
+      workNote.contentRaw
+    );
+    const maxKnownChunkCount = await this.embeddingProcessor.getMaxKnownChunkCount(
+      workId,
+      currentChunkCount
+    );
 
     // Use shared chunking and embedding logic with stale chunk deletion
     await this.performChunkingAndEmbedding(workNote, personIds, {
@@ -415,37 +434,6 @@ export class WorkNoteService {
       previousChunkCount: maxKnownChunkCount,
       expectedUpdatedAt: workNote.updatedAt,
     });
-  }
-
-  private estimateChunkCount(workId: string, title: string, contentRaw: string): number {
-    return this.chunkingService.chunkWorkNote(workId, title, contentRaw, { created_at_bucket: '' })
-      .length;
-  }
-
-  private async getMaxKnownChunkCount(workId: string, fallbackCount: number): Promise<number> {
-    if (fallbackCount <= 0) {
-      return fallbackCount;
-    }
-
-    try {
-      const versions = await this.repository.getVersions(workId);
-      let maxChunkCount = fallbackCount;
-
-      for (const version of versions) {
-        maxChunkCount = Math.max(
-          maxChunkCount,
-          this.estimateChunkCount(workId, version.title, version.contentRaw)
-        );
-      }
-
-      return maxChunkCount;
-    } catch (error) {
-      console.warn('[WorkNoteService] Failed to inspect versions for chunk cleanup:', {
-        workId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return fallbackCount;
-    }
   }
 
   private async ensureEmbeddingTargetIsCurrent(
@@ -474,40 +462,9 @@ export class WorkNoteService {
     return true;
   }
 
-  private buildChunkIds(workId: string, startIndex: number, endExclusive: number): string[] {
-    const chunkIds: string[] = [];
-    for (let index = startIndex; index < endExclusive; index++) {
-      chunkIds.push(ChunkingService.generateChunkId(workId, index));
-    }
-    return chunkIds;
-  }
-
-  private async deleteChunkIdsInBatches(chunkIds: string[]): Promise<void> {
-    if (chunkIds.length === 0) {
-      return;
-    }
-
-    for (let i = 0; i < chunkIds.length; i += VECTOR_DELETE_BATCH_SIZE) {
-      const batch = chunkIds.slice(i, i + VECTOR_DELETE_BATCH_SIZE);
-      await this.vectorizeService.delete(batch);
-    }
-  }
-
-  private async deleteChunkRange(
-    workId: string,
-    startIndex: number,
-    endExclusive: number
-  ): Promise<void> {
-    if (endExclusive <= startIndex) {
-      return;
-    }
-
-    await this.deleteChunkIdsInBatches(this.buildChunkIds(workId, startIndex, endExclusive));
-  }
-
   private async rollbackChunkUpsert(workId: string, chunkIds: string[]): Promise<void> {
     try {
-      await this.deleteChunkIdsInBatches(chunkIds);
+      await this.embeddingProcessor.deleteChunkIdsInBatches(chunkIds);
     } catch (error) {
       console.error('[WorkNoteService] Failed to rollback stale chunk upsert:', {
         workId,
