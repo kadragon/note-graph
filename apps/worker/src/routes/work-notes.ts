@@ -37,7 +37,7 @@ workNotes.use('*', authMiddleware);
 workNotes.use('*', errorHandler);
 
 /**
- * Trigger re-embedding of a work note (fire-and-forget)
+ * Trigger re-embedding of a work note
  * Used when todo changes require vector store update
  */
 function triggerReembed(
@@ -45,13 +45,14 @@ function triggerReembed(
   workId: string,
   todoId: string,
   operation: string
-): void {
+): Promise<void> {
   const service = new WorkNoteService(env);
-  service.reembedOnly(workId).catch((error) => {
+  return service.reembedOnly(workId).catch((error) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[WorkNote] Failed to re-embed after todo ${operation}:`, {
       workId,
       todoId,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     });
   });
 }
@@ -127,7 +128,8 @@ workNotes.delete('/:workId', async (c) => {
   const workId = c.req.param('workId');
   const user = getAuthUser(c);
   const service = new WorkNoteService(c.env);
-  await service.delete(workId, user.email);
+  const { cleanupPromise } = await service.delete(workId, user.email);
+  c.executionCtx.waitUntil(cleanupPromise);
 
   return c.body(null, 204);
 });
@@ -154,7 +156,7 @@ workNotes.post('/:workId/todos', bodyValidator(createTodoSchema), async (c) => {
   const todo = await repository.create(workId, data);
 
   // Re-embed work note to include new todo in vector store (async, non-blocking)
-  triggerReembed(c.env, workId, todo.todoId, 'creation');
+  c.executionCtx.waitUntil(triggerReembed(c.env, workId, todo.todoId, 'creation'));
 
   return c.json(todo, 201);
 });

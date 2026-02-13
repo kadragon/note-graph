@@ -193,6 +193,12 @@ bun run test:all
 bun run test:coverage
 ```
 
+## Vector Store Recovery
+
+- 임베딩 동기화는 CRUD 후 비동기로 처리되며, Worker `scheduled` 트리거가 5분마다 `embed-pending` 복구를 수행합니다.
+- 운영 중 Vectorize 오염(고아 청크) 가능성이 의심되면 우선 `POST /api/admin/reindex-all`로 전체 재색인을 수행합니다.
+- 근본 정리가 필요하면 신규 Vectorize 인덱스를 생성한 뒤 바인딩을 전환하고 전체 재색인을 다시 수행하는 인덱스 교체 전략을 권장합니다.
+
 ## Deployment
 
 ```bash

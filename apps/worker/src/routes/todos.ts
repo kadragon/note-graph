@@ -23,7 +23,7 @@ todos.use('*', authMiddleware);
 todos.use('*', errorHandler);
 
 /**
- * Trigger re-embedding of a work note (fire-and-forget)
+ * Trigger re-embedding of a work note
  * Used when todo changes require vector store update
  */
 function triggerReembed(
@@ -31,13 +31,14 @@ function triggerReembed(
   workId: string,
   todoId: string,
   operation: string
-): void {
+): Promise<void> {
   const service = new WorkNoteService(env);
-  service.reembedOnly(workId).catch((error) => {
+  return service.reembedOnly(workId).catch((error) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[WorkNote] Failed to re-embed after todo ${operation}:`, {
       workId,
       todoId,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     });
   });
 }
@@ -64,7 +65,7 @@ todos.patch('/:todoId', bodyValidator(updateTodoSchema), async (c) => {
   const todo = await repository.update(todoId, data);
 
   // Re-embed work note to reflect updated todo in vector store (async, non-blocking)
-  triggerReembed(c.env, todo.workId, todo.todoId, 'update');
+  c.executionCtx.waitUntil(triggerReembed(c.env, todo.workId, todo.todoId, 'update'));
 
   return c.json(todo);
 });
@@ -81,7 +82,7 @@ todos.delete('/:todoId', async (c) => {
   const workId = await repository.delete(todoId);
 
   // Re-embed work note to remove deleted todo from vector store (async, non-blocking)
-  triggerReembed(c.env, workId, todoId, 'deletion');
+  c.executionCtx.waitUntil(triggerReembed(c.env, workId, todoId, 'deletion'));
 
   return c.body(null, 204);
 });

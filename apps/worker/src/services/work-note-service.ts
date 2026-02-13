@@ -20,6 +20,12 @@ import { OpenAIEmbeddingService } from './openai-embedding-service';
 import { VectorizeService } from './vectorize-service';
 import { WorkNoteFileService } from './work-note-file-service';
 
+interface EmbeddingRunOptions {
+  deleteStaleChunks?: boolean;
+  previousChunkCount?: number;
+  expectedUpdatedAt?: string;
+}
+
 /**
  * Work note service with integrated RAG support and file attachments
  *
@@ -111,9 +117,22 @@ export class WorkNoteService {
     data: UpdateWorkNoteInput,
     options?: { skipEmbedding?: boolean }
   ): Promise<{ workNote: WorkNote; embeddingPromise?: Promise<void> }> {
+    const previousWorkNote = await this.repository.findById(workId);
+    const previousChunkCount = previousWorkNote
+      ? this.embeddingProcessor.estimateChunkCount(
+          workId,
+          previousWorkNote.title,
+          previousWorkNote.contentRaw
+        )
+      : 0;
+    const maxKnownChunkCount = await this.embeddingProcessor.getMaxKnownChunkCount(
+      workId,
+      previousChunkCount
+    );
+
     const workNote = await this.repository.update(workId, data);
     const embeddingResult = await this.handleEmbedding(
-      this.rechunkAndEmbedWorkNote(workNote, data),
+      this.rechunkAndEmbedWorkNote(workNote, data, maxKnownChunkCount),
       workNote,
       options?.skipEmbedding
     );
@@ -123,33 +142,53 @@ export class WorkNoteService {
   /**
    * Delete work note, remove embeddings, and delete attached files
    */
-  async delete(workId: string, userEmail?: string): Promise<void> {
-    // Delete attached files from R2 and DB (async, non-blocking)
-    if (this.fileService) {
-      this.fileService.deleteWorkNoteFiles(workId, userEmail).catch((error) => {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        console.error('[WorkNoteService] Failed to delete work note files:', {
-          workId,
-          error: errorMessage,
-        });
-        // Note: Files may remain but work note will be deleted
-      });
+  async delete(workId: string, userEmail?: string): Promise<{ cleanupPromise: Promise<void> }> {
+    const existing = await this.repository.findById(workId);
+    if (!existing) {
+      await this.repository.delete(workId);
+      return { cleanupPromise: Promise.resolve() };
     }
+
+    const currentChunkCount = this.embeddingProcessor.estimateChunkCount(
+      workId,
+      existing.title,
+      existing.contentRaw
+    );
+    const maxKnownChunkCount = await this.embeddingProcessor.getMaxKnownChunkCount(
+      workId,
+      currentChunkCount
+    );
+
+    const fileCleanupPromise = this.fileService
+      ? this.fileService.deleteWorkNoteFiles(workId, userEmail).catch((error) => {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+
+          console.error('[WorkNoteService] Failed to delete work note files:', {
+            workId,
+            error: errorMessage,
+          });
+        })
+      : Promise.resolve();
 
     // Delete from D1 (cascade will handle work_note_files via ON DELETE CASCADE)
     await this.repository.delete(workId);
 
-    // Delete chunks from Vectorize (async, non-blocking)
-    this.deleteWorkNoteChunks(workId).catch((error) => {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+    const chunkCleanupPromise = this.deleteWorkNoteChunks(workId, maxKnownChunkCount).catch(
+      (error) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
 
-      console.error('[WorkNoteService] Failed to delete work note chunks:', {
-        workId,
-        error: errorMessage,
-      });
-      // Note: Orphaned embeddings may remain but won't affect functionality
-    });
+        console.error('[WorkNoteService] Failed to delete work note chunks:', {
+          workId,
+          error: errorMessage,
+        });
+      }
+    );
+
+    return {
+      cleanupPromise: Promise.allSettled([fileCleanupPromise, chunkCleanupPromise]).then(() => {
+        return;
+      }),
+    };
   }
 
   /**
@@ -167,7 +206,9 @@ export class WorkNoteService {
     data: CreateWorkNoteInput
   ): Promise<void> {
     const personIds = data.persons?.map((p) => p.personId) || [];
-    await this.performChunkingAndEmbedding(workNote, personIds, false);
+    await this.performChunkingAndEmbedding(workNote, personIds, {
+      expectedUpdatedAt: workNote.updatedAt,
+    });
   }
 
   /**
@@ -179,7 +220,8 @@ export class WorkNoteService {
    */
   private async rechunkAndEmbedWorkNote(
     workNote: WorkNote,
-    data: UpdateWorkNoteInput
+    data: UpdateWorkNoteInput,
+    previousChunkCount: number
   ): Promise<void> {
     // Get person IDs (use updated data if provided, otherwise fetch from DB)
     let personIds: string[] = [];
@@ -190,7 +232,11 @@ export class WorkNoteService {
       personIds = details?.persons.map((p) => p.personId) || [];
     }
 
-    await this.performChunkingAndEmbedding(workNote, personIds, true);
+    await this.performChunkingAndEmbedding(workNote, personIds, {
+      deleteStaleChunks: true,
+      previousChunkCount,
+      expectedUpdatedAt: workNote.updatedAt,
+    });
   }
 
   /**
@@ -255,13 +301,21 @@ export class WorkNoteService {
    *
    * @param workNote - Work note to chunk and embed
    * @param personIds - Person IDs associated with the work note
-   * @param deleteStaleChunks - Whether to delete stale chunks after upsert
+   * @param options - Embedding options (stale deletion and race guards)
    */
   private async performChunkingAndEmbedding(
     workNote: WorkNote,
     personIds: string[],
-    deleteStaleChunks: boolean = false
+    options: EmbeddingRunOptions = {}
   ): Promise<void> {
+    const shouldProceedBeforeUpsert = await this.ensureEmbeddingTargetIsCurrent(
+      workNote.workId,
+      options.expectedUpdatedAt
+    );
+    if (!shouldProceedBeforeUpsert) {
+      return;
+    }
+
     const deptName = await this.getDeptNameFromPersons(personIds);
 
     const metadata = {
@@ -285,39 +339,61 @@ export class WorkNoteService {
       text: chunk.text,
       metadata: chunk.metadata,
     }));
+    const newChunkIds = chunksToEmbed.map((chunk) => chunk.id);
 
     // Upsert chunks into Vectorize using centralized EmbeddingProcessor
     await this.embeddingProcessor.upsertChunks(chunksToEmbed);
 
-    // Delete stale chunks if requested (for updates)
-    if (deleteStaleChunks) {
-      const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
-      await this.embeddingProcessor.deleteStaleChunks(workNote.workId, newChunkIds);
+    const shouldProceedAfterUpsert = await this.ensureEmbeddingTargetIsCurrent(
+      workNote.workId,
+      options.expectedUpdatedAt
+    );
+    if (!shouldProceedAfterUpsert) {
+      await this.rollbackChunkUpsert(workNote.workId, newChunkIds);
+      return;
     }
 
-    // Update embedded_at timestamp on success
+    // Delete stale chunks deterministically by chunk ID range.
+    if (
+      options.deleteStaleChunks &&
+      options.previousChunkCount !== undefined &&
+      options.previousChunkCount > chunksToEmbed.length
+    ) {
+      await this.embeddingProcessor.deleteChunkRange(
+        workNote.workId,
+        chunksToEmbed.length,
+        options.previousChunkCount
+      );
+    }
+
+    // Update embedded_at timestamp on success.
+    if (options.expectedUpdatedAt) {
+      const updated = await this.repository.updateEmbeddedAtIfUpdatedAtMatches(
+        workNote.workId,
+        options.expectedUpdatedAt
+      );
+      if (!updated) {
+        console.warn('[WorkNoteService] Skip embedding completion for stale version:', {
+          workId: workNote.workId,
+          expectedUpdatedAt: options.expectedUpdatedAt,
+        });
+        await this.rollbackChunkUpsert(workNote.workId, newChunkIds);
+      }
+      return;
+    }
+
     await this.repository.updateEmbeddedAt(workNote.workId);
   }
 
   /**
    * Delete all chunks for a work note from Vectorize
    */
-  private async deleteWorkNoteChunks(workId: string): Promise<void> {
-    try {
-      const results = await this.vectorizeService.query(new Array(1536).fill(0), {
-        topK: 500,
-        filter: { work_id: workId },
-        returnMetadata: false,
-      });
-
-      if (results.matches.length > 0) {
-        const chunkIds = results.matches.map((match) => match.id);
-        await this.vectorizeService.delete(chunkIds);
-      }
-    } catch (error) {
-      console.error('Error deleting work note chunks:', error);
-      // Non-fatal: log and continue
+  private async deleteWorkNoteChunks(workId: string, maxChunkCount: number): Promise<void> {
+    if (maxChunkCount <= 0) {
+      return;
     }
+
+    await this.embeddingProcessor.deleteChunkRange(workId, 0, maxChunkCount);
   }
 
   /**
@@ -342,9 +418,59 @@ export class WorkNoteService {
     // Get work note details for person_ids
     const details = await this.repository.findByIdWithDetails(workId);
     const personIds = details?.persons.map((p) => p.personId) || [];
+    const currentChunkCount = this.embeddingProcessor.estimateChunkCount(
+      workId,
+      workNote.title,
+      workNote.contentRaw
+    );
+    const maxKnownChunkCount = await this.embeddingProcessor.getMaxKnownChunkCount(
+      workId,
+      currentChunkCount
+    );
 
     // Use shared chunking and embedding logic with stale chunk deletion
-    await this.performChunkingAndEmbedding(workNote, personIds, true);
+    await this.performChunkingAndEmbedding(workNote, personIds, {
+      deleteStaleChunks: true,
+      previousChunkCount: maxKnownChunkCount,
+      expectedUpdatedAt: workNote.updatedAt,
+    });
+  }
+
+  private async ensureEmbeddingTargetIsCurrent(
+    workId: string,
+    expectedUpdatedAt?: string
+  ): Promise<boolean> {
+    if (!expectedUpdatedAt) {
+      return true;
+    }
+
+    const current = await this.repository.findById(workId);
+    if (!current) {
+      console.warn('[WorkNoteService] Skip embedding for deleted work note:', { workId });
+      return false;
+    }
+
+    if (current.updatedAt !== expectedUpdatedAt) {
+      console.warn('[WorkNoteService] Skip embedding for stale work note version:', {
+        workId,
+        expectedUpdatedAt,
+        currentUpdatedAt: current.updatedAt,
+      });
+      return false;
+    }
+
+    return true;
+  }
+
+  private async rollbackChunkUpsert(workId: string, chunkIds: string[]): Promise<void> {
+    try {
+      await this.embeddingProcessor.deleteChunkIdsInBatches(chunkIds);
+    } catch (error) {
+      console.error('[WorkNoteService] Failed to rollback stale chunk upsert:', {
+        workId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   /**

@@ -908,6 +908,31 @@ export class WorkNoteRepository {
   }
 
   /**
+   * Update embedded_at only when updated_at matches the expected value.
+   * Prevents stale async embedding jobs from marking newer revisions as embedded.
+   *
+   * @param workId - Work note ID
+   * @param expectedUpdatedAt - Expected updated_at timestamp captured when embedding started
+   * @returns True when updated, false when note is missing or updated_at changed
+   */
+  async updateEmbeddedAtIfUpdatedAtMatches(
+    workId: string,
+    expectedUpdatedAt: string
+  ): Promise<boolean> {
+    const now = new Date().toISOString();
+    const result = await this.db
+      .prepare(
+        `UPDATE work_notes
+         SET embedded_at = ?
+         WHERE work_id = ? AND updated_at = ?`
+      )
+      .bind(now, workId, expectedUpdatedAt)
+      .run();
+
+    return (result.meta.changes || 0) > 0;
+  }
+
+  /**
    * Get count of embedded and non-embedded work notes
    */
   async getEmbeddingStats(): Promise<{ total: number; embedded: number; pending: number }> {
