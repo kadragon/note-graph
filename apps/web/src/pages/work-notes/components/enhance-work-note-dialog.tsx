@@ -13,6 +13,7 @@ import { Label } from '@web/components/ui/label';
 import { Textarea } from '@web/components/ui/textarea';
 import { useEnhanceWorkNote } from '@web/hooks/use-enhance-work-note';
 import { useToast } from '@web/hooks/use-toast';
+import { API } from '@web/lib/api';
 import { FILE_UPLOAD_CONFIG } from '@web/lib/config';
 import type { EnhanceWorkNoteResponse } from '@web/types/api';
 import { Paperclip, Sparkles, X } from 'lucide-react';
@@ -23,6 +24,12 @@ interface EnhanceWorkNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEnhanceSuccess: (response: EnhanceWorkNoteResponse) => void;
+}
+
+function isPdfFile(file: File): boolean {
+  const mimeType = file.type.trim().toLowerCase();
+  const fileName = file.name.toLowerCase();
+  return mimeType === 'application/pdf' || fileName.endsWith('.pdf');
 }
 
 export function EnhanceWorkNoteDialog({
@@ -57,6 +64,17 @@ export function EnhanceWorkNoteDialog({
       });
 
       onEnhanceSuccess(result);
+
+      if (selectedFile && isPdfFile(selectedFile)) {
+        void API.uploadWorkNoteFile(workId, selectedFile).catch((error) => {
+          console.error('PDF attachment upload failed:', error);
+          toast({
+            variant: 'destructive',
+            title: '주의',
+            description: 'PDF 첨부에 실패했습니다. 업무노트 업데이트는 유지되었습니다.',
+          });
+        });
+      }
     } catch {
       // Error handled by mutation hook
     }

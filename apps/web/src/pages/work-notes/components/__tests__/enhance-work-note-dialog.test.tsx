@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { useEnhanceWorkNote } from '@web/hooks/use-enhance-work-note';
+import { API } from '@web/lib/api';
 import { render, screen, waitFor } from '@web/test/setup';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -25,6 +26,12 @@ vi.mock('@web/hooks/use-enhance-work-note', () => ({
   })),
 }));
 
+vi.mock('@web/lib/api', () => ({
+  API: {
+    uploadWorkNoteFile: vi.fn(),
+  },
+}));
+
 const mockToast = vi.fn();
 vi.mock('@web/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
@@ -40,6 +47,7 @@ describe('EnhanceWorkNoteDialog', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(API.uploadWorkNoteFile).mockResolvedValue({} as never);
     mockMutateAsync.mockResolvedValue({
       enhancedDraft: {
         title: '향상된 제목',
@@ -116,6 +124,80 @@ describe('EnhanceWorkNoteDialog', () => {
       });
 
       expect(onEnhanceSuccess).toHaveBeenCalled();
+    });
+
+    it('uploads selected PDF to work note attachments after enhancement succeeds', async () => {
+      const user = userEvent.setup();
+      const onEnhanceSuccess = vi.fn();
+      render(<EnhanceWorkNoteDialog {...defaultProps} onEnhanceSuccess={onEnhanceSuccess} />);
+
+      const pdfFile = new File(['pdf'], 'source.pdf', { type: 'application/pdf' });
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      await user.upload(fileInput, pdfFile);
+
+      await user.click(screen.getByRole('button', { name: /AI로 생성/i }));
+
+      await waitFor(() => {
+        expect(onEnhanceSuccess).toHaveBeenCalled();
+        expect(API.uploadWorkNoteFile).toHaveBeenCalledWith('work-1', pdfFile);
+      });
+    });
+
+    it('uploads PDF when MIME type is empty but extension is .pdf', async () => {
+      const user = userEvent.setup();
+      const onEnhanceSuccess = vi.fn();
+      render(<EnhanceWorkNoteDialog {...defaultProps} onEnhanceSuccess={onEnhanceSuccess} />);
+
+      const pdfFileWithoutMime = new File(['pdf'], 'source.pdf');
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      await user.upload(fileInput, pdfFileWithoutMime);
+
+      await user.click(screen.getByRole('button', { name: /AI로 생성/i }));
+
+      await waitFor(() => {
+        expect(onEnhanceSuccess).toHaveBeenCalled();
+        expect(API.uploadWorkNoteFile).toHaveBeenCalledWith('work-1', pdfFileWithoutMime);
+      });
+    });
+
+    it('shows warning toast when PDF attachment upload fails but still proceeds', async () => {
+      const user = userEvent.setup();
+      const onEnhanceSuccess = vi.fn();
+      vi.mocked(API.uploadWorkNoteFile).mockRejectedValue(new Error('Upload failed'));
+      render(<EnhanceWorkNoteDialog {...defaultProps} onEnhanceSuccess={onEnhanceSuccess} />);
+
+      const pdfFile = new File(['pdf'], 'source.pdf', { type: 'application/pdf' });
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      await user.upload(fileInput, pdfFile);
+
+      await user.click(screen.getByRole('button', { name: /AI로 생성/i }));
+
+      await waitFor(() => {
+        expect(onEnhanceSuccess).toHaveBeenCalled();
+        expect(API.uploadWorkNoteFile).toHaveBeenCalledWith('work-1', pdfFile);
+        expect(mockToast).toHaveBeenCalledWith({
+          variant: 'destructive',
+          title: '주의',
+          description: 'PDF 첨부에 실패했습니다. 업무노트 업데이트는 유지되었습니다.',
+        });
+      });
+    });
+
+    it('does not auto-attach non-PDF files', async () => {
+      const user = userEvent.setup();
+      const onEnhanceSuccess = vi.fn();
+      render(<EnhanceWorkNoteDialog {...defaultProps} onEnhanceSuccess={onEnhanceSuccess} />);
+
+      const txtFile = new File(['text'], 'note.txt', { type: 'text/plain' });
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      await user.upload(fileInput, txtFile);
+
+      await user.click(screen.getByRole('button', { name: /AI로 생성/i }));
+
+      await waitFor(() => {
+        expect(onEnhanceSuccess).toHaveBeenCalled();
+      });
+      expect(API.uploadWorkNoteFile).not.toHaveBeenCalled();
     });
   });
 
