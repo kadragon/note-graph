@@ -21,6 +21,7 @@ export interface ReindexResult {
 
 // OpenAI embedding API can handle up to 2048 inputs, but we use smaller batches for reliability
 const MAX_CHUNKS_PER_BATCH = 100;
+const VECTOR_DELETE_BATCH_SIZE = 100;
 
 interface ChunkToEmbed {
   id: string;
@@ -131,13 +132,16 @@ export class EmbeddingProcessor {
             text: chunk.text,
             metadata: chunk.metadata,
           }));
+          const previousChunkCount = await this.getMaxKnownChunkCount(
+            workNote.workId,
+            chunksToEmbed.length
+          );
 
           // Upsert chunks into Vectorize
           await this.upsertChunks(chunksToEmbed);
 
-          // Delete stale chunks (if this is a re-embed)
-          const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
-          await this.deleteStaleChunks(workNote.workId, newChunkIds);
+          // Delete stale chunks deterministically
+          await this.deleteStaleChunks(workNote.workId, chunksToEmbed.length, previousChunkCount);
 
           // Update embedded_at timestamp
           await this.repository.updateEmbeddedAt(workNote.workId);
@@ -220,13 +224,16 @@ export class EmbeddingProcessor {
       text: chunk.text,
       metadata: chunk.metadata,
     }));
+    const previousChunkCount = await this.getMaxKnownChunkCount(
+      workNote.workId,
+      chunksToEmbed.length
+    );
 
     // Upsert chunks into Vectorize
     await this.upsertChunks(chunksToEmbed);
 
-    // Delete stale chunks (if this is a re-embed)
-    const newChunkIds = new Set(chunksToEmbed.map((c) => c.id));
-    await this.deleteStaleChunks(workNote.workId, newChunkIds);
+    // Delete stale chunks deterministically
+    await this.deleteStaleChunks(workNote.workId, chunksToEmbed.length, previousChunkCount);
 
     // Update embedded_at timestamp
     await this.repository.updateEmbeddedAt(workNote.workId);
@@ -424,9 +431,11 @@ export class EmbeddingProcessor {
 
       // Update embedded_at for all work notes in this batch (in parallel)
       const updatePromises = workIds.map(async (workId) => {
-        // Delete stale chunks
-        const newChunkIds = new Set(workNoteChunkMap.get(workId) || []);
-        await this.deleteStaleChunks(workId, newChunkIds);
+        const newChunkCount = (workNoteChunkMap.get(workId) || []).length;
+        const previousChunkCount = await this.getMaxKnownChunkCount(workId, newChunkCount);
+
+        // Delete stale chunks deterministically
+        await this.deleteStaleChunks(workId, newChunkCount, previousChunkCount);
 
         // Update timestamp
         await this.repository.updateEmbeddedAt(workId);
@@ -495,28 +504,84 @@ export class EmbeddingProcessor {
   }
 
   /**
-   * Delete stale chunks for a work note (chunks not in the new chunk ID set)
+   * Delete stale chunks for a work note by deterministic chunk ID range.
    * Public method for reuse across services (WorkNoteService)
    */
-  async deleteStaleChunks(workId: string, newChunkIds: Set<string>): Promise<void> {
+  async deleteStaleChunks(
+    workId: string,
+    newChunkCount: number,
+    previousChunkCount: number
+  ): Promise<void> {
     try {
-      const results = await this.vectorizeService.query(new Array(1536).fill(0), {
-        topK: 500,
-        filter: { work_id: workId },
-        returnMetadata: false,
-      });
-
-      const staleChunkIds = results.matches
-        .map((match) => match.id)
-        .filter((id) => !newChunkIds.has(id));
-
-      if (staleChunkIds.length > 0) {
-        await this.vectorizeService.delete(staleChunkIds);
+      if (previousChunkCount > newChunkCount) {
+        await this.deleteChunkRange(workId, newChunkCount, previousChunkCount);
       }
     } catch (error) {
       console.error('Error deleting stale chunks:', error);
       // Non-fatal: log and continue
     }
+  }
+
+  private estimateChunkCount(workId: string, title: string, contentRaw: string): number {
+    return this.chunkingService.chunkWorkNote(workId, title, contentRaw, { created_at_bucket: '' })
+      .length;
+  }
+
+  private async getMaxKnownChunkCount(workId: string, fallbackCount: number): Promise<number> {
+    if (fallbackCount <= 0) {
+      return fallbackCount;
+    }
+
+    try {
+      const versions = await this.repository.getVersions(workId);
+      let maxChunkCount = fallbackCount;
+
+      for (const version of versions) {
+        maxChunkCount = Math.max(
+          maxChunkCount,
+          this.estimateChunkCount(workId, version.title, version.contentRaw)
+        );
+      }
+
+      return maxChunkCount;
+    } catch (error) {
+      console.warn('[EmbeddingProcessor] Failed to inspect versions for chunk cleanup:', {
+        workId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return fallbackCount;
+    }
+  }
+
+  private buildChunkIds(workId: string, startIndex: number, endExclusive: number): string[] {
+    const chunkIds: string[] = [];
+    for (let index = startIndex; index < endExclusive; index++) {
+      chunkIds.push(ChunkingService.generateChunkId(workId, index));
+    }
+    return chunkIds;
+  }
+
+  private async deleteChunkIdsInBatches(chunkIds: string[]): Promise<void> {
+    if (chunkIds.length === 0) {
+      return;
+    }
+
+    for (let i = 0; i < chunkIds.length; i += VECTOR_DELETE_BATCH_SIZE) {
+      const batch = chunkIds.slice(i, i + VECTOR_DELETE_BATCH_SIZE);
+      await this.vectorizeService.delete(batch);
+    }
+  }
+
+  private async deleteChunkRange(
+    workId: string,
+    startIndex: number,
+    endExclusive: number
+  ): Promise<void> {
+    if (endExclusive <= startIndex) {
+      return;
+    }
+
+    await this.deleteChunkIdsInBatches(this.buildChunkIds(workId, startIndex, endExclusive));
   }
 
   /**

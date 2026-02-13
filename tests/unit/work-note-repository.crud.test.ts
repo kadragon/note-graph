@@ -558,4 +558,38 @@ describe('WorkNoteRepository - CRUD operations', () => {
       expect(associations.results.length).toBe(0);
     });
   });
+
+  describe('updateEmbeddedAtIfUpdatedAtMatches()', () => {
+    it('updates embedded_at only when updated_at matches expected timestamp', async () => {
+      const created = await repository.create({
+        title: 'Embedding target',
+        contentRaw: 'content',
+      });
+
+      const updated = await repository.updateEmbeddedAtIfUpdatedAtMatches(
+        created.workId,
+        created.updatedAt
+      );
+
+      expect(updated).toBe(true);
+      const found = await repository.findById(created.workId);
+      expect(found?.embeddedAt).not.toBeNull();
+    });
+
+    it('does not update embedded_at when updated_at does not match', async () => {
+      const created = await repository.create({
+        title: 'Embedding mismatch target',
+        contentRaw: 'content',
+      });
+
+      const updated = await repository.updateEmbeddedAtIfUpdatedAtMatches(
+        created.workId,
+        '1999-01-01T00:00:00.000Z'
+      );
+
+      expect(updated).toBe(false);
+      const found = await repository.findById(created.workId);
+      expect(found?.embeddedAt).toBeNull();
+    });
+  });
 });

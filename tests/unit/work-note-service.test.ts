@@ -234,24 +234,180 @@ describe('WorkNoteService Google Drive integration', () => {
 });
 
 describe('WorkNoteService.delete', () => {
-  it('passes userEmail to deleteWorkNoteFiles when provided', async () => {
+  it('returns cleanupPromise and passes userEmail to deleteWorkNoteFiles when provided', async () => {
     const service = new WorkNoteService(dummyEnv);
 
     const deleteWorkNoteFiles = vi.fn().mockResolvedValue(undefined);
-    const deleteWorkNoteChunks = vi.fn().mockResolvedValue(undefined);
+    const deleteByIds = vi.fn().mockResolvedValue(undefined);
+    const findById = vi.fn().mockResolvedValue({
+      workId: 'WORK-123',
+      title: 'short title',
+      contentRaw: 'short content',
+      category: null,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      embeddedAt: null,
+    } satisfies WorkNote);
+    const getVersions = vi.fn().mockResolvedValue([]);
     const repositoryDelete = vi.fn().mockResolvedValue(undefined);
 
     (service as unknown as { fileService: unknown }).fileService = {
       deleteWorkNoteFiles,
     };
-    (service as unknown as { deleteWorkNoteChunks: unknown }).deleteWorkNoteChunks =
-      deleteWorkNoteChunks;
     (service as unknown as { repository: unknown }).repository = {
+      findById,
+      getVersions,
       delete: repositoryDelete,
     };
+    (service as unknown as { vectorizeService: unknown }).vectorizeService = {
+      delete: deleteByIds,
+    };
 
-    await service.delete('WORK-123', 'tester@example.com');
+    const { cleanupPromise } = await service.delete('WORK-123', 'tester@example.com');
+    await cleanupPromise;
 
     expect(deleteWorkNoteFiles).toHaveBeenCalledWith('WORK-123', 'tester@example.com');
+    expect(deleteByIds).toHaveBeenCalledWith(['WORK-123#chunk0']);
+    expect(repositoryDelete).toHaveBeenCalledWith('WORK-123');
+  });
+});
+
+describe('WorkNoteService embedding guards and deterministic stale deletion', () => {
+  it('deletes stale chunk IDs by deterministic range', async () => {
+    const service = new WorkNoteService(dummyEnv);
+
+    const findById = vi.fn().mockResolvedValue({
+      workId: 'WORK-1',
+      title: 'title',
+      contentRaw: 'content',
+      category: null,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      embeddedAt: null,
+    } satisfies WorkNote);
+    const updateEmbeddedAtIfUpdatedAtMatches = vi.fn().mockResolvedValue(true);
+    const getDeptNameForPerson = vi.fn().mockResolvedValue(null);
+    const upsertChunks = vi.fn().mockResolvedValue(undefined);
+    const deleteByIds = vi.fn().mockResolvedValue(undefined);
+
+    (service as unknown as { repository: unknown }).repository = {
+      findById,
+      updateEmbeddedAtIfUpdatedAtMatches,
+      getDeptNameForPerson,
+    };
+    (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = { upsertChunks };
+    (service as unknown as { vectorizeService: unknown }).vectorizeService = {
+      delete: deleteByIds,
+    };
+
+    const performChunkingAndEmbedding = (
+      service as unknown as {
+        performChunkingAndEmbedding: (
+          workNote: WorkNote,
+          personIds: string[],
+          options: {
+            deleteStaleChunks?: boolean;
+            previousChunkCount?: number;
+            expectedUpdatedAt?: string;
+          }
+        ) => Promise<void>;
+      }
+    ).performChunkingAndEmbedding.bind(service);
+
+    await performChunkingAndEmbedding(
+      {
+        workId: 'WORK-1',
+        title: 'title',
+        contentRaw: 'content',
+        category: null,
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-01T00:00:00.000Z',
+        embeddedAt: null,
+      },
+      [],
+      {
+        deleteStaleChunks: true,
+        previousChunkCount: 3,
+        expectedUpdatedAt: '2025-01-01T00:00:00.000Z',
+      }
+    );
+
+    expect(deleteByIds).toHaveBeenCalledWith(['WORK-1#chunk1', 'WORK-1#chunk2']);
+    expect(updateEmbeddedAtIfUpdatedAtMatches).toHaveBeenCalledWith(
+      'WORK-1',
+      '2025-01-01T00:00:00.000Z'
+    );
+  });
+
+  it('rolls back freshly upserted chunks when post-upsert version check fails', async () => {
+    const service = new WorkNoteService(dummyEnv);
+
+    const findById = vi
+      .fn()
+      .mockResolvedValueOnce({
+        workId: 'WORK-1',
+        title: 'title',
+        contentRaw: 'content',
+        category: null,
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-01T00:00:00.000Z',
+        embeddedAt: null,
+      } satisfies WorkNote)
+      .mockResolvedValueOnce({
+        workId: 'WORK-1',
+        title: 'title',
+        contentRaw: 'content updated',
+        category: null,
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-02T00:00:00.000Z',
+        embeddedAt: null,
+      } satisfies WorkNote);
+    const getDeptNameForPerson = vi.fn().mockResolvedValue(null);
+    const upsertChunks = vi.fn().mockResolvedValue(undefined);
+    const deleteByIds = vi.fn().mockResolvedValue(undefined);
+    const updateEmbeddedAtIfUpdatedAtMatches = vi.fn();
+
+    (service as unknown as { repository: unknown }).repository = {
+      findById,
+      getDeptNameForPerson,
+      updateEmbeddedAtIfUpdatedAtMatches,
+    };
+    (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = { upsertChunks };
+    (service as unknown as { vectorizeService: unknown }).vectorizeService = {
+      delete: deleteByIds,
+    };
+
+    const performChunkingAndEmbedding = (
+      service as unknown as {
+        performChunkingAndEmbedding: (
+          workNote: WorkNote,
+          personIds: string[],
+          options: {
+            deleteStaleChunks?: boolean;
+            previousChunkCount?: number;
+            expectedUpdatedAt?: string;
+          }
+        ) => Promise<void>;
+      }
+    ).performChunkingAndEmbedding.bind(service);
+
+    await performChunkingAndEmbedding(
+      {
+        workId: 'WORK-1',
+        title: 'title',
+        contentRaw: 'content',
+        category: null,
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-01T00:00:00.000Z',
+        embeddedAt: null,
+      },
+      [],
+      {
+        expectedUpdatedAt: '2025-01-01T00:00:00.000Z',
+      }
+    );
+
+    expect(updateEmbeddedAtIfUpdatedAtMatches).not.toHaveBeenCalled();
+    expect(deleteByIds).toHaveBeenCalledWith(['WORK-1#chunk0']);
   });
 });

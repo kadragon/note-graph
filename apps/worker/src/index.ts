@@ -26,6 +26,7 @@ import taskCategories from './routes/task-categories';
 import todos from './routes/todos';
 import workNoteGroups from './routes/work-note-groups';
 import workNotes from './routes/work-notes';
+import { EmbeddingProcessor } from './services/embedding-processor';
 import type { AppContext } from './types/context';
 import type { Env } from './types/env';
 import { DomainError } from './types/errors';
@@ -196,4 +197,50 @@ app.onError((err, c) => {
   );
 });
 
-export default app;
+const SCHEDULED_EMBED_PENDING_BATCH_SIZE = 20;
+
+async function runScheduledEmbedPending(env: Env): Promise<void> {
+  const processor = new EmbeddingProcessor(env);
+  const result = await processor.embedPending(SCHEDULED_EMBED_PENDING_BATCH_SIZE);
+
+  const skipReasons = {
+    deleted: 0,
+    staleVersion: 0,
+  };
+
+  for (const error of result.errors) {
+    const message = error.error.toLowerCase();
+    if (message.includes('not found')) {
+      skipReasons.deleted++;
+    } else if (message.includes('stale')) {
+      skipReasons.staleVersion++;
+    }
+  }
+
+  console.warn('[EmbeddingScheduler] embed-pending run complete', {
+    total: result.total,
+    processed: result.processed,
+    succeeded: result.succeeded,
+    failed: result.failed,
+    skipReasons,
+  });
+}
+
+const worker = {
+  fetch: app.fetch,
+  scheduled(
+    _controller: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext
+  ): void | Promise<void> {
+    ctx.waitUntil(
+      runScheduledEmbedPending(env).catch((error) => {
+        console.error('[EmbeddingScheduler] embed-pending run failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      })
+    );
+  },
+};
+
+export default worker;

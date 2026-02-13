@@ -172,9 +172,8 @@ describe('Work Note Google Drive Integration', () => {
     expect(stored?.storageType).toBe('GDRIVE');
     expect(stored?.gdriveWebViewLink).toBe('https://drive.example/file');
     const workNoteService = new WorkNoteService(testEnv as unknown as Env);
-    await workNoteService.delete(workId, userEmail);
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    const { cleanupPromise } = await workNoteService.delete(workId, userEmail);
+    await cleanupPromise;
 
     const deleteUrls = fetchMock.mock.calls
       .filter(([url, options]) => {
