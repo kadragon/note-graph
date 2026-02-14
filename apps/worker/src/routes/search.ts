@@ -7,25 +7,14 @@ import type {
   UnifiedSearchResponse,
 } from '@shared/types/search';
 import type { Context } from 'hono';
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { searchWorkNotesSchema } from '../schemas/search';
 import { HybridSearchService } from '../services/hybrid-search-service';
+import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import type { AppContext } from '../types/context';
-import {
-  buildMeetingMinutesFtsQuery,
-  mapMeetingMinutesFtsScores,
-} from '../utils/meeting-minutes-fts';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const search = new Hono<AppContext>();
-
-// Apply authentication to all search routes
-search.use('*', authMiddleware);
-
-// Apply error handler to all search routes
-search.use('*', errorHandler);
+const search = createProtectedRouter();
 
 /**
  * POST /search/work-notes
@@ -86,44 +75,10 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
     departmentRepository.findAll(query),
     // Meeting minutes search (FTS)
     (async (): Promise<MeetingMinuteSearchItem[]> => {
-      const ftsQuery = buildMeetingMinutesFtsQuery(query);
-      if (ftsQuery.length === 0) {
-        return [];
-      }
-
-      const result = await c.env.DB.prepare(
-        `WITH fts_matches AS (
-           SELECT rowid, rank
-           FROM meeting_minutes_fts
-           WHERE meeting_minutes_fts MATCH ?
-           ORDER BY rank ASC
-           LIMIT ?
-         )
-         SELECT
-           mm.meeting_id as meetingId,
-           mm.meeting_date as meetingDate,
-           mm.topic as topic,
-           mm.keywords_json as keywordsJson,
-           fts.rank as ftsRank
-         FROM fts_matches fts
-         INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
-         ORDER BY fts.rank ASC`
-      )
-        .bind(ftsQuery, body.limit)
-        .all<{
-          meetingId: string;
-          meetingDate: string;
-          topic: string;
-          keywordsJson: string;
-          ftsRank: number;
-        }>();
-
-      return mapMeetingMinutesFtsScores(result.results || []).map((row) => ({
-        meetingId: row.meetingId,
-        meetingDate: row.meetingDate,
-        topic: row.topic,
-        keywords: JSON.parse(row.keywordsJson || '[]') as string[],
-        score: row.score,
+      const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.env.DB);
+      const references = await meetingMinuteReferenceService.search(query, body.limit);
+      return references.map((reference) => ({
+        ...reference,
         source: 'MEETING_FTS' as const,
       }));
     })(),

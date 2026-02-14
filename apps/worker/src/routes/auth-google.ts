@@ -2,17 +2,11 @@
  * Google OAuth routes for Drive integration
  */
 
-import { Hono } from 'hono';
-import { authMiddleware, getAuthUser } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
+import { getAuthUser } from '../middleware/auth';
 import { GoogleOAuthService, hasSufficientDriveScope } from '../services/google-oauth-service';
-import type { AppContext } from '../types/context';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const authGoogle = new Hono<AppContext>();
-
-// All routes require authentication (via Cloudflare Access)
-authGoogle.use('*', authMiddleware);
-authGoogle.use('*', errorHandler);
+const authGoogle = createProtectedRouter();
 
 /**
  * GET /auth/google/authorize - Start OAuth flow

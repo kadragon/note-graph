@@ -3,19 +3,12 @@
  * Statistics routes for work note completion metrics
  */
 
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import { getValidatedQuery, queryValidator } from '../middleware/validation-middleware';
 import { statisticsQuerySchema } from '../schemas/statistics';
 import { StatisticsService } from '../services/statistics-service';
-import type { AppContext } from '../types/context';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const statistics = new Hono<AppContext>();
-
-// All statistics routes require authentication
-statistics.use('*', authMiddleware);
-statistics.use('*', errorHandler);
+const statistics = createProtectedRouter();
 
 /**
  * GET /statistics - Get work note statistics with period filters

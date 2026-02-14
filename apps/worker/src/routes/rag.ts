@@ -1,16 +1,12 @@
 // Trace: SPEC-rag-1, SPEC-refactor-repository-di, TASK-012, TASK-041, TASK-REFACTOR-004
 
-import { Hono } from 'hono';
-import { errorHandler } from '../middleware/error-handler';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { RagQueryRequestSchema } from '../schemas/rag';
 import { RagService } from '../services/rag-service';
-import type { AppContext } from '../types/context';
 import { BadRequestError } from '../types/errors';
+import { createErrorHandledRouter } from './_shared/router-factory';
 
-const app = new Hono<AppContext>();
-
-app.use('*', errorHandler);
+const app = createErrorHandledRouter();
 
 /**
  * POST /rag/query

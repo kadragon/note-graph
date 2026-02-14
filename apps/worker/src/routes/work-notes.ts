@@ -4,9 +4,7 @@
  */
 
 import type { WorkNoteFile } from '@shared/types/work-note';
-import { Hono } from 'hono';
-import { authMiddleware, getAuthUser } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
+import { getAuthUser } from '../middleware/auth';
 import {
   bodyValidator,
   getValidatedBody,
@@ -24,38 +22,16 @@ import { WorkNoteFileService } from '../services/work-note-file-service';
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext, AppVariables } from '../types/context';
 import { getR2Bucket } from '../utils/r2-access';
+import { missingParamJson, notFoundJson } from './_shared/route-responses';
+import { createProtectedRouter } from './_shared/router-factory';
+import { triggerReembed } from './_shared/trigger-reembed';
 
 type WorkNotesContext = {
   Bindings: AppContext['Bindings'];
   Variables: AppVariables & FileContext;
 };
 
-const workNotes = new Hono<WorkNotesContext>();
-
-// All work note routes require authentication
-workNotes.use('*', authMiddleware);
-workNotes.use('*', errorHandler);
-
-/**
- * Trigger re-embedding of a work note
- * Used when todo changes require vector store update
- */
-function triggerReembed(
-  env: AppContext['Bindings'],
-  workId: string,
-  todoId: string,
-  operation: string
-): Promise<void> {
-  const service = new WorkNoteService(env);
-  return service.reembedOnly(workId).catch((error) => {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[WorkNote] Failed to re-embed after todo ${operation}:`, {
-      workId,
-      todoId,
-      error: errorMessage,
-    });
-  });
-}
+const workNotes = createProtectedRouter<WorkNotesContext>();
 
 /**
  * GET /work-notes - List work notes with filters
@@ -94,7 +70,7 @@ workNotes.get('/:workId', async (c) => {
   const workNote = await service.findByIdWithDetails(workId);
 
   if (!workNote) {
-    return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
+    return notFoundJson(c, 'Work note', workId);
   }
 
   return c.json(workNote);
@@ -173,7 +149,7 @@ workNotes.post('/:workId/files', async (c) => {
   const workNoteService = new WorkNoteService(c.env);
   const workNote = await workNoteService.findById(workId);
   if (!workNote) {
-    return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
+    return notFoundJson(c, 'Work note', workId);
   }
 
   // Parse multipart form data
@@ -209,7 +185,7 @@ workNotes.post('/:workId/files', async (c) => {
 workNotes.get('/:workId/files', workNoteFileMiddleware, async (c) => {
   const { workId } = c.req.param();
   if (!workId) {
-    return c.json({ error: 'workId is required' }, 400);
+    return missingParamJson(c, 'workId');
   }
   const user = getAuthUser(c);
   const fileService = c.get('fileService');
@@ -225,13 +201,13 @@ workNotes.post('/:workId/files/migrate', workNoteFileMiddleware, async (c) => {
   const { workId } = c.req.param();
   const user = getAuthUser(c);
   if (!workId) {
-    return c.json({ error: 'workId is required' }, 400);
+    return missingParamJson(c, 'workId');
   }
 
   const workNoteService = new WorkNoteService(c.env);
   const workNote = await workNoteService.findById(workId);
   if (!workNote) {
-    return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
+    return notFoundJson(c, 'Work note', workId);
   }
 
   const fileService = c.get('fileService');
@@ -294,7 +270,7 @@ workNotes.get('/:workId/files/:fileId/view', workNoteFileMiddleware, async (c) =
 workNotes.delete('/:workId/files/:fileId', async (c) => {
   const { fileId } = c.req.param();
   if (!fileId) {
-    return c.json({ error: 'fileId is required' }, 400);
+    return missingParamJson(c, 'fileId');
   }
   const user = getAuthUser(c);
 

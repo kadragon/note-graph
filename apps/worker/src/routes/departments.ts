@@ -3,9 +3,6 @@
  * Department management routes
  */
 
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import {
   bodyValidator,
   getValidatedBody,
@@ -17,13 +14,10 @@ import {
   listDepartmentsQuerySchema,
   updateDepartmentSchema,
 } from '../schemas/department';
-import type { AppContext } from '../types/context';
+import { notFoundJson } from './_shared/route-responses';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const departments = new Hono<AppContext>();
-
-// All department routes require authentication
-departments.use('*', authMiddleware);
-departments.use('*', errorHandler);
+const departments = createProtectedRouter();
 
 /**
  * GET /departments - List all departments
@@ -56,7 +50,7 @@ departments.get('/:deptName', async (c) => {
   const department = await repository.findByName(deptName);
 
   if (!department) {
-    return c.json({ code: 'NOT_FOUND', message: `Department not found: ${deptName}` }, 404);
+    return notFoundJson(c, 'Department', deptName);
   }
 
   return c.json(department);

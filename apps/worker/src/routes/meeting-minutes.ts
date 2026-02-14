@@ -1,26 +1,22 @@
 import type { Context } from 'hono';
-import { Hono } from 'hono';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { MeetingMinuteRepository } from '../repositories/meeting-minute-repository';
 import { PersonRepository } from '../repositories/person-repository';
 import { TaskCategoryRepository } from '../repositories/task-category-repository';
 import { createMeetingMinuteSchema, updateMeetingMinuteSchema } from '../schemas/meeting-minute';
 import { MeetingMinuteKeywordService } from '../services/meeting-minute-keyword-service';
+import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import type { AppContext, AppVariables } from '../types/context';
-import {
-  buildMeetingMinutesFtsQuery,
-  mapMeetingMinutesFtsScores,
-} from '../utils/meeting-minutes-fts';
+import { notFoundJson } from './_shared/route-responses';
+import { createProtectedRouter } from './_shared/router-factory';
 
 type MeetingMinutesContext = {
   Bindings: AppContext['Bindings'];
   Variables: AppVariables;
 };
 
-const meetingMinutes = new Hono<MeetingMinutesContext>();
+const meetingMinutes = createProtectedRouter<MeetingMinutesContext>();
 const suggestMeetingMinutesSchema = z.object({
   query: z.string().trim().min(1),
   limit: z.number().int().min(1).max(20).optional(),
@@ -76,9 +72,6 @@ async function hasMeetingMinuteDuplicateTopic(
   return (result.results || []).some((row) => isHighlySimilarTopic(row.topic, input.topic));
 }
 
-meetingMinutes.use('*', authMiddleware);
-meetingMinutes.use('*', errorHandler);
-
 meetingMinutes.get('/', async (c) => {
   const q = c.req.query('q');
   const meetingDateFrom = c.req.query('meetingDateFrom');
@@ -108,46 +101,8 @@ meetingMinutes.get('/', async (c) => {
 meetingMinutes.post('/suggest', bodyValidator(suggestMeetingMinutesSchema), async (c) => {
   const body = getValidatedBody<typeof suggestMeetingMinutesSchema>(c);
   const limit = body.limit ?? 5;
-  const ftsQuery = buildMeetingMinutesFtsQuery(body.query);
-
-  if (ftsQuery.length === 0) {
-    return c.json({ meetingReferences: [] });
-  }
-
-  const result = await c.env.DB.prepare(
-    `WITH fts_matches AS (
-       SELECT rowid, rank
-       FROM meeting_minutes_fts
-       WHERE meeting_minutes_fts MATCH ?
-       ORDER BY rank ASC
-       LIMIT ?
-     )
-     SELECT
-       mm.meeting_id as meetingId,
-       mm.meeting_date as meetingDate,
-       mm.topic as topic,
-       mm.keywords_json as keywordsJson,
-       fts.rank as ftsRank
-     FROM fts_matches fts
-     INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
-     ORDER BY fts.rank ASC`
-  )
-    .bind(ftsQuery, limit)
-    .all<{
-      meetingId: string;
-      meetingDate: string;
-      topic: string;
-      keywordsJson: string;
-      ftsRank: number;
-    }>();
-
-  const meetingReferences = mapMeetingMinutesFtsScores(result.results || []).map((row) => ({
-    meetingId: row.meetingId,
-    meetingDate: row.meetingDate,
-    topic: row.topic,
-    keywords: JSON.parse(row.keywordsJson || '[]') as string[],
-    score: row.score,
-  }));
+  const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.env.DB);
+  const meetingReferences = await meetingMinuteReferenceService.search(body.query, limit);
 
   return c.json({ meetingReferences });
 });
@@ -179,7 +134,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
     }>();
 
   if (!row) {
-    return c.json({ code: 'NOT_FOUND', message: `Meeting minute not found: ${meetingId}` }, 404);
+    return notFoundJson(c, 'Meeting minute', meetingId);
   }
 
   const attendeesResult = await c.env.DB.prepare(
@@ -242,7 +197,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
     }>();
 
   if (!existing) {
-    return c.json({ code: 'NOT_FOUND', message: `Meeting minute not found: ${meetingId}` }, 404);
+    return notFoundJson(c, 'Meeting minute', meetingId);
   }
 
   if (data.meetingDate !== undefined || data.topic !== undefined) {
