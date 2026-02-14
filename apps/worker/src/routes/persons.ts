@@ -4,9 +4,6 @@
  */
 
 import type { Person } from '@shared/types/person';
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import {
   bodyValidator,
   getValidatedBody,
@@ -20,14 +17,10 @@ import {
   updatePersonSchema,
 } from '../schemas/person';
 import { PersonImportService } from '../services/person-import-service';
-import type { AppContext } from '../types/context';
-import { NotFoundError } from '../types/errors';
+import { notFoundJson } from './_shared/route-responses';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const persons = new Hono<AppContext>();
-
-// All person routes require authentication
-persons.use('*', authMiddleware);
-persons.use('*', errorHandler);
+const persons = createProtectedRouter();
 
 /**
  * GET /persons - List all persons with optional search
@@ -61,7 +54,7 @@ persons.get('/:personId', async (c) => {
   const person = await repository.findById(personId);
 
   if (!person) {
-    throw new NotFoundError('Person', personId);
+    return notFoundJson(c, 'Person', personId);
   }
 
   return c.json(person);

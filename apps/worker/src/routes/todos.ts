@@ -3,9 +3,6 @@
  * Todo management routes
  */
 
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import {
   bodyValidator,
   getValidatedBody,
@@ -13,14 +10,10 @@ import {
   queryValidator,
 } from '../middleware/validation-middleware';
 import { listTodosQuerySchema, updateTodoSchema } from '../schemas/todo';
-import type { AppContext } from '../types/context';
-import { triggerReembed } from './shared/reembed';
+import { createProtectedRouter } from './_shared/router-factory';
+import { triggerReembed } from './_shared/trigger-reembed';
 
-const todos = new Hono<AppContext>();
-
-// All todo routes require authentication
-todos.use('*', authMiddleware);
-todos.use('*', errorHandler);
+const todos = createProtectedRouter();
 
 /**
  * GET /todos - List todos with view filters

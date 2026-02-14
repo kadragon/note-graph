@@ -1,6 +1,3 @@
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import {
   bodyValidator,
   getValidatedBody,
@@ -12,12 +9,10 @@ import {
   listWorkNoteGroupsQuerySchema,
   updateWorkNoteGroupSchema,
 } from '../schemas/work-note-group';
-import type { AppContext } from '../types/context';
+import { notFoundJson } from './_shared/route-responses';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const workNoteGroups = new Hono<AppContext>();
-
-workNoteGroups.use('*', authMiddleware);
-workNoteGroups.use('*', errorHandler);
+const workNoteGroups = createProtectedRouter();
 
 workNoteGroups.get('/', queryValidator(listWorkNoteGroupsQuerySchema), async (c) => {
   const query = getValidatedQuery<typeof listWorkNoteGroupsQuerySchema>(c);
@@ -38,7 +33,7 @@ workNoteGroups.get('/:groupId', async (c) => {
   const { workNoteGroups: repository } = c.get('repositories');
   const group = await repository.findById(groupId);
   if (!group) {
-    return c.json({ code: 'NOT_FOUND', message: `Work note group not found: ${groupId}` }, 404);
+    return notFoundJson(c, 'Work note group', groupId);
   }
   return c.json(group);
 });

@@ -1,22 +1,15 @@
 // Trace: SPEC-rag-2, SPEC-refactor-repository-di, TASK-022, TASK-069, TASK-REFACTOR-004
 // Admin routes for embedding management
 
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import { getValidatedQuery, queryValidator } from '../middleware/validation-middleware';
 import { adminBatchQuerySchema, adminEmbeddingFailuresQuerySchema } from '../schemas/admin';
 import { aiGatewayLogsQuerySchema } from '../schemas/ai-gateway-logs';
 import { CloudflareAIGatewayLogService } from '../services/cloudflare-ai-gateway-log-service';
 import { EmbeddingProcessor } from '../services/embedding-processor';
-import type { AppContext } from '../types/context';
 import { NotFoundError } from '../types/errors';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const admin = new Hono<AppContext>();
-
-// Apply auth middleware to all admin routes
-admin.use('*', authMiddleware);
-admin.use('*', errorHandler);
+const admin = createProtectedRouter();
 
 /**
  * POST /admin/reindex-all

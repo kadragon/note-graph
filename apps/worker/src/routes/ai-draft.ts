@@ -4,9 +4,6 @@
  */
 
 import type { Context, Next } from 'hono';
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import {
   DraftFromTextRequestSchema,
@@ -15,14 +12,12 @@ import {
 } from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
 import { FileTextExtractionService } from '../services/file-text-extraction-service';
+import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext, AppVariables } from '../types/context';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
-import {
-  buildMeetingMinutesFtsQuery,
-  mapMeetingMinutesFtsScores,
-} from '../utils/meeting-minutes-fts';
+import { createProtectedRouter } from './_shared/router-factory';
 
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
@@ -35,11 +30,7 @@ type Variables = {
 
 type AiDraftContext = { Bindings: AppContext['Bindings']; Variables: Variables };
 
-const app = new Hono<AiDraftContext>();
-
-// All AI draft routes require authentication
-app.use('*', authMiddleware);
-app.use('*', errorHandler);
+const app = createProtectedRouter<AiDraftContext>();
 
 /**
  * Middleware to fetch active categories for AI suggestion
@@ -136,51 +127,16 @@ app.post(
       similarityScore: note.similarityScore,
     }));
 
-    const ftsQuery = buildMeetingMinutesFtsQuery(body.inputText);
-    const meetingReferences =
-      ftsQuery.length > 0
-        ? (
-            await c.env.DB.prepare(
-              `WITH fts_matches AS (
-                 SELECT rowid, rank
-                 FROM meeting_minutes_fts
-                 WHERE meeting_minutes_fts MATCH ?
-                 ORDER BY rank ASC
-                 LIMIT ?
-               )
-               SELECT
-                 mm.meeting_id as meetingId,
-                 mm.meeting_date as meetingDate,
-                 mm.topic as topic,
-                 mm.keywords_json as keywordsJson,
-                 fts.rank as ftsRank
-               FROM fts_matches fts
-               INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
-               ORDER BY fts.rank ASC`
-            )
-              .bind(ftsQuery, MEETING_REFERENCES_TOP_K)
-              .all<{
-                meetingId: string;
-                meetingDate: string;
-                topic: string;
-                keywordsJson: string;
-                ftsRank: number;
-              }>()
-          ).results || []
-        : [];
-
-    const scoredMeetingReferences = mapMeetingMinutesFtsScores(meetingReferences);
+    const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.env.DB);
+    const scoredMeetingReferences = await meetingMinuteReferenceService.search(
+      body.inputText,
+      MEETING_REFERENCES_TOP_K
+    );
 
     return c.json({
       draft,
       references,
-      meetingReferences: scoredMeetingReferences.map((row) => ({
-        meetingId: row.meetingId,
-        meetingDate: row.meetingDate,
-        topic: row.topic,
-        keywords: JSON.parse(row.keywordsJson || '[]') as string[],
-        score: row.score,
-      })),
+      meetingReferences: scoredMeetingReferences,
     });
   }
 );
