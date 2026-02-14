@@ -4,9 +4,9 @@ import { bodyValidator, getValidatedBody } from '../middleware/validation-middle
 import { RagQueryRequestSchema } from '../schemas/rag';
 import { RagService } from '../services/rag-service';
 import { BadRequestError } from '../types/errors';
-import { createErrorHandledRouter } from './_shared/router-factory';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const app = createErrorHandledRouter();
+const app = createProtectedRouter();
 
 /**
  * POST /rag/query

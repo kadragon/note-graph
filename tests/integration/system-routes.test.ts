@@ -54,6 +54,47 @@ describe('System API Routes', () => {
       const data = await response.json<{ email: string }>();
       expect(data.email).toBe('test@example.com');
     });
+
+    it('should require authentication for /api/rag/query endpoint', async () => {
+      const originalEnv = env.ENVIRONMENT;
+      (env as unknown as Env).ENVIRONMENT = 'production';
+
+      try {
+        const response = await SELF.fetch('http://localhost/api/rag/query', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: 'test query',
+            scope: 'all',
+          }),
+        });
+        expect(response.status).toBe(401);
+
+        const data = await response.json<{ code: string; message: string }>();
+        expect(data.code).toBe('UNAUTHORIZED');
+      } finally {
+        (env as unknown as Env).ENVIRONMENT = originalEnv;
+      }
+    });
+
+    it('should require authentication for /api/pdf-jobs endpoint', async () => {
+      const originalEnv = env.ENVIRONMENT;
+      (env as unknown as Env).ENVIRONMENT = 'production';
+
+      try {
+        const response = await SELF.fetch('http://localhost/api/pdf-jobs', {
+          method: 'POST',
+        });
+        expect(response.status).toBe(401);
+
+        const data = await response.json<{ code: string; message: string }>();
+        expect(data.code).toBe('UNAUTHORIZED');
+      } finally {
+        (env as unknown as Env).ENVIRONMENT = originalEnv;
+      }
+    });
   });
 
   describe('Google Drive Status', () => {

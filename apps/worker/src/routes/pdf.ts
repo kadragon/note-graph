@@ -13,7 +13,7 @@ import { AIDraftService } from '../services/ai-draft-service.js';
 import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { WorkNoteService } from '../services/work-note-service.js';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
-import { createErrorHandledRouter } from './_shared/router-factory';
+import { createProtectedRouter } from './_shared/router-factory';
 
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -43,7 +43,7 @@ function parseDraftJson(
   }
 }
 
-const pdf = createErrorHandledRouter();
+const pdf = createProtectedRouter();
 
 /**
  * GET /pdf-jobs/:jobId
