@@ -8,14 +8,12 @@ import type {
   WorkNoteDraftWithReferences,
 } from '@shared/types/pdf';
 import type { SimilarWorkNoteReference } from '@shared/types/search';
-import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
-import { errorHandler } from '../middleware/error-handler.js';
 import { AIDraftService } from '../services/ai-draft-service.js';
 import { PdfExtractionService } from '../services/pdf-extraction-service.js';
 import { WorkNoteService } from '../services/work-note-service.js';
-import type { AppContext } from '../types/context';
 import { BadRequestError, NotFoundError } from '../types/errors.js';
+import { createProtectedRouter } from './_shared/router-factory';
 
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -45,9 +43,7 @@ function parseDraftJson(
   }
 }
 
-const pdf = new Hono<AppContext>();
-
-pdf.use('*', errorHandler);
+const pdf = createProtectedRouter();
 
 /**
  * GET /pdf-jobs/:jobId

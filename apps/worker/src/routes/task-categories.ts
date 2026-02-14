@@ -3,9 +3,6 @@
  * Task Category management routes
  */
 
-import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
 import {
   bodyValidator,
   getValidatedBody,
@@ -17,13 +14,10 @@ import {
   listTaskCategoriesQuerySchema,
   updateTaskCategorySchema,
 } from '../schemas/task-category';
-import type { AppContext } from '../types/context';
+import { notFoundJson } from './_shared/route-responses';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const taskCategories = new Hono<AppContext>();
-
-// All task category routes require authentication
-taskCategories.use('*', authMiddleware);
-taskCategories.use('*', errorHandler);
+const taskCategories = createProtectedRouter();
 
 /**
  * GET /task-categories - List all task categories
@@ -60,7 +54,7 @@ taskCategories.get('/:categoryId', async (c) => {
   const category = await repository.findById(categoryId);
 
   if (!category) {
-    return c.json({ code: 'NOT_FOUND', message: `Task category not found: ${categoryId}` }, 404);
+    return notFoundJson(c, 'Task category', categoryId);
   }
 
   return c.json(category);

@@ -2,26 +2,20 @@
  * Calendar routes for Google Calendar integration
  */
 
-import { Hono } from 'hono';
 import { z } from 'zod';
-import { authMiddleware, getAuthUser } from '../middleware/auth';
-import { errorHandler } from '../middleware/error-handler';
+import { getAuthUser } from '../middleware/auth';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { GoogleCalendarService } from '../services/google-calendar-service';
 import { GoogleOAuthService } from '../services/google-oauth-service';
-import type { AppContext } from '../types/context';
 import { DomainError } from '../types/errors';
+import { createProtectedRouter } from './_shared/router-factory';
 
-const calendar = new Hono<AppContext>();
+const calendar = createProtectedRouter();
 const calendarMeetingMinuteDraftSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   summary: z.string().optional(),
   description: z.string().optional(),
 });
-
-// All routes require authentication
-calendar.use('*', authMiddleware);
-calendar.use('*', errorHandler);
 
 /**
  * GET /calendar/events - Get calendar events for a date range
