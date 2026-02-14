@@ -2,23 +2,13 @@
 
 import { Badge } from '@web/components/ui/badge';
 import { TODO_STATUS } from '@web/constants/todo-status';
+import { getTodoRepeatRuleLabel } from '@web/lib/todo-repeat-rule';
 import { formatDateWithYear } from '@web/lib/utils';
 import type { Todo, TodoStatus } from '@web/types/api';
 import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import type { RecurringTodoGroup as RecurringTodoGroupType } from './group-recurring-todos';
 import { TodoListItem } from './todo-list-item';
-
-// Repeat rule to Korean label mapping
-const REPEAT_RULE_LABELS: Record<string, string> = {
-  DAILY: '매일',
-  WEEKLY: '매주',
-  MONTHLY: '매월',
-};
-
-const getRepeatRuleLabel = (repeatRule: string): string => {
-  return REPEAT_RULE_LABELS[repeatRule] ?? repeatRule;
-};
 
 interface RecurringTodoGroupProps {
   group: RecurringTodoGroupType;
@@ -64,7 +54,7 @@ export function RecurringTodoGroup({
             <p className="text-base font-semibold">{group.title}</p>
             <Badge variant="outline" className="gap-1 text-xs">
               <RefreshCw className="h-3 w-3" />
-              {getRepeatRuleLabel(group.repeatRule)}
+              {getTodoRepeatRuleLabel(group.repeatRule, { fallback: 'raw' })}
             </Badge>
             <span className="text-xs text-muted-foreground">
               {totalCount}개 ({completedCount}개 완료)

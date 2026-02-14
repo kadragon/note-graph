@@ -23,7 +23,9 @@ import {
 import { WorkNoteFileService } from '../services/work-note-file-service';
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext, AppVariables } from '../types/context';
+import { NotFoundError } from '../types/errors';
 import { getR2Bucket } from '../utils/r2-access';
+import { triggerReembed } from './shared/reembed';
 
 type WorkNotesContext = {
   Bindings: AppContext['Bindings'];
@@ -35,27 +37,6 @@ const workNotes = new Hono<WorkNotesContext>();
 // All work note routes require authentication
 workNotes.use('*', authMiddleware);
 workNotes.use('*', errorHandler);
-
-/**
- * Trigger re-embedding of a work note
- * Used when todo changes require vector store update
- */
-function triggerReembed(
-  env: AppContext['Bindings'],
-  workId: string,
-  todoId: string,
-  operation: string
-): Promise<void> {
-  const service = new WorkNoteService(env);
-  return service.reembedOnly(workId).catch((error) => {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[WorkNote] Failed to re-embed after todo ${operation}:`, {
-      workId,
-      todoId,
-      error: errorMessage,
-    });
-  });
-}
 
 /**
  * GET /work-notes - List work notes with filters
@@ -94,7 +75,7 @@ workNotes.get('/:workId', async (c) => {
   const workNote = await service.findByIdWithDetails(workId);
 
   if (!workNote) {
-    return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
+    throw new NotFoundError('Work note', workId);
   }
 
   return c.json(workNote);
@@ -173,7 +154,7 @@ workNotes.post('/:workId/files', async (c) => {
   const workNoteService = new WorkNoteService(c.env);
   const workNote = await workNoteService.findById(workId);
   if (!workNote) {
-    return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
+    throw new NotFoundError('Work note', workId);
   }
 
   // Parse multipart form data
@@ -231,7 +212,7 @@ workNotes.post('/:workId/files/migrate', workNoteFileMiddleware, async (c) => {
   const workNoteService = new WorkNoteService(c.env);
   const workNote = await workNoteService.findById(workId);
   if (!workNote) {
-    return c.json({ code: 'NOT_FOUND', message: `Work note not found: ${workId}` }, 404);
+    throw new NotFoundError('Work note', workId);
   }
 
   const fileService = c.get('fileService');

@@ -31,6 +31,9 @@ import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { useUpdateWorkNote } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
 import { buildAssigneeEmailTemplate } from '@web/lib/assignee-email-template';
+import { formatDateTimeInKstOrFallback } from '@web/lib/date-format';
+import { invalidateMany, workNoteRelatedKeys } from '@web/lib/query-invalidation';
+import { qk } from '@web/lib/query-keys';
 import { formatPersonBadge, toUTCISOString } from '@web/lib/utils';
 import { EditTodoDialog } from '@web/pages/dashboard/components/edit-todo-dialog';
 import type {
@@ -65,21 +68,6 @@ interface ViewWorkNoteDialogProps {
 }
 
 type RelatedWorkNote = NonNullable<WorkNote['relatedWorkNotes']>[number];
-
-const kstDateTimeFormatter = new Intl.DateTimeFormat('sv-SE', {
-  timeZone: 'Asia/Seoul',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
-
-function formatDateTimeInKst(dateString: string): string {
-  const date = new Date(dateString);
-  return Number.isNaN(date.getTime()) ? '-' : kstDateTimeFormatter.format(date);
-}
 
 export function ViewWorkNoteDialog({
   workNote,
@@ -124,7 +112,7 @@ export function ViewWorkNoteDialog({
 
   // Fetch todos for this work note
   const { data: allTodos = [], isLoading: todosLoading } = useQuery({
-    queryKey: ['work-note-todos', workNote?.id],
+    queryKey: qk.workNoteTodos(workNote?.id),
     queryFn: () => (workNote ? API.getTodos('all', undefined, [workNote.id]) : Promise.resolve([])),
     enabled: !!workNote && open,
   });
@@ -139,7 +127,7 @@ export function ViewWorkNoteDialog({
   // Fetch detailed work note (includes references)
   // Use placeholderData to show list data immediately while fetching detail
   const { data: detailedWorkNote, isPlaceholderData: isWorkNotePlaceholder } = useQuery({
-    queryKey: ['work-note-detail', workNote?.id],
+    queryKey: qk.workNoteDetail(workNote?.id),
     queryFn: () => (workNote ? API.getWorkNote(workNote.id) : Promise.resolve(null)),
     enabled: !!workNote && open,
     staleTime: 30_000,
@@ -237,9 +225,15 @@ export function ViewWorkNoteDialog({
         ? API.createWorkNoteTodo(currentWorkNote.id, data)
         : Promise.reject(new Error('No work note')),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['work-note-todos', currentWorkNote?.id] });
-      void queryClient.invalidateQueries({ queryKey: ['todos'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+      invalidateMany(
+        queryClient,
+        workNoteRelatedKeys(currentWorkNote?.id, {
+          includeTodos: true,
+          includeWorkNotes: false,
+          includeWorkNotesWithStats: true,
+          includeWorkNoteTodos: true,
+        })
+      );
       setShowAddTodo(false);
       toast({
         title: '성공',
@@ -426,16 +420,16 @@ export function ViewWorkNoteDialog({
                     className="text-xl font-semibold"
                   />
                   <p className="mt-1 text-xs text-muted-foreground whitespace-nowrap">
-                    생성일: {formatDateTimeInKst(currentWorkNote.createdAt)} | 수정일:{' '}
-                    {formatDateTimeInKst(currentWorkNote.updatedAt)}
+                    생성일: {formatDateTimeInKstOrFallback(currentWorkNote.createdAt)} | 수정일:{' '}
+                    {formatDateTimeInKstOrFallback(currentWorkNote.updatedAt)}
                   </p>
                 </div>
               ) : (
                 <div className="flex-1">
                   <DialogTitle className="text-xl">{currentWorkNote.title}</DialogTitle>
                   <p className="mt-1 text-xs text-muted-foreground whitespace-nowrap">
-                    생성일: {formatDateTimeInKst(currentWorkNote.createdAt)} | 수정일:{' '}
-                    {formatDateTimeInKst(currentWorkNote.updatedAt)}
+                    생성일: {formatDateTimeInKstOrFallback(currentWorkNote.createdAt)} | 수정일:{' '}
+                    {formatDateTimeInKstOrFallback(currentWorkNote.updatedAt)}
                   </p>
                 </div>
               )}

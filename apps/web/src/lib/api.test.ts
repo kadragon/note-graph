@@ -1050,3 +1050,137 @@ describe('API.getAIGatewayLogs', () => {
     );
   });
 });
+
+describe('API query string helpers', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('builds task-category and work-note-group query strings identically', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue([]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue([]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue([]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue([]),
+      });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.getTaskCategories(true);
+    await API.getTaskCategories(false);
+    await API.getWorkNoteGroups(true);
+    await API.getWorkNoteGroups(false);
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/task-categories?activeOnly=true',
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/task-categories', expect.any(Object));
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/work-note-groups?activeOnly=true',
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/work-note-groups', expect.any(Object));
+  });
+
+  it('builds admin batch query strings for reindex and embed pending', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ success: true, message: 'ok', result: {} }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ success: true, message: 'ok', result: {} }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ success: true, message: 'ok', result: {} }),
+      });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.reindexAll(25);
+    await API.embedPending(50);
+    await API.embedPending();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/admin/reindex-all?batchSize=25',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/admin/embed-pending?batchSize=50',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/admin/embed-pending',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('builds statistics and calendar query strings with identical parameter ordering', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({}),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ events: [] }),
+      });
+
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
+
+    await API.getStatistics({
+      period: 'custom',
+      year: 2026,
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      personId: '123456',
+      deptName: '개발팀',
+      category: '보고',
+    });
+    await API.getCalendarEvents('2026-02-10', '2026-02-11');
+
+    const timezoneOffset = -new Date().getTimezoneOffset();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/statistics?period=custom&year=2026&startDate=2026-01-01&endDate=2026-12-31&personId=123456&deptName=%EA%B0%9C%EB%B0%9C%ED%8C%80&category=%EB%B3%B4%EA%B3%A0',
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      `/api/calendar/events?startDate=2026-02-10&endDate=2026-02-11&timezoneOffset=${timezoneOffset}`,
+      expect.any(Object)
+    );
+  });
+});

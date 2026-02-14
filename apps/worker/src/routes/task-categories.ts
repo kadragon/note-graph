@@ -18,6 +18,7 @@ import {
   updateTaskCategorySchema,
 } from '../schemas/task-category';
 import type { AppContext } from '../types/context';
+import { NotFoundError } from '../types/errors';
 
 const taskCategories = new Hono<AppContext>();
 
@@ -60,7 +61,7 @@ taskCategories.get('/:categoryId', async (c) => {
   const category = await repository.findById(categoryId);
 
   if (!category) {
-    return c.json({ code: 'NOT_FOUND', message: `Task category not found: ${categoryId}` }, 404);
+    throw new NotFoundError('Task category', categoryId);
   }
 
   return c.json(category);

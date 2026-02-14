@@ -21,6 +21,7 @@ import {
 } from '../schemas/person';
 import { PersonImportService } from '../services/person-import-service';
 import type { AppContext } from '../types/context';
+import { NotFoundError } from '../types/errors';
 
 const persons = new Hono<AppContext>();
 
@@ -60,7 +61,7 @@ persons.get('/:personId', async (c) => {
   const person = await repository.findById(personId);
 
   if (!person) {
-    return c.json({ code: 'NOT_FOUND', message: `Person not found: ${personId}` }, 404);
+    throw new NotFoundError('Person', personId);
   }
 
   return c.json(person);

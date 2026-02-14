@@ -2,20 +2,10 @@ import { Badge } from '@web/components/ui/badge';
 import { Checkbox } from '@web/components/ui/checkbox';
 import { TODO_STATUS } from '@web/constants/todo-status';
 import { useToggleTodo } from '@web/hooks/use-todos';
+import { getTodoRepeatRuleLabel } from '@web/lib/todo-repeat-rule';
 import { cn, formatDateWithYear } from '@web/lib/utils';
-import type { RepeatRule, Todo } from '@web/types/api';
+import type { Todo } from '@web/types/api';
 import { CalendarDays, Clock, FileText, RefreshCw } from 'lucide-react';
-
-// Repeat rule to Korean label mapping
-const REPEAT_RULE_LABELS: Partial<Record<RepeatRule, string>> = {
-  DAILY: '매일',
-  WEEKLY: '매주',
-  MONTHLY: '매월',
-};
-
-const getRepeatRuleLabel = (repeatRule: RepeatRule): string => {
-  return REPEAT_RULE_LABELS[repeatRule] ?? '';
-};
 
 interface TodoItemProps {
   todo: Todo;
@@ -101,7 +91,7 @@ export function TodoItem({ todo, onTodoClick, showWorkTitle = true }: TodoItemPr
           {todo.repeatRule && todo.repeatRule !== 'NONE' && (
             <Badge variant="outline" className="gap-1 text-xs font-normal">
               <RefreshCw className="h-3 w-3" />
-              {getRepeatRuleLabel(todo.repeatRule)}
+              {getTodoRepeatRuleLabel(todo.repeatRule, { fallback: 'empty' })}
             </Badge>
           )}
         </div>

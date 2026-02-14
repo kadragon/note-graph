@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TODO_STATUS } from '@web/constants/todo-status';
 import { API } from '@web/lib/api';
 import { createStandardMutation } from '@web/lib/hooks/create-standard-mutation';
+import { invalidateMany, workNoteRelatedKeys } from '@web/lib/query-invalidation';
+import { qk } from '@web/lib/query-keys';
 import type {
   CreateWorkNoteRequest,
   DriveFileListItem,
@@ -15,14 +17,14 @@ import { useToast } from './use-toast';
 
 export function useWorkNotes() {
   return useQuery({
-    queryKey: ['work-notes'],
+    queryKey: qk.workNotes(),
     queryFn: () => API.getWorkNotes(),
   });
 }
 
 export function useWorkNotesWithStats() {
   return useQuery({
-    queryKey: ['work-notes-with-stats'],
+    queryKey: qk.workNotesWithStats(),
     queryFn: async () => {
       const workNotes = await API.getWorkNotes();
       if (workNotes.length === 0) {
@@ -120,7 +122,7 @@ export function useWorkNotesWithStats() {
 
 export const useCreateWorkNote = createStandardMutation({
   mutationFn: (data: CreateWorkNoteRequest) => API.createWorkNote(data),
-  invalidateKeys: [['work-notes'], ['work-notes-with-stats']],
+  invalidateKeys: [qk.workNotes(), qk.workNotesWithStats()],
   messages: {
     success: '업무노트가 생성되었습니다.',
     error: '업무노트를 생성할 수 없습니다.',
@@ -131,9 +133,9 @@ export const useUpdateWorkNote = createStandardMutation({
   mutationFn: ({ workId, data }: { workId: string; data: UpdateWorkNoteRequest }) =>
     API.updateWorkNote(workId, data),
   invalidateKeys: (_data, variables) => [
-    ['work-notes'],
-    ['work-notes-with-stats'],
-    ['work-note-detail', variables.workId],
+    qk.workNotes(),
+    qk.workNotesWithStats(),
+    qk.workNoteDetail(variables.workId),
   ],
   messages: {
     success: '업무노트가 수정되었습니다.',
@@ -143,7 +145,7 @@ export const useUpdateWorkNote = createStandardMutation({
 
 export const useDeleteWorkNote = createStandardMutation({
   mutationFn: (workId: string) => API.deleteWorkNote(workId),
-  invalidateKeys: [['work-notes'], ['work-notes-with-stats']],
+  invalidateKeys: [qk.workNotes(), qk.workNotesWithStats()],
   messages: {
     success: '업무노트가 삭제되었습니다.',
     error: '업무노트를 삭제할 수 없습니다.',
@@ -153,7 +155,7 @@ export const useDeleteWorkNote = createStandardMutation({
 // Work note file hooks
 export function useWorkNoteFiles(workId: string | null) {
   return useQuery({
-    queryKey: ['work-note-files', workId],
+    queryKey: qk.workNoteFiles(workId),
     queryFn: () =>
       workId
         ? API.getWorkNoteFiles(workId)
@@ -170,7 +172,7 @@ export function useWorkNoteFiles(workId: string | null) {
 
 export function useGoogleDriveStatus() {
   return useQuery({
-    queryKey: ['google-drive-status'],
+    queryKey: qk.googleDriveStatus(),
     queryFn: () => API.getGoogleDriveStatus(),
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - status rarely changes
@@ -190,8 +192,8 @@ export const useUploadWorkNoteFile = createStandardMutation({
   mutationFn: ({ workId, file }: { workId: string; file: File }) =>
     API.uploadWorkNoteFile(workId, file),
   invalidateKeys: (_data, variables) => [
-    ['work-note-files', variables.workId],
-    ['work-note-detail', variables.workId],
+    qk.workNoteFiles(variables.workId),
+    qk.workNoteDetail(variables.workId),
   ],
   messages: {
     success: '파일이 업로드되었습니다.',
@@ -203,8 +205,8 @@ export const useDeleteWorkNoteFile = createStandardMutation({
   mutationFn: ({ workId, fileId }: { workId: string; fileId: string }) =>
     API.deleteWorkNoteFile(workId, fileId),
   invalidateKeys: (_data, variables) => [
-    ['work-note-files', variables.workId],
-    ['work-note-detail', variables.workId],
+    qk.workNoteFiles(variables.workId),
+    qk.workNoteDetail(variables.workId),
   ],
   messages: {
     success: '파일이 삭제되었습니다.',
@@ -220,8 +222,15 @@ export function useMigrateWorkNoteFiles() {
   return useMutation({
     mutationFn: (workId: string) => API.migrateWorkNoteFiles(workId),
     onSuccess: (result: WorkNoteFileMigrationResult, workId: string) => {
-      void queryClient.invalidateQueries({ queryKey: ['work-note-files', workId] });
-      void queryClient.invalidateQueries({ queryKey: ['work-note-detail', workId] });
+      invalidateMany(
+        queryClient,
+        workNoteRelatedKeys(workId, {
+          includeWorkNotes: false,
+          includeWorkNotesWithStats: false,
+          includeDetail: true,
+          includeFiles: true,
+        })
+      );
       const summary = `이동 ${result.migrated}개 · 건너뜀 ${result.skipped}개 · 실패 ${result.failed}개`;
       const description =
         result.migrated === 0 && result.skipped === 0 && result.failed === 0

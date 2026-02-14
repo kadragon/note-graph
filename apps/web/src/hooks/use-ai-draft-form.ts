@@ -5,6 +5,8 @@ import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
+import { invalidateMany, workNoteRelatedKeys } from '@web/lib/query-invalidation';
+import { qk } from '@web/lib/query-keys';
 import type {
   AIDraftMeetingReference,
   AIDraftPayload,
@@ -218,7 +220,7 @@ export function useAIDraftForm(options: UseAIDraftFormOptions = {}) {
           const failedCount = suggestedTodos.length - successfulCount;
 
           if (successfulCount > 0) {
-            void queryClient.invalidateQueries({ queryKey: ['todos'] });
+            invalidateMany(queryClient, [qk.todosRoot()]);
           }
 
           if (failedCount > 0) {
@@ -240,9 +242,13 @@ export function useAIDraftForm(options: UseAIDraftFormOptions = {}) {
           });
         }
 
-        // Always invalidate work-notes queries
-        void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-        void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
+        invalidateMany(
+          queryClient,
+          workNoteRelatedKeys(undefined, {
+            includeWorkNotes: true,
+            includeWorkNotesWithStats: true,
+          })
+        );
 
         // Reset form and call success callback
         resetForm();

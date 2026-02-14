@@ -555,6 +555,21 @@ export class APIClient {
     }
   }
 
+  private buildQueryString(params: object): string {
+    const query = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(
+      params as Record<string, string | number | boolean | null | undefined>
+    )) {
+      if (value !== undefined && value !== null && value !== '') {
+        query.set(key, String(value));
+      }
+    }
+
+    const queryString = query.toString();
+    return queryString ? `?${queryString}` : '';
+  }
+
   // Persons
   getPersons() {
     return this.request<Person[]>('/persons');
@@ -595,11 +610,11 @@ export class APIClient {
 
   // Departments
   getDepartments(params?: { q?: string; limit?: number }, signal?: AbortSignal) {
-    const query = new URLSearchParams();
-    if (params?.q) query.set('q', params.q);
-    if (params?.limit) query.set('limit', params.limit.toString());
-    const qs = query.toString();
-    return this.request<Department[]>(`/departments${qs ? `?${qs}` : ''}`, { signal });
+    const queryString = this.buildQueryString({
+      q: params?.q,
+      limit: params?.limit ? params.limit : undefined,
+    });
+    return this.request<Department[]>(`/departments${queryString}`, { signal });
   }
 
   createDepartment(data: CreateDepartmentRequest) {
@@ -618,10 +633,10 @@ export class APIClient {
 
   // Task Categories
   getTaskCategories(activeOnly?: boolean) {
-    const params = new URLSearchParams();
-    if (activeOnly) params.set('activeOnly', 'true');
-    const queryString = params.toString();
-    return this.request<TaskCategory[]>(`/task-categories${queryString ? `?${queryString}` : ''}`);
+    const queryString = this.buildQueryString({
+      activeOnly: activeOnly ? 'true' : undefined,
+    });
+    return this.request<TaskCategory[]>(`/task-categories${queryString}`);
   }
 
   getActiveTaskCategories() {
@@ -654,12 +669,10 @@ export class APIClient {
 
   // Work Note Groups
   getWorkNoteGroups(activeOnly?: boolean) {
-    const params = new URLSearchParams();
-    if (activeOnly) params.set('activeOnly', 'true');
-    const queryString = params.toString();
-    return this.request<WorkNoteGroup[]>(
-      `/work-note-groups${queryString ? `?${queryString}` : ''}`
-    );
+    const queryString = this.buildQueryString({
+      activeOnly: activeOnly ? 'true' : undefined,
+    });
+    return this.request<WorkNoteGroup[]>(`/work-note-groups${queryString}`);
   }
 
   createWorkNoteGroup(data: CreateWorkNoteGroupRequest) {
@@ -714,15 +727,15 @@ export class APIClient {
     page?: number;
     pageSize?: number;
   }) {
-    const query = new URLSearchParams();
-    if (params?.q) query.set('q', params.q);
-    if (params?.meetingDateFrom) query.set('meetingDateFrom', params.meetingDateFrom);
-    if (params?.meetingDateTo) query.set('meetingDateTo', params.meetingDateTo);
-    if (params?.categoryId) query.set('categoryId', params.categoryId);
-    if (params?.attendeePersonId) query.set('attendeePersonId', params.attendeePersonId);
-    if (params?.page !== undefined) query.set('page', params.page.toString());
-    if (params?.pageSize !== undefined) query.set('pageSize', params.pageSize.toString());
-    const qs = query.toString();
+    const queryString = this.buildQueryString({
+      q: params?.q,
+      meetingDateFrom: params?.meetingDateFrom,
+      meetingDateTo: params?.meetingDateTo,
+      categoryId: params?.categoryId,
+      attendeePersonId: params?.attendeePersonId,
+      page: params?.page,
+      pageSize: params?.pageSize,
+    });
 
     return this.request<{
       items: Array<{
@@ -737,7 +750,7 @@ export class APIClient {
       total: number;
       page: number;
       pageSize: number;
-    }>(`/meeting-minutes${qs ? `?${qs}` : ''}`);
+    }>(`/meeting-minutes${queryString}`);
   }
 
   createMeetingMinute(data: {
@@ -827,15 +840,12 @@ export class APIClient {
 
   // Todos
   async getTodos(view: TodoView = 'today', year?: number, workIds?: string[]) {
-    const params = new URLSearchParams();
-    params.set('view', view);
-    if (year) {
-      params.set('year', year.toString());
-    }
-    if (workIds?.length) {
-      params.set('workIds', workIds.join(','));
-    }
-    const response = await this.request<BackendTodo[]>(`/todos?${params.toString()}`);
+    const queryString = this.buildQueryString({
+      view,
+      year: year ? year : undefined,
+      workIds: workIds?.length ? workIds.join(',') : undefined,
+    });
+    const response = await this.request<BackendTodo[]>(`/todos${queryString}`);
     return response.map(transformTodoFromBackend.bind(this));
   }
 
@@ -1019,25 +1029,16 @@ export class APIClient {
   }
 
   getAIGatewayLogs(params: AIGatewayLogQueryParams = {}) {
-    const queryParams = new URLSearchParams();
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== null && value !== '') {
-        queryParams.set(key, String(value));
-      }
-    }
-
-    const queryString = queryParams.toString();
-    return this.request<AIGatewayLogsResponse>(
-      `/admin/ai-gateway/logs${queryString ? `?${queryString}` : ''}`
-    );
+    const queryString = this.buildQueryString(params);
+    return this.request<AIGatewayLogsResponse>(`/admin/ai-gateway/logs${queryString}`);
   }
 
   reindexAll(batchSize?: number) {
-    const params = new URLSearchParams();
-    if (batchSize) params.set('batchSize', batchSize.toString());
-    const queryString = params.toString();
+    const queryString = this.buildQueryString({
+      batchSize: batchSize ? batchSize : undefined,
+    });
     return this.request<{ success: boolean; message: string; result: BatchProcessResult }>(
-      `/admin/reindex-all${queryString ? `?${queryString}` : ''}`,
+      `/admin/reindex-all${queryString}`,
       { method: 'POST' }
     );
   }
@@ -1049,39 +1050,39 @@ export class APIClient {
   }
 
   embedPending(batchSize?: number) {
-    const params = new URLSearchParams();
-    if (batchSize) params.set('batchSize', batchSize.toString());
-    const queryString = params.toString();
+    const queryString = this.buildQueryString({
+      batchSize: batchSize ? batchSize : undefined,
+    });
     return this.request<{ success: boolean; message: string; result: BatchProcessResult }>(
-      `/admin/embed-pending${queryString ? `?${queryString}` : ''}`,
+      `/admin/embed-pending${queryString}`,
       { method: 'POST' }
     );
   }
 
   // Statistics
   getStatistics(params: StatisticsQueryParams) {
-    const queryParams = new URLSearchParams();
-    queryParams.set('period', params.period);
-    if (params.year) queryParams.set('year', params.year.toString());
-    if (params.startDate) queryParams.set('startDate', params.startDate);
-    if (params.endDate) queryParams.set('endDate', params.endDate);
-    if (params.personId) queryParams.set('personId', params.personId);
-    if (params.deptName) queryParams.set('deptName', params.deptName);
-    if (params.category) queryParams.set('category', params.category);
-
-    return this.request<WorkNoteStatistics>(`/statistics?${queryParams.toString()}`);
+    const queryString = this.buildQueryString({
+      period: params.period,
+      year: params.year ? params.year : undefined,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      personId: params.personId,
+      deptName: params.deptName,
+      category: params.category,
+    });
+    return this.request<WorkNoteStatistics>(`/statistics${queryString}`);
   }
 
   // Calendar
   getCalendarEvents(startDate: string, endDate: string) {
     // Get browser's timezone offset (negate because getTimezoneOffset returns opposite sign)
     const timezoneOffset = -new Date().getTimezoneOffset();
-    const params = new URLSearchParams({
+    const queryString = this.buildQueryString({
       startDate,
       endDate,
-      timezoneOffset: timezoneOffset.toString(),
+      timezoneOffset,
     });
-    return this.request<CalendarEventsResponse>(`/calendar/events?${params.toString()}`);
+    return this.request<CalendarEventsResponse>(`/calendar/events${queryString}`);
   }
 }
 
