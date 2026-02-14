@@ -1,31 +1,9 @@
 import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { formatDateTimeOrFallback } from '@web/lib/date-format';
 import type { Todo, WorkNoteWithStats } from '@web/types/api';
-import { format, parseISO } from 'date-fns';
 
 import { MarkdownRenderer } from './markdown-renderer';
 import { colors } from './styles';
-
-/**
- * Format a date string to a human-readable format (with time)
- */
-function formatDate(dateString: string): string {
-  try {
-    return format(parseISO(dateString), 'yyyy-MM-dd HH:mm');
-  } catch {
-    return dateString;
-  }
-}
-
-/**
- * Format a date string to date only (no time)
- */
-function formatDateOnly(dateString: string): string {
-  try {
-    return format(parseISO(dateString), 'yyyy-MM-dd');
-  } catch {
-    return dateString;
-  }
-}
 
 // Register Korean font
 Font.register({
@@ -244,11 +222,23 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
             {/* Meta information */}
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>생성일</Text>
-              <Text style={styles.metaValue}>{formatDate(workNote.createdAt)}</Text>
+              <Text style={styles.metaValue}>
+                {formatDateTimeOrFallback(
+                  workNote.createdAt,
+                  'yyyy-MM-dd HH:mm',
+                  workNote.createdAt
+                )}
+              </Text>
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>수정일</Text>
-              <Text style={styles.metaValue}>{formatDate(workNote.updatedAt)}</Text>
+              <Text style={styles.metaValue}>
+                {formatDateTimeOrFallback(
+                  workNote.updatedAt,
+                  'yyyy-MM-dd HH:mm',
+                  workNote.updatedAt
+                )}
+              </Text>
             </View>
 
             {/* Categories as badges */}
@@ -342,7 +332,8 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
                               : styles.todoDate
                           }
                         >
-                          {dateLabel}: {formatDateOnly(displayDate)}
+                          {dateLabel}:{' '}
+                          {formatDateTimeOrFallback(displayDate, 'yyyy-MM-dd', displayDate)}
                         </Text>
                       )}
                     </View>

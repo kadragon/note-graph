@@ -10,17 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from '@web/components/ui/table';
-import { format, parseISO } from 'date-fns';
+import { formatDateTimeOrFallback } from '@web/lib/date-format';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { useAIGatewayLogs } from './hooks/use-ai-gateway-logs';
-
-function formatDateTime(value: string): string {
-  try {
-    return format(parseISO(value), 'yyyy-MM-dd HH:mm:ss');
-  } catch {
-    return value;
-  }
-}
 
 function renderNullableNumber(value: number | null): string {
   return value === null ? '-' : value.toString();
@@ -155,7 +147,11 @@ export default function AILogs() {
                 {logs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell className="whitespace-nowrap">
-                      {formatDateTime(log.createdAt)}
+                      {formatDateTimeOrFallback(
+                        log.createdAt,
+                        'yyyy-MM-dd HH:mm:ss',
+                        log.createdAt
+                      )}
                     </TableCell>
                     <TableCell>{log.provider ?? '-'}</TableCell>
                     <TableCell className="max-w-[280px] truncate" title={log.path ?? ''}>

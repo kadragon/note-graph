@@ -1,8 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { type QueryKey, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useToast } from '@web/hooks/use-toast';
+import { invalidateMany } from '@web/lib/query-invalidation';
 
-type QueryKey = readonly string[];
 type InvalidateKeysStatic = readonly QueryKey[];
 type InvalidateKeysFn<TData, TVariables> = (
   data: TData,
@@ -33,9 +33,7 @@ export function createStandardMutation<TData, TVariables>(
         const keys =
           typeof invalidateKeys === 'function' ? invalidateKeys(data, variables) : invalidateKeys;
 
-        for (const key of keys) {
-          void queryClient.invalidateQueries({ queryKey: key });
-        }
+        invalidateMany(queryClient, keys);
         toast({
           title: '성공',
           description: messages.success,

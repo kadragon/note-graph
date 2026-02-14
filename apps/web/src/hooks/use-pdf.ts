@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API } from '@web/lib/api';
 import { createStandardMutation } from '@web/lib/hooks/create-standard-mutation';
+import { invalidateMany, workNoteRelatedKeys } from '@web/lib/query-invalidation';
+import { qk } from '@web/lib/query-keys';
 import { useToast } from './use-toast';
 
 // Trace: spec_id=SPEC-pdf-1, task_id=TASK-062
@@ -16,7 +18,7 @@ export const useUploadPDF = createStandardMutation({
 
 export function usePDFJob(jobId: string | null, enabled: boolean) {
   return useQuery({
-    queryKey: ['pdf-job', jobId],
+    queryKey: qk.pdfJob(jobId),
     queryFn: () => API.getPDFJob(jobId as string),
     enabled: enabled && !!jobId,
     refetchInterval: (query) => {
@@ -59,12 +61,13 @@ export function useSavePDFDraft() {
       return workNote;
     },
     onSuccess: (workNote) => {
-      void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-      if (workNote?.id) {
-        void queryClient.invalidateQueries({ queryKey: ['work-note-detail', workNote.id] });
-        void queryClient.invalidateQueries({ queryKey: ['work-note-files', workNote.id] });
-      }
+      invalidateMany(
+        queryClient,
+        workNoteRelatedKeys(workNote?.id, {
+          includeDetail: true,
+          includeFiles: true,
+        })
+      );
       toast({
         title: '성공',
         description: '업무노트로 저장되었습니다.',

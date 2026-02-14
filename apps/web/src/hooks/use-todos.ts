@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API } from '@web/lib/api';
+import { invalidateMany, workNoteRelatedKeys } from '@web/lib/query-invalidation';
+import { qk } from '@web/lib/query-keys';
 import type { Todo, TodoStatus, TodoView, UpdateTodoRequest } from '@web/types/api';
 import { useToast } from './use-toast';
 
 export function useTodos(view: TodoView = 'today', year?: number) {
   return useQuery({
-    queryKey: ['todos', view, year],
+    queryKey: qk.todos(view, year),
     queryFn: () => API.getTodos(view, year),
   });
 }
@@ -19,28 +21,28 @@ export function useToggleTodo(workNoteId?: string) {
       API.updateTodo(id, { status }),
     onMutate: async ({ id, status }) => {
       // Cancel outgoing refetches for all related queries
-      await queryClient.cancelQueries({ queryKey: ['todos'] });
+      await queryClient.cancelQueries({ queryKey: qk.todosRoot() });
       if (workNoteId) {
-        await queryClient.cancelQueries({ queryKey: ['work-note-todos', workNoteId] });
+        await queryClient.cancelQueries({ queryKey: qk.workNoteTodos(workNoteId) });
       }
 
       // Snapshot the previous values
       const previousTodos = queryClient
         .getQueryCache()
-        .findAll({ queryKey: ['todos'] })
+        .findAll({ queryKey: qk.todosRoot() })
         .map((query) => ({
           queryKey: query.queryKey,
           data: query.state.data,
         }));
 
       const previousWorkNoteTodos = workNoteId
-        ? queryClient.getQueryData<Todo[]>(['work-note-todos', workNoteId])
+        ? queryClient.getQueryData<Todo[]>(qk.workNoteTodos(workNoteId))
         : undefined;
 
       // Optimistically update all todo queries
       queryClient
         .getQueryCache()
-        .findAll({ queryKey: ['todos'] })
+        .findAll({ queryKey: qk.todosRoot() })
         .forEach((query) => {
           queryClient.setQueryData<Todo[]>(query.queryKey, (old) => {
             if (!old) return old;
@@ -51,7 +53,7 @@ export function useToggleTodo(workNoteId?: string) {
       // Optimistically update work-note-todos query if workNoteId is provided
       if (workNoteId) {
         queryClient.setQueryData<Todo[]>(
-          ['work-note-todos', workNoteId],
+          qk.workNoteTodos(workNoteId),
           (old) => old?.map((todo) => (todo.id === id ? { ...todo, status } : todo)) ?? []
         );
       }
@@ -69,7 +71,7 @@ export function useToggleTodo(workNoteId?: string) {
 
       if (context?.workNoteId && context?.previousWorkNoteTodos) {
         queryClient.setQueryData(
-          ['work-note-todos', context.workNoteId],
+          qk.workNoteTodos(context.workNoteId),
           context.previousWorkNoteTodos
         );
       }
@@ -81,12 +83,15 @@ export function useToggleTodo(workNoteId?: string) {
       });
     },
     onSettled: (_data, _error, _variables, context) => {
-      // Invalidate to ensure we have the latest data
-      void queryClient.invalidateQueries({ queryKey: ['todos'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-      if (context?.workNoteId) {
-        void queryClient.invalidateQueries({ queryKey: ['work-note-todos', context.workNoteId] });
-      }
+      invalidateMany(
+        queryClient,
+        workNoteRelatedKeys(context?.workNoteId, {
+          includeTodos: true,
+          includeWorkNotes: false,
+          includeWorkNotesWithStats: true,
+          includeWorkNoteTodos: true,
+        })
+      );
     },
     onSuccess: () => {
       toast({
@@ -104,12 +109,15 @@ export function useUpdateTodo(workNoteId?: string) {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateTodoRequest }) => API.updateTodo(id, data),
     onSuccess: () => {
-      // Invalidate to ensure we have the latest data
-      void queryClient.invalidateQueries({ queryKey: ['todos'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-      if (workNoteId) {
-        void queryClient.invalidateQueries({ queryKey: ['work-note-todos', workNoteId] });
-      }
+      invalidateMany(
+        queryClient,
+        workNoteRelatedKeys(workNoteId, {
+          includeTodos: true,
+          includeWorkNotes: false,
+          includeWorkNotesWithStats: true,
+          includeWorkNoteTodos: true,
+        })
+      );
       toast({
         title: '성공',
         description: '할일이 수정되었습니다.',
@@ -133,28 +141,28 @@ export function useDeleteTodo(workNoteId?: string) {
     mutationFn: (todoId: string) => API.deleteTodo(todoId),
     onMutate: async (todoId) => {
       // Cancel outgoing refetches for all related queries
-      await queryClient.cancelQueries({ queryKey: ['todos'] });
+      await queryClient.cancelQueries({ queryKey: qk.todosRoot() });
       if (workNoteId) {
-        await queryClient.cancelQueries({ queryKey: ['work-note-todos', workNoteId] });
+        await queryClient.cancelQueries({ queryKey: qk.workNoteTodos(workNoteId) });
       }
 
       // Snapshot the previous values
       const previousTodos = queryClient
         .getQueryCache()
-        .findAll({ queryKey: ['todos'] })
+        .findAll({ queryKey: qk.todosRoot() })
         .map((query) => ({
           queryKey: query.queryKey,
           data: query.state.data,
         }));
 
       const previousWorkNoteTodos = workNoteId
-        ? queryClient.getQueryData<Todo[]>(['work-note-todos', workNoteId])
+        ? queryClient.getQueryData<Todo[]>(qk.workNoteTodos(workNoteId))
         : undefined;
 
       // Optimistically remove todo from all todo queries
       queryClient
         .getQueryCache()
-        .findAll({ queryKey: ['todos'] })
+        .findAll({ queryKey: qk.todosRoot() })
         .forEach((query) => {
           queryClient.setQueryData<Todo[]>(query.queryKey, (old) => {
             if (!old) return old;
@@ -165,7 +173,7 @@ export function useDeleteTodo(workNoteId?: string) {
       // Optimistically remove todo from work-note-todos query if workNoteId is provided
       if (workNoteId) {
         queryClient.setQueryData<Todo[]>(
-          ['work-note-todos', workNoteId],
+          qk.workNoteTodos(workNoteId),
           (old) => old?.filter((todo) => todo.id !== todoId) ?? []
         );
       }
@@ -183,7 +191,7 @@ export function useDeleteTodo(workNoteId?: string) {
 
       if (context?.workNoteId && context?.previousWorkNoteTodos) {
         queryClient.setQueryData(
-          ['work-note-todos', context.workNoteId],
+          qk.workNoteTodos(context.workNoteId),
           context.previousWorkNoteTodos
         );
       }
@@ -195,12 +203,15 @@ export function useDeleteTodo(workNoteId?: string) {
       });
     },
     onSettled: (_data, _error, _todoId, context) => {
-      // Invalidate to ensure we have the latest data
-      void queryClient.invalidateQueries({ queryKey: ['todos'] });
-      void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-      if (context?.workNoteId) {
-        void queryClient.invalidateQueries({ queryKey: ['work-note-todos', context.workNoteId] });
-      }
+      invalidateMany(
+        queryClient,
+        workNoteRelatedKeys(context?.workNoteId, {
+          includeTodos: true,
+          includeWorkNotes: false,
+          includeWorkNotesWithStats: true,
+          includeWorkNoteTodos: true,
+        })
+      );
     },
     onSuccess: () => {
       toast({

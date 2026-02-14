@@ -1,10 +1,19 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
-import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
+import {
+  bodyValidator,
+  getValidatedBody,
+  getValidatedQuery,
+  queryValidator,
+} from '../middleware/validation-middleware';
 import { MeetingMinuteRepository } from '../repositories/meeting-minute-repository';
 import { PersonRepository } from '../repositories/person-repository';
 import { TaskCategoryRepository } from '../repositories/task-category-repository';
-import { createMeetingMinuteSchema, updateMeetingMinuteSchema } from '../schemas/meeting-minute';
+import {
+  createMeetingMinuteSchema,
+  listMeetingMinutesQuerySchema,
+  updateMeetingMinuteSchema,
+} from '../schemas/meeting-minute';
 import { MeetingMinuteKeywordService } from '../services/meeting-minute-keyword-service';
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import type { AppContext, AppVariables } from '../types/context';
@@ -72,27 +81,18 @@ async function hasMeetingMinuteDuplicateTopic(
   return (result.results || []).some((row) => isHighlySimilarTopic(row.topic, input.topic));
 }
 
-meetingMinutes.get('/', async (c) => {
-  const q = c.req.query('q');
-  const meetingDateFrom = c.req.query('meetingDateFrom');
-  const meetingDateTo = c.req.query('meetingDateTo');
-  const categoryId = c.req.query('categoryId');
-  const attendeePersonId = c.req.query('attendeePersonId');
-  const pageRaw = c.req.query('page');
-  const pageSizeRaw = c.req.query('pageSize');
-
-  const page = Math.max(1, Number.parseInt(pageRaw || '1', 10) || 1);
-  const pageSize = Math.max(1, Number.parseInt(pageSizeRaw || '20', 10) || 20);
+meetingMinutes.get('/', queryValidator(listMeetingMinutesQuerySchema), async (c) => {
+  const query = getValidatedQuery<typeof listMeetingMinutesQuerySchema>(c);
 
   const repository = new MeetingMinuteRepository(c.env.DB);
   const result = await repository.findPaginated({
-    q,
-    meetingDateFrom,
-    meetingDateTo,
-    categoryId,
-    attendeePersonId,
-    page,
-    pageSize,
+    q: query.q,
+    meetingDateFrom: query.meetingDateFrom,
+    meetingDateTo: query.meetingDateTo,
+    categoryId: query.categoryId,
+    attendeePersonId: query.attendeePersonId,
+    page: query.page,
+    pageSize: query.pageSize,
   });
 
   return c.json(result);

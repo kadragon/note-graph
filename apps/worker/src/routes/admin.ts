@@ -2,6 +2,7 @@
 // Admin routes for embedding management
 
 import { getValidatedQuery, queryValidator } from '../middleware/validation-middleware';
+import { adminBatchQuerySchema, adminEmbeddingFailuresQuerySchema } from '../schemas/admin';
 import { aiGatewayLogsQuerySchema } from '../schemas/ai-gateway-logs';
 import { CloudflareAIGatewayLogService } from '../services/cloudflare-ai-gateway-log-service';
 import { EmbeddingProcessor } from '../services/embedding-processor';
@@ -15,8 +16,8 @@ const admin = createProtectedRouter();
  * Reindex all work notes into vector store
  * Used for initial setup or recovery
  */
-admin.post('/reindex-all', async (c) => {
-  const batchSize = parseInt(c.req.query('batchSize') || '10', 10);
+admin.post('/reindex-all', queryValidator(adminBatchQuerySchema), async (c) => {
+  const { batchSize } = getValidatedQuery<typeof adminBatchQuerySchema>(c);
 
   const processor = new EmbeddingProcessor(c.env);
   const result = await processor.reindexAll(batchSize);
@@ -61,8 +62,8 @@ admin.get('/embedding-stats', async (c) => {
  * Embed only work notes that are not yet embedded
  * More efficient than reindex-all
  */
-admin.post('/embed-pending', async (c) => {
-  const batchSize = parseInt(c.req.query('batchSize') || '10', 10);
+admin.post('/embed-pending', queryValidator(adminBatchQuerySchema), async (c) => {
+  const { batchSize } = getValidatedQuery<typeof adminBatchQuerySchema>(c);
 
   const processor = new EmbeddingProcessor(c.env);
   const result = await processor.embedPending(batchSize);
@@ -79,9 +80,8 @@ admin.post('/embed-pending', async (c) => {
  * List all dead-letter embedding failures
  * Used for monitoring and debugging failed embeddings that exceeded max retry attempts
  */
-admin.get('/embedding-failures', async (c) => {
-  const limit = parseInt(c.req.query('limit') || '50', 10);
-  const offset = parseInt(c.req.query('offset') || '0', 10);
+admin.get('/embedding-failures', queryValidator(adminEmbeddingFailuresQuerySchema), async (c) => {
+  const { limit, offset } = getValidatedQuery<typeof adminEmbeddingFailuresQuerySchema>(c);
 
   const repositories = c.get('repositories');
   const result = await repositories.embeddingRetryQueue.findDeadLetterItems(limit, offset);

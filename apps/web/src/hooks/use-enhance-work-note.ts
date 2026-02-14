@@ -4,6 +4,7 @@ import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
+import { invalidateMany, workNoteRelatedKeys } from '@web/lib/query-invalidation';
 import type {
   AIDraftReference,
   AIDraftTodo,
@@ -241,11 +242,14 @@ export function useEnhanceWorkNoteForm(
           });
         }
 
-        void queryClient.invalidateQueries({ queryKey: ['todos'] });
-        void queryClient.invalidateQueries({ queryKey: ['work-notes'] });
-        void queryClient.invalidateQueries({ queryKey: ['work-notes-with-stats'] });
-        void queryClient.invalidateQueries({ queryKey: ['work-note-detail', workId] });
-        void queryClient.invalidateQueries({ queryKey: ['work-note-todos', workId] });
+        invalidateMany(
+          queryClient,
+          workNoteRelatedKeys(workId, {
+            includeTodos: true,
+            includeDetail: true,
+            includeWorkNoteTodos: true,
+          })
+        );
 
         resetForm();
         onSuccess?.();
