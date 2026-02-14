@@ -612,7 +612,7 @@ export class APIClient {
   getDepartments(params?: { q?: string; limit?: number }, signal?: AbortSignal) {
     const queryString = this.buildQueryString({
       q: params?.q,
-      limit: params?.limit ? params.limit : undefined,
+      limit: params?.limit,
     });
     return this.request<Department[]>(`/departments${queryString}`, { signal });
   }
@@ -842,7 +842,7 @@ export class APIClient {
   async getTodos(view: TodoView = 'today', year?: number, workIds?: string[]) {
     const queryString = this.buildQueryString({
       view,
-      year: year ? year : undefined,
+      year,
       workIds: workIds?.length ? workIds.join(',') : undefined,
     });
     const response = await this.request<BackendTodo[]>(`/todos${queryString}`);
@@ -1035,7 +1035,7 @@ export class APIClient {
 
   reindexAll(batchSize?: number) {
     const queryString = this.buildQueryString({
-      batchSize: batchSize ? batchSize : undefined,
+      batchSize,
     });
     return this.request<{ success: boolean; message: string; result: BatchProcessResult }>(
       `/admin/reindex-all${queryString}`,
@@ -1051,7 +1051,7 @@ export class APIClient {
 
   embedPending(batchSize?: number) {
     const queryString = this.buildQueryString({
-      batchSize: batchSize ? batchSize : undefined,
+      batchSize,
     });
     return this.request<{ success: boolean; message: string; result: BatchProcessResult }>(
       `/admin/embed-pending${queryString}`,
@@ -1063,7 +1063,7 @@ export class APIClient {
   getStatistics(params: StatisticsQueryParams) {
     const queryString = this.buildQueryString({
       period: params.period,
-      year: params.year ? params.year : undefined,
+      year: params.year,
       startDate: params.startDate,
       endDate: params.endDate,
       personId: params.personId,

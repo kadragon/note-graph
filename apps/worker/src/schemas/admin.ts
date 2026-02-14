@@ -1,23 +1,5 @@
 import { z } from 'zod';
-
-function parseIntegerOrDefault(value: string | undefined, defaultValue: number): number {
-  const parsed = Number.parseInt(value ?? '', 10);
-  return Number.isNaN(parsed) ? defaultValue : parsed;
-}
-
-function positiveIntegerQuery(defaultValue: number) {
-  return z
-    .string()
-    .optional()
-    .transform((value) => Math.max(1, parseIntegerOrDefault(value, defaultValue)));
-}
-
-function nonNegativeIntegerQuery(defaultValue: number) {
-  return z
-    .string()
-    .optional()
-    .transform((value) => Math.max(0, parseIntegerOrDefault(value, defaultValue)));
-}
+import { nonNegativeIntegerQuery, positiveIntegerQuery } from './schema-helpers';
 
 export const adminBatchQuerySchema = z.object({
   batchSize: positiveIntegerQuery(10),

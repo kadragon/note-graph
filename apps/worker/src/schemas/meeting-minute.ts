@@ -1,18 +1,7 @@
 import { z } from 'zod';
+import { positiveIntegerQuery } from './schema-helpers';
 
 const dateOnlyRegex = /^\d{4}-\d{2}-\d{2}$/;
-
-function parseIntegerOrDefault(value: string | undefined, defaultValue: number): number {
-  const parsed = Number.parseInt(value ?? '', 10);
-  return Number.isNaN(parsed) ? defaultValue : parsed;
-}
-
-function positiveIntegerQuery(defaultValue: number) {
-  return z
-    .string()
-    .optional()
-    .transform((value) => Math.max(1, parseIntegerOrDefault(value, defaultValue)));
-}
 
 export const createMeetingMinuteSchema = z.object({
   meetingDate: z.string().regex(dateOnlyRegex, 'meetingDate must be YYYY-MM-DD'),
