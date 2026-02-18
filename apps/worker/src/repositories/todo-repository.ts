@@ -237,37 +237,37 @@ export class TodoRepository {
       case 'month': {
         // Time-based views: show incomplete todos up to period end.
         // Include wait_until-only todos as well, but still hide todos gated by future wait_until.
-        // Exclude inactive statuses: 완료, 보류, 중단
+        // Restrict to active status only
         const endExclusiveUTC = this.getPeriodEndExclusiveUTC(query.view);
 
         conditions.push(
-          `t.status NOT IN (?, ?, ?)`,
+          `t.status = ?`,
           `COALESCE(t.due_date, t.wait_until) IS NOT NULL`,
           `COALESCE(t.due_date, t.wait_until) < ?`,
           `(t.wait_until IS NULL OR t.wait_until < ?)`
         );
-        params.push('완료', '보류', '중단', endExclusiveUTC, endExclusiveUTC);
+        params.push('진행중', endExclusiveUTC, endExclusiveUTC);
         break;
       }
 
       case 'backlog': {
         // Overdue todos (due_date < now and not completed)
-        // Exclude inactive statuses: 완료, 보류, 중단
+        // Restrict to active status only
         conditions.push(
-          `t.status NOT IN (?, ?, ?)`,
+          `t.status = ?`,
           `t.due_date IS NOT NULL`,
           `t.due_date < ?`,
           `(t.wait_until IS NULL OR t.wait_until < ?)`
         );
-        params.push('완료', '보류', '중단', startOfTodayUTC, startOfTomorrowUTC);
+        params.push('진행중', startOfTodayUTC, startOfTomorrowUTC);
         break;
       }
 
       case 'remaining': {
         // All incomplete todos (no year restriction)
-        // Exclude inactive statuses: 완료, 보류, 중단
-        conditions.push(`t.status NOT IN (?, ?, ?)`, `(t.wait_until IS NULL OR t.wait_until < ?)`);
-        params.push('완료', '보류', '중단', startOfTomorrowUTC);
+        // Restrict to active status only
+        conditions.push(`t.status = ?`, `(t.wait_until IS NULL OR t.wait_until < ?)`);
+        params.push('진행중', startOfTomorrowUTC);
         break;
       }
 

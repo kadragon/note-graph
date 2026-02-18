@@ -320,6 +320,7 @@ export class APIClient {
 
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, {
+        cache: 'no-store',
         ...options,
         headers,
       });
