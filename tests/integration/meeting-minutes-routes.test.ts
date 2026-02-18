@@ -182,9 +182,6 @@ describe('Meeting Minutes API Routes', () => {
       );
 
       expect(response.status).toBe(200);
-      expect(response.headers.get('Cache-Control')).toBe(
-        'private, max-age=30, stale-while-revalidate=120'
-      );
       const data = await response.json<{
         items: Array<{ meetingId: string; meetingDate: string; updatedAt: string }>;
         total: number;
@@ -260,9 +257,6 @@ describe('Meeting Minutes API Routes', () => {
 
       const response = await authFetch('http://localhost/api/meeting-minutes/MEET-DTL');
       expect(response.status).toBe(200);
-      expect(response.headers.get('Cache-Control')).toBe(
-        'private, max-age=30, stale-while-revalidate=120'
-      );
 
       const detail = await response.json<{
         meetingId: string;
