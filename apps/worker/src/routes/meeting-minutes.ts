@@ -95,6 +95,7 @@ meetingMinutes.get('/', queryValidator(listMeetingMinutesQuerySchema), async (c)
     pageSize: query.pageSize,
   });
 
+  c.header('Cache-Control', 'private, max-age=30, stale-while-revalidate=120');
   return c.json(result);
 });
 
@@ -165,6 +166,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
     .bind(meetingId)
     .first<{ linkedWorkNoteCount: number }>();
 
+  c.header('Cache-Control', 'private, max-age=30, stale-while-revalidate=120');
   return c.json({
     meetingId: row.meetingId,
     meetingDate: row.meetingDate,

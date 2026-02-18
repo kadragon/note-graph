@@ -72,6 +72,9 @@ describe('Statistics API Routes', () => {
 
       // Assert
       expect(response.status).toBe(200);
+      expect(response.headers.get('Cache-Control')).toBe(
+        'private, max-age=30, stale-while-revalidate=120'
+      );
       const data = await response.json();
       expect(data.summary).toBeDefined();
       expect(data.summary.totalWorkNotes).toBe(1);

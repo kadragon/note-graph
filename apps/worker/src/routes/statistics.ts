@@ -35,6 +35,7 @@ statistics.get('/', queryValidator(statisticsQuerySchema), async (c) => {
     categoryId: query.category,
   });
 
+  c.header('Cache-Control', 'private, max-age=30, stale-while-revalidate=120');
   return c.json(stats);
 });
 

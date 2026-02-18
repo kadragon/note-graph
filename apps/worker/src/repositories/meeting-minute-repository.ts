@@ -289,7 +289,7 @@ export class MeetingMinuteRepository {
 
     const totalSql = `
       ${withClause}
-      SELECT COUNT(DISTINCT mm.meeting_id) as total
+      SELECT COUNT(mm.meeting_id) as total
       FROM meeting_minutes mm${joinClause}${whereClause}
     `;
 
@@ -300,7 +300,7 @@ export class MeetingMinuteRepository {
 
     let sql = `
       ${withClause}
-      SELECT DISTINCT
+      SELECT
         mm.meeting_id as meetingId,
         mm.meeting_date as meetingDate,
         mm.topic,
