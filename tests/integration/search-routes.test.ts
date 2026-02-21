@@ -1,4 +1,4 @@
-import { HybridSearchService } from '@worker/services/hybrid-search-service';
+import { KeywordSearchService } from '@worker/services/keyword-search-service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { authFetch, testEnv } from '../test-setup';
@@ -20,6 +20,38 @@ describe('Search API Routes', () => {
   });
 
   describe('POST /api/search/unified', () => {
+    it('uses lexical work-note search path without embedding fetch calls', async () => {
+      const now = new Date().toISOString();
+      await testEnv.DB.prepare(
+        `INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+        .bind('WORK-SEARCH-001', '검색 성능 개선', '벡터 호출 없이 키워드 검색', '운영', now, now)
+        .run();
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const response = await authFetch('/api/search/unified', {
+        method: 'POST',
+        body: JSON.stringify({
+          query: '검색 성능',
+          limit: 10,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json<{
+        workNotes: Array<{ source: string; workNote: { workId: string } }>;
+      }>();
+
+      expect(data.workNotes.length).toBeGreaterThan(0);
+      expect(data.workNotes[0]?.workNote.workId).toBe('WORK-SEARCH-001');
+      expect(data.workNotes[0]?.source).toBe('LEXICAL');
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      fetchSpy.mockRestore();
+    });
+
     it('includes meeting minute result group with source-specific payload shape', async () => {
       const now = new Date().toISOString();
       await testEnv.DB.batch([
@@ -90,7 +122,7 @@ describe('Search API Routes', () => {
     });
 
     it('sanitizes punctuation-heavy query for meeting minute references', async () => {
-      vi.spyOn(HybridSearchService.prototype, 'search').mockResolvedValue([]);
+      vi.spyOn(KeywordSearchService.prototype, 'search').mockResolvedValue([]);
 
       const response = await authFetch('/api/search/unified', {
         method: 'POST',
@@ -106,6 +138,49 @@ describe('Search API Routes', () => {
       }>();
 
       expect(data.meetingMinutes).toEqual([]);
+    });
+  });
+
+  describe('POST /api/search/work-notes', () => {
+    it('returns lexical searchType and lexical source', async () => {
+      const keywordSearchSpy = vi
+        .spyOn(KeywordSearchService.prototype, 'search')
+        .mockResolvedValue([
+          {
+            workNote: {
+              workId: 'WORK-SEARCH-TYPE-001',
+              title: '검색 타입 테스트',
+              contentRaw: '키워드 검색 응답',
+              category: '운영',
+              createdAt: '2026-02-21T00:00:00.000Z',
+              updatedAt: '2026-02-21T00:00:00.000Z',
+              embeddedAt: null,
+            },
+            score: 0.94,
+            source: 'LEXICAL',
+          },
+        ]);
+
+      const response = await authFetch('/api/search/work-notes', {
+        method: 'POST',
+        body: JSON.stringify({
+          query: '검색',
+          limit: 10,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json<{
+        searchType: string;
+        results: Array<{ source: string; workNote: { workId: string } }>;
+      }>();
+
+      expect(data.searchType).toBe('LEXICAL');
+      expect(data.results.length).toBeGreaterThan(0);
+      expect(data.results[0]?.source).toBe('LEXICAL');
+      expect(data.results[0]?.workNote.workId).toBe('WORK-SEARCH-TYPE-001');
+
+      keywordSearchSpy.mockRestore();
     });
   });
 });
