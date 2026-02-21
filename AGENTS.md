@@ -15,6 +15,25 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Dev (web + worker): `bun run dev`
 - Tests (preferred): `bun run test` (Vitest).
 
+## Common Commands
+- Web tests only: `bun run test:web`
+- Run worker + web tests in parallel: `bun run test:all`
+- Coverage (worker config): `bun run test:coverage`
+- Typecheck: `bun run typecheck`
+- Lint: `bun run lint`
+- Format: `bun run format`
+- Create D1 migration: `bun run db:create-migration`
+- Apply D1 migrations (remote): `bun run db:migrate`
+- Build (web + worker): `bun run build`
+- Deploy (build + deploy): `bun run deploy`
+- Deploy with migrations: `bun run deploy:with-migrations`
+
+## First-Time Infra Setup
+- Create D1 database: `wrangler d1 create worknote-db`
+- Create Vectorize index: `wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine`
+- Create R2 bucket: `wrangler r2 bucket create worknote-pdf-temp`
+- Create queue: `wrangler queues create pdf-processing-queue`
+
 ## Project Overview
 - Product: Worknote Management System (single-user knowledge base).
 - Platform: Cloudflare Workers.
