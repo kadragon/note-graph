@@ -9,7 +9,7 @@ import type {
 import type { Context } from 'hono';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { searchWorkNotesSchema } from '../schemas/search';
-import { HybridSearchService } from '../services/hybrid-search-service';
+import { KeywordSearchService } from '../services/keyword-search-service';
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import type { AppContext } from '../types/context';
 import { createProtectedRouter } from './_shared/router-factory';
@@ -18,17 +18,17 @@ const search = createProtectedRouter();
 
 /**
  * POST /search/work-notes
- * Search work notes using hybrid search (FTS + Vectorize with RRF)
+ * Search work notes using keyword search (FTS + weighted lexical scoring)
  */
 search.post('/work-notes', bodyValidator(searchWorkNotesSchema), async (c: Context<AppContext>) => {
   // Validate request body
   const body = getValidatedBody<typeof searchWorkNotesSchema>(c);
 
-  // Create hybrid search service
-  const hybridSearchService = new HybridSearchService(c.env.DB, c.env);
+  // Create keyword search service
+  const keywordSearchService = new KeywordSearchService(c.env.DB);
 
-  // Execute hybrid search (FTS + Vectorize with RRF)
-  const results = await hybridSearchService.search(body.query, {
+  // Execute keyword search
+  const results = await keywordSearchService.search(body.query, {
     personId: body.personId,
     deptName: body.deptName,
     category: body.category,
@@ -41,7 +41,7 @@ search.post('/work-notes', bodyValidator(searchWorkNotesSchema), async (c: Conte
     results,
     count: results.length,
     query: body.query,
-    searchType: 'HYBRID',
+    searchType: 'LEXICAL',
   });
 });
 
@@ -55,13 +55,13 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
   const query = body.query.trim();
 
   // Initialize repositories and services
-  const hybridSearchService = new HybridSearchService(c.env.DB, c.env);
+  const keywordSearchService = new KeywordSearchService(c.env.DB);
   const { persons: personRepository, departments: departmentRepository } = c.get('repositories');
 
   // Execute searches in parallel
   const [workNoteResults, persons, departments, meetingMinutes] = await Promise.all([
-    // Work notes search (hybrid FTS + Vectorize)
-    hybridSearchService.search(query, {
+    // Work notes search (keyword FTS + weighted lexical scoring)
+    keywordSearchService.search(query, {
       personId: body.personId,
       deptName: body.deptName,
       category: body.category,

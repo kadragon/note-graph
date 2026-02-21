@@ -58,3 +58,19 @@
 - [x] top-menu.tsx: add nav item
 - [x] Work note create/edit forms: add GroupSelector
 - [x] Work note detail view: display group badges
+
+## PR 4: Search Enhancement — Keyword First (Behavioral, TDD)
+
+> Reduce search latency by replacing unified work-note hybrid search with weighted lexical ranking.
+
+- [x] Add `work-notes-fts` query/score utility for token normalization and AND/OR query composition
+- [x] Add `KeywordSearchService` with BM25 candidate retrieval and title/recency weighted scoring
+- [x] Route: switch `/search/work-notes` and `/search/unified` work-note path to `KeywordSearchService`
+- [x] Route: return `searchType: LEXICAL` from `/search/work-notes`
+- [x] Unit test: title-weighted ranking outranks content-only match
+- [x] Unit test: AND-first fallback to OR when result count is insufficient
+- [x] Unit test: punctuation-only query returns empty results
+- [x] Unit test: category/person/dept/date filters are applied in candidate query
+- [x] Integration test: unified route preserves response shape while using lexical source for work notes
+- [x] API client test: lexical search result mapping remains valid
+- [x] Verify: run targeted unit/integration/web API tests for search path
