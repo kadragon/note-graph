@@ -199,8 +199,6 @@ export class KeywordSearchService {
     }
 
     sql += ` ORDER BY fts.bm25_score ASC`;
-    sql += ` LIMIT ?`;
-    params.push(candidateLimit);
 
     const result = await this.db
       .prepare(sql)

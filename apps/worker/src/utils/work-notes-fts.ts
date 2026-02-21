@@ -5,9 +5,7 @@ function quoteFtsToken(token: string): string {
 }
 
 export function extractWorkNoteFtsTokens(rawQuery: string): string[] {
-  const tokens = rawQuery.match(FTS_TERM_PATTERN) ?? [];
-  const normalized = tokens.map((token) => token.trim()).filter(Boolean);
-  return [...new Set(normalized)];
+  return [...new Set(rawQuery.match(FTS_TERM_PATTERN) ?? [])];
 }
 
 export function normalizeWorkNoteSearchPhrase(rawQuery: string): string {
