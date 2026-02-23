@@ -120,6 +120,19 @@ describe('ViewMeetingMinuteDialog', () => {
     expect(screen.getByText(/수정일:/)).toBeInTheDocument();
   });
 
+  it('shows guidance when no meetingId is provided', () => {
+    render(
+      <ViewMeetingMinuteDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        meetingId={undefined}
+        onEdit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('조회할 회의록을 선택해주세요.')).toBeInTheDocument();
+  });
+
   it('calls onEdit with meeting id when edit button is clicked', async () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();
