@@ -13,10 +13,11 @@ type MeetingMinuteListItem = Awaited<ReturnType<typeof API.getMeetingMinutes>>['
 
 interface MeetingMinutesTableProps {
   items: MeetingMinuteListItem[];
+  onView: (meetingId: string) => void;
   onEdit: (meetingId: string) => void;
 }
 
-export function MeetingMinutesTable({ items, onEdit }: MeetingMinutesTableProps) {
+export function MeetingMinutesTable({ items, onView, onEdit }: MeetingMinutesTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -32,14 +33,24 @@ export function MeetingMinutesTable({ items, onEdit }: MeetingMinutesTableProps)
             <TableCell>{item.meetingDate}</TableCell>
             <TableCell>{item.topic}</TableCell>
             <TableCell className="text-right">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onEdit(item.meetingId)}
-              >
-                수정
-              </Button>
+              <div className="flex items-center justify-end gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onView(item.meetingId)}
+                >
+                  보기
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onEdit(item.meetingId)}
+                >
+                  수정
+                </Button>
+              </div>
             </TableCell>
           </TableRow>
         ))}

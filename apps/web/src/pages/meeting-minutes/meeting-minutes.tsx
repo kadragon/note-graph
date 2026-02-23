@@ -5,13 +5,17 @@ import { Input } from '@web/components/ui/input';
 import { useDialogState } from '@web/hooks/use-dialog-state';
 import { useMeetingMinutes } from '@web/hooks/use-meeting-minutes';
 import { Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CreateMeetingMinuteDialog } from './components/create-meeting-minute-dialog';
 import { EditMeetingMinuteDialog } from './components/edit-meeting-minute-dialog';
 import { MeetingMinutesTable } from './components/meeting-minutes-table';
+import { ViewMeetingMinuteDialog } from './components/view-meeting-minute-dialog';
 
 export default function MeetingMinutes() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const createDialog = useDialogState();
+  const viewDialog = useDialogState<string>();
   const editDialog = useDialogState<string>();
   const [q, setQ] = useState('');
 
@@ -26,6 +30,24 @@ export default function MeetingMinutes() {
 
   const { data, isLoading } = useMeetingMinutes(query);
   const items = data?.items ?? [];
+
+  const meetingIdFromUrl = searchParams.get('id');
+  useEffect(() => {
+    if (!meetingIdFromUrl || isLoading) {
+      return;
+    }
+
+    viewDialog.open(meetingIdFromUrl);
+    setSearchParams({}, { replace: true });
+  }, [meetingIdFromUrl, isLoading, setSearchParams, viewDialog.open]);
+
+  const handleView = (meetingId: string) => {
+    viewDialog.open(meetingId);
+  };
+
+  const handleEdit = (meetingId: string) => {
+    editDialog.open(meetingId);
+  };
 
   return (
     <div className="page-container">
@@ -57,7 +79,7 @@ export default function MeetingMinutes() {
             isEmpty={items.length === 0}
             emptyMessage="등록된 회의록이 없습니다."
           >
-            <MeetingMinutesTable items={items} onEdit={editDialog.open} />
+            <MeetingMinutesTable items={items} onView={handleView} onEdit={handleEdit} />
           </StateRenderer>
         </CardContent>
       </Card>
@@ -65,6 +87,15 @@ export default function MeetingMinutes() {
       <CreateMeetingMinuteDialog
         open={createDialog.isOpen}
         onOpenChange={createDialog.onOpenChange}
+      />
+      <ViewMeetingMinuteDialog
+        open={viewDialog.isOpen}
+        onOpenChange={viewDialog.onOpenChange}
+        meetingId={viewDialog.id ?? undefined}
+        onEdit={(meetingId) => {
+          viewDialog.onOpenChange(false);
+          editDialog.open(meetingId);
+        }}
       />
       <EditMeetingMinuteDialog
         open={editDialog.isOpen}
