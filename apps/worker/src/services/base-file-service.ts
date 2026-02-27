@@ -71,7 +71,10 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
       extension === 'hwpx' &&
       (normalizedMime === 'application/zip' || normalizedMime === 'application/x-zip-compressed');
 
-    if (normalizedMime === 'application/hwp+zip' || isHwpxFromGenericZip) {
+    if (
+      ['application/hwp+zip', 'application/haansofthwpx'].includes(normalizedMime) ||
+      isHwpxFromGenericZip
+    ) {
       normalizedMime = 'application/vnd.hancom.hwpx';
     }
 
