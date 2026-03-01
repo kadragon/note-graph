@@ -2,7 +2,7 @@ import { Button } from '@web/components/ui/button';
 import { useWorkNoteGroupWorkNotes } from '@web/hooks/use-work-note-groups';
 import { formatDateTimeInKstOrFallback } from '@web/lib/date-format';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 export default function WorkNoteGroupDetail() {
   const { id } = useParams<{ id: string }>();
@@ -67,14 +67,9 @@ export default function WorkNoteGroupDetail() {
         <ul className="grid gap-2">
           {workNotes.map((workNote) => (
             <li key={workNote.workId} className="flex items-center justify-between gap-2 text-sm">
-              <a
-                href={`/work-notes/${workNote.workId}`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium hover:underline"
-              >
+              <Link to={`/work-notes/${workNote.workId}`} className="font-medium hover:underline">
                 {workNote.title}
-              </a>
+              </Link>
               <span className="text-muted-foreground text-xs shrink-0">
                 {formatDateTimeInKstOrFallback(workNote.createdAt)}
               </span>
