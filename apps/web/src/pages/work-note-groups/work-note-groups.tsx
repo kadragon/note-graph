@@ -30,13 +30,13 @@ import type { WorkNoteGroup } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { CreateWorkNoteGroupDialog } from './components/create-work-note-group-dialog';
 import { EditWorkNoteGroupDialog } from './components/edit-work-note-group-dialog';
-import { WorkNoteGroupWorkNotesDialog } from './components/work-note-group-work-notes-dialog';
 
 export default function WorkNoteGroups() {
+  const navigate = useNavigate();
   const createDialog = useDialogState();
-  const viewDialog = useDialogState<WorkNoteGroup>();
   const editDialog = useDialogState<WorkNoteGroup>();
   const deleteDialog = useDialogState<WorkNoteGroup>();
 
@@ -107,7 +107,7 @@ export default function WorkNoteGroups() {
                       <button
                         type="button"
                         className="hover:underline text-left"
-                        onClick={() => viewDialog.open(group)}
+                        onClick={() => navigate(`/work-note-groups/${group.groupId}`)}
                       >
                         {group.name}
                       </button>
@@ -151,12 +151,6 @@ export default function WorkNoteGroups() {
           </StateRenderer>
         </CardContent>
       </Card>
-
-      <WorkNoteGroupWorkNotesDialog
-        open={viewDialog.isOpen}
-        onOpenChange={viewDialog.onOpenChange}
-        group={viewDialog.id}
-      />
 
       <CreateWorkNoteGroupDialog
         open={createDialog.isOpen}
