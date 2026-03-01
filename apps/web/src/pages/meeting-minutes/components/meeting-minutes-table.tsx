@@ -36,7 +36,7 @@ export function MeetingMinutesTable({ items, onView, onEdit }: MeetingMinutesTab
               <div className="flex items-center justify-end gap-1">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => onView(item.meetingId)}
                 >
@@ -44,7 +44,7 @@ export function MeetingMinutesTable({ items, onView, onEdit }: MeetingMinutesTab
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="default"
                   size="sm"
                   onClick={() => onEdit(item.meetingId)}
                 >

@@ -81,6 +81,7 @@ describe('useMeetingMinutes', () => {
       keywords: ['주간', '회의'],
       attendees: [{ personId: 'P1', name: '홍길동' }],
       categories: [{ categoryId: 'C1', name: '기획' }],
+      groups: [],
       createdAt: '2026-02-11T09:00:00.000Z',
       updatedAt: '2026-02-11T09:00:00.000Z',
       linkedWorkNoteCount: 2,
@@ -118,6 +119,7 @@ describe('useMeetingMinutes', () => {
       keywords: ['주간', '회의'],
       attendees: [{ personId: 'P1', name: '홍길동' }],
       categories: [{ categoryId: 'C1', name: '기획' }],
+      groups: [],
       createdAt: '2026-02-11T09:00:00.000Z',
       updatedAt: '2026-02-11T09:00:00.000Z',
     };

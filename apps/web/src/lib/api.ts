@@ -724,6 +724,7 @@ export class APIClient {
     meetingDateFrom?: string;
     meetingDateTo?: string;
     categoryId?: string;
+    groupId?: string;
     attendeePersonId?: string;
     page?: number;
     pageSize?: number;
@@ -733,6 +734,7 @@ export class APIClient {
       meetingDateFrom: params?.meetingDateFrom,
       meetingDateTo: params?.meetingDateTo,
       categoryId: params?.categoryId,
+      groupId: params?.groupId,
       attendeePersonId: params?.attendeePersonId,
       page: params?.page,
       pageSize: params?.pageSize,
@@ -760,6 +762,7 @@ export class APIClient {
     detailsRaw: string;
     attendeePersonIds: string[];
     categoryIds?: string[];
+    groupIds?: string[];
   }) {
     return this.request<{
       meetingId: string;
@@ -769,6 +772,7 @@ export class APIClient {
       keywords: string[];
       attendees: Array<{ personId: string; name: string }>;
       categories: Array<{ categoryId: string; name: string }>;
+      groups: Array<{ groupId: string; name: string }>;
       createdAt: string;
       updatedAt: string;
     }>('/meeting-minutes', {
@@ -786,6 +790,7 @@ export class APIClient {
       keywords: string[];
       attendees: Array<{ personId: string; name: string }>;
       categories: Array<{ categoryId: string; name: string }>;
+      groups: Array<{ groupId: string; name: string }>;
       linkedWorkNoteCount?: number;
       createdAt: string;
       updatedAt: string;
@@ -800,6 +805,7 @@ export class APIClient {
       detailsRaw?: string;
       attendeePersonIds?: string[];
       categoryIds?: string[];
+      groupIds?: string[];
     }
   ) {
     return this.request<{
@@ -810,6 +816,7 @@ export class APIClient {
       keywords: string[];
       attendees: Array<{ personId: string; name: string }>;
       categories: Array<{ categoryId: string; name: string }>;
+      groups: Array<{ groupId: string; name: string }>;
       createdAt: string;
       updatedAt: string;
     }>(`/meeting-minutes/${meetingId}`, {
