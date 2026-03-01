@@ -14,6 +14,7 @@ import {
 } from '@web/components/ui/table';
 import { useDepartments, useUpdateDepartment } from '@web/hooks/use-departments';
 import { useDialogState } from '@web/hooks/use-dialog-state';
+import { cn } from '@web/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Plus, Users } from 'lucide-react';
@@ -71,7 +72,7 @@ export default function Departments() {
               </TableHeader>
               <TableBody>
                 {departments.map((dept) => (
-                  <TableRow key={dept.deptName} className={!dept.isActive ? 'opacity-60' : ''}>
+                  <TableRow key={dept.deptName} className={cn(!dept.isActive && 'opacity-60')}>
                     <TableCell className="font-medium">{dept.deptName}</TableCell>
                     <TableCell>
                       <Badge variant={dept.isActive ? 'default' : 'secondary'}>

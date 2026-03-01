@@ -2,6 +2,7 @@ import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { TableCell, TableRow } from '@web/components/ui/table';
 import { useDownloadWorkNote } from '@web/hooks/use-download-work-note';
+import { cn } from '@web/lib/utils';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
 import { Download, Loader2, Trash2 } from 'lucide-react';
@@ -118,7 +119,10 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
             </div>
             <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${completed === total ? 'bg-green-500' : 'bg-blue-500'}`}
+                className={cn(
+                  'h-full rounded-full transition-all',
+                  completed === total ? 'bg-green-500' : 'bg-primary'
+                )}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>

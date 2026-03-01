@@ -47,7 +47,7 @@ export default function WorkNotes() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: workNotes = [], isLoading } = useWorkNotesWithStats();
+  const { data: workNotes = [], isLoading, error } = useWorkNotesWithStats();
 
   // Handle ?id=xxx query param — redirect to new URL
   const workNoteIdFromUrl = searchParams.get('id');
@@ -132,7 +132,7 @@ export default function WorkNotes() {
           <CardTitle>업무노트 목록</CardTitle>
         </CardHeader>
         <CardContent>
-          <StateRenderer isLoading={isLoading} isEmpty={false}>
+          <StateRenderer isLoading={isLoading} isEmpty={false} error={error}>
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkNoteTab)}>
               <TabsList className="mb-4 flex flex-wrap gap-2">
                 <TabsTrigger value="active">진행 중 ({activeWorkNotes.length})</TabsTrigger>
