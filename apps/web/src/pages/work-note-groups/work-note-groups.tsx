@@ -40,7 +40,7 @@ export default function WorkNoteGroups() {
   const editDialog = useDialogState<WorkNoteGroup>();
   const deleteDialog = useDialogState<WorkNoteGroup>();
 
-  const { data: groups = [], isLoading } = useWorkNoteGroups();
+  const { data: groups = [], isLoading, error } = useWorkNoteGroups();
   const deleteMutation = useDeleteWorkNoteGroup();
   const toggleActiveMutation = useToggleWorkNoteGroupActive();
 
@@ -89,6 +89,7 @@ export default function WorkNoteGroups() {
             isLoading={isLoading}
             isEmpty={groups.length === 0}
             emptyMessage="등록된 업무 그룹이 없습니다."
+            error={error}
           >
             <Table>
               <TableHeader>
@@ -126,10 +127,20 @@ export default function WorkNoteGroups() {
                       })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(group)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(group)}
+                        aria-label="수정"
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(group)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(group)}
+                        aria-label="삭제"
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>

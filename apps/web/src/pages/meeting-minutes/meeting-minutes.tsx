@@ -22,7 +22,7 @@ export default function MeetingMinutes() {
     [q]
   );
 
-  const { data, isLoading } = useMeetingMinutes(query);
+  const { data, isLoading, error } = useMeetingMinutes(query);
   const items = data?.items ?? [];
 
   // Handle ?id=xxx query param — redirect to new URL
@@ -70,6 +70,7 @@ export default function MeetingMinutes() {
             isLoading={isLoading}
             isEmpty={items.length === 0}
             emptyMessage="등록된 회의록이 없습니다."
+            error={error}
           >
             <MeetingMinutesTable items={items} onView={handleView} onEdit={handleEdit} />
           </StateRenderer>

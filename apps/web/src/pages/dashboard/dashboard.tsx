@@ -5,7 +5,7 @@ import { TodoTabs } from './components/todo-tabs';
 
 export default function Dashboard() {
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="page-container">
       {/* Calendar */}
       <CalendarCard />
 

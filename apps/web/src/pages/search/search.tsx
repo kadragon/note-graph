@@ -241,9 +241,11 @@ export default function Search() {
 
   return (
     <div className="page-container">
-      <div className="mb-6">
-        <h1 className="page-title">검색</h1>
-        <p className="page-description">업무노트, 사람, 부서를 검색하세요</p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">검색</h1>
+          <p className="page-description">업무노트, 사람, 부서를 검색하세요</p>
+        </div>
       </div>
 
       <Card className="mb-6">

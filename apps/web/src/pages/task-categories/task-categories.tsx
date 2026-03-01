@@ -38,7 +38,7 @@ export default function TaskCategories() {
   const editDialog = useDialogState<TaskCategory>();
   const deleteDialog = useDialogState<TaskCategory>();
 
-  const { data: categories = [], isLoading } = useTaskCategories();
+  const { data: categories = [], isLoading, error } = useTaskCategories();
   const deleteMutation = useDeleteTaskCategory();
   const toggleActiveMutation = useToggleTaskCategoryActive();
 
@@ -88,6 +88,7 @@ export default function TaskCategories() {
             isLoading={isLoading}
             isEmpty={categories.length === 0}
             emptyMessage="등록된 업무 구분이 없습니다."
+            error={error}
           >
             <Table>
               <TableHeader>
@@ -120,10 +121,20 @@ export default function TaskCategories() {
                       })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(category)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(category)}
+                        aria-label="수정"
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(category)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(category)}
+                        aria-label="삭제"
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>

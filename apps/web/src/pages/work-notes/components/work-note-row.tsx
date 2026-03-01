@@ -76,7 +76,7 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
         <button
           type="button"
           onClick={() => onView(workNote)}
-          className="text-left hover:text-blue-600 hover:underline w-full cursor-pointer truncate block"
+          className="text-left hover:text-primary hover:underline w-full cursor-pointer truncate block"
         >
           {workNote.title}
         </button>
@@ -116,7 +116,7 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
                 {progressPercent}%
               </span>
             </div>
-            <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${completed === total ? 'bg-green-500' : 'bg-blue-500'}`}
                 style={{ width: `${progressPercent}%` }}

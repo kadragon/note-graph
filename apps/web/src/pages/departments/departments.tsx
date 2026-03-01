@@ -23,7 +23,7 @@ import { CreateDepartmentDialog } from './components/create-department-dialog';
 export default function Departments() {
   const navigate = useNavigate();
   const createDialog = useDialogState();
-  const { data: departments = [], isLoading } = useDepartments();
+  const { data: departments = [], isLoading, error } = useDepartments();
   const updateDepartmentMutation = useUpdateDepartment();
 
   const handleToggleStatus = (deptName: string, currentStatus: boolean) => {
@@ -58,6 +58,7 @@ export default function Departments() {
             isLoading={isLoading}
             isEmpty={departments.length === 0}
             emptyMessage="등록된 부서가 없습니다."
+            error={error}
           >
             <Table>
               <TableHeader>

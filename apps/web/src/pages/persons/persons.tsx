@@ -29,7 +29,7 @@ export default function Persons() {
   const createDialog = useDialogState();
   const editDialog = useDialogState<Person>();
   const importDialog = useDialogState();
-  const { data: persons = [], isLoading } = usePersons();
+  const { data: persons = [], isLoading, error } = usePersons();
 
   // Get department filter from URL params
   const deptFilter = searchParams.get('dept');
@@ -128,6 +128,7 @@ export default function Persons() {
             isLoading={isLoading}
             isEmpty={persons.length === 0}
             emptyMessage="등록된 사람이 없습니다."
+            error={error}
           >
             <div className="space-y-6">
               {groupedPersons.map((group) => (

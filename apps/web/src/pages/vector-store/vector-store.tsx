@@ -81,8 +81,8 @@ export default function VectorStore() {
   const embeddingPercentage = total > 0 ? Math.round((embedded / total) * 100) : 0;
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
+    <div className="page-container">
+      <div>
         <h1 className="page-title">벡터 스토어 관리</h1>
         <p className="page-description">업무노트 임베딩 현황을 확인하고 관리합니다</p>
       </div>
