@@ -2,7 +2,12 @@ import { Button } from '@web/components/ui/button';
 import { useMeetingMinute } from '@web/hooks/use-meeting-minutes';
 import { formatDateTimeInKstOrFallback } from '@web/lib/date-format';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+
+const LazyMarkdown = lazy(() =>
+  import('@web/components/lazy-markdown').then((m) => ({ default: m.LazyMarkdown }))
+);
 
 export default function MeetingMinuteDetail() {
   const { id } = useParams<{ id: string }>();
@@ -87,7 +92,11 @@ export default function MeetingMinuteDetail() {
 
         <div className="grid gap-1">
           <p className="text-sm font-medium">회의 내용</p>
-          <p className="text-sm whitespace-pre-wrap">{meeting.detailsRaw}</p>
+          <div className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-muted/50">
+            <Suspense fallback={<div className="text-muted-foreground">로딩 중...</div>}>
+              <LazyMarkdown>{meeting.detailsRaw}</LazyMarkdown>
+            </Suspense>
+          </div>
         </div>
 
         <div className="grid gap-1">
@@ -122,6 +131,24 @@ export default function MeetingMinuteDetail() {
               ))
             ) : (
               <p className="text-sm text-muted-foreground">업무 구분이 없습니다.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-1">
+          <p className="text-sm font-medium">업무 그룹</p>
+          <div className="flex flex-wrap gap-2">
+            {meeting.groups && meeting.groups.length > 0 ? (
+              meeting.groups.map((group) => (
+                <span
+                  key={group.groupId}
+                  className="rounded-md border px-2 py-1 text-xs text-muted-foreground"
+                >
+                  {group.name}
+                </span>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">업무 그룹이 없습니다.</p>
             )}
           </div>
         </div>

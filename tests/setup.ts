@@ -361,6 +361,16 @@ const manualSchemaStatements: string[] = [
    )`,
   `CREATE INDEX IF NOT EXISTS idx_work_note_group_items_work_id ON work_note_group_items(work_id)`,
   `CREATE INDEX IF NOT EXISTS idx_work_note_group_items_group_id ON work_note_group_items(group_id)`,
+
+  // Migration 0030: Meeting minute groups
+  `CREATE TABLE IF NOT EXISTS meeting_minute_group (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     meeting_id TEXT NOT NULL REFERENCES meeting_minutes(meeting_id) ON DELETE CASCADE,
+     group_id TEXT NOT NULL REFERENCES work_note_groups(group_id) ON DELETE CASCADE,
+     UNIQUE(meeting_id, group_id)
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_meeting_minute_group_meeting_id ON meeting_minute_group(meeting_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_meeting_minute_group_group_id ON meeting_minute_group(group_id)`,
 ];
 
 async function executeBatch(db: D1Database, statements: string[]): Promise<void> {

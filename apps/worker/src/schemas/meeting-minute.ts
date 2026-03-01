@@ -9,6 +9,7 @@ export const createMeetingMinuteSchema = z.object({
   detailsRaw: z.string().min(1, 'detailsRaw is required'),
   attendeePersonIds: z.array(z.string().length(6)).min(1, 'at least one attendee is required'),
   categoryIds: z.array(z.string()).optional(),
+  groupIds: z.array(z.string()).optional(),
 });
 
 export const updateMeetingMinuteSchema = createMeetingMinuteSchema.partial();
@@ -18,6 +19,7 @@ export const listMeetingMinutesQuerySchema = z.object({
   meetingDateFrom: z.string().optional(),
   meetingDateTo: z.string().optional(),
   categoryId: z.string().optional(),
+  groupId: z.string().optional(),
   attendeePersonId: z.string().optional(),
   page: positiveIntegerQuery(1),
   pageSize: positiveIntegerQuery(20),

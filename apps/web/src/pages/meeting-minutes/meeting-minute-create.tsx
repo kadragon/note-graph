@@ -1,5 +1,6 @@
 import { AssigneeSelector } from '@web/components/assignee-selector';
 import { CategorySelector } from '@web/components/category-selector';
+import { GroupSelector } from '@web/components/group-selector';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { Input } from '@web/components/ui/input';
@@ -9,6 +10,7 @@ import { useCreateMeetingMinute } from '@web/hooks/use-meeting-minutes';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
+import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -19,12 +21,14 @@ export default function MeetingMinuteCreate() {
   const [topic, setTopic] = useState('');
   const [detailsRaw, setDetailsRaw] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [generatedKeywords, setGeneratedKeywords] = useState<string[]>([]);
   const { toast } = useToast();
 
   const createMutation = useCreateMeetingMinute();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
+  const { data: groups = [], isLoading: groupsLoading } = useWorkNoteGroups(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,6 +59,7 @@ export default function MeetingMinuteCreate() {
         detailsRaw: detailsRaw.trim(),
         attendeePersonIds: selectedPersonIds,
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+        groupIds: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
       });
       setGeneratedKeywords(result.keywords ?? []);
       navigate(`/meeting-minutes/${result.meetingId}`, { replace: true });
@@ -123,6 +128,17 @@ export default function MeetingMinuteCreate() {
                 onSelectionChange={setSelectedCategoryIds}
                 isLoading={categoriesLoading}
                 idPrefix="meeting-category"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>업무 그룹 (선택사항)</Label>
+              <GroupSelector
+                groups={groups}
+                selectedIds={selectedGroupIds}
+                onSelectionChange={setSelectedGroupIds}
+                isLoading={groupsLoading}
+                idPrefix="meeting-group"
               />
             </div>
 

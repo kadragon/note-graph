@@ -15,6 +15,7 @@ describe('MeetingMinuteRepository', () => {
     await testEnv.DB.batch([
       testEnv.DB.prepare('DELETE FROM work_note_meeting_minute'),
       testEnv.DB.prepare('DELETE FROM meeting_minute_task_category'),
+      testEnv.DB.prepare('DELETE FROM meeting_minute_group'),
       testEnv.DB.prepare('DELETE FROM meeting_minute_person'),
       testEnv.DB.prepare('DELETE FROM meeting_minutes'),
       testEnv.DB.prepare('DELETE FROM task_categories'),

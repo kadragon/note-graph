@@ -19,6 +19,7 @@ export interface ListMeetingMinutesQuery {
   meetingDateFrom?: string;
   meetingDateTo?: string;
   categoryId?: string;
+  groupId?: string;
   attendeePersonId?: string;
 }
 
@@ -91,6 +92,19 @@ export class MeetingMinuteRepository {
                VALUES (?, ?)`
             )
             .bind(meetingId, categoryId)
+        );
+      }
+    }
+
+    if (data.groupIds && data.groupIds.length > 0) {
+      for (const groupId of data.groupIds) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT INTO meeting_minute_group (meeting_id, group_id)
+               VALUES (?, ?)`
+            )
+            .bind(meetingId, groupId)
         );
       }
     }
@@ -210,6 +224,23 @@ export class MeetingMinuteRepository {
       }
     }
 
+    if (data.groupIds !== undefined) {
+      statements.push(
+        this.db.prepare(`DELETE FROM meeting_minute_group WHERE meeting_id = ?`).bind(meetingId)
+      );
+
+      for (const groupId of data.groupIds) {
+        statements.push(
+          this.db
+            .prepare(
+              `INSERT INTO meeting_minute_group (meeting_id, group_id)
+               VALUES (?, ?)`
+            )
+            .bind(meetingId, groupId)
+        );
+      }
+    }
+
     if (statements.length > 0) {
       await this.db.batch(statements);
     }
@@ -263,6 +294,15 @@ export class MeetingMinuteRepository {
       );
       conditions.push('mmtc.category_id = ?');
       params.push(query.categoryId);
+    }
+
+    if (query.groupId) {
+      joins.push(
+        `INNER JOIN meeting_minute_group mmg
+          ON mm.meeting_id = mmg.meeting_id`
+      );
+      conditions.push('mmg.group_id = ?');
+      params.push(query.groupId);
     }
 
     if (query.attendeePersonId) {

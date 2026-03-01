@@ -1,5 +1,6 @@
 import { AssigneeSelector } from '@web/components/assignee-selector';
 import { CategorySelector } from '@web/components/category-selector';
+import { GroupSelector } from '@web/components/group-selector';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { Input } from '@web/components/ui/input';
@@ -9,6 +10,7 @@ import { useMeetingMinute, useUpdateMeetingMinute } from '@web/hooks/use-meeting
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
+import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -20,6 +22,7 @@ export default function MeetingMinuteEdit() {
   const [topic, setTopic] = useState('');
   const [detailsRaw, setDetailsRaw] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
   const { toast } = useToast();
@@ -28,6 +31,7 @@ export default function MeetingMinuteEdit() {
   const updateMutation = useUpdateMeetingMinute();
   const detailQuery = useMeetingMinute(id, Boolean(id));
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
+  const { data: groups = [], isLoading: groupsLoading } = useWorkNoteGroups(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
   useEffect(() => {
@@ -37,6 +41,7 @@ export default function MeetingMinuteEdit() {
     setTopic(detail.topic);
     setDetailsRaw(detail.detailsRaw);
     setSelectedCategoryIds(detail.categories.map((category) => category.categoryId));
+    setSelectedGroupIds(detail.groups?.map((group) => group.groupId) ?? []);
     setSelectedPersonIds(detail.attendees.map((attendee) => attendee.personId));
     setKeywords(detail.keywords ?? []);
     formInitializedForId.current = id;
@@ -77,6 +82,7 @@ export default function MeetingMinuteEdit() {
           detailsRaw: detailsRaw.trim(),
           attendeePersonIds: selectedPersonIds,
           categoryIds: selectedCategoryIds,
+          groupIds: selectedGroupIds,
         },
       });
       setKeywords(result.keywords ?? []);
@@ -190,6 +196,17 @@ export default function MeetingMinuteEdit() {
                 onSelectionChange={setSelectedCategoryIds}
                 isLoading={categoriesLoading}
                 idPrefix="edit-meeting-category"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>업무 그룹 (선택사항)</Label>
+              <GroupSelector
+                groups={groups}
+                selectedIds={selectedGroupIds}
+                onSelectionChange={setSelectedGroupIds}
+                isLoading={groupsLoading}
+                idPrefix="edit-meeting-group"
               />
             </div>
 

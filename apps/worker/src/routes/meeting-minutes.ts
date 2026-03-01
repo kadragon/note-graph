@@ -90,6 +90,7 @@ meetingMinutes.get('/', queryValidator(listMeetingMinutesQuerySchema), async (c)
     meetingDateFrom: query.meetingDateFrom,
     meetingDateTo: query.meetingDateTo,
     categoryId: query.categoryId,
+    groupId: query.groupId,
     attendeePersonId: query.attendeePersonId,
     page: query.page,
     pageSize: query.pageSize,
@@ -157,6 +158,16 @@ meetingMinutes.get('/:meetingId', async (c) => {
     .bind(meetingId)
     .all<{ categoryId: string; name: string }>();
 
+  const groupsResult = await c.env.DB.prepare(
+    `SELECT wng.group_id as groupId, wng.name as name
+       FROM meeting_minute_group mmg
+       INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
+       WHERE mmg.meeting_id = ?
+       ORDER BY wng.group_id ASC`
+  )
+    .bind(meetingId)
+    .all<{ groupId: string; name: string }>();
+
   const linkedWorkNoteCountRow = await c.env.DB.prepare(
     `SELECT COUNT(*) as linkedWorkNoteCount
        FROM work_note_meeting_minute
@@ -175,6 +186,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
     updatedAt: row.updatedAt,
     attendees: attendeesResult.results || [],
     categories: categoriesResult.results || [],
+    groups: groupsResult.results || [],
     linkedWorkNoteCount: Number(linkedWorkNoteCountRow?.linkedWorkNoteCount || 0),
   });
 });
@@ -254,10 +266,21 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
     .bind(meetingId)
     .all<{ categoryId: string; name: string }>();
 
+  const groupsResult = await c.env.DB.prepare(
+    `SELECT wng.group_id as groupId, wng.name as name
+       FROM meeting_minute_group mmg
+       INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
+       WHERE mmg.meeting_id = ?
+       ORDER BY wng.group_id ASC`
+  )
+    .bind(meetingId)
+    .all<{ groupId: string; name: string }>();
+
   return c.json({
     ...updated,
     attendees: attendeesResult.results || [],
     categories: categoriesResult.results || [],
+    groups: groupsResult.results || [],
   });
 });
 
@@ -316,11 +339,22 @@ meetingMinutes.post('/', bodyValidator(createMeetingMinuteSchema), async (c) => 
     name: category.name,
   }));
 
+  const groupsResult = await c.env.DB.prepare(
+    `SELECT wng.group_id as groupId, wng.name as name
+       FROM meeting_minute_group mmg
+       INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
+       WHERE mmg.meeting_id = ?
+       ORDER BY wng.group_id ASC`
+  )
+    .bind(created.meetingId)
+    .all<{ groupId: string; name: string }>();
+
   return c.json(
     {
       ...created,
       attendees,
       categories,
+      groups: groupsResult.results || [],
     },
     201
   );
