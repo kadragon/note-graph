@@ -108,7 +108,7 @@ export function WorkNoteEditForm({
           {/* Assignees Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <Label className="text-sm font-medium">담당자</Label>
+              <Label className="text-sm font-medium">담당자 (선택사항)</Label>
               <Button
                 type="button"
                 variant="ghost"

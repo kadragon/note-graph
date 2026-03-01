@@ -1,33 +1,11 @@
 import userEvent from '@testing-library/user-event';
 import { createPerson, createTaskCategory, createWorkNoteGroup } from '@web/test/factories';
 import { render, screen } from '@web/test/setup';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkNoteEditForm } from '../work-note-edit-form';
 
-vi.mock('@web/pages/persons/components/person-import-dialog', () => ({
-  PersonImportDialog: ({
-    open,
-    onOpenChange,
-    onPersonImported,
-  }: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    onPersonImported?: (personId: string) => void;
-    children?: ReactNode;
-  }) =>
-    open ? (
-      <div data-testid="person-import-dialog">
-        <button type="button" onClick={() => onPersonImported?.('new-person-id')}>
-          Import Person
-        </button>
-        <button type="button" onClick={() => onOpenChange(false)}>
-          Close Dialog
-        </button>
-      </div>
-    ) : null,
-}));
+vi.mock('@web/pages/persons/components/person-import-dialog');
 
 vi.mock('@web/components/assignee-selector', () => ({
   AssigneeSelector: ({
@@ -94,7 +72,7 @@ describe('WorkNoteEditForm', () => {
 
     expect(screen.getByPlaceholderText('제목')).toHaveValue('테스트 제목');
     expect(screen.getByText('업무 구분')).toBeInTheDocument();
-    expect(screen.getByText('담당자')).toBeInTheDocument();
+    expect(screen.getByText('담당자 (선택사항)')).toBeInTheDocument();
   });
 
   it('renders basic and content tabs for edit UX', () => {

@@ -10,28 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CreateWorkNoteDialog } from '../create-work-note-dialog';
 
-vi.mock('@web/pages/persons/components/person-import-dialog', () => ({
-  PersonImportDialog: ({
-    open,
-    onOpenChange,
-    onPersonImported,
-  }: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    onPersonImported?: (personId: string) => void;
-    children?: ReactNode;
-  }) =>
-    open ? (
-      <div data-testid="person-import-dialog">
-        <button type="button" onClick={() => onPersonImported?.('new-person-id')}>
-          Import Person
-        </button>
-        <button type="button" onClick={() => onOpenChange(false)}>
-          Close Dialog
-        </button>
-      </div>
-    ) : null,
-}));
+vi.mock('@web/pages/persons/components/person-import-dialog');
 
 vi.mock('@web/components/ui/dialog', () => ({
   Dialog: ({ open, children }: { open?: boolean; children: ReactNode }) =>
@@ -657,6 +636,20 @@ describe('CreateWorkNoteDialog', () => {
     it('adds imported person to selected assignees', async () => {
       const user = userEvent.setup();
       render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      await user.click(screen.getByRole('button', { name: /AI로 추가/ }));
+      await user.click(screen.getByRole('button', { name: 'Import Person' }));
+
+      const assigneeSelector = screen.getByTestId('assignee-selector');
+      expect(assigneeSelector).toHaveTextContent('Selected: 1');
+    });
+
+    it('does not add duplicate personId on import', async () => {
+      const user = userEvent.setup();
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      await user.click(screen.getByRole('button', { name: /AI로 추가/ }));
+      await user.click(screen.getByRole('button', { name: 'Import Person' }));
 
       await user.click(screen.getByRole('button', { name: /AI로 추가/ }));
       await user.click(screen.getByRole('button', { name: 'Import Person' }));
