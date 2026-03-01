@@ -9,7 +9,7 @@ import { API } from '@web/lib/api';
 import { autoAttachPdf } from '@web/lib/auto-attach-pdf';
 import { FileDropzone } from '@web/pages/pdf-upload/components/file-dropzone';
 import { ArrowLeft, FileText, Loader2 } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function WorkNoteCreateFromPDF() {
@@ -51,10 +51,12 @@ export default function WorkNoteCreateFromPDF() {
   });
 
   // Update form when draft is ready (only once)
-  if (job?.status === 'READY' && job.draft && !draftPopulated) {
-    actions.populateDraft(job.draft, job.references);
-    setDraftPopulated(true);
-  }
+  useEffect(() => {
+    if (job?.status === 'READY' && job.draft && !draftPopulated) {
+      actions.populateDraft(job.draft, job.references);
+      setDraftPopulated(true);
+    }
+  }, [job, draftPopulated, actions]);
 
   const handleFileSelect = async (file: File) => {
     if (file.size > 10 * 1024 * 1024) {

@@ -35,7 +35,7 @@ import type {
   WorkNote,
 } from '@web/types/api';
 import { ArrowLeft, Copy, Edit2, Loader2, Save, Sparkles, X } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { groupRecurringTodos } from './components/group-recurring-todos';
 
@@ -87,7 +87,12 @@ export default function WorkNoteDetail() {
   const { data: workNoteGroups = [], isLoading: groupsLoading } = useWorkNoteGroups(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
-  const { data: workNote, isLoading } = useQuery({
+  const {
+    data: workNote,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: qk.workNoteDetail(id),
     queryFn: () => (id ? API.getWorkNote(id) : Promise.resolve(null)),
     enabled: !!id,
@@ -137,12 +142,6 @@ export default function WorkNoteDetail() {
       setEditRelatedWorkNotes(workNote.relatedWorkNotes || []);
     }
   }, [workNote]);
-
-  useEffect(() => {
-    if (workNote) {
-      resetForm();
-    }
-  }, [workNote, resetForm]);
 
   const handleCopyAssigneeEmail = useCallback(
     async (assigneeName: string) => {
@@ -331,6 +330,22 @@ export default function WorkNoteDetail() {
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <p className="text-sm text-muted-foreground">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="page-container py-24 text-center">
+        <p className="text-muted-foreground">업무노트 정보를 불러오지 못했습니다.</p>
+        <div className="flex justify-center gap-2 mt-4">
+          <Button variant="outline" onClick={() => void refetch()}>
+            다시 시도
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/work-notes')}>
+            목록으로 돌아가기
+          </Button>
         </div>
       </div>
     );

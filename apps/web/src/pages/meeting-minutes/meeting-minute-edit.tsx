@@ -10,7 +10,7 @@ import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 export default function MeetingMinuteEdit() {
@@ -23,6 +23,7 @@ export default function MeetingMinuteEdit() {
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
   const { toast } = useToast();
+  const formInitializedForId = useRef<string | undefined>(undefined);
 
   const updateMutation = useUpdateMeetingMinute();
   const detailQuery = useMeetingMinute(id, Boolean(id));
@@ -30,7 +31,7 @@ export default function MeetingMinuteEdit() {
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
   useEffect(() => {
-    if (!detailQuery.data) return;
+    if (!detailQuery.data || formInitializedForId.current === id) return;
     const detail = detailQuery.data;
     setMeetingDate(detail.meetingDate);
     setTopic(detail.topic);
@@ -38,7 +39,8 @@ export default function MeetingMinuteEdit() {
     setSelectedCategoryIds(detail.categories.map((category) => category.categoryId));
     setSelectedPersonIds(detail.attendees.map((attendee) => attendee.personId));
     setKeywords(detail.keywords ?? []);
-  }, [detailQuery.data]);
+    formInitializedForId.current = id;
+  }, [detailQuery.data, id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
