@@ -1,3 +1,4 @@
+import type { D1Database } from '@cloudflare/workers-types';
 import type { Context } from 'hono';
 import { z } from 'zod';
 import {
@@ -56,6 +57,20 @@ function isHighlySimilarTopic(left: string, right: string): boolean {
       : [rightNormalized, leftNormalized];
 
   return shorter.length >= 8 && longer.includes(shorter);
+}
+
+async function getMeetingMinuteGroups(db: D1Database, meetingId: string) {
+  const groupsResult = await db
+    .prepare(
+      `SELECT wng.group_id as groupId, wng.name as name
+       FROM meeting_minute_group mmg
+       INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
+       WHERE mmg.meeting_id = ?
+       ORDER BY wng.group_id ASC`
+    )
+    .bind(meetingId)
+    .all<{ groupId: string; name: string }>();
+  return groupsResult.results || [];
 }
 
 async function hasMeetingMinuteDuplicateTopic(
@@ -158,15 +173,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
     .bind(meetingId)
     .all<{ categoryId: string; name: string }>();
 
-  const groupsResult = await c.env.DB.prepare(
-    `SELECT wng.group_id as groupId, wng.name as name
-       FROM meeting_minute_group mmg
-       INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
-       WHERE mmg.meeting_id = ?
-       ORDER BY wng.group_id ASC`
-  )
-    .bind(meetingId)
-    .all<{ groupId: string; name: string }>();
+  const groups = await getMeetingMinuteGroups(c.env.DB, meetingId);
 
   const linkedWorkNoteCountRow = await c.env.DB.prepare(
     `SELECT COUNT(*) as linkedWorkNoteCount
@@ -186,7 +193,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
     updatedAt: row.updatedAt,
     attendees: attendeesResult.results || [],
     categories: categoriesResult.results || [],
-    groups: groupsResult.results || [],
+    groups,
     linkedWorkNoteCount: Number(linkedWorkNoteCountRow?.linkedWorkNoteCount || 0),
   });
 });
@@ -266,21 +273,13 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
     .bind(meetingId)
     .all<{ categoryId: string; name: string }>();
 
-  const groupsResult = await c.env.DB.prepare(
-    `SELECT wng.group_id as groupId, wng.name as name
-       FROM meeting_minute_group mmg
-       INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
-       WHERE mmg.meeting_id = ?
-       ORDER BY wng.group_id ASC`
-  )
-    .bind(meetingId)
-    .all<{ groupId: string; name: string }>();
+  const groups = await getMeetingMinuteGroups(c.env.DB, meetingId);
 
   return c.json({
     ...updated,
     attendees: attendeesResult.results || [],
     categories: categoriesResult.results || [],
-    groups: groupsResult.results || [],
+    groups,
   });
 });
 
@@ -339,22 +338,14 @@ meetingMinutes.post('/', bodyValidator(createMeetingMinuteSchema), async (c) => 
     name: category.name,
   }));
 
-  const groupsResult = await c.env.DB.prepare(
-    `SELECT wng.group_id as groupId, wng.name as name
-       FROM meeting_minute_group mmg
-       INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
-       WHERE mmg.meeting_id = ?
-       ORDER BY wng.group_id ASC`
-  )
-    .bind(created.meetingId)
-    .all<{ groupId: string; name: string }>();
+  const groups = await getMeetingMinuteGroups(c.env.DB, created.meetingId);
 
   return c.json(
     {
       ...created,
       attendees,
       categories,
-      groups: groupsResult.results || [],
+      groups,
     },
     201
   );
