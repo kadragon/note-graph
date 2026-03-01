@@ -1,65 +1,34 @@
 import { AssigneeSelector } from '@web/components/assignee-selector';
 import { CategorySelector } from '@web/components/category-selector';
 import { Button } from '@web/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@web/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { Textarea } from '@web/components/ui/textarea';
-import { useMeetingMinute, useUpdateMeetingMinute } from '@web/hooks/use-meeting-minutes';
+import { useCreateMeetingMinute } from '@web/hooks/use-meeting-minutes';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
-import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-interface EditMeetingMinuteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  meetingId?: string;
-}
-
-export function EditMeetingMinuteDialog({
-  open,
-  onOpenChange,
-  meetingId,
-}: EditMeetingMinuteDialogProps) {
+export default function MeetingMinuteCreate() {
+  const navigate = useNavigate();
   const [meetingDate, setMeetingDate] = useState('');
   const [topic, setTopic] = useState('');
   const [detailsRaw, setDetailsRaw] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
-  const [keywords, setKeywords] = useState<string[]>([]);
+  const [generatedKeywords, setGeneratedKeywords] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const updateMutation = useUpdateMeetingMinute();
-  const detailQuery = useMeetingMinute(meetingId, open && Boolean(meetingId));
+  const createMutation = useCreateMeetingMinute();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
-  useEffect(() => {
-    if (!open || !detailQuery.data) {
-      return;
-    }
-
-    const detail = detailQuery.data;
-    setMeetingDate(detail.meetingDate);
-    setTopic(detail.topic);
-    setDetailsRaw(detail.detailsRaw);
-    setSelectedCategoryIds(detail.categories.map((category) => category.categoryId));
-    setSelectedPersonIds(detail.attendees.map((attendee) => attendee.personId));
-    setKeywords(detail.keywords ?? []);
-  }, [open, detailQuery.data]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!meetingId) {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: '회의록 ID가 필요합니다.',
-      });
-      return;
-    }
 
     if (!meetingDate || !topic.trim() || !detailsRaw.trim()) {
       toast({
@@ -80,58 +49,45 @@ export function EditMeetingMinuteDialog({
     }
 
     try {
-      const result = await updateMutation.mutateAsync({
-        meetingId,
-        data: {
-          meetingDate,
-          topic: topic.trim(),
-          detailsRaw: detailsRaw.trim(),
-          attendeePersonIds: selectedPersonIds,
-          categoryIds: selectedCategoryIds,
-        },
+      const result = await createMutation.mutateAsync({
+        meetingDate,
+        topic: topic.trim(),
+        detailsRaw: detailsRaw.trim(),
+        attendeePersonIds: selectedPersonIds,
+        categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
       });
-      setKeywords(result.keywords ?? []);
+      setGeneratedKeywords(result.keywords ?? []);
+      navigate(`/meeting-minutes/${result.meetingId}`, { replace: true });
     } catch {
       // Error is handled by mutation hook toast.
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>회의록 수정</DialogTitle>
-        </DialogHeader>
-        {!meetingId ? (
-          <p className="text-sm text-muted-foreground">수정할 회의록을 선택해주세요.</p>
-        ) : detailQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">회의록 정보를 불러오는 중...</p>
-        ) : detailQuery.isError || !detailQuery.data ? (
-          <div className="grid gap-2">
-            <p className="text-sm text-muted-foreground">회의록 정보를 불러오지 못했습니다.</p>
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void detailQuery.refetch()}
-              >
-                다시 시도
-              </Button>
-            </div>
+    <div className="page-container">
+      <div className="page-header">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            뒤로
+          </Button>
+          <div>
+            <h1 className="page-title">회의록 생성</h1>
+            <p className="page-description">새로운 회의록을 작성합니다.</p>
           </div>
-        ) : (
-          <form className="grid gap-4" onSubmit={(e) => void handleSubmit(e)}>
-            {detailQuery.data.linkedWorkNoteCount !== undefined && (
-              <p className="text-sm text-muted-foreground">
-                연결된 업무노트: {detailQuery.data.linkedWorkNoteCount}건
-              </p>
-            )}
+        </div>
+      </div>
 
+      <Card className="mx-auto max-w-2xl">
+        <CardHeader>
+          <CardTitle>회의 정보</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="grid gap-4" onSubmit={(e) => void handleSubmit(e)}>
             <div className="grid gap-2">
-              <Label htmlFor="edit-meeting-date">회의일</Label>
+              <Label htmlFor="meeting-date">회의일</Label>
               <Input
-                id="edit-meeting-date"
+                id="meeting-date"
                 type="date"
                 value={meetingDate}
                 onChange={(e) => setMeetingDate(e.target.value)}
@@ -139,9 +95,9 @@ export function EditMeetingMinuteDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="edit-meeting-topic">토픽</Label>
+              <Label htmlFor="meeting-topic">토픽</Label>
               <Input
-                id="edit-meeting-topic"
+                id="meeting-topic"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="회의 주제를 입력하세요"
@@ -149,9 +105,9 @@ export function EditMeetingMinuteDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="edit-meeting-details">회의 내용</Label>
+              <Label htmlFor="meeting-details">회의 내용</Label>
               <Textarea
-                id="edit-meeting-details"
+                id="meeting-details"
                 value={detailsRaw}
                 onChange={(e) => setDetailsRaw(e.target.value)}
                 placeholder="회의 내용을 입력하세요"
@@ -166,7 +122,7 @@ export function EditMeetingMinuteDialog({
                 selectedIds={selectedCategoryIds}
                 onSelectionChange={setSelectedCategoryIds}
                 isLoading={categoriesLoading}
-                idPrefix="edit-meeting-category"
+                idPrefix="meeting-category"
               />
             </div>
 
@@ -180,11 +136,11 @@ export function EditMeetingMinuteDialog({
               />
             </div>
 
-            {keywords.length > 0 && (
+            {generatedKeywords.length > 0 && (
               <div className="grid gap-2">
                 <Label>키워드</Label>
                 <div className="flex flex-wrap gap-2">
-                  {keywords.map((keyword) => (
+                  {generatedKeywords.map((keyword) => (
                     <span
                       key={keyword}
                       className="rounded-md border px-2 py-1 text-xs text-muted-foreground"
@@ -197,16 +153,16 @@ export function EditMeetingMinuteDialog({
             )}
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
                 취소
               </Button>
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? '저장 중...' : '저장'}
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? '저장 중...' : '저장'}
               </Button>
             </div>
           </form>
-        )}
-      </DialogContent>
-    </Dialog>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -57,7 +57,7 @@ export function WorkNoteGroupWorkNotesDialog({
                   className="flex items-center justify-between gap-2 text-sm"
                 >
                   <a
-                    href={`/work-notes?id=${workNote.workId}`}
+                    href={`/work-notes/${workNote.workId}`}
                     target="_blank"
                     rel="noreferrer"
                     className="font-medium hover:underline"

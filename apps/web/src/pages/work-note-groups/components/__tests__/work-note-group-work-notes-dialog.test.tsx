@@ -72,11 +72,11 @@ describe('WorkNoteGroupWorkNotesDialog', () => {
     );
 
     const linkA = screen.getByRole('link', { name: '업무노트 A' });
-    expect(linkA).toHaveAttribute('href', '/work-notes?id=WORK-1');
+    expect(linkA).toHaveAttribute('href', '/work-notes/WORK-1');
     expect(linkA).toHaveAttribute('target', '_blank');
 
     const linkB = screen.getByRole('link', { name: '업무노트 B' });
-    expect(linkB).toHaveAttribute('href', '/work-notes?id=WORK-2');
+    expect(linkB).toHaveAttribute('href', '/work-notes/WORK-2');
   });
 
   it('shows error state with retry button', async () => {

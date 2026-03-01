@@ -53,12 +53,6 @@ vi.mock('../statistics/components/work-notes-table', () => ({
   ),
 }));
 
-vi.mock('@web/pages/work-notes/components/view-work-note-dialog', () => ({
-  ViewWorkNoteDialog: ({ open }: { open: boolean }) => (
-    <div data-testid="work-note-dialog" data-open={open ? 'true' : 'false'} />
-  ),
-}));
-
 describe('statistics page', () => {
   it('renders summary, charts, and work notes when statistics are available', () => {
     vi.mocked(useStatistics).mockReturnValue({

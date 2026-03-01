@@ -23,11 +23,7 @@ import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-no
 import type { WorkNoteWithStats } from '@web/types/api';
 import { FileEdit, FileText, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { CreateFromPDFDialog } from './components/create-from-pdf-dialog';
-import { CreateFromTextDialog } from './components/create-from-text-dialog';
-import { CreateWorkNoteDialog } from './components/create-work-note-dialog';
-import { ViewWorkNoteDialog } from './components/view-work-note-dialog';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { type SortDirection, type SortKey, WorkNotesTable } from './components/work-notes-table';
 import {
   type CompletedYearFilter,
@@ -40,12 +36,8 @@ type WorkNoteTab = 'active' | 'pending' | 'completed-today' | 'completed-week' |
 
 export default function WorkNotes() {
   const currentYear = new Date().getFullYear();
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [textDialogOpen, setTextDialogOpen] = useState(false);
-  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedWorkNote, setSelectedWorkNote] = useState<WorkNoteWithStats | null>(null);
   const [workNoteToDelete, setWorkNoteToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<WorkNoteTab>('active');
   const [completedYearFilter, setCompletedYearFilter] = useState<CompletedYearFilter>(
@@ -57,18 +49,15 @@ export default function WorkNotes() {
 
   const { data: workNotes = [], isLoading } = useWorkNotesWithStats();
 
-  // Handle ?id=xxx query param to auto-open work note
+  // Handle ?id=xxx query param — redirect to new URL
   const workNoteIdFromUrl = searchParams.get('id');
   useEffect(() => {
     if (workNoteIdFromUrl && !isLoading) {
-      const workNote = workNotes.find((wn) => wn.id === workNoteIdFromUrl);
-      if (workNote) {
-        setSelectedWorkNote(workNote);
-        setViewDialogOpen(true);
-      }
       setSearchParams({}, { replace: true });
+      navigate(`/work-notes/${workNoteIdFromUrl}`, { replace: true });
     }
-  }, [workNoteIdFromUrl, isLoading, workNotes, setSearchParams]);
+  }, [workNoteIdFromUrl, isLoading, setSearchParams, navigate]);
+
   const deleteMutation = useDeleteWorkNote();
 
   const handleSort = (key: SortKey) => {
@@ -80,7 +69,6 @@ export default function WorkNotes() {
     }
   };
 
-  // Filter work notes by completion status
   const {
     activeWorkNotes,
     pendingWorkNotes,
@@ -100,23 +88,8 @@ export default function WorkNotes() {
     [completedAllWorkNotes, completedYearFilter]
   );
 
-  // Update selectedWorkNote when workNotes data changes (after edit/update)
-  useEffect(() => {
-    if (selectedWorkNote && workNotes.length > 0) {
-      const updatedWorkNote = workNotes.find((wn) => wn.id === selectedWorkNote.id);
-      if (updatedWorkNote) {
-        setSelectedWorkNote(updatedWorkNote);
-      } else {
-        // Clear selection if note was deleted
-        setSelectedWorkNote(null);
-        setViewDialogOpen(false);
-      }
-    }
-  }, [workNotes, selectedWorkNote?.id, selectedWorkNote]);
-
   const handleView = (workNote: WorkNoteWithStats) => {
-    setSelectedWorkNote(workNote);
-    setViewDialogOpen(true);
+    navigate(`/work-notes/${workNote.id}`);
   };
 
   const handleDeleteClick = (workNoteId: string) => {
@@ -140,15 +113,15 @@ export default function WorkNotes() {
           <p className="page-description">업무노트를 관리하세요</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setTextDialogOpen(true)}>
+          <Button variant="outline" onClick={() => navigate('/work-notes/new/from-text')}>
             <FileEdit className="h-4 w-4 mr-2" />
             텍스트로 만들기
           </Button>
-          <Button variant="outline" onClick={() => setPdfDialogOpen(true)}>
+          <Button variant="outline" onClick={() => navigate('/work-notes/new/from-pdf')}>
             <FileText className="h-4 w-4 mr-2" />
             PDF로 만들기
           </Button>
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button onClick={() => navigate('/work-notes/new')}>
             <Plus className="h-4 w-4 mr-2" />새 업무노트
           </Button>
         </div>
@@ -253,18 +226,6 @@ export default function WorkNotes() {
           </StateRenderer>
         </CardContent>
       </Card>
-
-      <CreateWorkNoteDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
-
-      <CreateFromTextDialog open={textDialogOpen} onOpenChange={setTextDialogOpen} />
-
-      <CreateFromPDFDialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen} />
-
-      <ViewWorkNoteDialog
-        workNote={selectedWorkNote}
-        open={viewDialogOpen}
-        onOpenChange={setViewDialogOpen}
-      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

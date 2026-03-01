@@ -135,7 +135,7 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
         id: todo.id,
         data: {
           title: title.trim(),
-          description: description.trim() || undefined,
+          description: description.trim(),
           dueDate: effectiveDueDate ? toUTCISOString(effectiveDueDate) : undefined,
           waitUntil: waitUntil ? toUTCISOString(waitUntil) : undefined,
           status,

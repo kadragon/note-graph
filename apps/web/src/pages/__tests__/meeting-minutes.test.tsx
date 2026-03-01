@@ -1,7 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { useMeetingMinutes } from '@web/hooks/use-meeting-minutes';
 import { render, screen, waitFor } from '@web/test/setup';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import MeetingMinutes from '../meeting-minutes';
@@ -33,48 +32,6 @@ vi.mock('../meeting-minutes/components/meeting-minutes-table', () => ({
         </div>
       ))}
     </div>
-  ),
-}));
-
-vi.mock('../meeting-minutes/components/create-meeting-minute-dialog', () => ({
-  CreateMeetingMinuteDialog: ({ open }: { open: boolean }) => (
-    <div data-testid="create-meeting-minute-dialog" data-open={open ? 'true' : 'false'} />
-  ),
-}));
-
-vi.mock('../meeting-minutes/components/edit-meeting-minute-dialog', () => ({
-  EditMeetingMinuteDialog: ({
-    open,
-    meetingId,
-  }: {
-    open: boolean;
-    meetingId?: string;
-    onOpenChange: (open: boolean) => void;
-    children: ReactNode;
-  }) => (
-    <div
-      data-testid="edit-meeting-minute-dialog"
-      data-open={open ? 'true' : 'false'}
-      data-meeting-id={meetingId ?? ''}
-    />
-  ),
-}));
-
-vi.mock('../meeting-minutes/components/view-meeting-minute-dialog', () => ({
-  ViewMeetingMinuteDialog: ({
-    open,
-    meetingId,
-  }: {
-    open: boolean;
-    meetingId?: string;
-    onOpenChange: (open: boolean) => void;
-    onEdit: (meetingId: string) => void;
-  }) => (
-    <div
-      data-testid="view-meeting-minute-dialog"
-      data-open={open ? 'true' : 'false'}
-      data-meeting-id={meetingId ?? ''}
-    />
   ),
 }));
 
@@ -121,7 +78,7 @@ describe('meeting-minutes page', () => {
     });
   });
 
-  it('renders list, applies filters, and opens create/view/edit dialogs', async () => {
+  it('renders list, applies filters, and navigates on create/view/edit', async () => {
     const user = userEvent.setup();
     render(<MeetingMinutes />);
 
@@ -140,35 +97,27 @@ describe('meeting-minutes page', () => {
     });
 
     await user.click(screen.getByRole('button', { name: '새 회의록' }));
-    expect(screen.getByTestId('create-meeting-minute-dialog')).toHaveAttribute('data-open', 'true');
+    expect(window.location.pathname).toBe('/meeting-minutes/new');
+
+    window.history.pushState({}, '', '/meeting-minutes');
 
     await user.click(screen.getByRole('button', { name: 'view-MEET-001' }));
-    expect(screen.getByTestId('view-meeting-minute-dialog')).toHaveAttribute('data-open', 'true');
-    expect(screen.getByTestId('view-meeting-minute-dialog')).toHaveAttribute(
-      'data-meeting-id',
-      'MEET-001'
-    );
+    expect(window.location.pathname).toBe('/meeting-minutes/MEET-001');
+
+    window.history.pushState({}, '', '/meeting-minutes');
 
     await user.click(screen.getByRole('button', { name: 'edit-MEET-001' }));
-    expect(screen.getByTestId('edit-meeting-minute-dialog')).toHaveAttribute('data-open', 'true');
-    expect(screen.getByTestId('edit-meeting-minute-dialog')).toHaveAttribute(
-      'data-meeting-id',
-      'MEET-001'
-    );
+    expect(window.location.pathname).toBe('/meeting-minutes/MEET-001/edit');
   });
 
-  it('opens view dialog from id query parameter and removes query param', async () => {
+  it('redirects to detail page from id query parameter and removes query param', async () => {
     window.history.pushState({}, '', '/meeting-minutes?id=MEET-001');
 
     render(<MeetingMinutes />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('view-meeting-minute-dialog')).toHaveAttribute('data-open', 'true');
+      expect(window.location.pathname).toBe('/meeting-minutes/MEET-001');
     });
-    expect(screen.getByTestId('view-meeting-minute-dialog')).toHaveAttribute(
-      'data-meeting-id',
-      'MEET-001'
-    );
     expect(window.location.search).toBe('');
   });
 });
