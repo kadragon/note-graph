@@ -1,6 +1,10 @@
 import { act, waitFor } from '@testing-library/react';
 import { API } from '@web/lib/api';
-import { createWorkNoteGroup, resetFactoryCounter } from '@web/test/factories';
+import {
+  createWorkNoteGroup,
+  createWorkNoteGroupWorkNote,
+  resetFactoryCounter,
+} from '@web/test/factories';
 import { createTestQueryClient, renderHookWithClient } from '@web/test/setup';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,11 +14,13 @@ import {
   useToggleWorkNoteGroupActive,
   useUpdateWorkNoteGroup,
   useWorkNoteGroups,
+  useWorkNoteGroupWorkNotes,
 } from '../use-work-note-groups';
 
 vi.mock('@web/lib/api', () => ({
   API: {
     getWorkNoteGroups: vi.fn(),
+    getWorkNoteGroupWorkNotes: vi.fn(),
     createWorkNoteGroup: vi.fn(),
     updateWorkNoteGroup: vi.fn(),
     deleteWorkNoteGroup: vi.fn(),
@@ -166,5 +172,33 @@ describe('useWorkNoteGroups', () => {
       title: '오류',
       description: 'Create failed',
     });
+  });
+
+  it('fetches work notes for a group', async () => {
+    const workNotes = [createWorkNoteGroupWorkNote({ title: '업무노트 1' })];
+    vi.mocked(API.getWorkNoteGroupWorkNotes).mockResolvedValue(workNotes);
+
+    const { result } = renderHookWithClient(() => useWorkNoteGroupWorkNotes('grp-1'));
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(API.getWorkNoteGroupWorkNotes).toHaveBeenCalledWith('grp-1');
+    expect(result.current.data).toEqual(workNotes);
+  });
+
+  it('does not fetch when enabled is false', async () => {
+    const { result } = renderHookWithClient(() => useWorkNoteGroupWorkNotes('grp-1', false));
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(API.getWorkNoteGroupWorkNotes).not.toHaveBeenCalled();
+  });
+
+  it('does not fetch when groupId is undefined', async () => {
+    const { result } = renderHookWithClient(() => useWorkNoteGroupWorkNotes(undefined));
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(API.getWorkNoteGroupWorkNotes).not.toHaveBeenCalled();
   });
 });

@@ -32,9 +32,11 @@ import { ko } from 'date-fns/locale';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { CreateWorkNoteGroupDialog } from './components/create-work-note-group-dialog';
 import { EditWorkNoteGroupDialog } from './components/edit-work-note-group-dialog';
+import { WorkNoteGroupWorkNotesDialog } from './components/work-note-group-work-notes-dialog';
 
 export default function WorkNoteGroups() {
   const createDialog = useDialogState();
+  const viewDialog = useDialogState<WorkNoteGroup>();
   const editDialog = useDialogState<WorkNoteGroup>();
   const deleteDialog = useDialogState<WorkNoteGroup>();
 
@@ -100,7 +102,15 @@ export default function WorkNoteGroups() {
               <TableBody>
                 {groups.map((group) => (
                   <TableRow key={group.groupId} className={!group.isActive ? 'opacity-60' : ''}>
-                    <TableCell className="font-medium">{group.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <button
+                        type="button"
+                        className="hover:underline text-left"
+                        onClick={() => viewDialog.open(group)}
+                      >
+                        {group.name}
+                      </button>
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={group.isActive ? 'default' : 'secondary'}
@@ -130,6 +140,12 @@ export default function WorkNoteGroups() {
           </StateRenderer>
         </CardContent>
       </Card>
+
+      <WorkNoteGroupWorkNotesDialog
+        open={viewDialog.isOpen}
+        onOpenChange={viewDialog.onOpenChange}
+        group={viewDialog.id}
+      />
 
       <CreateWorkNoteGroupDialog
         open={createDialog.isOpen}

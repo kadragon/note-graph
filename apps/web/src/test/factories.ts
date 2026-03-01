@@ -13,6 +13,7 @@ import type {
   WorkNote,
   WorkNoteFile,
   WorkNoteGroup,
+  WorkNoteGroupWorkNote,
   WorkNoteWithStats,
 } from '@web/types/api';
 
@@ -133,6 +134,21 @@ export function createWorkNoteGroup(overrides: Partial<WorkNoteGroup> = {}): Wor
     name: `Group ${idCounter}`,
     isActive: true,
     createdAt: generateTimestamp(),
+    ...overrides,
+  };
+}
+
+/**
+ * Create a mock WorkNoteGroupWorkNote
+ */
+export function createWorkNoteGroupWorkNote(
+  overrides: Partial<WorkNoteGroupWorkNote> = {}
+): WorkNoteGroupWorkNote {
+  return {
+    workId: generateId('work'),
+    title: `Work Note ${idCounter}`,
+    createdAt: generateTimestamp(),
+    updatedAt: generateTimestamp(),
     ...overrides,
   };
 }
