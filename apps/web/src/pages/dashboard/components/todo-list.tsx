@@ -1,6 +1,6 @@
 import { Badge } from '@web/components/ui/badge';
 import type { Todo } from '@web/types/api';
-import { CheckCircle2, FolderOpen } from 'lucide-react';
+import { CheckCircle2, FolderOpen, Loader2 } from 'lucide-react';
 import { groupTodosByWorkNote } from './group-todos-by-work-note';
 // Trace: SPEC-todo-1, TASK-046
 import { TodoItem } from './todo-item';
@@ -21,7 +21,7 @@ export function TodoList({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }

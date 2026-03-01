@@ -477,7 +477,7 @@ export function PersonDialog({ open, onOpenChange, mode, initialData }: PersonDi
                 <CollapsibleContent className="mt-2">
                   {historyLoading ? (
                     <div className="flex justify-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
                   ) : history.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
