@@ -16,16 +16,6 @@ vi.mock('@web/hooks/use-work-note-groups', () => ({
   useToggleWorkNoteGroupActive: vi.fn(),
 }));
 
-vi.mock('../work-note-groups/components/work-note-group-work-notes-dialog', () => ({
-  WorkNoteGroupWorkNotesDialog: ({ open, group }: { open: boolean; group: unknown }) => (
-    <div
-      data-testid="work-note-group-work-notes-dialog"
-      data-open={open ? 'true' : 'false'}
-      data-group={group ? 'selected' : 'none'}
-    />
-  ),
-}));
-
 vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialog: ({ open, children }: { open?: boolean; children: ReactNode }) => (
     <div data-testid="alert-dialog" data-open={open ? 'true' : 'false'}>
@@ -111,7 +101,7 @@ describe('work-note-groups page', () => {
     );
   });
 
-  it('opens the view dialog when clicking a group name', async () => {
+  it('navigates to detail page when clicking a group name', async () => {
     vi.mocked(useWorkNoteGroups).mockReturnValue({
       data: [
         {
@@ -130,21 +120,9 @@ describe('work-note-groups page', () => {
     const user = userEvent.setup();
     render(<WorkNoteGroups />);
 
-    expect(screen.getByTestId('work-note-group-work-notes-dialog')).toHaveAttribute(
-      'data-open',
-      'false'
-    );
-
     await user.click(screen.getByRole('button', { name: '프로젝트 A' }));
 
-    expect(screen.getByTestId('work-note-group-work-notes-dialog')).toHaveAttribute(
-      'data-open',
-      'true'
-    );
-    expect(screen.getByTestId('work-note-group-work-notes-dialog')).toHaveAttribute(
-      'data-group',
-      'selected'
-    );
+    expect(window.location.pathname).toBe('/work-note-groups/GRP-1');
   });
 
   it('confirms deletion and calls the delete mutation', async () => {
