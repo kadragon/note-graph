@@ -1,6 +1,5 @@
 // Trace: SPEC-search-ui-1, TASK-068
 
-import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
@@ -14,14 +13,12 @@ import {
   TableRow,
 } from '@web/components/ui/table';
 import { useSearch } from '@web/hooks/use-search';
-import { API } from '@web/lib/api';
-import { ViewWorkNoteDialog } from '@web/pages/work-notes/components/view-work-note-dialog';
 import type { DepartmentSearchResult, PersonSearchResult, SearchResult } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Building2, FileText, type LucideIcon, Search as SearchIcon, User } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { normalizeSearchQuery, shouldRunUnifiedSearch } from './search-query';
 
 interface SearchResultsSectionProps {
@@ -197,10 +194,9 @@ function DepartmentsTable({ departments }: DepartmentsTableProps) {
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const searchMutation = useSearch();
   const lastSearchedQueryRef = useRef<string | null>(null);
-  const [selectedWorkNoteId, setSelectedWorkNoteId] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Get query from URL params (source of truth)
   const urlQuery = normalizeSearchQuery(searchParams.get('q'));
@@ -239,34 +235,8 @@ export default function Search() {
 
   const totalCount = workNotes.length + persons.length + departments.length;
 
-  const {
-    data: selectedWorkNote,
-    isLoading: isWorkNoteLoading,
-    isFetching: isWorkNoteFetching,
-  } = useQuery({
-    queryKey: ['work-note-detail', selectedWorkNoteId],
-    queryFn: () =>
-      selectedWorkNoteId
-        ? API.getWorkNote(selectedWorkNoteId)
-        : Promise.reject(new Error('No work note')),
-    enabled: !!selectedWorkNoteId,
-    staleTime: 30_000, // Cache for 30 seconds to avoid refetching on repeated views
-  });
-
-  // Show loading when fetching a different work note than currently displayed
-  const isLoadingWorkNote =
-    isWorkNoteLoading || (isWorkNoteFetching && selectedWorkNote?.id !== selectedWorkNoteId);
-
   const handleWorkNoteSelect = (workNoteId: string) => {
-    setSelectedWorkNoteId(workNoteId);
-    setIsDialogOpen(true);
-  };
-
-  const handleDialogOpenChange = (open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) {
-      setSelectedWorkNoteId(null);
-    }
+    navigate(`/work-notes/${workNoteId}`);
   };
 
   return (
@@ -333,13 +303,6 @@ export default function Search() {
           </SearchResultsSection>
         </div>
       )}
-
-      <ViewWorkNoteDialog
-        workNote={selectedWorkNote || null}
-        open={isDialogOpen}
-        onOpenChange={handleDialogOpenChange}
-        loading={isLoadingWorkNote}
-      />
     </div>
   );
 }

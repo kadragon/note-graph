@@ -1,6 +1,5 @@
 import userEvent from '@testing-library/user-event';
 import { useSearch } from '@web/hooks/use-search';
-import { API } from '@web/lib/api';
 import { render, screen, waitFor } from '@web/test/setup';
 import { useSearchParams } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,31 +8,6 @@ import Search from '../search';
 
 vi.mock('@web/hooks/use-search', () => ({
   useSearch: vi.fn(),
-}));
-
-vi.mock('@web/lib/api', () => ({
-  API: {
-    getWorkNote: vi.fn(),
-  },
-}));
-
-vi.mock('@web/pages/work-notes/components/view-work-note-dialog', () => ({
-  ViewWorkNoteDialog: ({
-    open,
-    workNote,
-    loading,
-  }: {
-    open: boolean;
-    workNote: { id?: string } | null;
-    loading?: boolean;
-  }) => (
-    <div
-      data-testid="work-note-dialog"
-      data-open={open ? 'true' : 'false'}
-      data-work-id={workNote?.id ?? ''}
-      data-loading={loading ? 'true' : 'false'}
-    />
-  ),
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -47,6 +21,7 @@ vi.mock('react-router-dom', async () => {
 describe('search page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.pushState({}, '', '/search');
   });
 
   it('updates search params on submit', async () => {
@@ -121,7 +96,7 @@ describe('search page', () => {
     expect(screen.getAllByText('개발')[0]).toBeInTheDocument();
   });
 
-  it('opens work note dialog when selecting a work note result', async () => {
+  it('navigates to work note detail when selecting a work note result', async () => {
     const setSearchParams = vi.fn();
     vi.mocked(useSearchParams).mockReturnValue([new URLSearchParams('q=테스트'), setSearchParams]);
 
@@ -146,19 +121,6 @@ describe('search page', () => {
       },
     } as unknown as ReturnType<typeof useSearch>);
 
-    vi.mocked(API.getWorkNote).mockResolvedValue({
-      id: 'work-1',
-      title: '업무노트 결과',
-      content: '상세 내용',
-      category: '일반',
-      categories: [],
-      persons: [],
-      relatedWorkNotes: [],
-      files: [],
-      createdAt: '2025-01-01T09:00:00.000Z',
-      updatedAt: '2025-01-01T09:00:00.000Z',
-    });
-
     const user = userEvent.setup();
     render(<Search />);
 
@@ -168,57 +130,6 @@ describe('search page', () => {
 
     await user.click(screen.getByText('업무노트 결과'));
 
-    await waitFor(() => {
-      expect(API.getWorkNote).toHaveBeenCalledWith('work-1');
-    });
-
-    expect(screen.getByTestId('work-note-dialog')).toHaveAttribute('data-open', 'true');
-    expect(screen.getByTestId('work-note-dialog')).toHaveAttribute('data-work-id', 'work-1');
-  });
-
-  it('shows loading state while fetching work note details', async () => {
-    const setSearchParams = vi.fn();
-    vi.mocked(useSearchParams).mockReturnValue([new URLSearchParams('q=테스트'), setSearchParams]);
-
-    vi.mocked(useSearch).mockReturnValue({
-      mutate: vi.fn(),
-      isSuccess: true,
-      isPending: false,
-      data: {
-        query: '테스트',
-        workNotes: [
-          {
-            id: 'work-1',
-            title: '업무노트 결과',
-            category: '일반',
-            score: 0.9,
-            source: 'hybrid',
-            createdAt: new Date().toISOString(),
-          },
-        ],
-        persons: [],
-        departments: [],
-      },
-    } as unknown as ReturnType<typeof useSearch>);
-
-    // Simulate a slow API response that never resolves during this test
-    vi.mocked(API.getWorkNote).mockImplementation(
-      () => new Promise(() => {}) // Never resolves - stays in loading state
-    );
-
-    const user = userEvent.setup();
-    render(<Search />);
-
-    await waitFor(() => {
-      expect(screen.getByText('업무노트 결과')).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText('업무노트 결과'));
-
-    // Dialog should be open and in loading state
-    await waitFor(() => {
-      expect(screen.getByTestId('work-note-dialog')).toHaveAttribute('data-open', 'true');
-      expect(screen.getByTestId('work-note-dialog')).toHaveAttribute('data-loading', 'true');
-    });
+    expect(window.location.pathname).toBe('/work-notes/work-1');
   });
 });

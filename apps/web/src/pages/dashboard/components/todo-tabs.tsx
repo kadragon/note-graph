@@ -1,11 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger } from '@web/components/ui/tabs';
 import { useTodos } from '@web/hooks/use-todos';
-import { API } from '@web/lib/api';
-import { ViewWorkNoteDialog } from '@web/pages/work-notes/components/view-work-note-dialog';
 import type { Todo, TodoView } from '@web/types/api';
 import { Calendar, CalendarDays, CalendarRange, ListTodo } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TodoList } from './todo-list';
 
 const TODO_VIEWS: { value: TodoView; label: string; icon: ReactNode }[] = [
@@ -29,42 +27,28 @@ const TODO_VIEWS: { value: TodoView; label: string; icon: ReactNode }[] = [
 
 export function TodoTabs() {
   const [currentView, setCurrentView] = useState<TodoView>('today');
-  const [selectedWorkNoteId, setSelectedWorkNoteId] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { data: todos = [], isLoading } = useTodos(currentView);
 
-  // Fetch work note when a todo is clicked
-  const { data: selectedWorkNote } = useQuery({
-    queryKey: ['work-note-detail', selectedWorkNoteId],
-    queryFn: () =>
-      selectedWorkNoteId
-        ? API.getWorkNote(selectedWorkNoteId)
-        : Promise.reject(new Error('No work note')),
-    enabled: !!selectedWorkNoteId,
-  });
-
   const handleTodoClick = (todo: Todo) => {
     if (todo.workNoteId) {
-      setSelectedWorkNoteId(todo.workNoteId);
-      setIsDialogOpen(true);
+      navigate(`/work-notes/${todo.workNoteId}`);
     }
   };
 
   return (
-    <>
-      <div className="mb-4">
-        <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as TodoView)}>
-          <TabsList className="w-full justify-start">
-            {TODO_VIEWS.map((view) => (
-              <TabsTrigger key={view.value} value={view.value} className="gap-2">
-                {view.icon}
-                {view.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
+    <div className="mb-4">
+      <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as TodoView)}>
+        <TabsList className="w-full justify-start">
+          {TODO_VIEWS.map((view) => (
+            <TabsTrigger key={view.value} value={view.value} className="gap-2">
+              {view.icon}
+              {view.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       <TodoList
         todos={todos}
@@ -72,12 +56,6 @@ export function TodoTabs() {
         onTodoClick={handleTodoClick}
         groupByWorkNote={true}
       />
-
-      <ViewWorkNoteDialog
-        workNote={selectedWorkNote || null}
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-      />
-    </>
+    </div>
   );
 }

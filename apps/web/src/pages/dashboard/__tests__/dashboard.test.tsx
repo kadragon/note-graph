@@ -60,13 +60,6 @@ vi.mock('@web/components/ui/tabs', () => ({
   ),
 }));
 
-// Mock ViewWorkNoteDialog to avoid complex dialog rendering
-vi.mock('@web/pages/work-notes/components/view-work-note-dialog', () => ({
-  ViewWorkNoteDialog: ({ open }: { open: boolean }) => (
-    <div data-testid="work-note-dialog" data-open={open ? 'true' : 'false'} />
-  ),
-}));
-
 // Mock WeekCalendar component
 vi.mock('../components/week-calendar', () => ({
   WeekCalendar: ({
@@ -250,7 +243,7 @@ describe('dashboard page', () => {
     expect(screen.getByTestId('event-event-1')).toHaveTextContent('회의');
   });
 
-  it('clicking a todo with workNoteId opens the work note dialog', async () => {
+  it('clicking a todo with workNoteId navigates to the work note detail page', async () => {
     const user = userEvent.setup();
 
     vi.mocked(useTodos).mockReturnValue({
@@ -271,6 +264,6 @@ describe('dashboard page', () => {
 
     await user.click(screen.getByTestId('todo-todo-1'));
 
-    expect(screen.getByTestId('work-note-dialog')).toHaveAttribute('data-open', 'true');
+    expect(window.location.pathname).toBe('/work-notes/work-123');
   });
 });

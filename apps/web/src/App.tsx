@@ -8,7 +8,16 @@ import { Route, Routes, useLocation } from 'react-router-dom';
 // Lazy load page components
 const Dashboard = lazy(() => import('@web/pages/dashboard'));
 const WorkNotes = lazy(() => import('@web/pages/work-notes'));
+const WorkNoteDetail = lazy(() => import('@web/pages/work-notes/work-note-detail'));
+const WorkNoteCreate = lazy(() => import('@web/pages/work-notes/work-note-create'));
+const WorkNoteCreateFromText = lazy(
+  () => import('@web/pages/work-notes/work-note-create-from-text')
+);
+const WorkNoteCreateFromPDF = lazy(() => import('@web/pages/work-notes/work-note-create-from-pdf'));
 const MeetingMinutes = lazy(() => import('@web/pages/meeting-minutes'));
+const MeetingMinuteDetail = lazy(() => import('@web/pages/meeting-minutes/meeting-minute-detail'));
+const MeetingMinuteCreate = lazy(() => import('@web/pages/meeting-minutes/meeting-minute-create'));
+const MeetingMinuteEdit = lazy(() => import('@web/pages/meeting-minutes/meeting-minute-edit'));
 const Persons = lazy(() => import('@web/pages/persons'));
 const Departments = lazy(() => import('@web/pages/departments'));
 const TaskCategories = lazy(() => import('@web/pages/task-categories/task-categories'));
@@ -38,7 +47,14 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/work-notes" element={<WorkNotes />} />
+              <Route path="/work-notes/new" element={<WorkNoteCreate />} />
+              <Route path="/work-notes/new/from-text" element={<WorkNoteCreateFromText />} />
+              <Route path="/work-notes/new/from-pdf" element={<WorkNoteCreateFromPDF />} />
+              <Route path="/work-notes/:id" element={<WorkNoteDetail />} />
               <Route path="/meeting-minutes" element={<MeetingMinutes />} />
+              <Route path="/meeting-minutes/new" element={<MeetingMinuteCreate />} />
+              <Route path="/meeting-minutes/:id" element={<MeetingMinuteDetail />} />
+              <Route path="/meeting-minutes/:id/edit" element={<MeetingMinuteEdit />} />
               <Route path="/persons" element={<Persons />} />
               <Route path="/departments" element={<Departments />} />
               <Route path="/task-categories" element={<TaskCategories />} />

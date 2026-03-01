@@ -65,30 +65,6 @@ vi.mock('../work-notes/components/work-notes-table', () => ({
   ),
 }));
 
-vi.mock('../work-notes/components/create-work-note-dialog', () => ({
-  CreateWorkNoteDialog: ({ open }: { open: boolean }) => (
-    <div data-testid="create-work-note-dialog" data-open={open ? 'true' : 'false'} />
-  ),
-}));
-
-vi.mock('../work-notes/components/create-from-text-dialog', () => ({
-  CreateFromTextDialog: ({ open }: { open: boolean }) => (
-    <div data-testid="create-from-text-dialog" data-open={open ? 'true' : 'false'} />
-  ),
-}));
-
-vi.mock('../work-notes/components/create-from-pdf-dialog', () => ({
-  CreateFromPDFDialog: ({ open }: { open: boolean }) => (
-    <div data-testid="create-from-pdf-dialog" data-open={open ? 'true' : 'false'} />
-  ),
-}));
-
-vi.mock('../work-notes/components/view-work-note-dialog', () => ({
-  ViewWorkNoteDialog: ({ open }: { open: boolean }) => (
-    <div data-testid="view-work-note-dialog" data-open={open ? 'true' : 'false'} />
-  ),
-}));
-
 describe('work-notes page', () => {
   const REAL_DATE = Date;
   const FIXED_NOW = new REAL_DATE(2025, 0, 15, 12, 0, 0);

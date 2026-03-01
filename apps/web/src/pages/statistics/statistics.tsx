@@ -3,7 +3,6 @@
  * Statistics dashboard page
  */
 
-import { useQuery } from '@tanstack/react-query';
 import {
   Select,
   SelectContent,
@@ -12,16 +11,14 @@ import {
   SelectValue,
 } from '@web/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@web/components/ui/tabs';
-import { API } from '@web/lib/api';
 import {
   formatDateRange,
   getAvailableYears,
   getStatisticsPeriodLabel,
   type StatisticsPeriod,
 } from '@web/lib/date-utils';
-import { ViewWorkNoteDialog } from '@web/pages/work-notes/components/view-work-note-dialog';
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DistributionCharts } from './components/distribution-charts';
 import { SummaryCards } from './components/summary-cards';
 import { WorkNotesTable } from './components/work-notes-table';
@@ -39,29 +36,10 @@ const PERIOD_TABS: { value: StatisticsPeriod; label: string }[] = [
 export default function Statistics() {
   const { period, setPeriod, year, setYear, dateRange, statistics, isLoading, error } =
     useStatistics();
-
-  const [selectedWorkNoteId, setSelectedWorkNoteId] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const { data: selectedWorkNote } = useQuery({
-    queryKey: ['work-note-detail', selectedWorkNoteId],
-    queryFn: () =>
-      selectedWorkNoteId
-        ? API.getWorkNote(selectedWorkNoteId)
-        : Promise.reject(new Error('No work note')),
-    enabled: !!selectedWorkNoteId,
-  });
+  const navigate = useNavigate();
 
   const handleWorkNoteClick = (workNoteId: string) => {
-    setSelectedWorkNoteId(workNoteId);
-    setIsDialogOpen(true);
-  };
-
-  const handleDialogOpenChange = (open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) {
-      setSelectedWorkNoteId(null);
-    }
+    navigate(`/work-notes/${workNoteId}`);
   };
 
   const availableYears = getAvailableYears();
@@ -146,12 +124,6 @@ export default function Statistics() {
           <WorkNotesTable workNotes={statistics.workNotes} onSelect={handleWorkNoteClick} />
         </div>
       )}
-
-      <ViewWorkNoteDialog
-        workNote={selectedWorkNote || null}
-        open={isDialogOpen}
-        onOpenChange={handleDialogOpenChange}
-      />
     </div>
   );
 }
