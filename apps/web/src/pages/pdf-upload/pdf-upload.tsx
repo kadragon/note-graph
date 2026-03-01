@@ -72,7 +72,7 @@ export default function PDFUpload() {
 
   return (
     <div className="page-container">
-      <div className="mb-6">
+      <div>
         <h1 className="page-title">PDF 업로드</h1>
         <p className="page-description">PDF 파일에서 업무노트를 생성하세요</p>
       </div>
