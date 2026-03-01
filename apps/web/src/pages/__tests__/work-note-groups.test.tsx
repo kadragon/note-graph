@@ -16,6 +16,16 @@ vi.mock('@web/hooks/use-work-note-groups', () => ({
   useToggleWorkNoteGroupActive: vi.fn(),
 }));
 
+vi.mock('../work-note-groups/components/work-note-group-work-notes-dialog', () => ({
+  WorkNoteGroupWorkNotesDialog: ({ open, group }: { open: boolean; group: unknown }) => (
+    <div
+      data-testid="work-note-group-work-notes-dialog"
+      data-open={open ? 'true' : 'false'}
+      data-group={group ? 'selected' : 'none'}
+    />
+  ),
+}));
+
 vi.mock('@web/components/ui/alert-dialog', () => ({
   AlertDialog: ({ open, children }: { open?: boolean; children: ReactNode }) => (
     <div data-testid="alert-dialog" data-open={open ? 'true' : 'false'}>
@@ -101,6 +111,42 @@ describe('work-note-groups page', () => {
     );
   });
 
+  it('opens the view dialog when clicking a group name', async () => {
+    vi.mocked(useWorkNoteGroups).mockReturnValue({
+      data: [
+        {
+          groupId: 'GRP-1',
+          name: '프로젝트 A',
+          isActive: true,
+          createdAt: '2025-01-01T09:00:00.000Z',
+        },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useWorkNoteGroups>);
+    vi.mocked(useDeleteWorkNoteGroup).mockReturnValue({
+      mutate: vi.fn(),
+    } as unknown as ReturnType<typeof useDeleteWorkNoteGroup>);
+
+    const user = userEvent.setup();
+    render(<WorkNoteGroups />);
+
+    expect(screen.getByTestId('work-note-group-work-notes-dialog')).toHaveAttribute(
+      'data-open',
+      'false'
+    );
+
+    await user.click(screen.getByRole('button', { name: '프로젝트 A' }));
+
+    expect(screen.getByTestId('work-note-group-work-notes-dialog')).toHaveAttribute(
+      'data-open',
+      'true'
+    );
+    expect(screen.getByTestId('work-note-group-work-notes-dialog')).toHaveAttribute(
+      'data-group',
+      'selected'
+    );
+  });
+
   it('confirms deletion and calls the delete mutation', async () => {
     const mutate = vi.fn((_id: string, options?: { onSuccess?: () => void }) => {
       options?.onSuccess?.();
@@ -130,10 +176,10 @@ describe('work-note-groups page', () => {
     expect(row).not.toBeNull();
 
     const actionButtons = row ? row.querySelectorAll('button') : [];
-    expect(actionButtons.length).toBeGreaterThanOrEqual(2);
+    expect(actionButtons.length).toBeGreaterThanOrEqual(3);
 
-    // Click delete button (second action button)
-    await user.click(actionButtons[1]);
+    // Click delete button (third button: name, edit, delete)
+    await user.click(actionButtons[2]);
 
     expect(screen.getByTestId('alert-dialog')).toHaveAttribute('data-open', 'true');
 

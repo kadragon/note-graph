@@ -11,6 +11,14 @@ export function useWorkNoteGroups(activeOnly = false) {
   });
 }
 
+export function useWorkNoteGroupWorkNotes(groupId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['workNoteGroupWorkNotes', groupId],
+    queryFn: () => API.getWorkNoteGroupWorkNotes(groupId!),
+    enabled: enabled && Boolean(groupId),
+  });
+}
+
 export const useCreateWorkNoteGroup = createStandardMutation({
   mutationFn: (data: CreateWorkNoteGroupRequest) => API.createWorkNoteGroup(data),
   invalidateKeys: [['workNoteGroups']],
