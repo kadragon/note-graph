@@ -1,4 +1,5 @@
 import { Checkbox } from '@web/components/ui/checkbox';
+import { cn } from '@web/lib/utils';
 import type { TaskCategory } from '@web/types/api';
 import type { RefObject } from 'react';
 
@@ -45,7 +46,7 @@ export function CategorySelector({
         return (
           <div
             key={category.categoryId}
-            className={`flex items-center space-x-2 ${isInactive ? 'opacity-60' : ''}`}
+            className={cn('flex items-center space-x-2', isInactive && 'opacity-60')}
           >
             <Checkbox
               id={`${idPrefix}-${category.categoryId}`}
@@ -55,9 +56,10 @@ export function CategorySelector({
             />
             <label
               htmlFor={`${idPrefix}-${category.categoryId}`}
-              className={`text-sm font-medium leading-none ${
+              className={cn(
+                'text-sm font-medium leading-none',
                 isInactive && !isSelected ? 'cursor-not-allowed' : 'cursor-pointer'
-              }`}
+              )}
             >
               {category.name}
               {isInactive && <span className="ml-1 text-xs text-muted-foreground">(비활성)</span>}

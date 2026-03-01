@@ -67,7 +67,7 @@ export function WorkNotesTable({
   if (workNotes.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">업무노트가 없습니다.</p>
+        <p className="text-muted-foreground">업무노트가 없습니다.</p>
       </div>
     );
   }

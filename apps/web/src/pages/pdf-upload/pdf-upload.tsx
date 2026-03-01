@@ -71,10 +71,10 @@ export default function PDFUpload() {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">PDF 업로드</h1>
-        <p className="text-gray-600 mt-1">PDF 파일에서 업무노트를 생성하세요</p>
+    <div className="page-container">
+      <div>
+        <h1 className="page-title">PDF 업로드</h1>
+        <p className="page-description">PDF 파일에서 업무노트를 생성하세요</p>
       </div>
 
       <div className="grid gap-6">

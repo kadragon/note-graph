@@ -4,7 +4,7 @@ import {
   useTaskCategories,
   useToggleTaskCategoryActive,
 } from '@web/hooks/use-task-categories';
-import { render, screen } from '@web/test/setup';
+import { render, screen, within } from '@web/test/setup';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -164,7 +164,9 @@ describe('task-categories page', () => {
 
     expect(screen.getByTestId('alert-dialog')).toHaveAttribute('data-open', 'true');
 
-    await user.click(screen.getByRole('button', { name: '삭제' }));
+    await user.click(
+      within(screen.getByTestId('alert-dialog')).getByRole('button', { name: '삭제' })
+    );
 
     expect(mutate).toHaveBeenCalledWith(
       'CATEGORY-2',

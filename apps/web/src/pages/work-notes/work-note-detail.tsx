@@ -557,7 +557,7 @@ export default function WorkNoteDetail() {
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-2">내용</h3>
                 <div
-                  className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-gray-50"
+                  className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-muted/50"
                   data-testid="lazy-markdown"
                 >
                   <Suspense fallback={<div className="text-muted-foreground">로딩 중...</div>}>

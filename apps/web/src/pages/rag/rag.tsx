@@ -106,8 +106,8 @@ export default function RAG() {
   };
 
   return (
-    <div className="p-6 h-[calc(100vh-3.5rem)]">
-      <div className="mb-6">
+    <div className="page-container h-[calc(100vh-3.5rem)]">
+      <div>
         <h1 className="page-title">AI 챗봇</h1>
         <p className="page-description">AI와 대화하세요</p>
       </div>

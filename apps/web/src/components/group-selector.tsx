@@ -1,4 +1,5 @@
 import { Checkbox } from '@web/components/ui/checkbox';
+import { cn } from '@web/lib/utils';
 import type { WorkNoteGroup } from '@web/types/api';
 
 interface GroupSelectorProps {
@@ -39,7 +40,7 @@ export function GroupSelector({
         return (
           <div
             key={group.groupId}
-            className={`flex items-center space-x-2 ${isInactive ? 'opacity-60' : ''}`}
+            className={cn('flex items-center space-x-2', isInactive && 'opacity-60')}
           >
             <Checkbox
               id={`${idPrefix}-${group.groupId}`}
@@ -49,9 +50,10 @@ export function GroupSelector({
             />
             <label
               htmlFor={`${idPrefix}-${group.groupId}`}
-              className={`text-sm font-medium leading-none ${
+              className={cn(
+                'text-sm font-medium leading-none',
                 isInactive && !isSelected ? 'cursor-not-allowed' : 'cursor-pointer'
-              }`}
+              )}
             >
               {group.name}
               {isInactive && <span className="ml-1 text-xs text-muted-foreground">(비활성)</span>}

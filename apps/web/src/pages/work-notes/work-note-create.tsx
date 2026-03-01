@@ -3,6 +3,7 @@ import { CategorySelector } from '@web/components/category-selector';
 import { GroupSelector } from '@web/components/group-selector';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
+import { Checkbox } from '@web/components/ui/checkbox';
 import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
@@ -209,11 +210,10 @@ export default function WorkNoteCreate() {
                                 htmlFor={`create-related-meeting-${meeting.meetingId}`}
                                 className="flex items-center gap-2 text-sm"
                               >
-                                <input
+                                <Checkbox
                                   id={`create-related-meeting-${meeting.meetingId}`}
-                                  type="checkbox"
                                   checked={isSelected}
-                                  onChange={() => toggleMeetingSelection(meeting.meetingId)}
+                                  onCheckedChange={() => toggleMeetingSelection(meeting.meetingId)}
                                 />
                                 <span>{meeting.topic}</span>
                               </label>
