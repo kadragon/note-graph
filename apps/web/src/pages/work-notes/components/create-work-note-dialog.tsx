@@ -22,6 +22,8 @@ import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { useCreateWorkNote } from '@web/hooks/use-work-notes';
+import { PersonImportDialog } from '@web/pages/persons/components/person-import-dialog';
+import { Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 interface CreateWorkNoteDialogProps {
@@ -31,6 +33,7 @@ interface CreateWorkNoteDialogProps {
 
 export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialogProps) {
   const [activeTab, setActiveTab] = useState<'basic' | 'content'>('basic');
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
@@ -66,6 +69,10 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
     setSelectedMeetingIds((prev) =>
       prev.includes(meetingId) ? prev.filter((id) => id !== meetingId) : [...prev, meetingId]
     );
+  };
+
+  const handlePersonImported = (personId: string) => {
+    setSelectedPersonIds((prev) => (prev.includes(personId) ? prev : [...prev, personId]));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -181,7 +188,18 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
               </div>
 
               <div className="grid gap-2">
-                <Label>담당자 (선택사항)</Label>
+                <div className="flex items-center justify-between">
+                  <Label>담당자 (선택사항)</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setImportDialogOpen(true)}
+                  >
+                    <Sparkles className="h-4 w-4 mr-1" />
+                    AI로 추가
+                  </Button>
+                </div>
                 {persons.length === 0 && !personsLoading ? (
                   <p className="text-sm text-muted-foreground">
                     등록된 사람이 없습니다. 먼저 사람을 추가해주세요.
@@ -269,6 +287,12 @@ export function CreateWorkNoteDialog({ open, onOpenChange }: CreateWorkNoteDialo
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <PersonImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onPersonImported={handlePersonImported}
+      />
     </Dialog>
   );
 }

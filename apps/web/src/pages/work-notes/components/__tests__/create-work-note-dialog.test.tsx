@@ -10,6 +10,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CreateWorkNoteDialog } from '../create-work-note-dialog';
 
+vi.mock('@web/pages/persons/components/person-import-dialog', () => ({
+  PersonImportDialog: ({
+    open,
+    onOpenChange,
+    onPersonImported,
+  }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onPersonImported?: (personId: string) => void;
+    children?: ReactNode;
+  }) =>
+    open ? (
+      <div data-testid="person-import-dialog">
+        <button type="button" onClick={() => onPersonImported?.('new-person-id')}>
+          Import Person
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          Close Dialog
+        </button>
+      </div>
+    ) : null,
+}));
+
 vi.mock('@web/components/ui/dialog', () => ({
   Dialog: ({ open, children }: { open?: boolean; children: ReactNode }) =>
     open ? <div data-testid="dialog">{children}</div> : null,
@@ -611,6 +634,35 @@ describe('CreateWorkNoteDialog', () => {
 
       // Dialog should NOT be closed on error
       expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('AI person import', () => {
+    it('renders AI로 추가 button next to 담당자 label', () => {
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      expect(screen.getByRole('button', { name: /AI로 추가/ })).toBeInTheDocument();
+    });
+
+    it('opens PersonImportDialog when AI로 추가 is clicked', async () => {
+      const user = userEvent.setup();
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      expect(screen.queryByTestId('person-import-dialog')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /AI로 추가/ }));
+
+      expect(screen.getByTestId('person-import-dialog')).toBeInTheDocument();
+    });
+
+    it('adds imported person to selected assignees', async () => {
+      const user = userEvent.setup();
+      render(<CreateWorkNoteDialog {...defaultProps} />);
+
+      await user.click(screen.getByRole('button', { name: /AI로 추가/ }));
+      await user.click(screen.getByRole('button', { name: 'Import Person' }));
+
+      const assigneeSelector = screen.getByTestId('assignee-selector');
+      expect(assigneeSelector).toHaveTextContent('Selected: 1');
     });
   });
 });

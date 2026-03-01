@@ -1,9 +1,33 @@
 import userEvent from '@testing-library/user-event';
 import { createPerson, createTaskCategory, createWorkNoteGroup } from '@web/test/factories';
 import { render, screen } from '@web/test/setup';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkNoteEditForm } from '../work-note-edit-form';
+
+vi.mock('@web/pages/persons/components/person-import-dialog', () => ({
+  PersonImportDialog: ({
+    open,
+    onOpenChange,
+    onPersonImported,
+  }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onPersonImported?: (personId: string) => void;
+    children?: ReactNode;
+  }) =>
+    open ? (
+      <div data-testid="person-import-dialog">
+        <button type="button" onClick={() => onPersonImported?.('new-person-id')}>
+          Import Person
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          Close Dialog
+        </button>
+      </div>
+    ) : null,
+}));
 
 vi.mock('@web/components/assignee-selector', () => ({
   AssigneeSelector: ({
@@ -188,6 +212,44 @@ describe('WorkNoteEditForm', () => {
 
       const titleInput = screen.getByRole('textbox', { name: /제목/ });
       expect(titleInput).toBeInTheDocument();
+    });
+  });
+
+  describe('AI person import', () => {
+    it('renders AI로 추가 button next to 담당자 label', () => {
+      render(<WorkNoteEditForm {...defaultProps} />);
+
+      expect(screen.getByRole('button', { name: /AI로 추가/ })).toBeInTheDocument();
+    });
+
+    it('opens PersonImportDialog when AI로 추가 is clicked', async () => {
+      const user = userEvent.setup();
+      render(<WorkNoteEditForm {...defaultProps} />);
+
+      expect(screen.queryByTestId('person-import-dialog')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /AI로 추가/ }));
+
+      expect(screen.getByTestId('person-import-dialog')).toBeInTheDocument();
+    });
+
+    it('calls onChange with new personId after import', async () => {
+      const user = userEvent.setup();
+      render(<WorkNoteEditForm {...defaultProps} />);
+
+      await user.click(screen.getByRole('button', { name: /AI로 추가/ }));
+      await user.click(screen.getByRole('button', { name: 'Import Person' }));
+
+      expect(mockOnChange).toHaveBeenCalledWith('personIds', ['new-person-id']);
+    });
+
+    it('does not add duplicate personId on import', async () => {
+      const user = userEvent.setup();
+      render(<WorkNoteEditForm {...defaultProps} personIds={['new-person-id']} />);
+
+      await user.click(screen.getByRole('button', { name: /AI로 추가/ }));
+      await user.click(screen.getByRole('button', { name: 'Import Person' }));
+
+      expect(mockOnChange).not.toHaveBeenCalled();
     });
   });
 });
