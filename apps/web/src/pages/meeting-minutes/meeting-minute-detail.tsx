@@ -94,7 +94,7 @@ export default function MeetingMinuteDetail() {
           <p className="text-sm font-medium">회의 내용</p>
           <div className="prose prose-sm leading-relaxed max-w-none border rounded-md p-4 bg-muted/50">
             <Suspense fallback={<div className="text-muted-foreground">로딩 중...</div>}>
-              <LazyMarkdown>{meeting.detailsRaw}</LazyMarkdown>
+              <LazyMarkdown>{meeting.detailsRaw.replace(/\n/g, '  \n')}</LazyMarkdown>
             </Suspense>
           </div>
         </div>
