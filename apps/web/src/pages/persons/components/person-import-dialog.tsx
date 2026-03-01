@@ -20,9 +20,14 @@ import { useState } from 'react';
 interface PersonImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onPersonImported?: (personId: string) => void;
 }
 
-export function PersonImportDialog({ open, onOpenChange }: PersonImportDialogProps) {
+export function PersonImportDialog({
+  open,
+  onOpenChange,
+  onPersonImported,
+}: PersonImportDialogProps) {
   const [inputText, setInputText] = useState('');
   const [parsedData, setParsedData] = useState<ParsedPersonData | null>(null);
 
@@ -44,7 +49,7 @@ export function PersonImportDialog({ open, onOpenChange }: PersonImportDialogPro
     if (!parsedData) return;
 
     try {
-      await importPersonMutation.mutateAsync({
+      const result = await importPersonMutation.mutateAsync({
         personId: parsedData.personId,
         name: parsedData.name,
         phoneExt: parsedData.phoneExt || undefined,
@@ -54,6 +59,7 @@ export function PersonImportDialog({ open, onOpenChange }: PersonImportDialogPro
         employmentStatus: parsedData.employmentStatus,
       });
 
+      onPersonImported?.(result.person.personId);
       // Reset and close on success
       handleClose();
     } catch {

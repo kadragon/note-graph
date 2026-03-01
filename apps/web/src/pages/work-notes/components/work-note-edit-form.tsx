@@ -1,12 +1,16 @@
 import { AssigneeSelector } from '@web/components/assignee-selector';
 import { CategorySelector } from '@web/components/category-selector';
 import { GroupSelector } from '@web/components/group-selector';
+import { Button } from '@web/components/ui/button';
 import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
 import { Textarea } from '@web/components/ui/textarea';
+import { PersonImportDialog } from '@web/pages/persons/components/person-import-dialog';
 import type { Person, TaskCategory, WorkNoteGroup } from '@web/types/api';
+import { Sparkles } from 'lucide-react';
 import type { RefObject } from 'react';
+import { useState } from 'react';
 
 interface WorkNoteEditFormProps {
   title?: string;
@@ -46,6 +50,14 @@ export function WorkNoteEditForm({
   assigneeSectionRef,
   showTitle = true,
 }: WorkNoteEditFormProps) {
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  const handlePersonImported = (personId: string) => {
+    if (!personIds.includes(personId)) {
+      onChange('personIds', [...personIds, personId]);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Tabs defaultValue="basic" className="space-y-4">
@@ -95,7 +107,18 @@ export function WorkNoteEditForm({
 
           {/* Assignees Section */}
           <div>
-            <Label className="text-sm font-medium mb-2 block">담당자</Label>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-sm font-medium">담당자 (선택사항)</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setImportDialogOpen(true)}
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                AI로 추가
+              </Button>
+            </div>
             {persons.length === 0 && !personsLoading ? (
               <p className="text-sm text-muted-foreground">등록된 사람이 없습니다.</p>
             ) : (
@@ -124,6 +147,12 @@ export function WorkNoteEditForm({
           </p>
         </TabsContent>
       </Tabs>
+
+      <PersonImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onPersonImported={handlePersonImported}
+      />
     </div>
   );
 }
