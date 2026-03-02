@@ -610,15 +610,14 @@ export class TodoRepository {
   }> {
     const { todoIds, amount, unit } = data;
 
-    // Fetch all requested todos
-    const placeholders = todoIds.map(() => '?').join(',');
+    // Fetch all requested todos (use json_each to avoid SQLite's 999 parameter limit)
     const result = await this.db
       .prepare(
         `SELECT todo_id as todoId, work_id as workId, due_date as dueDate
          FROM todos
-         WHERE todo_id IN (${placeholders})`
+         WHERE todo_id IN (SELECT value FROM json_each(?))`
       )
-      .bind(...todoIds)
+      .bind(JSON.stringify(todoIds))
       .all<{ todoId: string; workId: string; dueDate: string | null }>();
 
     const todos = result.results || [];

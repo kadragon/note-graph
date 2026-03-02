@@ -718,30 +718,23 @@ export default function WorkNoteDetail() {
                 {postponableTodoIds.length > 0 && (
                   <div className="flex items-center gap-1">
                     <span className="text-xs text-muted-foreground">연기:</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={batchPostponeMutation.isPending}
-                      onClick={() => handleBatchPostpone(1, 'day')}
-                    >
-                      1일
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={batchPostponeMutation.isPending}
-                      onClick={() => handleBatchPostpone(1, 'week')}
-                    >
-                      1주일
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={batchPostponeMutation.isPending}
-                      onClick={() => handleBatchPostpone(1, 'month')}
-                    >
-                      1달
-                    </Button>
+                    {(
+                      [
+                        { amount: 1, unit: 'day', label: '1일' },
+                        { amount: 1, unit: 'week', label: '1주일' },
+                        { amount: 1, unit: 'month', label: '1달' },
+                      ] as const
+                    ).map((option) => (
+                      <Button
+                        key={option.unit}
+                        variant="outline"
+                        size="sm"
+                        disabled={batchPostponeMutation.isPending}
+                        onClick={() => handleBatchPostpone(option.amount, option.unit)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
                   </div>
                 )}
                 <Button
