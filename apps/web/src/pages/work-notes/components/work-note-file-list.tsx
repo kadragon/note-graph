@@ -47,6 +47,11 @@ import {
   sortFilesByModifiedTimeDesc,
 } from './work-note-file-utils';
 
+function FileIconDisplay({ fileName, className }: { fileName: string; className?: string }) {
+  const { icon: Icon, colorClass } = getFileIconInfo(fileName);
+  return <Icon className={`h-5 w-5 ${colorClass} ${className ?? ''}`.trim()} />;
+}
+
 const LOCAL_DRIVE_PATH_KEY = 'local-drive-path';
 
 function buildLocalPath(localRootPath: string, createdAt: string, workId: string): string {
@@ -292,10 +297,7 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
               key={`uploading-${file.name}-${index}`}
               className="flex items-center gap-2 rounded-md border border-border bg-muted p-3"
             >
-              {(() => {
-                const { icon: Icon, colorClass } = getFileIconInfo(file.name);
-                return <Icon className={`h-5 w-5 ${colorClass}`} />;
-              })()}
+              <FileIconDisplay fileName={file.name} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{file.name}</p>
                 <p className="text-xs text-muted-foreground">
@@ -322,10 +324,7 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
               key={file.id}
               className="flex items-center gap-2 rounded-md border border-border p-3 hover:bg-accent/50 transition-colors"
             >
-              {(() => {
-                const { icon: Icon, colorClass } = getFileIconInfo(file.name);
-                return <Icon className={`h-5 w-5 flex-shrink-0 ${colorClass}`} />;
-              })()}
+              <FileIconDisplay fileName={file.name} className="flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <a

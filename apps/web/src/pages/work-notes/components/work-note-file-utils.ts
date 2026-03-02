@@ -7,17 +7,21 @@ export interface FileIconInfo {
   colorClass: string;
 }
 
+const hwpIconInfo: FileIconInfo = { icon: FileText, colorClass: 'text-blue-500' };
+const excelIconInfo: FileIconInfo = { icon: FileSpreadsheet, colorClass: 'text-green-600' };
+const imageIconInfo: FileIconInfo = { icon: FileImage, colorClass: 'text-violet-500' };
+
 const EXTENSION_ICON_MAP: Record<string, FileIconInfo> = {
   pdf: { icon: FileText, colorClass: 'text-red-500' },
-  hwp: { icon: FileText, colorClass: 'text-blue-500' },
-  hwpx: { icon: FileText, colorClass: 'text-blue-500' },
-  xls: { icon: FileSpreadsheet, colorClass: 'text-green-600' },
-  xlsx: { icon: FileSpreadsheet, colorClass: 'text-green-600' },
-  png: { icon: FileImage, colorClass: 'text-violet-500' },
-  jpg: { icon: FileImage, colorClass: 'text-violet-500' },
-  jpeg: { icon: FileImage, colorClass: 'text-violet-500' },
-  gif: { icon: FileImage, colorClass: 'text-violet-500' },
-  webp: { icon: FileImage, colorClass: 'text-violet-500' },
+  hwp: hwpIconInfo,
+  hwpx: hwpIconInfo,
+  xls: excelIconInfo,
+  xlsx: excelIconInfo,
+  png: imageIconInfo,
+  jpg: imageIconInfo,
+  jpeg: imageIconInfo,
+  gif: imageIconInfo,
+  webp: imageIconInfo,
 };
 
 const DEFAULT_ICON_INFO: FileIconInfo = { icon: File, colorClass: 'text-muted-foreground' };
@@ -27,7 +31,7 @@ const DEFAULT_ICON_INFO: FileIconInfo = { icon: File, colorClass: 'text-muted-fo
  */
 export function getFileIconInfo(filename: string): FileIconInfo {
   const ext = filename.includes('.') ? filename.split('.').pop()!.toLowerCase() : '';
-  return EXTENSION_ICON_MAP[ext] ?? DEFAULT_ICON_INFO;
+  return Object.hasOwn(EXTENSION_ICON_MAP, ext) ? EXTENSION_ICON_MAP[ext] : DEFAULT_ICON_INFO;
 }
 
 /**

@@ -10,36 +10,34 @@ describe('getFileIconInfo', () => {
     expect(result.colorClass).toBe('text-red-500');
   });
 
-  it('returns FileText with blue for .hwp', () => {
-    const result = getFileIconInfo('document.hwp');
+  it.each([
+    ['document.hwp'],
+    ['document.hwpx'],
+  ])('returns FileText with blue for %s', (filename) => {
+    const result = getFileIconInfo(filename);
     expect(result.icon).toBe(FileText);
     expect(result.colorClass).toBe('text-blue-500');
   });
 
-  it('returns FileText with blue for .hwpx', () => {
-    const result = getFileIconInfo('document.hwpx');
-    expect(result.icon).toBe(FileText);
-    expect(result.colorClass).toBe('text-blue-500');
-  });
-
-  it('returns FileSpreadsheet with green for .xls', () => {
-    const result = getFileIconInfo('data.xls');
+  it.each([
+    ['data.xls'],
+    ['data.xlsx'],
+  ])('returns FileSpreadsheet with green for %s', (filename) => {
+    const result = getFileIconInfo(filename);
     expect(result.icon).toBe(FileSpreadsheet);
     expect(result.colorClass).toBe('text-green-600');
   });
 
-  it('returns FileSpreadsheet with green for .xlsx', () => {
-    const result = getFileIconInfo('data.xlsx');
-    expect(result.icon).toBe(FileSpreadsheet);
-    expect(result.colorClass).toBe('text-green-600');
-  });
-
-  it('returns FileImage with violet for image extensions', () => {
-    for (const ext of ['png', 'jpg', 'jpeg', 'gif', 'webp']) {
-      const result = getFileIconInfo(`photo.${ext}`);
-      expect(result.icon).toBe(FileImage);
-      expect(result.colorClass).toBe('text-violet-500');
-    }
+  it.each([
+    ['photo.png'],
+    ['photo.jpg'],
+    ['photo.jpeg'],
+    ['photo.gif'],
+    ['photo.webp'],
+  ])('returns FileImage with violet for %s', (filename) => {
+    const result = getFileIconInfo(filename);
+    expect(result.icon).toBe(FileImage);
+    expect(result.colorClass).toBe('text-violet-500');
   });
 
   it('is case-insensitive', () => {
