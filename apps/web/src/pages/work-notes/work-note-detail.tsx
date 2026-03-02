@@ -52,6 +52,7 @@ import { WorkNoteEditForm } from './components/work-note-edit-form';
 import { WorkNoteFileList } from './components/work-note-file-list';
 
 type RelatedWorkNote = NonNullable<WorkNote['relatedWorkNotes']>[number];
+type RelatedMeeting = NonNullable<WorkNote['relatedMeetingMinutes']>[number];
 
 export default function WorkNoteDetail() {
   const { id } = useParams<{ id: string }>();
@@ -64,6 +65,7 @@ export default function WorkNoteDetail() {
   const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
   const [editPersonIds, setEditPersonIds] = useState<string[]>([]);
   const [editRelatedWorkNotes, setEditRelatedWorkNotes] = useState<RelatedWorkNote[]>([]);
+  const [editRelatedMeetings, setEditRelatedMeetings] = useState<RelatedMeeting[]>([]);
 
   const [showAddTodo, setShowAddTodo] = useState(false);
 
@@ -117,7 +119,10 @@ export default function WorkNoteDetail() {
     : workNote?.relatedWorkNotes || [];
   const hasGroups = (workNote?.groups?.length ?? 0) > 0;
   const hasRelatedWorkNotes = relatedWorkNotesToDisplay.length > 0;
-  const hasRelatedMeetingMinutes = (workNote?.relatedMeetingMinutes?.length ?? 0) > 0;
+  const relatedMeetingsToDisplay = isEditing
+    ? editRelatedMeetings
+    : workNote?.relatedMeetingMinutes || [];
+  const hasRelatedMeetingMinutes = relatedMeetingsToDisplay.length > 0;
   const showRelatedWorkNotesSection = isEditing || hasRelatedWorkNotes;
   const showMeetingSection = isEditing || hasRelatedMeetingMinutes;
 
@@ -140,6 +145,7 @@ export default function WorkNoteDetail() {
       setEditGroupIds(workNote.groups?.map((g) => g.groupId) || []);
       setEditPersonIds(workNote.persons?.map((p) => p.personId) || []);
       setEditRelatedWorkNotes(workNote.relatedWorkNotes || []);
+      setEditRelatedMeetings(workNote.relatedMeetingMinutes || []);
     }
   }, [workNote]);
 
@@ -243,6 +249,10 @@ export default function WorkNoteDetail() {
     setEditRelatedWorkNotes((prev) => prev.filter((note) => note.relatedWorkId !== relatedWorkId));
   }, []);
 
+  const handleRemoveRelatedMeeting = useCallback((meetingId: string) => {
+    setEditRelatedMeetings((prev) => prev.filter((m) => m.meetingId !== meetingId));
+  }, []);
+
   const focusFirstInteractiveElement = useCallback((container: HTMLElement | null): boolean => {
     if (!container) return false;
     const focusable = container.querySelector<HTMLElement>(
@@ -300,6 +310,7 @@ export default function WorkNoteDetail() {
           groupIds: editGroupIds,
           relatedPersonIds: editPersonIds,
           ...(relatedWorkNotesLoaded ? { relatedWorkIds } : {}),
+          relatedMeetingIds: editRelatedMeetings.map((m) => m.meetingId),
         },
       });
       setIsEditing(false);
@@ -572,7 +583,7 @@ export default function WorkNoteDetail() {
           {showRelatedWorkNotesSection && (
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-2">참고한 업무노트</h3>
-              <div className="rounded-md border bg-muted/30 p-3">
+              <div className="rounded-md border bg-background p-3">
                 {hasRelatedWorkNotes ? (
                   <div className="flex flex-wrap gap-2">
                     {relatedWorkNotesToDisplay.map((ref) => (
@@ -616,17 +627,17 @@ export default function WorkNoteDetail() {
             </div>
           )}
 
-          {/* Linked Meeting Minutes */}
+          {/* Related Meeting Minutes */}
           {showMeetingSection && (
             <div className="border-t pt-4">
-              <h3 className="font-semibold mb-2">연결된 회의록</h3>
-              <div className="rounded-md border bg-muted/30 p-3">
+              <h3 className="font-semibold mb-2">연관 회의록</h3>
+              <div className="rounded-md border bg-background p-3">
                 {hasRelatedMeetingMinutes ? (
                   <div className="flex flex-wrap gap-2">
-                    {workNote.relatedMeetingMinutes?.map((meeting) => (
+                    {relatedMeetingsToDisplay.map((meeting) => (
                       <div
                         key={meeting.meetingId}
-                        className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-sm"
+                        className="flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-sm"
                       >
                         <a
                           href={`/meeting-minutes/${meeting.meetingId}`}
@@ -635,12 +646,28 @@ export default function WorkNoteDetail() {
                           {meeting.topic}
                         </a>
                         <span className="text-xs text-muted-foreground">{meeting.meetingDate}</span>
+                        {isEditing && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                            aria-label="연관 회의록 삭제"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              handleRemoveRelatedMeeting(meeting.meetingId);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
                 ) : (
                   isEditing && (
-                    <p className="text-sm text-muted-foreground">연결된 회의록이 없습니다.</p>
+                    <p className="text-sm text-muted-foreground">연관 회의록이 없습니다.</p>
                   )
                 )}
               </div>
