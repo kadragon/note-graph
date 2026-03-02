@@ -100,9 +100,19 @@ export const listTodosQuerySchema = z.object({
     ),
 });
 
+/**
+ * Batch postpone todos request schema
+ */
+export const batchPostponeTodosSchema = z.object({
+  todoIds: z.array(z.string().min(1)).min(1, 'At least one todoId is required'),
+  amount: z.number().int().min(1).max(365),
+  unit: z.enum(['day', 'week', 'month']),
+});
+
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>;
 export type ListTodosQuery = z.infer<typeof listTodosQuerySchema>;
+export type BatchPostponeTodosInput = z.infer<typeof batchPostponeTodosSchema>;
 export type TodoStatus = z.infer<typeof todoStatusSchema>;
 export type RepeatRule = z.infer<typeof repeatRuleSchema>;
 export type RecurrenceType = z.infer<typeof recurrenceTypeSchema>;

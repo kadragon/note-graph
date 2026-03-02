@@ -17,7 +17,7 @@ import { TODO_STATUS } from '@web/constants/todo-status';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
-import { useDeleteTodo, useToggleTodo } from '@web/hooks/use-todos';
+import { useBatchPostponeTodos, useDeleteTodo, useToggleTodo } from '@web/hooks/use-todos';
 import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { useUpdateWorkNote } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
@@ -85,6 +85,7 @@ export default function WorkNoteDetail() {
   const updateMutation = useUpdateWorkNote();
   const toggleTodoMutation = useToggleTodo(id);
   const deleteTodoMutation = useDeleteTodo(id);
+  const batchPostponeMutation = useBatchPostponeTodos(id);
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: workNoteGroups = [], isLoading: groupsLoading } = useWorkNoteGroups(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
@@ -112,6 +113,16 @@ export default function WorkNoteDetail() {
       allTodos.filter((t) => t.status !== TODO_STATUS.ON_HOLD && t.status !== TODO_STATUS.STOPPED),
     [allTodos]
   );
+
+  const postponableTodoIds = useMemo(
+    () => todos.filter((t) => t.status === TODO_STATUS.IN_PROGRESS && t.dueDate).map((t) => t.id),
+    [todos]
+  );
+
+  const handleBatchPostpone = (amount: number, unit: 'day' | 'week' | 'month') => {
+    if (postponableTodoIds.length === 0) return;
+    batchPostponeMutation.mutate({ todoIds: postponableTodoIds, amount, unit });
+  };
 
   const relatedWorkNotesLoaded = !isLoading;
   const relatedWorkNotesToDisplay = isEditing
@@ -703,13 +714,37 @@ export default function WorkNoteDetail() {
           <div className="border-t pt-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">할일 목록</h3>
-              <Button
-                size="sm"
-                onClick={() => setShowAddTodo(!showAddTodo)}
-                variant={showAddTodo ? 'outline' : 'default'}
-              >
-                {showAddTodo ? '취소' : '할일 추가'}
-              </Button>
+              <div className="flex items-center gap-2">
+                {postponableTodoIds.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">연기:</span>
+                    {(
+                      [
+                        { amount: 1, unit: 'day', label: '1일' },
+                        { amount: 1, unit: 'week', label: '1주일' },
+                        { amount: 1, unit: 'month', label: '1달' },
+                      ] as const
+                    ).map((option) => (
+                      <Button
+                        key={option.unit}
+                        variant="outline"
+                        size="sm"
+                        disabled={batchPostponeMutation.isPending}
+                        onClick={() => handleBatchPostpone(option.amount, option.unit)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  size="sm"
+                  onClick={() => setShowAddTodo(!showAddTodo)}
+                  variant={showAddTodo ? 'outline' : 'default'}
+                >
+                  {showAddTodo ? '취소' : '할일 추가'}
+                </Button>
+              </div>
             </div>
 
             {showAddTodo && (
