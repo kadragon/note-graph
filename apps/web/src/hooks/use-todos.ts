@@ -133,6 +133,46 @@ export function useUpdateTodo(workNoteId?: string) {
   });
 }
 
+export function useBatchPostponeTodos(workNoteId?: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      todoIds,
+      amount,
+      unit,
+    }: {
+      todoIds: string[];
+      amount: number;
+      unit: 'day' | 'week' | 'month';
+    }) => API.batchPostponeTodos(todoIds, amount, unit),
+    onSuccess: (data) => {
+      invalidateMany(
+        queryClient,
+        workNoteRelatedKeys(workNoteId, {
+          includeTodos: true,
+          includeWorkNotes: false,
+          includeWorkNotesWithStats: true,
+          includeWorkNoteTodos: true,
+        })
+      );
+      const parts: string[] = [`${data.updatedCount}개 할일의 마감일이 연기되었습니다.`];
+      if (data.skippedCount > 0) {
+        parts.push(`(마감일 없는 ${data.skippedCount}개 제외)`);
+      }
+      toast({ title: '성공', description: parts.join(' ') });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: error.message || '할일 마감일 연기에 실패했습니다.',
+      });
+    },
+  });
+}
+
 export function useDeleteTodo(workNoteId?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();

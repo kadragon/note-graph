@@ -9,7 +9,7 @@ import {
   getValidatedQuery,
   queryValidator,
 } from '../middleware/validation-middleware';
-import { listTodosQuerySchema, updateTodoSchema } from '../schemas/todo';
+import { batchPostponeTodosSchema, listTodosQuerySchema, updateTodoSchema } from '../schemas/todo';
 import { createProtectedRouter } from './_shared/router-factory';
 import { triggerReembed } from './_shared/trigger-reembed';
 
@@ -24,6 +24,24 @@ todos.get('/', queryValidator(listTodosQuerySchema), async (c) => {
   const results = await repository.findAll(query);
 
   return c.json(results);
+});
+
+/**
+ * PATCH /todos/batch-postpone - Batch postpone due dates for multiple todos
+ * Must be registered before /:todoId to avoid parameter collision
+ */
+todos.patch('/batch-postpone', bodyValidator(batchPostponeTodosSchema), async (c) => {
+  const data = getValidatedBody<typeof batchPostponeTodosSchema>(c);
+  const { todos: repository } = c.get('repositories');
+  const result = await repository.batchPostponeDueDates(data);
+
+  if (result.updatedCount > 0) {
+    c.executionCtx.waitUntil(
+      triggerReembed(c.env, result.workId, result.updatedTodoIds[0]!, 'batch-postpone')
+    );
+  }
+
+  return c.json({ updatedCount: result.updatedCount, skippedCount: result.skippedCount });
 });
 
 /**

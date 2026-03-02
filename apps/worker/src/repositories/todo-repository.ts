@@ -11,8 +11,14 @@ import type {
   Todo,
   TodoWithWorkNote,
 } from '@shared/types/todo';
+import { addDays, addMonths, addWeeks } from 'date-fns';
 import { nanoid } from 'nanoid';
-import type { CreateTodoInput, ListTodosQuery, UpdateTodoInput } from '../schemas/todo';
+import type {
+  BatchPostponeTodosInput,
+  CreateTodoInput,
+  ListTodosQuery,
+  UpdateTodoInput,
+} from '../schemas/todo';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI, TodoDueDateCount } from '../types/todo-due-date-context';
 
@@ -589,6 +595,69 @@ export class TodoRepository {
       customUnit: data.customUnit !== undefined ? data.customUnit || null : existing.customUnit,
       skipWeekends: data.skipWeekends !== undefined ? data.skipWeekends : existing.skipWeekends,
       updatedAt: updateFields.length > 0 ? nowISO : existing.updatedAt,
+    };
+  }
+
+  /**
+   * Batch postpone due dates for multiple todos
+   * Only updates todos that have a due_date; skips those without.
+   */
+  async batchPostponeDueDates(data: BatchPostponeTodosInput): Promise<{
+    workId: string;
+    updatedCount: number;
+    skippedCount: number;
+    updatedTodoIds: string[];
+  }> {
+    const { todoIds, amount, unit } = data;
+
+    // Fetch all requested todos
+    const placeholders = todoIds.map(() => '?').join(',');
+    const result = await this.db
+      .prepare(
+        `SELECT todo_id as todoId, work_id as workId, due_date as dueDate
+         FROM todos
+         WHERE todo_id IN (${placeholders})`
+      )
+      .bind(...todoIds)
+      .all<{ todoId: string; workId: string; dueDate: string | null }>();
+
+    const todos = result.results || [];
+
+    if (todos.length === 0) {
+      throw new NotFoundError('Todo', todoIds.join(', '));
+    }
+
+    // Verify all belong to the same work note
+    const workIds = new Set(todos.map((t) => t.workId));
+    if (workIds.size > 1) {
+      throw new Error('All todos must belong to the same work note');
+    }
+    const workId = todos[0]!.workId;
+
+    const nowISO = new Date().toISOString();
+    const withDueDate = todos.filter((t) => t.dueDate !== null);
+    const skippedCount = todos.length - withDueDate.length;
+
+    if (withDueDate.length === 0) {
+      return { workId, updatedCount: 0, skippedCount, updatedTodoIds: [] };
+    }
+
+    const addFn = unit === 'day' ? addDays : unit === 'week' ? addWeeks : addMonths;
+
+    const statements = withDueDate.map((todo) => {
+      const newDueDate = addFn(new Date(todo.dueDate as string), amount).toISOString();
+      return this.db
+        .prepare(`UPDATE todos SET due_date = ?, updated_at = ? WHERE todo_id = ?`)
+        .bind(newDueDate, nowISO, todo.todoId);
+    });
+
+    await this.db.batch(statements);
+
+    return {
+      workId,
+      updatedCount: withDueDate.length,
+      skippedCount,
+      updatedTodoIds: withDueDate.map((t) => t.todoId),
     };
   }
 }

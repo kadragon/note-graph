@@ -871,6 +871,13 @@ export class APIClient {
     });
   }
 
+  batchPostponeTodos(todoIds: string[], amount: number, unit: 'day' | 'week' | 'month') {
+    return this.request<{ updatedCount: number; skippedCount: number }>('/todos/batch-postpone', {
+      method: 'PATCH',
+      body: JSON.stringify({ todoIds, amount, unit }),
+    });
+  }
+
   async createWorkNoteTodo(workId: string, data: CreateTodoRequest) {
     const response = await this.request<BackendTodo>(`/work-notes/${workId}/todos`, {
       method: 'POST',
