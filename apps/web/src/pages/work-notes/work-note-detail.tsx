@@ -310,7 +310,9 @@ export default function WorkNoteDetail() {
           groupIds: editGroupIds,
           relatedPersonIds: editPersonIds,
           ...(relatedWorkNotesLoaded ? { relatedWorkIds } : {}),
-          relatedMeetingIds: editRelatedMeetings.map((m) => m.meetingId),
+          relatedMeetingIds: relatedWorkNotesLoaded
+            ? editRelatedMeetings.map((m) => m.meetingId)
+            : undefined,
         },
       });
       setIsEditing(false);
