@@ -143,8 +143,8 @@ export default function PDFUpload() {
                 <div>
                   <p className="text-sm font-medium mb-2">제안된 할 일</p>
                   <ul className="space-y-1">
-                    {job.draft.todos.map((todo, idx) => (
-                      <li key={`${todo.title}-${idx}`} className="text-sm flex items-start">
+                    {job.draft.todos.map((todo) => (
+                      <li key={todo.title} className="text-sm flex items-start">
                         <span className="mr-2">•</span>
                         <span>{todo.title}</span>
                       </li>

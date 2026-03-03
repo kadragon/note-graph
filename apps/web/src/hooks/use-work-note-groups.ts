@@ -14,7 +14,7 @@ export function useWorkNoteGroups(activeOnly = false) {
 export function useWorkNoteGroupWorkNotes(groupId?: string, enabled = true) {
   return useQuery({
     queryKey: ['workNoteGroupWorkNotes', groupId],
-    queryFn: () => API.getWorkNoteGroupWorkNotes(groupId!),
+    queryFn: () => API.getWorkNoteGroupWorkNotes(groupId as string),
     enabled: enabled && Boolean(groupId),
   });
 }

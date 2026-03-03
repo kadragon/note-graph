@@ -148,10 +148,10 @@ describe('WorkNoteGroupRepository', () => {
       const result = await repository.findById('g1');
 
       expect(result).not.toBeNull();
-      expect(result!.groupId).toBe('g1');
-      expect(result!.name).toBe('프로젝트A');
-      expect(result!.isActive).toBe(true);
-      expect(result!.createdAt).toBe(now);
+      expect(result?.groupId).toBe('g1');
+      expect(result?.name).toBe('프로젝트A');
+      expect(result?.isActive).toBe(true);
+      expect(result?.createdAt).toBe(now);
     });
 
     it('should return null for non-existent group', async () => {
@@ -172,7 +172,7 @@ describe('WorkNoteGroupRepository', () => {
 
       const found = await repository.findById(result.groupId);
       expect(found).not.toBeNull();
-      expect(found!.name).toBe('신규그룹');
+      expect(found?.name).toBe('신규그룹');
     });
 
     it('should throw ConflictError when name already exists', async () => {
@@ -189,8 +189,8 @@ describe('WorkNoteGroupRepository', () => {
       const result = await repository.findByName('검색그룹');
 
       expect(result).not.toBeNull();
-      expect(result!.name).toBe('검색그룹');
-      expect(result!.groupId).toMatch(/^GRP-/);
+      expect(result?.name).toBe('검색그룹');
+      expect(result?.groupId).toMatch(/^GRP-/);
     });
 
     it('should return null for non-existent name', async () => {
@@ -257,7 +257,7 @@ describe('WorkNoteGroupRepository', () => {
       expect(result.isActive).toBe(true);
 
       const found = await repository.findById(created.groupId);
-      expect(found!.name).toBe('새이름');
+      expect(found?.name).toBe('새이름');
     });
 
     it('should throw ConflictError when updating to duplicate name', async () => {
@@ -286,7 +286,7 @@ describe('WorkNoteGroupRepository', () => {
       expect(result.isActive).toBe(false);
 
       const found = await repository.findById(created.groupId);
-      expect(found!.isActive).toBe(false);
+      expect(found?.isActive).toBe(false);
     });
 
     it('should flip is_active from false to true', async () => {
