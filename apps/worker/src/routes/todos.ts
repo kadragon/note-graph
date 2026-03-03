@@ -37,7 +37,7 @@ todos.patch('/batch-postpone', bodyValidator(batchPostponeTodosSchema), async (c
 
   if (result.updatedCount > 0) {
     c.executionCtx.waitUntil(
-      triggerReembed(c.env, result.workId, result.updatedTodoIds[0]!, 'batch-postpone')
+      triggerReembed(c.env, result.workId, result.updatedTodoIds[0] as string, 'batch-postpone')
     );
   }
 

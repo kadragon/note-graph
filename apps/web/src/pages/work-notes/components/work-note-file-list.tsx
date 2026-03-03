@@ -292,9 +292,9 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
 
       {uploadingFiles.length > 0 && (
         <div className="space-y-2">
-          {uploadingFiles.map((file, index) => (
+          {uploadingFiles.map((file) => (
             <div
-              key={`uploading-${file.name}-${index}`}
+              key={`uploading-${file.name}`}
               className="flex items-center gap-2 rounded-md border border-border bg-muted p-3"
             >
               <FileIconDisplay fileName={file.name} />

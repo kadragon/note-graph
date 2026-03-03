@@ -30,7 +30,7 @@ const DEFAULT_ICON_INFO: FileIconInfo = { icon: File, colorClass: 'text-muted-fo
  * Return the icon component and color class for a given filename based on its extension.
  */
 export function getFileIconInfo(filename: string): FileIconInfo {
-  const ext = filename.includes('.') ? filename.split('.').pop()!.toLowerCase() : '';
+  const ext = filename.includes('.') ? (filename.split('.').pop()?.toLowerCase() ?? '') : '';
   return Object.hasOwn(EXTENSION_ICON_MAP, ext) ? EXTENSION_ICON_MAP[ext] : DEFAULT_ICON_INFO;
 }
 
