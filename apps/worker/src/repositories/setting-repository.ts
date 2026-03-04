@@ -82,11 +82,8 @@ export class SettingRepository {
       .bind(value, key)
       .run();
 
-    return {
-      ...existing,
-      value,
-      updatedAt: new Date().toISOString(),
-    };
+    const updated = await this.findByKey(key);
+    return updated as AppSetting;
   }
 
   async resetToDefault(key: string): Promise<AppSetting> {
@@ -102,11 +99,8 @@ export class SettingRepository {
       .bind(key)
       .run();
 
-    return {
-      ...existing,
-      value: existing.defaultValue,
-      updatedAt: new Date().toISOString(),
-    };
+    const updated = await this.findByKey(key);
+    return updated as AppSetting;
   }
 
   async ensureDefaults(defaults: DefaultSetting[]): Promise<void> {

@@ -49,7 +49,7 @@ settings.get('/openai-models', async (c) => {
 
   // Filter to GPT/O-series models only
   const filtered = (data.data || [])
-    .filter((m) => /^(gpt-|o1|o3|o4)/.test(m.id))
+    .filter((m) => /^(gpt-|o1|o3|o4|text-embedding-)/.test(m.id))
     .sort((a, b) => a.id.localeCompare(b.id));
 
   return c.json(filtered);

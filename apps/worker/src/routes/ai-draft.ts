@@ -95,7 +95,7 @@ app.post(
     const todoDueDateContext = c.get('todoDueDateContext');
 
     // Search for similar work notes using shared service
-    const workNoteService = new WorkNoteService(c.env);
+    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
     const similarNotes = await workNoteService.findSimilarNotes(
       body.inputText,
       SIMILAR_NOTES_TOP_K
@@ -155,7 +155,7 @@ app.post(
     const todoDueDateContext = c.get('todoDueDateContext');
 
     // Fetch work note
-    const workNoteService = new WorkNoteService(c.env);
+    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
     const workNote = await workNoteService.findById(workId);
 
     if (!workNote) {
@@ -221,7 +221,7 @@ app.post(
     const { newContent, generateNewTodos } = validationResult.data;
 
     // Fetch existing work note
-    const workNoteService = new WorkNoteService(c.env);
+    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
     const workNote = await workNoteService.findById(workId);
 
     if (!workNote) {

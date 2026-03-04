@@ -13,7 +13,7 @@ export function useSettings(category?: string) {
 
 export const useUpdateSetting = createStandardMutation<AppSetting, { key: string; value: string }>({
   mutationFn: ({ key, value }) => API.updateSetting(key, { value }),
-  invalidateKeys: [qk.settings()],
+  invalidateKeys: [['settings']],
   messages: {
     success: '설정이 저장되었습니다.',
     error: '설정 저장에 실패했습니다.',
@@ -22,7 +22,7 @@ export const useUpdateSetting = createStandardMutation<AppSetting, { key: string
 
 export const useResetSetting = createStandardMutation<AppSetting, string>({
   mutationFn: (key) => API.resetSetting(key),
-  invalidateKeys: [qk.settings()],
+  invalidateKeys: [['settings']],
   messages: {
     success: '기본값으로 초기화되었습니다.',
     error: '초기화에 실패했습니다.',

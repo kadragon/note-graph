@@ -38,7 +38,7 @@ const workNotes = createProtectedRouter<WorkNotesContext>();
  */
 workNotes.get('/', queryValidator(listWorkNotesQuerySchema), async (c) => {
   const query = getValidatedQuery<typeof listWorkNotesQuerySchema>(c);
-  const service = new WorkNoteService(c.env);
+  const service = new WorkNoteService(c.env, c.get('settingService'));
   const results = await service.findAll(query);
 
   return c.json(results);
@@ -50,7 +50,7 @@ workNotes.get('/', queryValidator(listWorkNotesQuerySchema), async (c) => {
  */
 workNotes.post('/', bodyValidator(createWorkNoteSchema), async (c) => {
   const data = getValidatedBody<typeof createWorkNoteSchema>(c);
-  const service = new WorkNoteService(c.env);
+  const service = new WorkNoteService(c.env, c.get('settingService'));
   const { workNote, embeddingPromise } = await service.create(data, { skipEmbedding: true });
 
   // Process embedding in background (non-blocking)
@@ -66,7 +66,7 @@ workNotes.post('/', bodyValidator(createWorkNoteSchema), async (c) => {
  */
 workNotes.get('/:workId', async (c) => {
   const { workId } = c.req.param();
-  const service = new WorkNoteService(c.env);
+  const service = new WorkNoteService(c.env, c.get('settingService'));
   const workNote = await service.findByIdWithDetails(workId);
 
   if (!workNote) {
@@ -83,7 +83,7 @@ workNotes.get('/:workId', async (c) => {
 workNotes.put('/:workId', bodyValidator(updateWorkNoteSchema), async (c) => {
   const workId = c.req.param('workId');
   const data = getValidatedBody<typeof updateWorkNoteSchema>(c);
-  const service = new WorkNoteService(c.env);
+  const service = new WorkNoteService(c.env, c.get('settingService'));
   const { workNote, embeddingPromise } = await service.update(workId, data, {
     skipEmbedding: true,
   });
@@ -103,7 +103,7 @@ workNotes.put('/:workId', bodyValidator(updateWorkNoteSchema), async (c) => {
 workNotes.delete('/:workId', async (c) => {
   const workId = c.req.param('workId');
   const user = getAuthUser(c);
-  const service = new WorkNoteService(c.env);
+  const service = new WorkNoteService(c.env, c.get('settingService'));
   const { cleanupPromise } = await service.delete(workId, user.email);
   c.executionCtx.waitUntil(cleanupPromise);
 
@@ -132,7 +132,9 @@ workNotes.post('/:workId/todos', bodyValidator(createTodoSchema), async (c) => {
   const todo = await repository.create(workId, data);
 
   // Re-embed work note to include new todo in vector store (async, non-blocking)
-  c.executionCtx.waitUntil(triggerReembed(c.env, workId, todo.todoId, 'creation'));
+  c.executionCtx.waitUntil(
+    triggerReembed(c.env, workId, todo.todoId, 'creation', c.get('settingService'))
+  );
 
   return c.json(todo, 201);
 });
@@ -146,7 +148,7 @@ workNotes.post('/:workId/files', async (c) => {
   const user = getAuthUser(c);
 
   // Verify work note exists before accepting upload
-  const workNoteService = new WorkNoteService(c.env);
+  const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
   const workNote = await workNoteService.findById(workId);
   if (!workNote) {
     return notFoundJson(c, 'Work note', workId);
@@ -204,7 +206,7 @@ workNotes.post('/:workId/files/migrate', workNoteFileMiddleware, async (c) => {
     return missingParamJson(c, 'workId');
   }
 
-  const workNoteService = new WorkNoteService(c.env);
+  const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
   const workNote = await workNoteService.findById(workId);
   if (!workNote) {
     return notFoundJson(c, 'Work note', workId);
