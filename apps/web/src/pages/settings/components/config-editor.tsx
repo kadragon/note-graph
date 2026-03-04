@@ -15,6 +15,20 @@ import { RotateCcw, Save } from 'lucide-react';
 
 const ENV_DEFAULT_VALUE = '__env_default__';
 
+const FALLBACK_CHAT_MODELS = [
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-4.1-nano',
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-4.5-preview',
+  'o3',
+  'o3-mini',
+  'o4-mini',
+];
+
+const FALLBACK_EMBEDDING_MODELS = ['text-embedding-3-small', 'text-embedding-3-large'];
+
 interface ConfigEditorProps {
   setting: AppSetting;
 }
@@ -42,9 +56,15 @@ export function ConfigEditor({ setting }: ConfigEditorProps) {
     return !m.id.includes('embedding');
   });
 
+  const fallbackModels = isEmbeddingSetting ? FALLBACK_EMBEDDING_MODELS : FALLBACK_CHAT_MODELS;
+  const displayModels =
+    filteredModels && filteredModels.length > 0 ? filteredModels.map((m) => m.id) : fallbackModels;
+  const isUsingFallback = !filteredModels || filteredModels.length === 0;
+
   // For Select, map empty string to sentinel and back
   const selectValue = value === '' ? ENV_DEFAULT_VALUE : value;
   const handleSelectChange = (v: string) => {
+    if (v === '__label__') return;
     setValue(v === ENV_DEFAULT_VALUE ? '' : v);
   };
 
@@ -80,16 +100,21 @@ export function ConfigEditor({ setting }: ConfigEditorProps) {
         <p className="text-xs text-muted-foreground">{setting.description}</p>
       )}
 
-      {isModelSetting && !modelsLoading && filteredModels && filteredModels.length > 0 ? (
+      {isModelSetting && !modelsLoading ? (
         <Select value={selectValue} onValueChange={handleSelectChange}>
           <SelectTrigger>
             <SelectValue placeholder="환경변수 기본값 사용" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ENV_DEFAULT_VALUE}>환경변수 기본값 사용</SelectItem>
-            {filteredModels.map((model) => (
-              <SelectItem key={model.id} value={model.id}>
-                {model.id}
+            {isUsingFallback && (
+              <SelectItem value="__label__" disabled>
+                — 오프라인 목록 —
+              </SelectItem>
+            )}
+            {displayModels.map((modelId) => (
+              <SelectItem key={modelId} value={modelId}>
+                {modelId}
               </SelectItem>
             ))}
           </SelectContent>
