@@ -240,7 +240,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
     }
   }
 
-  const keywordService = new MeetingMinuteKeywordService(c.env);
+  const keywordService = new MeetingMinuteKeywordService(c.env, c.get('settingService'));
   const repository = new MeetingMinuteRepository(c.env.DB);
 
   const keywords = await keywordService.extractKeywords({
@@ -308,7 +308,7 @@ meetingMinutes.post('/', bodyValidator(createMeetingMinuteSchema), async (c) => 
     );
   }
 
-  const keywordService = new MeetingMinuteKeywordService(c.env);
+  const keywordService = new MeetingMinuteKeywordService(c.env, c.get('settingService'));
   const repository = new MeetingMinuteRepository(c.env.DB);
   const personRepository = new PersonRepository(c.env.DB);
   const categoryRepository = new TaskCategoryRepository(c.env.DB);

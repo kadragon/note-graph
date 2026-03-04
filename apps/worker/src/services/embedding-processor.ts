@@ -9,6 +9,7 @@ import { WorkNoteRepository } from '../repositories/work-note-repository';
 import type { Env } from '../types/env';
 import { ChunkingService } from './chunking-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
+import type { SettingService } from './setting-service';
 import { VectorizeService } from './vectorize-service';
 
 export interface ReindexResult {
@@ -73,11 +74,14 @@ export class EmbeddingProcessor {
   private vectorizeService: VectorizeService;
   private embeddingService: OpenAIEmbeddingService;
 
-  constructor(private env: Env) {
+  constructor(
+    private env: Env,
+    settingService?: SettingService
+  ) {
     this.repository = new WorkNoteRepository(env.DB);
     this.chunkingService = new ChunkingService();
 
-    this.embeddingService = new OpenAIEmbeddingService(env);
+    this.embeddingService = new OpenAIEmbeddingService(env, settingService);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
   }
 

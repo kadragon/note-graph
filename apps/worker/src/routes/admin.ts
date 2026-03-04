@@ -19,7 +19,7 @@ const admin = createProtectedRouter();
 admin.post('/reindex-all', queryValidator(adminBatchQuerySchema), async (c) => {
   const { batchSize } = getValidatedQuery<typeof adminBatchQuerySchema>(c);
 
-  const processor = new EmbeddingProcessor(c.env);
+  const processor = new EmbeddingProcessor(c.env, c.get('settingService'));
   const result = await processor.reindexAll(batchSize);
 
   return c.json({
@@ -36,7 +36,7 @@ admin.post('/reindex-all', queryValidator(adminBatchQuerySchema), async (c) => {
 admin.post('/reindex/:workId', async (c) => {
   const workId = c.req.param('workId');
 
-  const processor = new EmbeddingProcessor(c.env);
+  const processor = new EmbeddingProcessor(c.env, c.get('settingService'));
 
   await processor.reindexOne(workId);
 
@@ -51,7 +51,7 @@ admin.post('/reindex/:workId', async (c) => {
  * Get embedding statistics (total, embedded, pending)
  */
 admin.get('/embedding-stats', async (c) => {
-  const processor = new EmbeddingProcessor(c.env);
+  const processor = new EmbeddingProcessor(c.env, c.get('settingService'));
   const stats = await processor.getEmbeddingStats();
 
   return c.json(stats);
@@ -65,7 +65,7 @@ admin.get('/embedding-stats', async (c) => {
 admin.post('/embed-pending', queryValidator(adminBatchQuerySchema), async (c) => {
   const { batchSize } = getValidatedQuery<typeof adminBatchQuerySchema>(c);
 
-  const processor = new EmbeddingProcessor(c.env);
+  const processor = new EmbeddingProcessor(c.env, c.get('settingService'));
   const result = await processor.embedPending(batchSize);
 
   return c.json({

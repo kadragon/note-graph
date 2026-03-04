@@ -135,7 +135,7 @@ pdf.post('/', async (c) => {
 
   // Initialize services
   const extractionService = new PdfExtractionService();
-  const aiDraftService = new AIDraftService(c.env);
+  const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
   const { pdfJobs: repository, todos: todoRepository } = c.get('repositories');
 
   // Create job with PENDING status before processing
@@ -146,7 +146,7 @@ pdf.post('/', async (c) => {
     extractionService.validatePdfBuffer(pdfBuffer);
     const extractedText = await extractionService.extractText(pdfBuffer);
     const todoDueDateContext = await todoRepository.getOpenTodoDueDateContextForAI(10);
-    const workNoteService = new WorkNoteService(c.env);
+    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
     const similarNotes = await workNoteService.findSimilarNotes(extractedText, SIMILAR_NOTES_TOP_K);
     const draft =
       similarNotes.length > 0

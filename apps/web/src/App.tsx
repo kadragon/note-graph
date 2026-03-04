@@ -32,6 +32,7 @@ const VectorStore = lazy(() => import('@web/pages/vector-store'));
 
 const Statistics = lazy(() => import('@web/pages/statistics'));
 const AILogs = lazy(() => import('@web/pages/ai-logs'));
+const Settings = lazy(() => import('@web/pages/settings'));
 
 function App() {
   const location = useLocation();
@@ -70,6 +71,7 @@ function App() {
               <Route path="/pdf" element={<PDFUpload />} />
               <Route path="/vector-store" element={<VectorStore />} />
               <Route path="/ai-logs" element={<AILogs />} />
+              <Route path="/settings" element={<Settings />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>

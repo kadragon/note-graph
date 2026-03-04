@@ -67,7 +67,7 @@ app.post(
     const activeCategoryNames = c.get('activeCategoryNames');
     const todoDueDateContext = c.get('todoDueDateContext');
 
-    const aiDraftService = new AIDraftService(c.env);
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
     const draft = await aiDraftService.generateDraftFromText(body.inputText, {
       category: body.category,
       personIds: body.personIds,
@@ -95,14 +95,14 @@ app.post(
     const todoDueDateContext = c.get('todoDueDateContext');
 
     // Search for similar work notes using shared service
-    const workNoteService = new WorkNoteService(c.env);
+    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
     const similarNotes = await workNoteService.findSimilarNotes(
       body.inputText,
       SIMILAR_NOTES_TOP_K
     );
 
     // Generate AI draft with similar notes as context
-    const aiDraftService = new AIDraftService(c.env);
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
     const draft =
       similarNotes.length > 0
         ? await aiDraftService.generateDraftFromTextWithContext(body.inputText, similarNotes, {
@@ -155,7 +155,7 @@ app.post(
     const todoDueDateContext = c.get('todoDueDateContext');
 
     // Fetch work note
-    const workNoteService = new WorkNoteService(c.env);
+    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
     const workNote = await workNoteService.findById(workId);
 
     if (!workNote) {
@@ -163,7 +163,7 @@ app.post(
     }
 
     // Generate todo suggestions
-    const aiDraftService = new AIDraftService(c.env);
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
     const todos = await aiDraftService.generateTodoSuggestions(workNote, body.contextText, {
       todoDueDateContext,
     });
@@ -221,7 +221,7 @@ app.post(
     const { newContent, generateNewTodos } = validationResult.data;
 
     // Fetch existing work note
-    const workNoteService = new WorkNoteService(c.env);
+    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
     const workNote = await workNoteService.findById(workId);
 
     if (!workNote) {
@@ -241,7 +241,7 @@ app.post(
     const similarNotes = await workNoteService.findSimilarNotes(newContent, SIMILAR_NOTES_TOP_K);
 
     // Generate enhanced draft
-    const aiDraftService = new AIDraftService(c.env);
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
     const enhancedDraft = await aiDraftService.enhanceExistingWorkNote(
       workNote,
       todoReferences,

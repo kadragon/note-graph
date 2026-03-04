@@ -1,7 +1,8 @@
 import worker from '@worker/index';
 import { EMBEDDING_FAILURE_REASON, EmbeddingProcessor } from '@worker/services/embedding-processor';
+import { SettingService } from '@worker/services/setting-service';
 import type { Env } from '@worker/types/env';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('Worker scheduled handler', () => {
   it('runs embedPending through waitUntil', async () => {
@@ -54,10 +55,15 @@ describe('Worker scheduled handler', () => {
     expect(dbMock.prepare).toHaveBeenCalled();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('counts scheduled skip reasons from error reason codes', async () => {
     const waitUntil = vi.fn();
     const ctx = { waitUntil } as unknown as ExecutionContext;
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(SettingService.prototype, 'preload').mockResolvedValue();
     const embedPendingSpy = vi
       .spyOn(EmbeddingProcessor.prototype, 'embedPending')
       .mockResolvedValue({

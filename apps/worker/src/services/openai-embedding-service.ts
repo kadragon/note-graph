@@ -2,12 +2,25 @@
 
 import type { Env } from '../types/env';
 import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
+import type { SettingService } from './setting-service';
 
 /**
  * OpenAI embedding service using AI Gateway
  */
 export class OpenAIEmbeddingService {
-  constructor(private env: Env) {}
+  constructor(
+    private env: Env,
+    private settingService?: SettingService
+  ) {}
+
+  private getModel(): string {
+    return (
+      this.settingService?.getConfigOrEnv(
+        'config.openai_model_embedding',
+        this.env.OPENAI_MODEL_EMBEDDING
+      ) ?? this.env.OPENAI_MODEL_EMBEDDING
+    );
+  }
 
   /**
    * Generate embedding for a single text
@@ -50,7 +63,7 @@ export class OpenAIEmbeddingService {
     const url = getAIGatewayUrl(this.env, 'embeddings');
 
     const requestBody = {
-      model: this.env.OPENAI_MODEL_EMBEDDING,
+      model: this.getModel(),
       input: inputs,
       encoding_format: 'float',
     };

@@ -6,6 +6,7 @@ import type {
   AIGatewayLogsResponse,
   AIGenerateDraftRequest,
   AIGenerateDraftResponse,
+  AppSetting,
   BatchProcessResult,
   CalendarEventsResponse,
   CreateDepartmentRequest,
@@ -23,6 +24,7 @@ import type {
   GoogleDriveStatus,
   ImportPersonFromTextRequest,
   ImportPersonResponse,
+  OpenAIModel,
   ParsedPersonData,
   PDFJob,
   Person,
@@ -1086,6 +1088,29 @@ export class APIClient {
       category: params.category,
     });
     return this.request<WorkNoteStatistics>(`/statistics${queryString}`);
+  }
+
+  // Settings
+  getSettings(category?: string) {
+    const queryString = this.buildQueryString({ category });
+    return this.request<AppSetting[]>(`/settings${queryString}`);
+  }
+
+  updateSetting(key: string, data: { value: string }) {
+    return this.request<AppSetting>(`/settings/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  resetSetting(key: string) {
+    return this.request<AppSetting>(`/settings/${key}/reset`, {
+      method: 'POST',
+    });
+  }
+
+  getOpenAIModels() {
+    return this.request<OpenAIModel[]>('/settings/openai-models');
   }
 
   // Calendar

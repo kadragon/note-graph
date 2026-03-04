@@ -17,6 +17,7 @@ import type { Env } from '../types/env';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingProcessor } from './embedding-processor';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
+import type { SettingService } from './setting-service';
 import { VectorizeService } from './vectorize-service';
 import { WorkNoteFileService } from './work-note-file-service';
 
@@ -43,13 +44,13 @@ export class WorkNoteService {
   private embeddingProcessor: EmbeddingProcessor;
   private fileService: WorkNoteFileService | null;
 
-  constructor(env: Env) {
+  constructor(env: Env, settingService?: SettingService) {
     this.repository = new WorkNoteRepository(env.DB);
     this.chunkingService = new ChunkingService();
 
-    this.embeddingService = new OpenAIEmbeddingService(env);
+    this.embeddingService = new OpenAIEmbeddingService(env, settingService);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
-    this.embeddingProcessor = new EmbeddingProcessor(env);
+    this.embeddingProcessor = new EmbeddingProcessor(env, settingService);
 
     // Initialize file service only when Google Drive credentials are configured
     const hasGoogleDrive = !!(

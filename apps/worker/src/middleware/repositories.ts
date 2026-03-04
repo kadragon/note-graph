@@ -35,10 +35,11 @@ import { DepartmentRepository } from '../repositories/department-repository';
 import { EmbeddingRetryQueueRepository } from '../repositories/embedding-retry-queue-repository';
 import { PdfJobRepository } from '../repositories/pdf-job-repository';
 import { PersonRepository } from '../repositories/person-repository';
-
+import { SettingRepository } from '../repositories/setting-repository';
 import { TaskCategoryRepository } from '../repositories/task-category-repository';
 import { TodoRepository } from '../repositories/todo-repository';
 import { WorkNoteGroupRepository } from '../repositories/work-note-group-repository';
+import { SettingService } from '../services/setting-service';
 import type { AppContext, Repositories } from '../types/context';
 
 export async function repositoriesMiddleware(c: Context<AppContext>, next: Next): Promise<void> {
@@ -54,13 +55,17 @@ export async function repositoriesMiddleware(c: Context<AppContext>, next: Next)
     personsWithAutoCreateDepartment: new PersonRepository(c.env.DB, {
       autoCreateDepartment: true,
     }),
-
+    settings: new SettingRepository(c.env.DB),
     taskCategories: new TaskCategoryRepository(c.env.DB),
     todos: new TodoRepository(c.env.DB),
     workNoteGroups: new WorkNoteGroupRepository(c.env.DB),
   };
 
   c.set('repositories', repositories);
+
+  const settingService = new SettingService(repositories.settings);
+  await settingService.preload();
+  c.set('settingService', settingService);
 
   await next();
 }

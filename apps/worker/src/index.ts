@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { getMeHandler } from './handlers/auth';
 import { authMiddleware } from './middleware/auth';
 import { repositoriesMiddleware } from './middleware/repositories';
+import { SettingRepository } from './repositories/setting-repository';
 import admin from './routes/admin';
 import aiDraft from './routes/ai-draft';
 import { authGoogle } from './routes/auth-google';
@@ -18,15 +19,16 @@ import meetingMinutes from './routes/meeting-minutes';
 import pdf from './routes/pdf';
 // Route imports
 import persons from './routes/persons';
-
 import rag from './routes/rag';
 import search from './routes/search';
+import settings from './routes/settings';
 import statistics from './routes/statistics';
 import taskCategories from './routes/task-categories';
 import todos from './routes/todos';
 import workNoteGroups from './routes/work-note-groups';
 import workNotes from './routes/work-notes';
 import { EMBEDDING_FAILURE_REASON, EmbeddingProcessor } from './services/embedding-processor';
+import { SettingService } from './services/setting-service';
 import type { AppContext } from './types/context';
 import type { Env } from './types/env';
 import { DomainError } from './types/errors';
@@ -74,6 +76,7 @@ api.get('/', (c) => {
       workNotes: '/api/work-notes',
       todos: '/api/todos',
       search: '/api/search',
+      settings: '/api/settings',
       rag: '/api/rag',
       ai: '/api/ai',
       pdfJobs: '/api/pdf-jobs',
@@ -102,6 +105,7 @@ api.route('/rag', rag);
 api.route('/ai', aiDraft);
 api.route('/pdf-jobs', pdf);
 api.route('/admin', admin);
+api.route('/settings', settings);
 api.route('/statistics', statistics);
 api.route('/auth/google', authGoogle);
 api.route('/calendar', calendar);
@@ -200,7 +204,10 @@ app.onError((err, c) => {
 const SCHEDULED_EMBED_PENDING_BATCH_SIZE = 20;
 
 async function runScheduledEmbedPending(env: Env): Promise<void> {
-  const processor = new EmbeddingProcessor(env);
+  const settingRepo = new SettingRepository(env.DB);
+  const settingService = new SettingService(settingRepo);
+  await settingService.preload();
+  const processor = new EmbeddingProcessor(env, settingService);
   const result = await processor.embedPending(SCHEDULED_EMBED_PENDING_BATCH_SIZE);
 
   const skipReasons = {

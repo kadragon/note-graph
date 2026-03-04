@@ -19,6 +19,7 @@ import {
   NotebookPen,
   ScrollText,
   Search,
+  Settings,
   Settings2,
   Tag,
   Users,
@@ -119,6 +120,19 @@ export default function TopMenu() {
             aria-label={isCalendarConnected ? '캘린더 연결됨' : '캘린더 미연결'}
           />
         </div>
+        <NavLink
+          to="/settings"
+          aria-label="설정"
+          title="설정"
+          className={({ isActive }) =>
+            cn(
+              'flex h-8 w-8 items-center justify-center rounded-md',
+              isActive ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'
+            )
+          }
+        >
+          <Settings className="h-4 w-4" />
+        </NavLink>
         <Button
           variant="outline"
           size="icon"
