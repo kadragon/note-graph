@@ -2,18 +2,22 @@ import { act, waitFor } from '@testing-library/react';
 import { API } from '@web/lib/api';
 import { createPerson, resetFactoryCounter } from '@web/test/factories';
 import { createTestQueryClient, renderHookWithClient } from '@web/test/setup';
-import type { ImportPersonResponse, ParsedPersonData } from '@web/types/api';
+import type { ImportPersonResponse, ParsedPersonData, PersonDeptHistory } from '@web/types/api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   useCreatePerson,
   useImportPerson,
   useParsePersonFromText,
+  usePersonHistory,
+  usePersons,
   useUpdatePerson,
 } from '../use-persons';
 
 vi.mock('@web/lib/api', () => ({
   API: {
+    getPersons: vi.fn(),
+    getPersonHistory: vi.fn(),
     createPerson: vi.fn(),
     updatePerson: vi.fn(),
     parsePersonFromText: vi.fn(),
@@ -26,12 +30,116 @@ vi.mock('../use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-describe('useCreatePerson', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
+beforeEach(() => {
+  vi.clearAllMocks();
+  resetFactoryCounter();
+});
+
+describe('usePersons', () => {
+  it('fetches persons successfully', async () => {
+    const mockPersons = [createPerson({ name: 'Person 1' }), createPerson({ name: 'Person 2' })];
+    vi.mocked(API.getPersons).mockResolvedValue(mockPersons);
+
+    const { result } = renderHookWithClient(() => usePersons());
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(API.getPersons).toHaveBeenCalled();
+    expect(result.current.data).toEqual(mockPersons);
   });
 
+  it('returns loading state initially', () => {
+    vi.mocked(API.getPersons).mockImplementation(() => new Promise(() => {}));
+
+    const { result } = renderHookWithClient(() => usePersons());
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.data).toBeUndefined();
+  });
+
+  it('returns error state on API failure', async () => {
+    const error = new Error('Network error');
+    vi.mocked(API.getPersons).mockRejectedValue(error);
+
+    const { result } = renderHookWithClient(() => usePersons());
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toBe(error);
+  });
+});
+
+describe('usePersonHistory', () => {
+  it('fetches person history when personId is provided', async () => {
+    const mockHistory: PersonDeptHistory[] = [
+      {
+        id: 1,
+        personId: 'person-1',
+        deptName: 'Engineering',
+        position: 'Senior Engineer',
+        roleDesc: 'Backend Development',
+        startDate: '2023-01-01',
+        endDate: null,
+        isActive: true,
+      },
+      {
+        id: 2,
+        personId: 'person-1',
+        deptName: 'QA',
+        position: 'Engineer',
+        roleDesc: 'Quality Assurance',
+        startDate: '2022-01-01',
+        endDate: '2022-12-31',
+        isActive: false,
+      },
+    ];
+    vi.mocked(API.getPersonHistory).mockResolvedValue(mockHistory);
+
+    const { result } = renderHookWithClient(() => usePersonHistory('person-1'));
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(API.getPersonHistory).toHaveBeenCalledWith('person-1');
+    expect(result.current.data).toEqual(mockHistory);
+  });
+
+  it('does not fetch when personId is null', () => {
+    const { result } = renderHookWithClient(() => usePersonHistory(null));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(API.getPersonHistory).not.toHaveBeenCalled();
+  });
+
+  it('does not fetch when personId is empty string', () => {
+    const { result } = renderHookWithClient(() => usePersonHistory(''));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(API.getPersonHistory).not.toHaveBeenCalled();
+  });
+
+  it('returns error state on API failure', async () => {
+    const error = new Error('Network error');
+    vi.mocked(API.getPersonHistory).mockRejectedValue(error);
+
+    const { result } = renderHookWithClient(() => usePersonHistory('person-1'));
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error).toBe(error);
+  });
+});
+
+describe('useCreatePerson', () => {
   it('creates person successfully', async () => {
     const newPerson = createPerson({ name: 'New Person' });
     vi.mocked(API.createPerson).mockResolvedValue(newPerson);
@@ -88,11 +196,6 @@ describe('useCreatePerson', () => {
 });
 
 describe('useUpdatePerson', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('updates person successfully', async () => {
     const person = createPerson({ personId: 'person-1', name: 'Original Name' });
     const updatedPerson = { ...person, name: 'Updated Name' };
@@ -144,11 +247,6 @@ describe('useUpdatePerson', () => {
 });
 
 describe('useParsePersonFromText', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('parses person from text successfully', async () => {
     const parsedData: ParsedPersonData = {
       personId: '123456',
@@ -200,11 +298,6 @@ describe('useParsePersonFromText', () => {
 });
 
 describe('useImportPerson', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('imports new person successfully and shows appropriate toast', async () => {
     const newPerson = createPerson({ name: 'New Import' });
     const response: ImportPersonResponse = {
@@ -293,5 +386,49 @@ describe('useImportPerson', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['persons'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['departments'] });
+  });
+});
+
+describe('Mutation error toast', () => {
+  it('shows error toast with custom message on createPerson failure', async () => {
+    const error = new Error('Creation failed');
+    vi.mocked(API.createPerson).mockRejectedValue(error);
+
+    const { result } = renderHookWithClient(() => useCreatePerson());
+
+    await act(async () => {
+      result.current.mutate({ personId: '123456', name: 'Test', employmentStatus: '재직' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      variant: 'destructive',
+      title: '오류',
+      description: 'Creation failed',
+    });
+  });
+
+  it('shows default error message when error has no message', async () => {
+    const error = new Error();
+    vi.mocked(API.createPerson).mockRejectedValue(error);
+
+    const { result } = renderHookWithClient(() => useCreatePerson());
+
+    await act(async () => {
+      result.current.mutate({ personId: '123456', name: 'Test', employmentStatus: '재직' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      variant: 'destructive',
+      title: '오류',
+      description: '사람을 추가할 수 없습니다.',
+    });
   });
 });
