@@ -1,5 +1,5 @@
-// Integration tests for error serialization and HTTP status mapping
-// Consolidated from tests/unit/errors.test.ts
+// Unit tests for error serialization and HTTP status mapping
+// Moved from tests/integration/error-types.test.ts
 
 import {
   BadRequestError,

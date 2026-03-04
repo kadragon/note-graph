@@ -30,12 +30,12 @@ vi.mock('../use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-describe('usePersons', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
+beforeEach(() => {
+  vi.clearAllMocks();
+  resetFactoryCounter();
+});
 
+describe('usePersons', () => {
   it('fetches persons successfully', async () => {
     const mockPersons = [createPerson({ name: 'Person 1' }), createPerson({ name: 'Person 2' })];
     vi.mocked(API.getPersons).mockResolvedValue(mockPersons);
@@ -74,11 +74,6 @@ describe('usePersons', () => {
 });
 
 describe('usePersonHistory', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('fetches person history when personId is provided', async () => {
     const mockHistory: PersonDeptHistory[] = [
       {
@@ -145,11 +140,6 @@ describe('usePersonHistory', () => {
 });
 
 describe('useCreatePerson', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('creates person successfully', async () => {
     const newPerson = createPerson({ name: 'New Person' });
     vi.mocked(API.createPerson).mockResolvedValue(newPerson);
@@ -206,11 +196,6 @@ describe('useCreatePerson', () => {
 });
 
 describe('useUpdatePerson', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('updates person successfully', async () => {
     const person = createPerson({ personId: 'person-1', name: 'Original Name' });
     const updatedPerson = { ...person, name: 'Updated Name' };
@@ -262,11 +247,6 @@ describe('useUpdatePerson', () => {
 });
 
 describe('useParsePersonFromText', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('parses person from text successfully', async () => {
     const parsedData: ParsedPersonData = {
       personId: '123456',
@@ -318,11 +298,6 @@ describe('useParsePersonFromText', () => {
 });
 
 describe('useImportPerson', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('imports new person successfully and shows appropriate toast', async () => {
     const newPerson = createPerson({ name: 'New Import' });
     const response: ImportPersonResponse = {
@@ -411,5 +386,49 @@ describe('useImportPerson', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['persons'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['departments'] });
+  });
+});
+
+describe('Mutation error toast', () => {
+  it('shows error toast with custom message on createPerson failure', async () => {
+    const error = new Error('Creation failed');
+    vi.mocked(API.createPerson).mockRejectedValue(error);
+
+    const { result } = renderHookWithClient(() => useCreatePerson());
+
+    await act(async () => {
+      result.current.mutate({ personId: '123456', name: 'Test', employmentStatus: '재직' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      variant: 'destructive',
+      title: '오류',
+      description: 'Creation failed',
+    });
+  });
+
+  it('shows default error message when error has no message', async () => {
+    const error = new Error();
+    vi.mocked(API.createPerson).mockRejectedValue(error);
+
+    const { result } = renderHookWithClient(() => useCreatePerson());
+
+    await act(async () => {
+      result.current.mutate({ personId: '123456', name: 'Test', employmentStatus: '재직' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      variant: 'destructive',
+      title: '오류',
+      description: '사람을 추가할 수 없습니다.',
+    });
   });
 });

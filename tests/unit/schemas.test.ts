@@ -61,51 +61,51 @@ describe('Schema Validation', () => {
           expect(updateMeetingMinuteSchema.safeParse(invalidCase).success).toBe(false);
         }
       });
-
-      describe('listMeetingMinutesQuerySchema', () => {
-        it('applies defaults for missing pagination fields', () => {
-          const result = listMeetingMinutesQuerySchema.safeParse({});
-          expect(result.success).toBe(true);
-          if (result.success) {
-            expect(result.data.page).toBe(1);
-            expect(result.data.pageSize).toBe(20);
-          }
-        });
-
-        it('falls back to defaults for invalid pagination values', () => {
-          const result = listMeetingMinutesQuerySchema.safeParse({
-            page: 'abc',
-            pageSize: 'xyz',
-          });
-          expect(result.success).toBe(true);
-          if (result.success) {
-            expect(result.data.page).toBe(1);
-            expect(result.data.pageSize).toBe(20);
-          }
-        });
-      });
     });
 
-    describe('Admin Schemas', () => {
-      it('adminBatchQuerySchema applies batchSize default', () => {
-        const result = adminBatchQuerySchema.safeParse({});
+    describe('listMeetingMinutesQuerySchema', () => {
+      it('applies defaults for missing pagination fields', () => {
+        const result = listMeetingMinutesQuerySchema.safeParse({});
         expect(result.success).toBe(true);
         if (result.success) {
-          expect(result.data.batchSize).toBe(10);
+          expect(result.data.page).toBe(1);
+          expect(result.data.pageSize).toBe(20);
         }
       });
 
-      it('adminEmbeddingFailuresQuerySchema applies defaults and clamps negatives', () => {
-        const result = adminEmbeddingFailuresQuerySchema.safeParse({
-          limit: '-3',
-          offset: '-10',
+      it('falls back to defaults for invalid pagination values', () => {
+        const result = listMeetingMinutesQuerySchema.safeParse({
+          page: 'abc',
+          pageSize: 'xyz',
         });
         expect(result.success).toBe(true);
         if (result.success) {
-          expect(result.data.limit).toBe(1);
-          expect(result.data.offset).toBe(0);
+          expect(result.data.page).toBe(1);
+          expect(result.data.pageSize).toBe(20);
         }
       });
+    });
+  });
+
+  describe('Admin Schemas', () => {
+    it('adminBatchQuerySchema applies batchSize default', () => {
+      const result = adminBatchQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.batchSize).toBe(10);
+      }
+    });
+
+    it('adminEmbeddingFailuresQuerySchema applies defaults and clamps negatives', () => {
+      const result = adminEmbeddingFailuresQuerySchema.safeParse({
+        limit: '-3',
+        offset: '-10',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.limit).toBe(1);
+        expect(result.data.offset).toBe(0);
+      }
     });
   });
 

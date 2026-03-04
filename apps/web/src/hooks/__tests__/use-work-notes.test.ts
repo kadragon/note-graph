@@ -43,14 +43,14 @@ vi.mock('../use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  resetFactoryCounter();
+});
+
 // --- Query hooks ---
 
 describe('useWorkNotes', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('fetches work notes successfully', async () => {
     const mockWorkNotes = [
       createWorkNote({ title: 'Work Note 1' }),
@@ -92,11 +92,6 @@ describe('useWorkNotes', () => {
 });
 
 describe('useWorkNotesWithStats', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('fetches work notes with calculated todo stats', async () => {
     const workNote = createWorkNote({ id: 'work-1', title: 'Work Note 1' });
     vi.mocked(API.getWorkNotes).mockResolvedValue([workNote]);
@@ -253,11 +248,6 @@ describe('useWorkNotesWithStats', () => {
 });
 
 describe('useWorkNoteFiles', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('fetches files for a work note', async () => {
     const mockFiles = [
       createDriveFileListItem({ id: 'file-1', name: 'file1.pdf' }),
@@ -305,11 +295,6 @@ describe('useWorkNoteFiles', () => {
 });
 
 describe('useGoogleDriveStatus', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('fetches Google Drive status successfully', async () => {
     const mockStatus = {
       connected: true,
@@ -364,11 +349,6 @@ describe('useGoogleDriveStatus', () => {
 // --- Mutation hooks ---
 
 describe('useCreateWorkNote', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('creates work note successfully', async () => {
     const newWorkNote = createWorkNote({ title: 'New Note' });
     vi.mocked(API.createWorkNote).mockResolvedValue(newWorkNote);
@@ -413,11 +393,6 @@ describe('useCreateWorkNote', () => {
 });
 
 describe('useUpdateWorkNote', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('updates work note successfully', async () => {
     const updatedWorkNote = createWorkNote({ id: 'work-1', title: 'Updated Title' });
     vi.mocked(API.updateWorkNote).mockResolvedValue(updatedWorkNote);
@@ -463,11 +438,6 @@ describe('useUpdateWorkNote', () => {
 });
 
 describe('useDeleteWorkNote', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('deletes work note successfully', async () => {
     vi.mocked(API.deleteWorkNote).mockResolvedValue(undefined);
 
@@ -510,11 +480,6 @@ describe('useDeleteWorkNote', () => {
 });
 
 describe('useUploadWorkNoteFile', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('uploads file successfully', async () => {
     const uploadedFile = createDriveFileListItem({ id: 'new-file', name: 'uploaded.pdf' });
     vi.mocked(API.uploadWorkNoteFile).mockResolvedValue(uploadedFile);
@@ -563,11 +528,6 @@ describe('useUploadWorkNoteFile', () => {
 });
 
 describe('useDeleteWorkNoteFile', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('deletes file successfully', async () => {
     vi.mocked(API.deleteWorkNoteFile).mockResolvedValue(undefined);
 
@@ -610,11 +570,6 @@ describe('useDeleteWorkNoteFile', () => {
 });
 
 describe('useMigrateWorkNoteFiles', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetFactoryCounter();
-  });
-
   it('migrates R2 files successfully', async () => {
     vi.mocked(API.migrateWorkNoteFiles).mockResolvedValue({
       migrated: 2,
@@ -636,6 +591,50 @@ describe('useMigrateWorkNoteFiles', () => {
     expect(mockToast).toHaveBeenCalledWith({
       title: '성공',
       description: '마이그레이션 완료: 이동 2개 · 건너뜀 0개 · 실패 0개',
+    });
+  });
+});
+
+describe('Mutation error toast', () => {
+  it('shows error toast with custom message on createWorkNote failure', async () => {
+    const error = new Error('Creation failed');
+    vi.mocked(API.createWorkNote).mockRejectedValue(error);
+
+    const { result } = renderHookWithClient(() => useCreateWorkNote());
+
+    await act(async () => {
+      result.current.mutate({ title: 'New Note', content: 'Test content' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      variant: 'destructive',
+      title: '오류',
+      description: 'Creation failed',
+    });
+  });
+
+  it('shows default error message when error has no message', async () => {
+    const error = new Error();
+    vi.mocked(API.createWorkNote).mockRejectedValue(error);
+
+    const { result } = renderHookWithClient(() => useCreateWorkNote());
+
+    await act(async () => {
+      result.current.mutate({ title: 'New Note', content: 'Test content' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith({
+      variant: 'destructive',
+      title: '오류',
+      description: '업무노트를 생성할 수 없습니다.',
     });
   });
 });
