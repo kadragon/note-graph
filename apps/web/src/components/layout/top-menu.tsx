@@ -89,9 +89,16 @@ export default function TopMenu() {
   return (
     <div className="flex items-center gap-6">
       <nav aria-label="주요 메뉴" className="flex items-center gap-2">
-        {navItems.map((item) => (
-          <NavLinkItem key={item.path} item={item} />
-        ))}
+        {[navItems.slice(0, 4), navItems.slice(4, 6), navItems.slice(6, 8), navItems.slice(8)].map(
+          (group) => (
+            <React.Fragment key={group[0].path}>
+              {group[0].path !== navItems[0].path && <div className="w-px h-5 bg-border mx-1" />}
+              {group.map((item) => (
+                <NavLinkItem key={item.path} item={item} />
+              ))}
+            </React.Fragment>
+          )
+        )}
       </nav>
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
