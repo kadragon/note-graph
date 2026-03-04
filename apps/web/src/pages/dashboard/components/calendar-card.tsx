@@ -35,10 +35,10 @@ export function CalendarCard() {
   // Loading state
   if (isStatusLoading) {
     return (
-      <Card className="border-l-4 border-l-blue-500">
+      <Card className="border-l-4 border-l-primary">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-500" aria-hidden="true" />
+            <Calendar className="h-5 w-5 text-primary" aria-hidden="true" />
             캘린더
           </CardTitle>
         </CardHeader>
@@ -57,10 +57,10 @@ export function CalendarCard() {
   // Not connected state
   if (!isConnected) {
     return (
-      <Card className="border-l-4 border-l-blue-500">
+      <Card className="border-l-4 border-l-primary">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-500" aria-hidden="true" />
+            <Calendar className="h-5 w-5 text-primary" aria-hidden="true" />
             캘린더
           </CardTitle>
         </CardHeader>
@@ -89,10 +89,10 @@ export function CalendarCard() {
 
   if (isError) {
     return (
-      <Card className="border-l-4 border-l-blue-500">
+      <Card className="border-l-4 border-l-primary">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-500" aria-hidden="true" />
+            <Calendar className="h-5 w-5 text-primary" aria-hidden="true" />
             캘린더
           </CardTitle>
         </CardHeader>
@@ -123,10 +123,10 @@ export function CalendarCard() {
   }
 
   return (
-    <Card className="border-l-4 border-l-blue-500">
+    <Card className="border-l-4 border-l-primary">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-blue-500" aria-hidden="true" />
+          <Calendar className="h-5 w-5 text-primary" aria-hidden="true" />
           캘린더
           {isEventsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </CardTitle>

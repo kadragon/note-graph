@@ -10,7 +10,13 @@ import { RateLimitError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { getTodayDateUTC } from '../utils/date';
-import { DEFAULT_WRITER_CONTEXT } from './setting-defaults';
+import {
+  DEFAULT_AI_DRAFT_CREATE_PROMPT,
+  DEFAULT_AI_DRAFT_CREATE_WITH_CONTEXT_PROMPT,
+  DEFAULT_AI_DRAFT_ENHANCE_PROMPT,
+  DEFAULT_AI_DRAFT_TODO_SUGGESTIONS_PROMPT,
+  DEFAULT_WRITER_CONTEXT,
+} from './setting-defaults';
 import type { SettingService } from './setting-service';
 
 /**
@@ -92,6 +98,20 @@ export class AIDraftService {
       this.settingService?.getConfigOrEnv('config.openai_model_chat', this.env.OPENAI_MODEL_CHAT) ??
       this.env.OPENAI_MODEL_CHAT
     );
+  }
+
+  private renderTemplate(template: string, vars: Record<string, string>): string {
+    const result = template.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] ?? match);
+
+    const unreplaced = result.match(/\{\{[A-Z_]+\}\}/g);
+    if (unreplaced) {
+      console.warn(
+        `[AIDraftService] Template has unreplaced placeholders: ${unreplaced.join(', ')}. ` +
+          `Check that the custom prompt template uses valid variable names.`
+      );
+    }
+
+    return result;
   }
 
   /**
@@ -295,17 +315,16 @@ export class AIDraftService {
     newContent: string,
     options?: EnhanceOptions
   ): string {
+    const template =
+      this.settingService?.getValue('prompt.ai_draft.enhance', DEFAULT_AI_DRAFT_ENHANCE_PROMPT) ??
+      DEFAULT_AI_DRAFT_ENHANCE_PROMPT;
+
     // Build existing todos section
     const existingTodosRaw = existingTodos.map((todo) => this.formatExistingTodo(todo)).join('\n');
     const existingTodosSection =
       existingTodos.length > 0
         ? `\n\n[기존 할 일 목록 - 참고만 하고 중복 생성 금지]\n${this.wrapUserContent('user_input_existing_todos', existingTodosRaw)}`
         : '';
-    const todoDueDateContextSection = this.buildTodoDueDateContextSection(
-      options?.todoDueDateContext
-    );
-    const dueDateGuidance = this.buildDueDateDecisionGuidanceSection();
-    const promptInjectionGuard = this.buildPromptInjectionGuardSection();
 
     // Build similar notes context
     const similarNotesRaw =
@@ -322,58 +341,30 @@ export class AIDraftService {
         ? `\n\n[유사 업무노트 - 스타일 참고]\n${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
         : '';
 
-    const categoryInstruction = this.buildCategoryInstruction(
-      options?.activeCategories,
-      workNote.category
-        ? `3. 카테고리 (기존: "${workNote.category}", 변경 필요시에만 수정)`
-        : '3. 카테고리 추론'
-    );
-
-    return `당신은 한국 직장에서 업무노트를 업데이트하는 어시스턴트입니다.
-${this.getWriterContext()}
-
-사용자가 기존 업무노트에 새로운 내용을 추가하려고 합니다.
-
-[기존 업무노트]
-제목:
-${this.wrapUserContent('user_input_existing_work_note_title', workNote.title)}
-카테고리:
-${this.wrapUserContent('user_input_existing_work_note_category', workNote.category || '없음')}
-내용:
-${this.wrapUserContent('user_input_existing_work_note_content', workNote.contentRaw)}${existingTodosSection}${todoDueDateContextSection}
-
-[추가할 새 내용]
-${this.wrapUserContent('user_input_new_content', newContent)}${similarNotesSection}
-
-위의 기존 업무노트와 새 내용을 **통합하여** 다음을 작성해주세요:
-1. 업데이트된 제목 (기존 제목 유지 또는 필요시 수정)
-2. 통합된 내용 (기존 내용 + 새 내용을 자연스럽게 병합, 마크다운 포맷)
-${categoryInstruction}
-4. **새로운** 할 일만 제안 (기존 할 일과 중복되지 않는 것만, 필요한 만큼만)
-
-중요 지침:
-- 기존 내용의 핵심 정보를 **반드시 보존**하세요
-- 새 내용을 기존 내용과 자연스럽게 통합하세요
-- 기존 할 일과 중복되는 할 일은 **절대 제안하지 마세요**
-- 내용은 간결하게, 불필요한 반복 없이 작성하세요
-${dueDateGuidance}
-${promptInjectionGuard}
-
-JSON 형식으로 반환:
-{
-  "title": "...",
-  "content": "...",
-  "category": "...",
-  "todos": [
-    {
-      "title": "...",
-      "description": "...",
-      "dueDateSuggestion": "YYYY-MM-DD" 또는 null
-    }
-  ]
-}
-
-JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
+    return this.renderTemplate(template, {
+      WRITER_CONTEXT: this.getWriterContext(),
+      EXISTING_TITLE: this.wrapUserContent('user_input_existing_work_note_title', workNote.title),
+      EXISTING_CATEGORY: this.wrapUserContent(
+        'user_input_existing_work_note_category',
+        workNote.category || '없음'
+      ),
+      EXISTING_CONTENT: this.wrapUserContent(
+        'user_input_existing_work_note_content',
+        workNote.contentRaw
+      ),
+      EXISTING_TODOS_SECTION: existingTodosSection,
+      TODO_DUE_DATE_CONTEXT: this.buildTodoDueDateContextSection(options?.todoDueDateContext),
+      NEW_CONTENT: this.wrapUserContent('user_input_new_content', newContent),
+      SIMILAR_NOTES_SECTION: similarNotesSection,
+      CATEGORY_INSTRUCTION: this.buildCategoryInstruction(
+        options?.activeCategories,
+        workNote.category
+          ? `3. 카테고리 (기존: "${workNote.category}", 변경 필요시에만 수정)`
+          : '3. 카테고리 추론'
+      ),
+      DUE_DATE_GUIDANCE: this.buildDueDateDecisionGuidanceSection(),
+      INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
+    });
   }
 
   /**
@@ -455,52 +446,24 @@ ${topDueDateLines}`;
    * Construct prompt for draft generation from text
    */
   private constructDraftPrompt(inputText: string, options?: DraftGenerationOptions): string {
-    const inputSection = this.wrapUserContent('user_input_text', inputText);
-    const categoryHint = options?.category
-      ? `\n\n카테고리 힌트:\n${this.wrapUserContent('user_input_category_hint', options.category)}`
-      : '';
-    const deptHint = options?.deptName
-      ? `\n\n부서 컨텍스트:\n${this.wrapUserContent('user_input_dept_name', options.deptName)}`
-      : '';
-    const categoryInstruction = this.buildCategoryInstruction(options?.activeCategories);
-    const todoDueDateContextSection = this.buildTodoDueDateContextSection(
-      options?.todoDueDateContext
-    );
-    const dueDateGuidance = this.buildDueDateDecisionGuidanceSection();
-    const promptInjectionGuard = this.buildPromptInjectionGuardSection();
+    const template =
+      this.settingService?.getValue('prompt.ai_draft.create', DEFAULT_AI_DRAFT_CREATE_PROMPT) ??
+      DEFAULT_AI_DRAFT_CREATE_PROMPT;
 
-    return `당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.
-${this.getWriterContext()}
-
-사용자가 다음과 같은 업무에 대한 비구조화된 텍스트를 제공했습니다:
-
-${inputSection}${categoryHint}${deptHint}${todoDueDateContextSection}
-
-이를 분석하여 다음과 같은 구조화된 업무노트를 작성해주세요:
-1. 간결한 제목 (한국어)
-2. 잘 정리된 내용 (한국어, 마크다운 포맷 사용)
-${categoryInstruction}
-4. 내용에 적합한 개수의 관련 할 일 항목과 제안 기한 (필요한 만큼만 생성, 억지로 개수를 맞추지 말 것)
-
-중요: 내용은 핵심만 간결하게 작성하세요. 불필요한 설명이나 반복을 피하고, 실제 업무에 필요한 정보만 포함하세요.
-${dueDateGuidance}
-${promptInjectionGuard}
-
-JSON 형식으로 반환:
-{
-  "title": "...",
-  "content": "...",
-  "category": "...",
-  "todos": [
-    {
-      "title": "...",
-      "description": "...",
-      "dueDateSuggestion": "YYYY-MM-DD" 또는 null
-    }
-  ]
-}
-
-JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
+    return this.renderTemplate(template, {
+      WRITER_CONTEXT: this.getWriterContext(),
+      INPUT_SECTION: this.wrapUserContent('user_input_text', inputText),
+      CATEGORY_HINT: options?.category
+        ? `\n\n카테고리 힌트:\n${this.wrapUserContent('user_input_category_hint', options.category)}`
+        : '',
+      DEPT_HINT: options?.deptName
+        ? `\n\n부서 컨텍스트:\n${this.wrapUserContent('user_input_dept_name', options.deptName)}`
+        : '',
+      TODO_DUE_DATE_CONTEXT: this.buildTodoDueDateContextSection(options?.todoDueDateContext),
+      CATEGORY_INSTRUCTION: this.buildCategoryInstruction(options?.activeCategories),
+      DUE_DATE_GUIDANCE: this.buildDueDateDecisionGuidanceSection(),
+      INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
+    });
   }
 
   /**
@@ -516,18 +479,11 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
     }>,
     options?: DraftGenerationOptions
   ): string {
-    const inputSection = this.wrapUserContent('user_input_text', inputText);
-    const categoryHint = options?.category
-      ? `\n\n카테고리 힌트:\n${this.wrapUserContent('user_input_category_hint', options.category)}`
-      : '';
-    const deptHint = options?.deptName
-      ? `\n\n부서 컨텍스트:\n${this.wrapUserContent('user_input_dept_name', options.deptName)}`
-      : '';
-    const todoDueDateContextSection = this.buildTodoDueDateContextSection(
-      options?.todoDueDateContext
-    );
-    const dueDateGuidance = this.buildDueDateDecisionGuidanceSection();
-    const promptInjectionGuard = this.buildPromptInjectionGuardSection();
+    const template =
+      this.settingService?.getValue(
+        'prompt.ai_draft.create_with_context',
+        DEFAULT_AI_DRAFT_CREATE_WITH_CONTEXT_PROMPT
+      ) ?? DEFAULT_AI_DRAFT_CREATE_WITH_CONTEXT_PROMPT;
 
     // Build context from similar notes
     const similarNotesRaw =
@@ -552,43 +508,24 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
 ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
         : '';
 
-    const categoryInstruction = this.buildCategoryInstruction(
-      options?.activeCategories,
-      '3. 제안 카테고리 (유사 노트에서 사용된 카테고리 우선 고려, 또는 새로운 카테고리 추론)'
-    );
-
-    return `당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.
-${this.getWriterContext()}
-
-사용자가 다음과 같은 업무에 대한 비구조화된 텍스트를 제공했습니다:
-
-${inputSection}${categoryHint}${deptHint}${contextText}${todoDueDateContextSection}
-
-위의 유사한 업무노트들을 참고하여 일관된 형식과 카테고리를 사용하면서, 다음과 같은 구조화된 업무노트를 작성해주세요:
-1. 간결한 제목 (한국어, 유사 노트의 제목 스타일 참고)
-2. 잘 정리된 내용 (한국어, 마크다운 포맷 사용, 유사 노트의 구조 참고)
-${categoryInstruction}
-4. 내용에 적합한 개수의 관련 할 일 항목과 제안 기한 (유사 노트의 할 일 패턴 참고, 필요한 만큼만 생성)
-
-중요: 내용은 핵심만 간결하게 작성하세요. 불필요한 설명이나 반복을 피하고, 실제 업무에 필요한 정보만 포함하세요.
-${dueDateGuidance}
-${promptInjectionGuard}
-
-JSON 형식으로 반환:
-{
-  "title": "...",
-  "content": "...",
-  "category": "...",
-  "todos": [
-    {
-      "title": "...",
-      "description": "...",
-      "dueDateSuggestion": "YYYY-MM-DD" 또는 null
-    }
-  ]
-}
-
-JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
+    return this.renderTemplate(template, {
+      WRITER_CONTEXT: this.getWriterContext(),
+      INPUT_SECTION: this.wrapUserContent('user_input_text', inputText),
+      CATEGORY_HINT: options?.category
+        ? `\n\n카테고리 힌트:\n${this.wrapUserContent('user_input_category_hint', options.category)}`
+        : '',
+      DEPT_HINT: options?.deptName
+        ? `\n\n부서 컨텍스트:\n${this.wrapUserContent('user_input_dept_name', options.deptName)}`
+        : '',
+      SIMILAR_NOTES_CONTEXT: contextText,
+      TODO_DUE_DATE_CONTEXT: this.buildTodoDueDateContextSection(options?.todoDueDateContext),
+      CATEGORY_INSTRUCTION: this.buildCategoryInstruction(
+        options?.activeCategories,
+        '3. 제안 카테고리 (유사 노트에서 사용된 카테고리 우선 고려, 또는 새로운 카테고리 추론)'
+      ),
+      DUE_DATE_GUIDANCE: this.buildDueDateDecisionGuidanceSection(),
+      INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
+    });
   }
 
   /**
@@ -599,40 +536,27 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
     contextText?: string,
     options?: TodoDueDateContextOption
   ): string {
-    const context = contextText
-      ? `\n\n추가 컨텍스트:\n${this.wrapUserContent('additional_context_text', contextText)}`
-      : '';
-    const todoDueDateContextSection = this.buildTodoDueDateContextSection(
-      options?.todoDueDateContext
-    );
-    const dueDateGuidance = this.buildDueDateDecisionGuidanceSection();
-    const promptInjectionGuard = this.buildPromptInjectionGuardSection();
+    const template =
+      this.settingService?.getValue(
+        'prompt.ai_draft.todo_suggestions',
+        DEFAULT_AI_DRAFT_TODO_SUGGESTIONS_PROMPT
+      ) ?? DEFAULT_AI_DRAFT_TODO_SUGGESTIONS_PROMPT;
 
-    return `당신은 업무노트에 대한 할 일을 제안하는 어시스턴트입니다.
-${this.getWriterContext()}
-
-업무노트:
-제목:
-${this.wrapUserContent('user_input_work_note_title', workNote.title)}
-내용:
-${this.wrapUserContent('user_input_work_note_content', workNote.contentRaw)}
-카테고리:
-${this.wrapUserContent('user_input_work_note_category', workNote.category || '없음')}${context}${todoDueDateContextSection}
-
-이 업무노트를 기반으로 실행 가능한 할 일을 제안해주세요. (내용에 적합한 개수만큼 생성, 억지로 개수를 맞추지 말 것)
-${dueDateGuidance}
-${promptInjectionGuard}
-
-JSON 배열로 반환:
-[
-  {
-    "title": "...",
-    "description": "...",
-    "dueDateSuggestion": "YYYY-MM-DD" 또는 null
-  }
-]
-
-JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
+    return this.renderTemplate(template, {
+      WRITER_CONTEXT: this.getWriterContext(),
+      WORK_NOTE_TITLE: this.wrapUserContent('user_input_work_note_title', workNote.title),
+      WORK_NOTE_CONTENT: this.wrapUserContent('user_input_work_note_content', workNote.contentRaw),
+      WORK_NOTE_CATEGORY: this.wrapUserContent(
+        'user_input_work_note_category',
+        workNote.category || '없음'
+      ),
+      ADDITIONAL_CONTEXT: contextText
+        ? `\n\n추가 컨텍스트:\n${this.wrapUserContent('additional_context_text', contextText)}`
+        : '',
+      TODO_DUE_DATE_CONTEXT: this.buildTodoDueDateContextSection(options?.todoDueDateContext),
+      DUE_DATE_GUIDANCE: this.buildDueDateDecisionGuidanceSection(),
+      INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
+    });
   }
 
   /**
