@@ -14,6 +14,7 @@ import type { AppSetting } from '@web/types/api';
 import { RotateCcw, Save } from 'lucide-react';
 
 const ENV_DEFAULT_VALUE = '__env_default__';
+const LABEL_SENTINEL = '__label__';
 
 const FALLBACK_CHAT_MODELS = [
   'gpt-4.1',
@@ -44,7 +45,7 @@ export function ConfigEditor({ setting }: ConfigEditorProps) {
     isSaving,
     isResetting,
   } = useSettingEditor(setting);
-  const { data: models, isLoading: modelsLoading } = useOpenAIModels();
+  const { data: models, isLoading: modelsLoading, isError: modelsError } = useOpenAIModels();
 
   const isModelSetting = setting.key.startsWith('config.openai_model_');
   const isEmbeddingSetting = setting.key === 'config.openai_model_embedding';
@@ -64,7 +65,7 @@ export function ConfigEditor({ setting }: ConfigEditorProps) {
   // For Select, map empty string to sentinel and back
   const selectValue = value === '' ? ENV_DEFAULT_VALUE : value;
   const handleSelectChange = (v: string) => {
-    if (v === '__label__') return;
+    if (v === LABEL_SENTINEL) return;
     setValue(v === ENV_DEFAULT_VALUE ? '' : v);
   };
 
@@ -100,6 +101,12 @@ export function ConfigEditor({ setting }: ConfigEditorProps) {
         <p className="text-xs text-muted-foreground">{setting.description}</p>
       )}
 
+      {isUsingFallback && modelsError && (
+        <p className="text-xs text-destructive">
+          모델 목록을 불러올 수 없어 오프라인 목록을 표시합니다. API 키를 확인해주세요.
+        </p>
+      )}
+
       {isModelSetting && !modelsLoading ? (
         <Select value={selectValue} onValueChange={handleSelectChange}>
           <SelectTrigger>
@@ -108,7 +115,7 @@ export function ConfigEditor({ setting }: ConfigEditorProps) {
           <SelectContent>
             <SelectItem value={ENV_DEFAULT_VALUE}>환경변수 기본값 사용</SelectItem>
             {isUsingFallback && (
-              <SelectItem value="__label__" disabled>
+              <SelectItem value={LABEL_SENTINEL} disabled>
                 — 오프라인 목록 —
               </SelectItem>
             )}

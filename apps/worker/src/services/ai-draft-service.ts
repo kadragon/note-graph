@@ -101,10 +101,17 @@ export class AIDraftService {
   }
 
   private renderTemplate(template: string, vars: Record<string, string>): string {
-    return Object.entries(vars).reduce(
-      (result, [key, val]) => result.replaceAll(`{{${key}}}`, val),
-      template
-    );
+    const result = template.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] ?? match);
+
+    const unreplaced = result.match(/\{\{[A-Z_]+\}\}/g);
+    if (unreplaced) {
+      console.warn(
+        `[AIDraftService] Template has unreplaced placeholders: ${unreplaced.join(', ')}. ` +
+          `Check that the custom prompt template uses valid variable names.`
+      );
+    }
+
+    return result;
   }
 
   /**
