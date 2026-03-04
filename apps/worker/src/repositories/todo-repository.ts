@@ -631,7 +631,9 @@ export class TodoRepository {
     if (workIds.size > 1) {
       throw new Error('All todos must belong to the same work note');
     }
-    const workId = todos[0]!.workId;
+    // Length checked above — safe to access first element
+    const firstTodo = todos[0] as (typeof todos)[number];
+    const workId = firstTodo.workId;
 
     const nowISO = new Date().toISOString();
     const withDueDate = todos.filter((t) => t.dueDate !== null);

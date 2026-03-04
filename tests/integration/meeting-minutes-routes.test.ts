@@ -5,11 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authFetch, testEnv } from '../test-setup';
 
 describe('Meeting Minutes API Routes', () => {
-  let originalFetch: typeof global.fetch;
-
   beforeEach(async () => {
-    originalFetch = global.fetch;
-
     await testEnv.DB.batch([
       testEnv.DB.prepare('DELETE FROM work_note_meeting_minute'),
       testEnv.DB.prepare('DELETE FROM meeting_minute_task_category'),

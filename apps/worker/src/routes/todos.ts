@@ -40,7 +40,7 @@ todos.patch('/batch-postpone', bodyValidator(batchPostponeTodosSchema), async (c
       triggerReembed(
         c.env,
         result.workId,
-        result.updatedTodoIds[0]!,
+        result.updatedTodoIds[0] as string,
         'batch-postpone',
         c.get('settingService')
       )
