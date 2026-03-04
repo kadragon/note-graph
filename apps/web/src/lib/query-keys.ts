@@ -10,6 +10,9 @@ export const qk = {
   workNoteTodos: (workId: string | null | undefined) => ['work-note-todos', workId] as const,
   workNoteFiles: (workId: string | null | undefined) => ['work-note-files', workId] as const,
 
+  settings: (category?: string) => ['settings', category] as const,
+  openaiModels: () => ['openai-models'] as const,
+
   googleDriveStatus: () => ['google-drive-status'] as const,
   pdfJob: (jobId: string | null) => ['pdf-job', jobId] as const,
 };

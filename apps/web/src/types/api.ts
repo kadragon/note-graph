@@ -66,6 +66,7 @@ import type {
   EnhanceWorkNoteResponse as SharedEnhanceWorkNoteResponse,
   SimilarWorkNoteReference,
 } from '@shared/types/search';
+import type { AppSetting, OpenAIModel } from '@shared/types/setting';
 import type {
   CategoryDistribution,
   DepartmentDistribution,
@@ -79,10 +80,10 @@ import type {
   WorkNoteFileMigrationResult,
   WorkNoteFilesListResponse,
 } from '@shared/types/work-note';
-
 import type { WorkNoteGroup, WorkNoteGroupWorkNote } from '@shared/types/work-note-group';
 
 export type { Department, TaskCategory };
+export type { AppSetting, OpenAIModel };
 export type { WorkNoteGroup, WorkNoteGroupWorkNote };
 export type { EmploymentStatus, Person, PersonDeptHistory };
 export type { AIGatewayLogItem, AIGatewayLogsPagination, AIGatewayLogsResponse };

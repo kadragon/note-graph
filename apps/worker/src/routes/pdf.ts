@@ -135,7 +135,7 @@ pdf.post('/', async (c) => {
 
   // Initialize services
   const extractionService = new PdfExtractionService();
-  const aiDraftService = new AIDraftService(c.env);
+  const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
   const { pdfJobs: repository, todos: todoRepository } = c.get('repositories');
 
   // Create job with PENDING status before processing

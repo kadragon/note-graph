@@ -7,6 +7,8 @@ import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { ChunkingService } from './chunking-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
+import { DEFAULT_RAG_QUERY_PROMPT } from './setting-defaults';
+import type { SettingService } from './setting-service';
 import { VectorizeService } from './vectorize-service';
 
 /**
@@ -22,6 +24,7 @@ export class RagService {
   private vectorizeService: VectorizeService;
   private embeddingService: OpenAIEmbeddingService;
   private env: Env;
+  private settingService?: SettingService;
 
   /** Minimum similarity score threshold for including chunks */
   private readonly SIMILARITY_THRESHOLD = 0.5;
@@ -35,11 +38,19 @@ export class RagService {
    */
   private static readonly GPT_MAX_COMPLETION_TOKENS = 1000;
 
-  constructor(env: Env) {
+  constructor(env: Env, settingService?: SettingService) {
     this.env = env;
     this.db = env.DB;
-    this.embeddingService = new OpenAIEmbeddingService(env);
+    this.settingService = settingService;
+    this.embeddingService = new OpenAIEmbeddingService(env, settingService);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
+  }
+
+  private getModel(): string {
+    return (
+      this.settingService?.getConfigOrEnv('config.openai_model_chat', this.env.OPENAI_MODEL_CHAT) ??
+      this.env.OPENAI_MODEL_CHAT
+    );
   }
 
   /**
@@ -242,18 +253,10 @@ ${ctx.snippet}
       )
       .join('\n---\n');
 
-    return `당신은 업무노트에 대한 질문에 답변하는 어시스턴트입니다.
-
-다음 컨텍스트를 사용하여 사용자의 질문에 답변하세요.
-컨텍스트에 관련 정보가 없으면 그렇게 말하세요.
-
-${contextText}
-
----
-
-질문: ${query}
-
-답변은 한국어로 작성하고, 간결하게 작성하며, 가능한 경우 특정 업무노트를 참조하세요.`;
+    const template =
+      this.settingService?.getValue('prompt.rag.query', DEFAULT_RAG_QUERY_PROMPT) ??
+      DEFAULT_RAG_QUERY_PROMPT;
+    return template.replace('{{CONTEXT_TEXT}}', contextText).replace('{{QUERY}}', query);
   }
 
   /**
@@ -262,7 +265,7 @@ ${contextText}
   private async callGPT(prompt: string): Promise<string> {
     const url = getAIGatewayUrl(this.env, 'chat/completions');
 
-    const model = this.env.OPENAI_MODEL_CHAT;
+    const model = this.getModel();
 
     const requestBody = {
       model,

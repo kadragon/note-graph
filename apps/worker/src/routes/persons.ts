@@ -100,7 +100,7 @@ persons.get('/:personId/work-notes', async (c) => {
  */
 persons.post('/import-from-text', bodyValidator(importPersonFromTextSchema), async (c) => {
   const data = getValidatedBody<typeof importPersonFromTextSchema>(c);
-  const importService = new PersonImportService(c.env);
+  const importService = new PersonImportService(c.env, c.get('settingService'));
   const parsed = await importService.parsePersonFromText(data.text);
 
   return c.json(parsed);

@@ -6,6 +6,7 @@ import type { Env } from '../types/env';
 import { SQL_VAR_LIMIT } from '../utils/db-utils';
 import { FtsSearchService } from './fts-search-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
+import type { SettingService } from './setting-service';
 import { VectorizeService } from './vectorize-service';
 
 /**
@@ -19,10 +20,11 @@ export class HybridSearchService {
 
   constructor(
     private db: D1Database,
-    env: Env
+    env: Env,
+    settingService?: SettingService
   ) {
     this.ftsService = new FtsSearchService(db);
-    this.embeddingService = new OpenAIEmbeddingService(env);
+    this.embeddingService = new OpenAIEmbeddingService(env, settingService);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
   }
 

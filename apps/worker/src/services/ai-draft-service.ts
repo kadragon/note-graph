@@ -10,6 +10,8 @@ import { RateLimitError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { getTodayDateUTC } from '../utils/date';
+import { DEFAULT_WRITER_CONTEXT } from './setting-defaults';
+import type { SettingService } from './setting-service';
 
 /**
  * Raw todo structure returned by LLM
@@ -72,10 +74,25 @@ export class AIDraftService {
    * Maximum characters to include from similar note content for context preview
    */
   private static readonly SIMILAR_NOTE_CONTENT_PREVIEW_LENGTH = 200;
-  private static readonly WORK_NOTE_WRITER_CONTEXT =
-    '업무노트를 작성하는 사람은 국립대학 정보전산원 전산주사(팀장)입니다. 이 직무/역할의 관점과 문체를 반영해 작성하세요.';
 
-  constructor(private env: Env) {}
+  constructor(
+    private env: Env,
+    private settingService?: SettingService
+  ) {}
+
+  private getWriterContext(): string {
+    return (
+      this.settingService?.getValue('prompt.ai_draft.writer_context', DEFAULT_WRITER_CONTEXT) ??
+      DEFAULT_WRITER_CONTEXT
+    );
+  }
+
+  private getModel(): string {
+    return (
+      this.settingService?.getConfigOrEnv('config.openai_model_chat', this.env.OPENAI_MODEL_CHAT) ??
+      this.env.OPENAI_MODEL_CHAT
+    );
+  }
 
   /**
    * Transform raw LLM todo to proper AIDraftTodo format
@@ -313,7 +330,7 @@ export class AIDraftService {
     );
 
     return `당신은 한국 직장에서 업무노트를 업데이트하는 어시스턴트입니다.
-${AIDraftService.WORK_NOTE_WRITER_CONTEXT}
+${this.getWriterContext()}
 
 사용자가 기존 업무노트에 새로운 내용을 추가하려고 합니다.
 
@@ -453,7 +470,7 @@ ${topDueDateLines}`;
     const promptInjectionGuard = this.buildPromptInjectionGuardSection();
 
     return `당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.
-${AIDraftService.WORK_NOTE_WRITER_CONTEXT}
+${this.getWriterContext()}
 
 사용자가 다음과 같은 업무에 대한 비구조화된 텍스트를 제공했습니다:
 
@@ -541,7 +558,7 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
     );
 
     return `당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.
-${AIDraftService.WORK_NOTE_WRITER_CONTEXT}
+${this.getWriterContext()}
 
 사용자가 다음과 같은 업무에 대한 비구조화된 텍스트를 제공했습니다:
 
@@ -592,7 +609,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
     const promptInjectionGuard = this.buildPromptInjectionGuardSection();
 
     return `당신은 업무노트에 대한 할 일을 제안하는 어시스턴트입니다.
-${AIDraftService.WORK_NOTE_WRITER_CONTEXT}
+${this.getWriterContext()}
 
 업무노트:
 제목:
@@ -627,7 +644,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
   private async callGPT(prompt: string): Promise<string> {
     const url = getAIGatewayUrl(this.env, 'chat/completions');
 
-    const model = this.env.OPENAI_MODEL_CHAT;
+    const model = this.getModel();
 
     const requestBody = {
       model,

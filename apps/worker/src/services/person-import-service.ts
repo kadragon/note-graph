@@ -8,6 +8,8 @@ import { type ParsedPersonData, parsedPersonDataSchema } from '../schemas/person
 import type { Env } from '../types/env';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
+import { DEFAULT_PERSON_IMPORT_PROMPT } from './setting-defaults';
+import type { SettingService } from './setting-service';
 
 /**
  * Person Import Service
@@ -21,7 +23,19 @@ export class PersonImportService {
    */
   private static readonly GPT_MAX_COMPLETION_TOKENS = 500;
 
-  constructor(private env: Env) {}
+  constructor(
+    private env: Env,
+    private settingService?: SettingService
+  ) {}
+
+  private getModel(): string {
+    return (
+      this.settingService?.getConfigOrEnv(
+        'config.openai_model_lightweight',
+        this.env.OPENAI_MODEL_LIGHTWEIGHT
+      ) ?? this.env.OPENAI_MODEL_LIGHTWEIGHT
+    );
+  }
 
   /**
    * Parse person information from unstructured text
@@ -84,36 +98,10 @@ export class PersonImportService {
    * Construct prompt for person data parsing
    */
   private constructParsePrompt(inputText: string): string {
-    return `당신은 한국 직장의 인사 정보를 구조화하는 어시스턴트입니다.
-
-사용자가 다음과 같은 형식의 인사 정보를 제공했습니다:
-
-${inputText}
-
-이를 분석하여 다음 규칙에 따라 JSON으로 변환해주세요:
-
-규칙:
-1. 이름(번호)에서 괄호 안의 번호가 personId입니다 (6자리 숫자)
-2. 소속에서 ">" 로 구분된 경우 마지막 부서만 currentDept로 사용합니다
-3. 전화번호는 phoneExt로 저장합니다 (하이픈 포함 가능)
-4. 휴대전화는 무시합니다
-5. 이메일은 무시합니다
-6. 직책은 currentPosition입니다
-7. 담당업무는 currentRoleDesc입니다
-8. 재직상태는 employmentStatus입니다 (재직, 휴직, 퇴직 중 하나)
-
-JSON 형식으로 반환:
-{
-  "personId": "6자리 숫자",
-  "name": "이름",
-  "phoneExt": "전화번호 또는 null",
-  "currentDept": "마지막 부서명 또는 null",
-  "currentPosition": "직책 또는 null",
-  "currentRoleDesc": "담당업무 또는 null",
-  "employmentStatus": "재직" 또는 "휴직" 또는 "퇴직"
-}
-
-JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
+    const template =
+      this.settingService?.getValue('prompt.person_import.parse', DEFAULT_PERSON_IMPORT_PROMPT) ??
+      DEFAULT_PERSON_IMPORT_PROMPT;
+    return template.replace('{{INPUT_TEXT}}', inputText);
   }
 
   /**
@@ -125,7 +113,7 @@ JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
   private async callGPT(prompt: string): Promise<string> {
     const url = getAIGatewayUrl(this.env, 'chat/completions');
 
-    const model = this.env.OPENAI_MODEL_LIGHTWEIGHT;
+    const model = this.getModel();
 
     const requestBody = {
       model,

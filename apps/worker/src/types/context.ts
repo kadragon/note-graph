@@ -8,10 +8,11 @@ import type { DepartmentRepository } from '../repositories/department-repository
 import type { EmbeddingRetryQueueRepository } from '../repositories/embedding-retry-queue-repository';
 import type { PdfJobRepository } from '../repositories/pdf-job-repository';
 import type { PersonRepository } from '../repositories/person-repository';
-
+import type { SettingRepository } from '../repositories/setting-repository';
 import type { TaskCategoryRepository } from '../repositories/task-category-repository';
 import type { TodoRepository } from '../repositories/todo-repository';
 import type { WorkNoteGroupRepository } from '../repositories/work-note-group-repository';
+import type { SettingService } from '../services/setting-service';
 import type { Env } from './env';
 
 export interface Repositories {
@@ -20,6 +21,7 @@ export interface Repositories {
   pdfJobs: PdfJobRepository;
   persons: PersonRepository;
   personsWithAutoCreateDepartment: PersonRepository;
+  settings: SettingRepository;
   taskCategories: TaskCategoryRepository;
   todos: TodoRepository;
   workNoteGroups: WorkNoteGroupRepository;
@@ -35,6 +37,7 @@ export interface Repositories {
 export interface AppVariables {
   user?: AuthUser;
   repositories: Repositories;
+  settingService: SettingService;
   body?: Record<string | symbol, unknown>;
   query?: Record<string | symbol, unknown>;
 }

@@ -1,6 +1,8 @@
 import type { Env } from '../types/env';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
+import { DEFAULT_MEETING_MINUTE_KEYWORDS_PROMPT } from './setting-defaults';
+import type { SettingService } from './setting-service';
 
 interface ExtractKeywordsInput {
   topic: string;
@@ -15,7 +17,19 @@ export class MeetingMinuteKeywordService {
   private static readonly GPT_MAX_COMPLETION_TOKENS = 400;
   private static readonly MAX_KEYWORDS = 10;
 
-  constructor(private env: Env) {}
+  constructor(
+    private env: Env,
+    private settingService?: SettingService
+  ) {}
+
+  private getModel(): string {
+    return (
+      this.settingService?.getConfigOrEnv(
+        'config.openai_model_lightweight',
+        this.env.OPENAI_MODEL_LIGHTWEIGHT
+      ) ?? this.env.OPENAI_MODEL_LIGHTWEIGHT
+    );
+  }
 
   async extractKeywords(input: ExtractKeywordsInput): Promise<string[]> {
     const fallbackKeywords = this.extractDeterministicKeywords(input);
@@ -32,20 +46,17 @@ export class MeetingMinuteKeywordService {
   }
 
   private constructPrompt(input: ExtractKeywordsInput): string {
-    return `다음 회의 정보를 바탕으로 핵심 키워드를 추출하세요.
-
-주제: ${input.topic}
-내용: ${input.detailsRaw}
-
-반드시 JSON으로만 응답하세요:
-{
-  "keywords": ["키워드1", "키워드2", "키워드3"]
-}`;
+    const template =
+      this.settingService?.getValue(
+        'prompt.meeting_minute.keywords',
+        DEFAULT_MEETING_MINUTE_KEYWORDS_PROMPT
+      ) ?? DEFAULT_MEETING_MINUTE_KEYWORDS_PROMPT;
+    return template.replace('{{TOPIC}}', input.topic).replace('{{DETAILS_RAW}}', input.detailsRaw);
   }
 
   private async callGPT(prompt: string): Promise<string> {
     const url = getAIGatewayUrl(this.env, 'chat/completions');
-    const model = this.env.OPENAI_MODEL_LIGHTWEIGHT;
+    const model = this.getModel();
 
     const requestBody = {
       model,

@@ -27,7 +27,7 @@ app.post('/query', bodyValidator(RagQueryRequestSchema), async (c) => {
     throw new BadRequestError('workId is required for work scope');
   }
   // Execute RAG query
-  const ragService = new RagService(c.env);
+  const ragService = new RagService(c.env, c.get('settingService'));
 
   const result = await ragService.query(body.query, {
     scope: body.scope,

@@ -21,6 +21,7 @@ import persons from './routes/persons';
 
 import rag from './routes/rag';
 import search from './routes/search';
+import settings from './routes/settings';
 import statistics from './routes/statistics';
 import taskCategories from './routes/task-categories';
 import todos from './routes/todos';
@@ -74,6 +75,7 @@ api.get('/', (c) => {
       workNotes: '/api/work-notes',
       todos: '/api/todos',
       search: '/api/search',
+      settings: '/api/settings',
       rag: '/api/rag',
       ai: '/api/ai',
       pdfJobs: '/api/pdf-jobs',
@@ -102,6 +104,7 @@ api.route('/rag', rag);
 api.route('/ai', aiDraft);
 api.route('/pdf-jobs', pdf);
 api.route('/admin', admin);
+api.route('/settings', settings);
 api.route('/statistics', statistics);
 api.route('/auth/google', authGoogle);
 api.route('/calendar', calendar);

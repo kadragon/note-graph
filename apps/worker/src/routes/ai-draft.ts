@@ -67,7 +67,7 @@ app.post(
     const activeCategoryNames = c.get('activeCategoryNames');
     const todoDueDateContext = c.get('todoDueDateContext');
 
-    const aiDraftService = new AIDraftService(c.env);
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
     const draft = await aiDraftService.generateDraftFromText(body.inputText, {
       category: body.category,
       personIds: body.personIds,
@@ -102,7 +102,7 @@ app.post(
     );
 
     // Generate AI draft with similar notes as context
-    const aiDraftService = new AIDraftService(c.env);
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
     const draft =
       similarNotes.length > 0
         ? await aiDraftService.generateDraftFromTextWithContext(body.inputText, similarNotes, {
@@ -163,7 +163,7 @@ app.post(
     }
 
     // Generate todo suggestions
-    const aiDraftService = new AIDraftService(c.env);
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
     const todos = await aiDraftService.generateTodoSuggestions(workNote, body.contextText, {
       todoDueDateContext,
     });
@@ -241,7 +241,7 @@ app.post(
     const similarNotes = await workNoteService.findSimilarNotes(newContent, SIMILAR_NOTES_TOP_K);
 
     // Generate enhanced draft
-    const aiDraftService = new AIDraftService(c.env);
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
     const enhancedDraft = await aiDraftService.enhanceExistingWorkNote(
       workNote,
       todoReferences,
