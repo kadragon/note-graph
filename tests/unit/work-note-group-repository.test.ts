@@ -1,16 +1,18 @@
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { WorkNoteGroupRepository } from '@worker/repositories/work-note-group-repository';
 import type { Env } from '@worker/types/env';
 import { ConflictError, NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('WorkNoteGroupRepository', () => {
   let repository: WorkNoteGroupRepository;
 
   beforeEach(async () => {
-    repository = new WorkNoteGroupRepository(testEnv.DB);
+    repository = new WorkNoteGroupRepository(testDb);
     await testEnv.DB.batch([
       testEnv.DB.prepare('DELETE FROM work_note_group_items'),
       testEnv.DB.prepare('DELETE FROM work_note_groups'),

@@ -2,11 +2,13 @@
 // Unit tests for TodoRepository filtering and views
 
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { Env } from '@worker/types/env';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 const REAL_DATE = Date;
 const BASE_NOW = new REAL_DATE('2025-01-10T12:00:00.000Z');
 
@@ -47,7 +49,7 @@ describe('TodoRepository - Filtering and Views', () => {
   let testWorkId: string;
 
   beforeEach(async () => {
-    repository = new TodoRepository(testEnv.DB);
+    repository = new TodoRepository(testDb);
 
     // Clean up test data
     await testEnv.DB.batch([

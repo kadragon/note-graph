@@ -3,7 +3,6 @@
  * Statistics repository for work note completion metrics
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
 import type {
   CategoryDistribution,
   DepartmentDistribution,
@@ -11,6 +10,7 @@ import type {
   WorkNoteStatistics,
   WorkNoteWithStats,
 } from '@shared/types/statistics';
+import type { DatabaseClient } from '../types/database';
 
 interface FindCompletedWorkNotesOptions {
   personId?: string;
@@ -27,11 +27,10 @@ interface AssignedPersonDetail {
 }
 
 export class StatisticsRepository {
-  constructor(private db: D1Database) {}
+  constructor(private db: DatabaseClient) {}
 
   /**
    * Helper: Extract owners from work notes
-   * Reduces code duplication between person and department distribution calculations
    */
   private getOwnersFromWorkNotes(workNotes: WorkNoteWithStats[]): Array<{
     personId: string;
@@ -61,7 +60,6 @@ export class StatisticsRepository {
 
   /**
    * Find work notes with at least one completed todo within date range
-   * Supports filtering by person, department, and category
    */
   async findCompletedWorkNotes(
     startDate: string,
@@ -73,8 +71,6 @@ export class StatisticsRepository {
     const startDateTime = `${startDate}T00:00:00.000Z`;
     const endDateTime = `${endDate}T23:59:59.999Z`;
 
-    // Build optimized query using CTE to avoid correlated subqueries
-    // CTE pre-aggregates todo counts within the date range, improving performance as todos table grows
     let query = `
       WITH PeriodTodos AS (
         SELECT
@@ -107,14 +103,12 @@ export class StatisticsRepository {
     // Bind date parameters for CTE
     bindings.push(startDateTime, endDateTime);
 
-    // Person filter
     if (personId) {
       query += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
       conditions.push(`wnp.person_id = ?`);
       bindings.push(personId);
     }
 
-    // Department filter
     if (deptName) {
       if (!personId) {
         query += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
@@ -124,53 +118,44 @@ export class StatisticsRepository {
       bindings.push(deptName);
     }
 
-    // Category filter
     if (categoryId) {
       query += ` INNER JOIN work_note_task_category wntc ON wn.work_id = wntc.work_id`;
       conditions.push(`wntc.category_id = ?`);
       bindings.push(categoryId);
     }
 
-    // Add WHERE clause
     if (conditions.length > 0) {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    // Order by last completion timestamp descending
     query += ` ORDER BY pt.lastUpdated DESC`;
 
-    const result = await this.db
-      .prepare(query)
-      .bind(...bindings)
-      .all<WorkNoteWithStats>();
+    const result = await this.db.query<WorkNoteWithStats>(query, bindings);
+    const workNotes = result.rows;
 
-    const workNotes = result.results || [];
-
-    // Batch fetch assigned persons for all work notes to avoid N+1 query problem
+    // Batch fetch assigned persons for all work notes
     const workNoteIds = workNotes.map((wn) => wn.workId);
     if (workNoteIds.length === 0) {
       return workNotes;
     }
 
     // Use json_each to avoid dynamic IN clause construction for large lists
-    const personsResult = await this.db
-      .prepare(
-        `SELECT
-          wnp.work_id as workId,
-          wnp.person_id as personId,
-          p.name as personName,
-          p.current_dept as currentDept,
-          wnp.role
-         FROM work_note_person wnp
-         INNER JOIN persons p ON wnp.person_id = p.person_id
-         WHERE wnp.work_id IN (SELECT value FROM json_each(?))`
-      )
-      .bind(JSON.stringify(workNoteIds))
-      .all<AssignedPersonDetail>();
+    const personsResult = await this.db.query<AssignedPersonDetail>(
+      `SELECT
+        wnp.work_id as workId,
+        wnp.person_id as personId,
+        p.name as personName,
+        p.current_dept as currentDept,
+        wnp.role
+       FROM work_note_person wnp
+       INNER JOIN persons p ON wnp.person_id = p.person_id
+       WHERE wnp.work_id IN (SELECT value FROM json_each(?))`,
+      [JSON.stringify(workNoteIds)]
+    );
 
     // Map persons back to work notes
     const personsByWorkId = new Map<string, AssignedPersonDetail[]>();
-    for (const person of personsResult.results || []) {
+    for (const person of personsResult.rows) {
       const persons = personsByWorkId.get(person.workId) || [];
       persons.push({
         workId: person.workId,
@@ -197,44 +182,39 @@ export class StatisticsRepository {
     endDate: string,
     options: FindCompletedWorkNotesOptions = {}
   ): Promise<WorkNoteStatistics> {
-    // Get all completed work notes
     const workNotes = await this.findCompletedWorkNotes(startDate, endDate, options);
 
-    // Default category name to null for all work notes
     for (const workNote of workNotes) {
       workNote.categoryName = null;
     }
 
-    // Calculate summary metrics
     const totalWorkNotes = workNotes.length;
     const totalCompletedTodos = workNotes.reduce((sum, wn) => sum + wn.completedTodoCount, 0);
     const totalTodos = workNotes.reduce((sum, wn) => sum + wn.totalTodoCount, 0);
     const completionRate = totalTodos > 0 ? (totalCompletedTodos / totalTodos) * 100 : 0;
 
-    // Calculate category distribution
-    // Batch fetch categories for all work notes to avoid N+1 query problem
     const categoryMap = new Map<string | null, number>();
     const categoryNameById = new Map<string | null, string | null>();
     const workNoteIds = workNotes.map((wn) => wn.workId);
 
     if (workNoteIds.length > 0) {
-      // Use json_each to avoid dynamic IN clause construction for large lists
-      const categoriesResult = await this.db
-        .prepare(
-          `SELECT
-            wntc.work_id as workId,
-            tc.category_id as categoryId,
-            tc.name as categoryName
-           FROM work_note_task_category wntc
-           INNER JOIN task_categories tc ON wntc.category_id = tc.category_id
-           WHERE wntc.work_id IN (SELECT value FROM json_each(?))`
-        )
-        .bind(JSON.stringify(workNoteIds))
-        .all<{ workId: string; categoryId: string; categoryName: string }>();
+      const categoriesResult = await this.db.query<{
+        workId: string;
+        categoryId: string;
+        categoryName: string;
+      }>(
+        `SELECT
+          wntc.work_id as workId,
+          tc.category_id as categoryId,
+          tc.name as categoryName
+         FROM work_note_task_category wntc
+         INNER JOIN task_categories tc ON wntc.category_id = tc.category_id
+         WHERE wntc.work_id IN (SELECT value FROM json_each(?))`,
+        [JSON.stringify(workNoteIds)]
+      );
 
-      // Build category map from work notes
       const categoryByWorkId = new Map<string, { categoryId: string; categoryName: string }>();
-      for (const row of categoriesResult.results || []) {
+      for (const row of categoriesResult.rows) {
         if (!categoryByWorkId.has(row.workId)) {
           categoryByWorkId.set(row.workId, {
             categoryId: row.categoryId,
@@ -246,17 +226,12 @@ export class StatisticsRepository {
         }
       }
 
-      // Count categories and attach category names to work notes
-      // Note: workNote.category comes from work_notes table, categoryName from task_categories join
       for (const workNote of workNotes) {
         const categoryInfo = categoryByWorkId.get(workNote.workId);
         const categoryId = categoryInfo?.categoryId || null;
         const categoryName = categoryInfo?.categoryName || null;
 
-        // Attach human-readable category name for UI display
         workNote.categoryName = categoryName;
-
-        // Count distribution by categoryId (not by work_notes.category field)
         categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
       }
     }
@@ -269,7 +244,6 @@ export class StatisticsRepository {
       })
     );
 
-    // Calculate person distribution using helper
     const owners = this.getOwnersFromWorkNotes(workNotes);
 
     const personMap = new Map<
@@ -298,7 +272,6 @@ export class StatisticsRepository {
       })
     );
 
-    // Calculate department distribution using helper
     const deptMap = new Map<string | null, number>();
     for (const owner of owners) {
       const deptName = owner.currentDept;
@@ -317,7 +290,7 @@ export class StatisticsRepository {
         totalWorkNotes,
         totalCompletedTodos,
         totalTodos,
-        completionRate: Math.round(completionRate * 100) / 100, // Round to 2 decimal places
+        completionRate: Math.round(completionRate * 100) / 100,
       },
       distributions: {
         byCategory,

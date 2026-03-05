@@ -1,9 +1,9 @@
 /**
- * Setting repository for D1 database operations
+ * Setting repository for database operations
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
 import type { AppSetting } from '@shared/types/setting';
+import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 
 interface AppSettingRow {
@@ -25,7 +25,7 @@ export interface DefaultSetting {
 }
 
 export class SettingRepository {
-  constructor(private db: D1Database) {}
+  constructor(private db: DatabaseClient) {}
 
   private toAppSetting(row: AppSettingRow): AppSetting {
     return {
@@ -52,21 +52,18 @@ export class SettingRepository {
 
     sql += ` ORDER BY key ASC`;
 
-    const stmt = this.db.prepare(sql);
-    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<AppSettingRow>();
+    const result = await this.db.query<AppSettingRow>(sql, params);
 
-    return (result.results || []).map((row) => this.toAppSetting(row));
+    return result.rows.map((row) => this.toAppSetting(row));
   }
 
   async findByKey(key: string): Promise<AppSetting | null> {
-    const result = await this.db
-      .prepare(
-        `SELECT key, value, category, label, description,
-         default_value as defaultValue, updated_at as updatedAt
-         FROM app_settings WHERE key = ?`
-      )
-      .bind(key)
-      .first<AppSettingRow>();
+    const result = await this.db.queryOne<AppSettingRow>(
+      `SELECT key, value, category, label, description,
+       default_value as defaultValue, updated_at as updatedAt
+       FROM app_settings WHERE key = ?`,
+      [key]
+    );
 
     return result ? this.toAppSetting(result) : null;
   }
@@ -77,10 +74,10 @@ export class SettingRepository {
       throw new NotFoundError('AppSetting', key);
     }
 
-    await this.db
-      .prepare(`UPDATE app_settings SET value = ?, updated_at = datetime('now') WHERE key = ?`)
-      .bind(value, key)
-      .run();
+    await this.db.execute(
+      `UPDATE app_settings SET value = ?, updated_at = datetime('now') WHERE key = ?`,
+      [value, key]
+    );
 
     const updated = await this.findByKey(key);
     return updated as AppSetting;
@@ -92,12 +89,10 @@ export class SettingRepository {
       throw new NotFoundError('AppSetting', key);
     }
 
-    await this.db
-      .prepare(
-        `UPDATE app_settings SET value = default_value, updated_at = datetime('now') WHERE key = ?`
-      )
-      .bind(key)
-      .run();
+    await this.db.execute(
+      `UPDATE app_settings SET value = default_value, updated_at = datetime('now') WHERE key = ?`,
+      [key]
+    );
 
     const updated = await this.findByKey(key);
     return updated as AppSetting;
@@ -106,15 +101,12 @@ export class SettingRepository {
   async ensureDefaults(defaults: DefaultSetting[]): Promise<void> {
     if (defaults.length === 0) return;
 
-    const statements = defaults.map((d) =>
-      this.db
-        .prepare(
-          `INSERT OR IGNORE INTO app_settings (key, value, category, label, description, default_value)
-           VALUES (?, ?, ?, ?, ?, ?)`
-        )
-        .bind(d.key, d.value, d.category, d.label, d.description, d.value)
+    await this.db.executeBatch(
+      defaults.map((d) => ({
+        sql: `INSERT OR IGNORE INTO app_settings (key, value, category, label, description, default_value)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        params: [d.key, d.value, d.category, d.label, d.description, d.value],
+      }))
     );
-
-    await this.db.batch(statements);
   }
 }

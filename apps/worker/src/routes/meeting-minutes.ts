@@ -1,6 +1,6 @@
-import type { D1Database } from '@cloudflare/workers-types';
 import type { Context } from 'hono';
 import { z } from 'zod';
+import { D1DatabaseClient } from '../adapters/d1-database-client';
 import {
   bodyValidator,
   getValidatedBody,
@@ -99,7 +99,7 @@ async function hasMeetingMinuteDuplicateTopic(
 meetingMinutes.get('/', queryValidator(listMeetingMinutesQuerySchema), async (c) => {
   const query = getValidatedQuery<typeof listMeetingMinutesQuerySchema>(c);
 
-  const repository = new MeetingMinuteRepository(c.env.DB);
+  const repository = new MeetingMinuteRepository(new D1DatabaseClient(c.env.DB));
   const result = await repository.findPaginated({
     q: query.q,
     meetingDateFrom: query.meetingDateFrom,
@@ -241,7 +241,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
   }
 
   const keywordService = new MeetingMinuteKeywordService(c.env, c.get('settingService'));
-  const repository = new MeetingMinuteRepository(c.env.DB);
+  const repository = new MeetingMinuteRepository(new D1DatabaseClient(c.env.DB));
 
   const keywords = await keywordService.extractKeywords({
     topic: data.topic ?? existing.topic,
@@ -285,7 +285,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
 
 meetingMinutes.delete('/:meetingId', async (c) => {
   const meetingId = c.req.param('meetingId');
-  const repository = new MeetingMinuteRepository(c.env.DB);
+  const repository = new MeetingMinuteRepository(new D1DatabaseClient(c.env.DB));
   await repository.delete(meetingId);
   return c.body(null, 204);
 });
@@ -309,9 +309,9 @@ meetingMinutes.post('/', bodyValidator(createMeetingMinuteSchema), async (c) => 
   }
 
   const keywordService = new MeetingMinuteKeywordService(c.env, c.get('settingService'));
-  const repository = new MeetingMinuteRepository(c.env.DB);
-  const personRepository = new PersonRepository(c.env.DB);
-  const categoryRepository = new TaskCategoryRepository(c.env.DB);
+  const repository = new MeetingMinuteRepository(new D1DatabaseClient(c.env.DB));
+  const personRepository = new PersonRepository(new D1DatabaseClient(c.env.DB));
+  const categoryRepository = new TaskCategoryRepository(new D1DatabaseClient(c.env.DB));
 
   const keywords = await keywordService.extractKeywords({
     topic: data.topic,

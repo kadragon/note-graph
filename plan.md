@@ -74,3 +74,118 @@
 - [x] Integration test: unified route preserves response shape while using lexical source for work notes
 - [x] API client test: lexical search result mapping remains valid
 - [x] Verify: run targeted unit/integration/web API tests for search path
+
+## Phase 0: Database Abstraction Layer (D1 → Supabase Migration)
+
+> Extract a `DatabaseClient` interface so repositories decouple from D1, enabling gradual PostgreSQL migration.
+
+### 0.1 DatabaseClient interface & D1 adapter
+
+- [x] Define `DatabaseClient` and `TransactionClient` interfaces in `apps/worker/src/types/database.ts`
+- [x] Implement `D1DatabaseClient` adapter in `apps/worker/src/adapters/d1-database-client.ts`
+
+### 0.2 Convert repositories to DatabaseClient (smallest first)
+
+- [x] Convert `SettingRepository` to use `DatabaseClient`
+- [x] Convert `DepartmentRepository` to use `DatabaseClient`
+- [x] Convert `TaskCategoryRepository` to use `DatabaseClient`
+- [x] Convert `WorkNoteGroupRepository` to use `DatabaseClient`
+- [x] Convert `GoogleOauthRepository` to use `DatabaseClient`
+- [x] Convert `PdfJobRepository` to use `DatabaseClient`
+- [x] Convert `EmbeddingRetryQueueRepository` to use `DatabaseClient`
+- [x] Convert `PersonRepository` to use `DatabaseClient`
+- [x] Convert `TodoRepository` to use `DatabaseClient`
+- [x] Convert `StatisticsRepository` to use `DatabaseClient`
+- [x] Convert `MeetingMinuteRepository` to use `DatabaseClient`
+- [x] Convert `WorkNoteRepository` to use `DatabaseClient`
+
+### 0.3 Update instantiation sites
+
+- [x] Update `repositoriesMiddleware` to use `D1DatabaseClient`
+- [x] Update `WorkNoteService` and `EmbeddingProcessor` constructors
+- [x] Update `StatisticsService` constructor
+- [x] Update `MeetingMinutes` routes
+- [x] Update Google OAuth/Drive/Calendar service chain to use `DatabaseClient`
+- [x] Update `BaseFileService` and `WorkNoteFileService` to use `DatabaseClient`
+- [x] Update route callers (`auth-google`, `calendar`, `work-notes`, `work-note-file` middleware)
+- [x] Update test files to use `D1DatabaseClient`
+
+### 0.4 Update db-utils.ts
+
+- [x] Update `queryInChunks` to work with `DatabaseClient`
+
+### 0.5 Verify
+
+- [x] All existing tests pass with no behavioral changes (701/701)
+
+## Phase 1: PostgreSQL Schema Design (Supabase Migration)
+
+> Create the PostgreSQL schema in Supabase that will replace D1. Schema only — no application code changes, no data migration.
+
+- [x] `supabase init`
+- [x] `supabase migration new initial_schema`
+- [x] Write complete migration SQL (23 tables, 8 ENUMs, triggers, FTS, indexes)
+- [x] `supabase start` + `supabase db reset` — migration applies cleanly
+- [x] Verify: 23 tables, 8 ENUMs, all indexes, triggers
+- [x] Verify: FTS generated column works (INSERT + query on work_notes and meeting_minutes)
+- [x] Verify: `set_updated_at()` trigger fires
+- [x] Verify: version limit trigger fires (7 inserts -> 5 remain)
+- [x] Verify: phone_ext regex constraint (accepts digits/dashes, rejects letters)
+- [x] `supabase stop`
+- [x] Update `plan.md`
+
+## Phase 2: Supabase Adapter & SQL Compatibility
+
+> Implement `SupabaseDatabaseClient` and normalize repository SQL so the same codebase runs against both D1 and PostgreSQL.
+
+### 2.1 SupabaseDatabaseClient adapter
+
+- [ ] Implement `SupabaseDatabaseClient` in `apps/worker/src/adapters/supabase-database-client.ts`
+- [ ] Auto-translate `?` placeholders to `$1, $2, ...` inside the adapter
+- [ ] Implement real `transaction()` with BEGIN/COMMIT
+- [ ] Implement `executeBatch()` wrapped in a transaction
+- [ ] Unit test: placeholder translation for 0, 1, and N params
+- [ ] Unit test: transaction commits on success, rolls back on error
+- [ ] Unit test: executeBatch wraps statements in a single transaction
+
+### 2.2 Normalize SQL: `datetime('now')` → parameter
+
+- [ ] `setting-repository.ts` upsert: pass `new Date().toISOString()` as param instead of `datetime('now')`
+- [ ] `setting-repository.ts` resetToDefault: same fix
+- [ ] Verify: setting-repository tests still pass
+
+### 2.3 Normalize SQL: `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING`
+
+- [ ] `setting-repository.ts` ensureDefaults
+- [ ] `task-category-repository.ts` setWorkNoteCategories
+- [ ] `work-note-repository.ts` create (group_items)
+- [ ] `work-note-repository.ts` update (group_items)
+- [ ] `work-note-group-repository.ts` addWorkNote
+- [ ] `google-drive-service.ts` saveFolderRecord
+- [ ] Verify: all affected tests still pass
+
+### 2.4 Normalize SQL: `json_each(?)` → `queryInChunks`
+
+- [ ] `work-note-repository.ts` findAll: replace 3 json_each queries with queryInChunks
+- [ ] `todo-repository.ts` findAll: replace json_each with queryInChunks
+- [ ] `todo-repository.ts` bulkUpdateStatus: replace json_each with queryInChunks
+- [ ] `statistics-repository.ts`: replace 2 json_each queries with queryInChunks
+- [ ] `rag-service.ts`: replace json_each with queryInChunks
+- [ ] Verify: all affected tests still pass
+
+### 2.5 Normalize SQL: boolean comparisons
+
+- [ ] SQL: replace `is_active = 1` with `is_active` in WHERE clauses (4 sites)
+- [ ] JS: replace `isActive === 1` with `!!isActive` or `Boolean(isActive)` (5 sites)
+- [ ] Verify: all affected tests still pass
+
+### 2.6 Update `queryInChunks` for PostgreSQL
+
+- [ ] PostgreSQL has no 999-variable limit; keep chunking logic but it remains harmless
+- [ ] Ensure placeholder generation (`?` joined) works with the adapter's translation
+
+### 2.7 Integration test with local Supabase
+
+- [ ] Add Supabase connection config (env vars: `SUPABASE_DB_URL` or similar)
+- [ ] Write integration smoke test: create SupabaseDatabaseClient → run basic CRUD via SettingRepository
+- [ ] Verify: existing D1 test suite still passes (no regressions)

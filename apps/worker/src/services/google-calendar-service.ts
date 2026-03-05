@@ -2,6 +2,7 @@
  * Google Calendar service for fetching calendar events
  */
 
+import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { DomainError } from '../types/errors';
 import { GoogleOAuthService } from './google-oauth-service';
@@ -32,7 +33,7 @@ export class GoogleCalendarService {
   private oauthService: GoogleOAuthService;
   private calendarIds: string[];
 
-  constructor(env: Env, db: D1Database) {
+  constructor(env: Env, db: DatabaseClient) {
     this.oauthService = new GoogleOAuthService(env, db);
     // Parse calendar IDs from environment variable, defaulting to 'primary'
     const parsed = env.GOOGLE_CALENDAR_IDS?.split(',')

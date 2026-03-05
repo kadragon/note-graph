@@ -1,6 +1,6 @@
-import type { D1Database } from '@cloudflare/workers-types';
 import type { WorkNoteGroup, WorkNoteGroupWorkNote } from '@shared/types/work-note-group';
 import { nanoid } from 'nanoid';
+import type { DatabaseClient } from '../types/database';
 import { ConflictError, NotFoundError } from '../types/errors';
 
 interface WorkNoteGroupRow {
@@ -11,7 +11,7 @@ interface WorkNoteGroupRow {
 }
 
 export class WorkNoteGroupRepository {
-  constructor(private db: D1Database) {}
+  constructor(private db: DatabaseClient) {}
 
   private toWorkNoteGroup(row: WorkNoteGroupRow): WorkNoteGroup {
     return {
@@ -23,27 +23,23 @@ export class WorkNoteGroupRepository {
   }
 
   async findById(groupId: string): Promise<WorkNoteGroup | null> {
-    const result = await this.db
-      .prepare(
-        `SELECT group_id as groupId, name, is_active as isActive, created_at as createdAt
-         FROM work_note_groups
-         WHERE group_id = ?`
-      )
-      .bind(groupId)
-      .first<WorkNoteGroupRow>();
+    const result = await this.db.queryOne<WorkNoteGroupRow>(
+      `SELECT group_id as groupId, name, is_active as isActive, created_at as createdAt
+       FROM work_note_groups
+       WHERE group_id = ?`,
+      [groupId]
+    );
 
     return result ? this.toWorkNoteGroup(result) : null;
   }
 
   async findByName(name: string): Promise<WorkNoteGroup | null> {
-    const result = await this.db
-      .prepare(
-        `SELECT group_id as groupId, name, is_active as isActive, created_at as createdAt
-         FROM work_note_groups
-         WHERE name = ?`
-      )
-      .bind(name)
-      .first<WorkNoteGroupRow>();
+    const result = await this.db.queryOne<WorkNoteGroupRow>(
+      `SELECT group_id as groupId, name, is_active as isActive, created_at as createdAt
+       FROM work_note_groups
+       WHERE name = ?`,
+      [name]
+    );
 
     return result ? this.toWorkNoteGroup(result) : null;
   }
@@ -74,10 +70,8 @@ export class WorkNoteGroupRepository {
     sql += ' ORDER BY name ASC LIMIT ?';
     params.push(limit);
 
-    const stmt = this.db.prepare(sql);
-    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<WorkNoteGroupRow>();
-
-    return (result.results || []).map((row) => this.toWorkNoteGroup(row));
+    const result = await this.db.query<WorkNoteGroupRow>(sql, params);
+    return result.rows.map((row) => this.toWorkNoteGroup(row));
   }
 
   async create(data: { name: string }): Promise<WorkNoteGroup> {
@@ -85,13 +79,11 @@ export class WorkNoteGroupRepository {
     const groupId = `GRP-${nanoid(10)}`;
 
     try {
-      await this.db
-        .prepare(
-          `INSERT INTO work_note_groups (group_id, name, is_active, created_at)
-           VALUES (?, ?, 1, ?)`
-        )
-        .bind(groupId, data.name, now)
-        .run();
+      await this.db.execute(
+        `INSERT INTO work_note_groups (group_id, name, is_active, created_at)
+         VALUES (?, ?, 1, ?)`,
+        [groupId, data.name, now]
+      );
     } catch (error) {
       if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
         throw new ConflictError(`Work note group already exists: ${data.name}`);
@@ -132,10 +124,10 @@ export class WorkNoteGroupRepository {
     if (updates.length > 0) {
       params.push(groupId);
       try {
-        await this.db
-          .prepare(`UPDATE work_note_groups SET ${updates.join(', ')} WHERE group_id = ?`)
-          .bind(...params)
-          .run();
+        await this.db.execute(
+          `UPDATE work_note_groups SET ${updates.join(', ')} WHERE group_id = ?`,
+          params
+        );
       } catch (error) {
         if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
           throw new ConflictError(`Work note group already exists: ${data.name}`);
@@ -158,10 +150,10 @@ export class WorkNoteGroupRepository {
     }
 
     const newIsActive = !existing.isActive;
-    await this.db
-      .prepare('UPDATE work_note_groups SET is_active = ? WHERE group_id = ?')
-      .bind(newIsActive ? 1 : 0, groupId)
-      .run();
+    await this.db.execute('UPDATE work_note_groups SET is_active = ? WHERE group_id = ?', [
+      newIsActive ? 1 : 0,
+      groupId,
+    ]);
 
     return { ...existing, isActive: newIsActive };
   }
@@ -172,21 +164,21 @@ export class WorkNoteGroupRepository {
       throw new NotFoundError('WorkNoteGroup', groupId);
     }
 
-    await this.db.prepare('DELETE FROM work_note_groups WHERE group_id = ?').bind(groupId).run();
+    await this.db.execute('DELETE FROM work_note_groups WHERE group_id = ?', [groupId]);
   }
 
   async addWorkNote(groupId: string, workId: string): Promise<void> {
-    await this.db
-      .prepare('INSERT OR IGNORE INTO work_note_group_items (work_id, group_id) VALUES (?, ?)')
-      .bind(workId, groupId)
-      .run();
+    await this.db.execute(
+      'INSERT OR IGNORE INTO work_note_group_items (work_id, group_id) VALUES (?, ?)',
+      [workId, groupId]
+    );
   }
 
   async removeWorkNote(groupId: string, workId: string): Promise<void> {
-    await this.db
-      .prepare('DELETE FROM work_note_group_items WHERE work_id = ? AND group_id = ?')
-      .bind(workId, groupId)
-      .run();
+    await this.db.execute('DELETE FROM work_note_group_items WHERE work_id = ? AND group_id = ?', [
+      workId,
+      groupId,
+    ]);
   }
 
   async getWorkNotes(groupId: string): Promise<WorkNoteGroupWorkNote[]> {
@@ -195,32 +187,28 @@ export class WorkNoteGroupRepository {
       throw new NotFoundError('WorkNoteGroup', groupId);
     }
 
-    const result = await this.db
-      .prepare(
-        `SELECT wn.work_id as workId, wn.title, wn.created_at as createdAt, wn.updated_at as updatedAt
-         FROM work_notes wn
-         INNER JOIN work_note_group_items wngi ON wn.work_id = wngi.work_id
-         WHERE wngi.group_id = ?
-         ORDER BY wn.created_at DESC`
-      )
-      .bind(groupId)
-      .all<WorkNoteGroupWorkNote>();
+    const result = await this.db.query<WorkNoteGroupWorkNote>(
+      `SELECT wn.work_id as workId, wn.title, wn.created_at as createdAt, wn.updated_at as updatedAt
+       FROM work_notes wn
+       INNER JOIN work_note_group_items wngi ON wn.work_id = wngi.work_id
+       WHERE wngi.group_id = ?
+       ORDER BY wn.created_at DESC`,
+      [groupId]
+    );
 
-    return result.results || [];
+    return result.rows;
   }
 
   async getByWorkNoteId(workId: string): Promise<WorkNoteGroup[]> {
-    const result = await this.db
-      .prepare(
-        `SELECT g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
-         FROM work_note_groups g
-         INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
-         WHERE wngi.work_id = ?
-         ORDER BY g.name ASC`
-      )
-      .bind(workId)
-      .all<WorkNoteGroupRow>();
+    const result = await this.db.query<WorkNoteGroupRow>(
+      `SELECT g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
+       FROM work_note_groups g
+       INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
+       WHERE wngi.work_id = ?
+       ORDER BY g.name ASC`,
+      [workId]
+    );
 
-    return (result.results || []).map((row) => this.toWorkNoteGroup(row));
+    return result.rows.map((row) => this.toWorkNoteGroup(row));
   }
 }

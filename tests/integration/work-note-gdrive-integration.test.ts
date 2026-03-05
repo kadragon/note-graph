@@ -1,6 +1,7 @@
 // Trace: TASK-066, Phase-6.5
 // Integration test for Google Drive attachment lifecycle in work notes
 
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { WorkNoteFileService } from '@worker/services/work-note-file-service';
 import { WorkNoteService } from '@worker/services/work-note-service';
 import type { Env } from '@worker/types/env';
@@ -155,7 +156,7 @@ describe('Work Note Google Drive Integration', () => {
   it('uploads, downloads, and cleans up Google Drive attachments on delete', async () => {
     const fileService = new WorkNoteFileService(
       testEnv.R2_BUCKET,
-      testEnv.DB,
+      new D1DatabaseClient(testEnv.DB),
       testEnv as unknown as Env
     );
     const uploaded = await fileService.uploadFile({
@@ -202,7 +203,7 @@ describe('Work Note Google Drive Integration', () => {
 
     const fileService = new WorkNoteFileService(
       testEnv.R2_BUCKET,
-      testEnv.DB,
+      new D1DatabaseClient(testEnv.DB),
       testEnv as unknown as Env
     );
 

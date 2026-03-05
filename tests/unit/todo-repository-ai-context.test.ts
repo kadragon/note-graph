@@ -1,16 +1,18 @@
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('TodoRepository.getOpenTodoDueDateContextForAI', () => {
   let repository: TodoRepository;
   const workId = 'WORK-AI-CONTEXT-001';
 
   beforeEach(async () => {
-    repository = new TodoRepository(testEnv.DB);
+    repository = new TodoRepository(testDb);
     await testEnv.DB.batch([
       testEnv.DB.prepare('DELETE FROM todos'),
       testEnv.DB.prepare('DELETE FROM work_notes'),

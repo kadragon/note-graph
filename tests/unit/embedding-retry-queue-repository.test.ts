@@ -2,18 +2,20 @@
 // Unit tests for EmbeddingRetryQueueRepository
 
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { EmbeddingRetryQueueRepository } from '@worker/repositories/embedding-retry-queue-repository';
 import type { Env } from '@worker/types/env';
 import { nanoid } from 'nanoid';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('EmbeddingRetryQueueRepository', () => {
   let repository: EmbeddingRetryQueueRepository;
 
   beforeEach(async () => {
-    repository = new EmbeddingRetryQueueRepository(testEnv.DB);
+    repository = new EmbeddingRetryQueueRepository(testDb);
 
     // Clean up test data
     await testEnv.DB.prepare('DELETE FROM embedding_retry_queue').run();

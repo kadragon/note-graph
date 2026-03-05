@@ -2,6 +2,7 @@
  * Google Drive service for file operations
  */
 
+import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { GoogleOAuthService } from './google-oauth-service';
 
@@ -37,7 +38,7 @@ export class GoogleDriveService {
 
   constructor(
     private env: Env,
-    private db: D1Database
+    private db: DatabaseClient
   ) {
     this.oauthService = new GoogleOAuthService(env, db);
   }
@@ -172,20 +173,18 @@ export class GoogleDriveService {
    */
   async getOrCreateWorkNoteFolder(userEmail: string, workId: string): Promise<GDriveFolderRecord> {
     // Check if folder already exists in DB
-    const existing = await this.db
-      .prepare(
-        `SELECT work_id as workId, gdrive_folder_id as gdriveFolderId,
-                gdrive_folder_link as gdriveFolderLink, created_at as createdAt
-         FROM work_note_gdrive_folders
-         WHERE work_id = ?`
-      )
-      .bind(workId)
-      .first<GDriveFolderRecord>();
+    const existing = await this.db.queryOne<GDriveFolderRecord>(
+      `SELECT work_id as workId, gdrive_folder_id as gdriveFolderId,
+              gdrive_folder_link as gdriveFolderLink, created_at as createdAt
+       FROM work_note_gdrive_folders
+       WHERE work_id = ?`,
+      [workId]
+    );
 
-    const workNote = await this.db
-      .prepare('SELECT created_at as createdAt FROM work_notes WHERE work_id = ?')
-      .bind(workId)
-      .first<{ createdAt: string }>();
+    const workNote = await this.db.queryOne<{ createdAt: string }>(
+      'SELECT created_at as createdAt FROM work_notes WHERE work_id = ?',
+      [workId]
+    );
 
     if (!workNote?.createdAt) {
       throw new Error(`Work note not found for workId: ${workId}`);
@@ -211,13 +210,11 @@ export class GoogleDriveService {
     const now = new Date().toISOString();
 
     // Store in DB
-    await this.db
-      .prepare(
-        `INSERT OR IGNORE INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
-         VALUES (?, ?, ?, ?)`
-      )
-      .bind(workId, folder.id, folder.webViewLink, now)
-      .run();
+    await this.db.execute(
+      `INSERT OR IGNORE INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [workId, folder.id, folder.webViewLink, now]
+    );
 
     return {
       workId,

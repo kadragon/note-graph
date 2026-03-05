@@ -2,6 +2,7 @@
 // Unit tests for DepartmentRepository
 
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { DepartmentRepository } from '@worker/repositories/department-repository';
 import type { CreateDepartmentInput, UpdateDepartmentInput } from '@worker/schemas/department';
 import type { Env } from '@worker/types/env';
@@ -9,12 +10,13 @@ import { ConflictError, NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('DepartmentRepository', () => {
   let repository: DepartmentRepository;
 
   beforeEach(async () => {
-    repository = new DepartmentRepository(testEnv.DB);
+    repository = new DepartmentRepository(testDb);
 
     // Clean up test data
     await testEnv.DB.batch([

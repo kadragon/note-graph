@@ -1,15 +1,17 @@
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { SettingRepository } from '@worker/repositories/setting-repository';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('SettingRepository', () => {
   let repository: SettingRepository;
 
   beforeEach(async () => {
-    repository = new SettingRepository(testEnv.DB);
+    repository = new SettingRepository(testDb);
     await testEnv.DB.prepare('DELETE FROM app_settings').run();
   });
 

@@ -2,18 +2,20 @@
 // Unit tests for TodoRepository query methods
 
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('TodoRepository - Query Methods', () => {
   let repository: TodoRepository;
   let testWorkId: string;
 
   beforeEach(async () => {
-    repository = new TodoRepository(testEnv.DB);
+    repository = new TodoRepository(testDb);
 
     // Clean up test data
     await testEnv.DB.batch([

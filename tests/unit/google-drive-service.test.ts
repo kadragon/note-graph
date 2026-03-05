@@ -1,47 +1,48 @@
-import type { D1Database } from '@cloudflare/workers-types';
 import { GoogleDriveService } from '@worker/services/google-drive-service';
+import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-class MockD1Database {
+class MockDatabaseClient {
   queries: string[] = [];
-  private bindings: unknown[] = [];
 
   constructor(
     private workNoteCreatedAt: string | null = null,
     private existingFolder = false
   ) {}
 
-  prepare(query: string) {
-    this.queries.push(query);
-    this.bindings = [];
-
-    return {
-      bind: (...params: unknown[]) => {
-        this.bindings = params;
-        return {
-          first: async <T>() => {
-            if (query.includes('FROM work_notes')) {
-              return this.workNoteCreatedAt
-                ? ({ createdAt: this.workNoteCreatedAt } as T)
-                : (null as T | null);
-            }
-            if (query.includes('FROM work_note_gdrive_folders')) {
-              const workId = this.bindings[0];
-              return this.existingFolder && this.workNoteCreatedAt && workId
-                ? ({
-                    gdriveFolderId: 'FOLDER-EXISTING',
-                    gdriveFolderLink: 'https://drive.example/WORK-123',
-                  } as T)
-                : (null as T | null);
-            }
-            return null as T | null;
-          },
-          run: async () => ({ success: true }),
-        };
-      },
-    };
+  async queryOne<T>(sql: string, params?: unknown[]): Promise<T | null> {
+    this.queries.push(sql);
+    if (sql.includes('FROM work_notes')) {
+      return this.workNoteCreatedAt ? ({ createdAt: this.workNoteCreatedAt } as T) : null;
+    }
+    if (sql.includes('FROM work_note_gdrive_folders')) {
+      const workId = params?.[0];
+      return this.existingFolder && this.workNoteCreatedAt && workId
+        ? ({
+            gdriveFolderId: 'FOLDER-EXISTING',
+            gdriveFolderLink: 'https://drive.example/WORK-123',
+          } as T)
+        : null;
+    }
+    return null;
   }
+
+  async query<T>(sql: string): Promise<{ rows: T[] }> {
+    this.queries.push(sql);
+    return { rows: [] };
+  }
+
+  async execute(sql: string): Promise<{ rowCount: number }> {
+    this.queries.push(sql);
+    return { rowCount: 1 };
+  }
+
+  async transaction<T>(fn: (tx: DatabaseClient) => Promise<T>): Promise<T> {
+    return fn(this as unknown as DatabaseClient);
+  }
+
+  async executeBatch(): Promise<void> {}
 }
 
 class TestGoogleDriveService extends GoogleDriveService {
@@ -87,7 +88,7 @@ class TestGoogleDriveService extends GoogleDriveService {
 class DriveServiceHarness extends GoogleDriveService {
   constructor(
     env: Env,
-    db: D1Database,
+    db: DatabaseClient,
     private metadata: Awaited<ReturnType<GoogleDriveService['getFileMetadata']>>
   ) {
     super(env, db);
@@ -135,7 +136,7 @@ describe('GoogleDriveService', () => {
       GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
       GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
     } as Env;
-    const service = new GoogleDriveService(env, {} as D1Database);
+    const service = new GoogleDriveService(env, {} as unknown as DatabaseClient);
 
     vi.spyOn(
       service as unknown as { getAccessToken: (userEmail: string) => Promise<string> },
@@ -173,7 +174,7 @@ describe('GoogleDriveService', () => {
       size: '0',
       parents: ['root-folder'],
     };
-    const service = new DriveServiceHarness(env, {} as D1Database, metadata);
+    const service = new DriveServiceHarness(env, {} as unknown as DatabaseClient, metadata);
 
     vi.spyOn(
       service as unknown as { getAccessToken: (userEmail: string) => Promise<string> },
@@ -192,7 +193,7 @@ describe('GoogleDriveService', () => {
   });
 
   it('uses INSERT OR IGNORE when persisting work note folders', async () => {
-    const db = new MockD1Database('2023-01-01T00:00:00.000Z');
+    const db = new MockDatabaseClient('2023-01-01T00:00:00.000Z');
     const env = {
       GOOGLE_CLIENT_ID: 'client-id',
       GOOGLE_CLIENT_SECRET: 'client-secret',
@@ -200,7 +201,7 @@ describe('GoogleDriveService', () => {
       GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
     } as Env;
 
-    const service = new TestGoogleDriveService(env, db as unknown as D1Database);
+    const service = new TestGoogleDriveService(env, db as unknown as DatabaseClient);
 
     await service.getOrCreateWorkNoteFolder('tester@example.com', 'WORK-123');
 
@@ -210,7 +211,7 @@ describe('GoogleDriveService', () => {
   });
 
   it('ensures existing work note folders live under the year folder', async () => {
-    const db = new MockD1Database('2023-05-10T00:00:00.000Z', true);
+    const db = new MockDatabaseClient('2023-05-10T00:00:00.000Z', true);
     const env = {
       GOOGLE_CLIENT_ID: 'client-id',
       GOOGLE_CLIENT_SECRET: 'client-secret',
@@ -218,7 +219,7 @@ describe('GoogleDriveService', () => {
       GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
     } as Env;
 
-    const service = new TestGoogleDriveService(env, db as unknown as D1Database);
+    const service = new TestGoogleDriveService(env, db as unknown as DatabaseClient);
 
     await service.getOrCreateWorkNoteFolder('tester@example.com', 'WORK-123');
 
@@ -228,7 +229,7 @@ describe('GoogleDriveService', () => {
   });
 
   it('creates a year folder under the Drive root for new work notes', async () => {
-    const db = new MockD1Database('2023-05-10T00:00:00.000Z');
+    const db = new MockDatabaseClient('2023-05-10T00:00:00.000Z');
     const env = {
       GOOGLE_CLIENT_ID: 'client-id',
       GOOGLE_CLIENT_SECRET: 'client-secret',
@@ -236,7 +237,7 @@ describe('GoogleDriveService', () => {
       GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
     } as Env;
 
-    const service = new TestGoogleDriveService(env, db as unknown as D1Database);
+    const service = new TestGoogleDriveService(env, db as unknown as DatabaseClient);
 
     await service.getOrCreateWorkNoteFolder('tester@example.com', 'WORK-123');
 
@@ -254,7 +255,7 @@ describe('GoogleDriveService', () => {
         GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
         GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
       } as Env;
-      const service = new GoogleDriveService(env, {} as D1Database);
+      const service = new GoogleDriveService(env, {} as unknown as DatabaseClient);
 
       const mockFiles = [
         {
@@ -300,7 +301,7 @@ describe('GoogleDriveService', () => {
         GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
         GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
       } as Env;
-      const service = new GoogleDriveService(env, {} as D1Database);
+      const service = new GoogleDriveService(env, {} as unknown as DatabaseClient);
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
         new Response(JSON.stringify({ files: [] }), { status: 200 })
@@ -318,7 +319,7 @@ describe('GoogleDriveService', () => {
         GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
         GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
       } as Env;
-      const service = new GoogleDriveService(env, {} as D1Database);
+      const service = new GoogleDriveService(env, {} as unknown as DatabaseClient);
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
         new Response('Not Found', { status: 404 })

@@ -1,6 +1,6 @@
-import type { D1Database } from '@cloudflare/workers-types';
 import { nanoid } from 'nanoid';
 import type { CreateMeetingMinuteInput, UpdateMeetingMinuteInput } from '../schemas/meeting-minute';
+import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import { buildMeetingMinutesFtsQuery } from '../utils/meeting-minutes-fts';
 
@@ -36,7 +36,7 @@ export interface PaginatedMeetingMinutesResult {
 }
 
 export class MeetingMinuteRepository {
-  constructor(private db: D1Database) {}
+  constructor(private db: DatabaseClient) {}
 
   private generateMeetingId(): string {
     return `MEET-${nanoid()}`;
@@ -53,14 +53,12 @@ export class MeetingMinuteRepository {
     const keywordsJson = JSON.stringify(keywords);
     const keywordsText = keywords.join(' ');
 
-    const statements: ReturnType<D1Database['prepare']>[] = [
-      this.db
-        .prepare(
-          `INSERT INTO meeting_minutes (
-             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        )
-        .bind(
+    const statements: Array<{ sql: string; params?: unknown[] }> = [
+      {
+        sql: `INSERT INTO meeting_minutes (
+               meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        params: [
           meetingId,
           data.meetingDate,
           data.topic,
@@ -68,48 +66,37 @@ export class MeetingMinuteRepository {
           keywordsJson,
           keywordsText,
           now,
-          now
-        ),
+          now,
+        ],
+      },
     ];
 
     for (const personId of data.attendeePersonIds) {
-      statements.push(
-        this.db
-          .prepare(
-            `INSERT INTO meeting_minute_person (meeting_id, person_id)
-             VALUES (?, ?)`
-          )
-          .bind(meetingId, personId)
-      );
+      statements.push({
+        sql: `INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)`,
+        params: [meetingId, personId],
+      });
     }
 
     if (data.categoryIds && data.categoryIds.length > 0) {
       for (const categoryId of data.categoryIds) {
-        statements.push(
-          this.db
-            .prepare(
-              `INSERT INTO meeting_minute_task_category (meeting_id, category_id)
-               VALUES (?, ?)`
-            )
-            .bind(meetingId, categoryId)
-        );
+        statements.push({
+          sql: `INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)`,
+          params: [meetingId, categoryId],
+        });
       }
     }
 
     if (data.groupIds && data.groupIds.length > 0) {
       for (const groupId of data.groupIds) {
-        statements.push(
-          this.db
-            .prepare(
-              `INSERT INTO meeting_minute_group (meeting_id, group_id)
-               VALUES (?, ?)`
-            )
-            .bind(meetingId, groupId)
-        );
+        statements.push({
+          sql: `INSERT INTO meeting_minute_group (meeting_id, group_id) VALUES (?, ?)`,
+          params: [meetingId, groupId],
+        });
       }
     }
 
-    await this.db.batch(statements);
+    await this.db.executeBatch(statements);
 
     return {
       meetingId,
@@ -128,23 +115,21 @@ export class MeetingMinuteRepository {
       keywords?: string[];
     }
   ): Promise<MeetingMinute> {
-    const existing = await this.db
-      .prepare(
-        `SELECT meeting_id as meetingId, meeting_date as meetingDate, topic, details_raw as detailsRaw,
-                keywords_json as keywordsJson, created_at as createdAt, updated_at as updatedAt
-         FROM meeting_minutes
-         WHERE meeting_id = ?`
-      )
-      .bind(meetingId)
-      .first<{
-        meetingId: string;
-        meetingDate: string;
-        topic: string;
-        detailsRaw: string;
-        keywordsJson: string;
-        createdAt: string;
-        updatedAt: string;
-      }>();
+    const existing = await this.db.queryOne<{
+      meetingId: string;
+      meetingDate: string;
+      topic: string;
+      detailsRaw: string;
+      keywordsJson: string;
+      createdAt: string;
+      updatedAt: string;
+    }>(
+      `SELECT meeting_id as meetingId, meeting_date as meetingDate, topic, details_raw as detailsRaw,
+              keywords_json as keywordsJson, created_at as createdAt, updated_at as updatedAt
+       FROM meeting_minutes
+       WHERE meeting_id = ?`,
+      [meetingId]
+    );
 
     if (!existing) {
       throw new NotFoundError('Meeting minute', meetingId);
@@ -177,72 +162,59 @@ export class MeetingMinuteRepository {
       params.push(nextKeywordsText);
     }
 
-    await this.db
-      .prepare(
-        `UPDATE meeting_minutes
-         SET ${fields.join(', ')}
-         WHERE meeting_id = ?`
-      )
-      .bind(...params, meetingId)
-      .run();
+    await this.db.execute(
+      `UPDATE meeting_minutes
+       SET ${fields.join(', ')}
+       WHERE meeting_id = ?`,
+      [...params, meetingId]
+    );
 
-    const statements: ReturnType<D1Database['prepare']>[] = [];
+    const statements: Array<{ sql: string; params?: unknown[] }> = [];
 
     if (data.attendeePersonIds !== undefined) {
-      statements.push(
-        this.db.prepare(`DELETE FROM meeting_minute_person WHERE meeting_id = ?`).bind(meetingId)
-      );
+      statements.push({
+        sql: `DELETE FROM meeting_minute_person WHERE meeting_id = ?`,
+        params: [meetingId],
+      });
 
       for (const personId of data.attendeePersonIds) {
-        statements.push(
-          this.db
-            .prepare(
-              `INSERT INTO meeting_minute_person (meeting_id, person_id)
-               VALUES (?, ?)`
-            )
-            .bind(meetingId, personId)
-        );
+        statements.push({
+          sql: `INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)`,
+          params: [meetingId, personId],
+        });
       }
     }
 
     if (data.categoryIds !== undefined) {
-      statements.push(
-        this.db
-          .prepare(`DELETE FROM meeting_minute_task_category WHERE meeting_id = ?`)
-          .bind(meetingId)
-      );
+      statements.push({
+        sql: `DELETE FROM meeting_minute_task_category WHERE meeting_id = ?`,
+        params: [meetingId],
+      });
 
       for (const categoryId of data.categoryIds) {
-        statements.push(
-          this.db
-            .prepare(
-              `INSERT INTO meeting_minute_task_category (meeting_id, category_id)
-               VALUES (?, ?)`
-            )
-            .bind(meetingId, categoryId)
-        );
+        statements.push({
+          sql: `INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)`,
+          params: [meetingId, categoryId],
+        });
       }
     }
 
     if (data.groupIds !== undefined) {
-      statements.push(
-        this.db.prepare(`DELETE FROM meeting_minute_group WHERE meeting_id = ?`).bind(meetingId)
-      );
+      statements.push({
+        sql: `DELETE FROM meeting_minute_group WHERE meeting_id = ?`,
+        params: [meetingId],
+      });
 
       for (const groupId of data.groupIds) {
-        statements.push(
-          this.db
-            .prepare(
-              `INSERT INTO meeting_minute_group (meeting_id, group_id)
-               VALUES (?, ?)`
-            )
-            .bind(meetingId, groupId)
-        );
+        statements.push({
+          sql: `INSERT INTO meeting_minute_group (meeting_id, group_id) VALUES (?, ?)`,
+          params: [meetingId, groupId],
+        });
       }
     }
 
     if (statements.length > 0) {
-      await this.db.batch(statements);
+      await this.db.executeBatch(statements);
     }
 
     return {
@@ -269,12 +241,7 @@ export class MeetingMinuteRepository {
     if (query.q && query.q.trim().length > 0) {
       const ftsQuery = buildMeetingMinutesFtsQuery(query.q);
       if (!ftsQuery) {
-        return {
-          items: [],
-          total: 0,
-          page,
-          pageSize,
-        };
+        return { items: [], total: 0, page, pageSize };
       }
 
       withClause = `
@@ -333,10 +300,7 @@ export class MeetingMinuteRepository {
       FROM meeting_minutes mm${joinClause}${whereClause}
     `;
 
-    const totalRow = await this.db
-      .prepare(totalSql)
-      .bind(...params)
-      .first<{ total: number }>();
+    const totalRow = await this.db.queryOne<{ total: number }>(totalSql, params);
 
     let sql = `
       ${withClause}
@@ -355,20 +319,17 @@ export class MeetingMinuteRepository {
     sql += ` ORDER BY mm.meeting_date DESC, mm.updated_at DESC, mm.meeting_id DESC`;
     sql += ` LIMIT ? OFFSET ?`;
 
-    const result = await this.db
-      .prepare(sql)
-      .bind(...params, pageSize, offset)
-      .all<{
-        meetingId: string;
-        meetingDate: string;
-        topic: string;
-        detailsRaw: string;
-        keywordsJson: string;
-        createdAt: string;
-        updatedAt: string;
-      }>();
+    const result = await this.db.query<{
+      meetingId: string;
+      meetingDate: string;
+      topic: string;
+      detailsRaw: string;
+      keywordsJson: string;
+      createdAt: string;
+      updatedAt: string;
+    }>(sql, [...params, pageSize, offset]);
 
-    const items = (result.results || []).map((row) => ({
+    const items = result.rows.map((row) => ({
       meetingId: row.meetingId,
       meetingDate: row.meetingDate,
       topic: row.topic,
@@ -396,15 +357,15 @@ export class MeetingMinuteRepository {
   }
 
   async delete(meetingId: string): Promise<void> {
-    const existing = await this.db
-      .prepare('SELECT 1 FROM meeting_minutes WHERE meeting_id = ?')
-      .bind(meetingId)
-      .first();
+    const existing = await this.db.queryOne<{ meeting_id: string }>(
+      'SELECT meeting_id FROM meeting_minutes WHERE meeting_id = ?',
+      [meetingId]
+    );
 
     if (!existing) {
       throw new NotFoundError('Meeting minute', meetingId);
     }
 
-    await this.db.prepare('DELETE FROM meeting_minutes WHERE meeting_id = ?').bind(meetingId).run();
+    await this.db.execute('DELETE FROM meeting_minutes WHERE meeting_id = ?', [meetingId]);
   }
 }
