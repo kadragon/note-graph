@@ -31,7 +31,7 @@
  */
 
 import type { Context, Next } from 'hono';
-import { D1DatabaseClient } from '../adapters/d1-database-client';
+import { createDatabaseClient, createFtsDialect } from '../adapters/database-factory';
 import { DepartmentRepository } from '../repositories/department-repository';
 import { EmbeddingRetryQueueRepository } from '../repositories/embedding-retry-queue-repository';
 import { PdfJobRepository } from '../repositories/pdf-job-repository';
@@ -44,8 +44,9 @@ import { SettingService } from '../services/setting-service';
 import type { AppContext, Repositories } from '../types/context';
 
 export async function repositoriesMiddleware(c: Context<AppContext>, next: Next): Promise<void> {
-  const db = new D1DatabaseClient(c.env.DB);
+  const db = createDatabaseClient(c.env);
   c.set('db', db);
+  c.set('ftsDialect', createFtsDialect(c.env));
 
   const repositories: Repositories = {
     departments: new DepartmentRepository(db),

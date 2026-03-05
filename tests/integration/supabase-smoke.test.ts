@@ -8,6 +8,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PostgresFtsDialect } from '../../apps/worker/src/adapters/postgres-fts-dialect';
 import { createSupabaseConnection } from '../../apps/worker/src/adapters/supabase-connection';
 import { SupabaseDatabaseClient } from '../../apps/worker/src/adapters/supabase-database-client';
 import { SettingRepository } from '../../apps/worker/src/repositories/setting-repository';
@@ -107,5 +108,67 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
       ['test.smoke.tx2']
     );
     expect(row).toBeNull();
+  });
+
+  it('FTS query works with PostgresFtsDialect on work_notes', async () => {
+    const testWorkId = 'test-smoke-fts-' + Date.now();
+
+    await db.execute(
+      `INSERT INTO work_notes (work_id, title, content_raw, category, note_date, is_public)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        testWorkId,
+        'Smoke FTS Test Title',
+        'Integration test content for full text search',
+        'general',
+        '2026-01-01',
+        false,
+      ]
+    );
+
+    try {
+      const dialect = new PostgresFtsDialect();
+      const cte = dialect.buildWorkNoteFtsCte();
+
+      const { rows } = await db.query<{ id: string; rank: number }>(
+        `${cte.sql} SELECT id, ${cte.rankColumn} FROM fts_matches`,
+        ['smoke & test']
+      );
+
+      expect(rows.length).toBeGreaterThanOrEqual(1);
+      expect(rows.some((r) => r.id === testWorkId)).toBe(true);
+    } finally {
+      await db.execute('DELETE FROM work_notes WHERE work_id = ?', [testWorkId]);
+    }
+  });
+
+  it('FTS query works with PostgresFtsDialect on meeting_minutes', async () => {
+    const testMeetingId = 'test-smoke-fts-mm-' + Date.now();
+
+    await db.execute(
+      `INSERT INTO meeting_minutes (meeting_id, meeting_date, topic, details_raw)
+       VALUES (?, ?, ?, ?)`,
+      [
+        testMeetingId,
+        '2026-01-01',
+        'Smoke FTS Meeting Topic',
+        'Discussion about integration testing',
+      ]
+    );
+
+    try {
+      const dialect = new PostgresFtsDialect();
+      const cte = dialect.buildMeetingMinuteFtsCte();
+
+      const { rows } = await db.query<{ id: string; rank: number }>(
+        `${cte.sql} SELECT id, ${cte.rankColumn} FROM fts_matches`,
+        ['smoke & meeting']
+      );
+
+      expect(rows.length).toBeGreaterThanOrEqual(1);
+      expect(rows.some((r) => r.id === testMeetingId)).toBe(true);
+    } finally {
+      await db.execute('DELETE FROM meeting_minutes WHERE meeting_id = ?', [testMeetingId]);
+    }
   });
 });

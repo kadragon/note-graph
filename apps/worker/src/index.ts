@@ -6,7 +6,7 @@
 
 import { AuthenticationError } from '@shared/types/auth';
 import { Hono } from 'hono';
-import { D1DatabaseClient } from './adapters/d1-database-client';
+import { createDatabaseClient } from './adapters/database-factory';
 import { getMeHandler } from './handlers/auth';
 import { authMiddleware } from './middleware/auth';
 import { repositoriesMiddleware } from './middleware/repositories';
@@ -205,7 +205,7 @@ app.onError((err, c) => {
 const SCHEDULED_EMBED_PENDING_BATCH_SIZE = 20;
 
 async function runScheduledEmbedPending(env: Env): Promise<void> {
-  const db = new D1DatabaseClient(env.DB);
+  const db = createDatabaseClient(env);
   const settingRepo = new SettingRepository(db);
   const settingService = new SettingService(settingRepo);
   await settingService.preload();
