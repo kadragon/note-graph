@@ -1,8 +1,10 @@
 // Trace: SPEC-search-1, TASK-011, SPEC-refactor-embedding-service, TASK-REFACTOR-005
-import type { D1Database } from '@cloudflare/workers-types';
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
+import { D1FtsDialect } from '../adapters/d1-fts-dialect';
+import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
+import type { FtsDialect } from '../types/fts-dialect';
 import { SQL_VAR_LIMIT } from '../utils/db-utils';
 import { FtsSearchService } from './fts-search-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
@@ -19,11 +21,12 @@ export class HybridSearchService {
   private embeddingService: OpenAIEmbeddingService;
 
   constructor(
-    private db: D1Database,
+    private db: DatabaseClient,
     env: Env,
+    ftsDialect: FtsDialect = new D1FtsDialect(),
     settingService?: SettingService
   ) {
-    this.ftsService = new FtsSearchService(db);
+    this.ftsService = new FtsSearchService(db, ftsDialect);
     this.embeddingService = new OpenAIEmbeddingService(env, settingService);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
   }
@@ -267,12 +270,9 @@ export class HybridSearchService {
 
       sql += ` WHERE ${conditions.join(' AND ')}`;
 
-      const result = await this.db
-        .prepare(sql)
-        .bind(...params)
-        .all<WorkNote>();
+      const { rows } = await this.db.query<WorkNote>(sql, params);
 
-      for (const workNote of result.results || []) {
+      for (const workNote of rows) {
         workNotesMap.set(workNote.workId, workNote);
       }
     }

@@ -29,7 +29,7 @@ export class TaskCategoryRepository {
     return {
       categoryId: row.categoryId,
       name: row.name,
-      isActive: row.isActive === 1,
+      isActive: Boolean(row.isActive),
       createdAt: row.createdAt,
     };
   }
@@ -107,7 +107,7 @@ export class TaskCategoryRepository {
     }
 
     if (activeOnly) {
-      conditions.push(`is_active = 1`);
+      conditions.push(`is_active`);
     }
 
     if (conditions.length > 0) {
@@ -248,8 +248,8 @@ export class TaskCategoryRepository {
 
     // Insert if not already associated
     await this.db.execute(
-      `INSERT OR IGNORE INTO work_note_task_category (work_id, category_id)
-       VALUES (?, ?)`,
+      `INSERT INTO work_note_task_category (work_id, category_id)
+       VALUES (?, ?) ON CONFLICT DO NOTHING`,
       [workId, categoryId]
     );
   }

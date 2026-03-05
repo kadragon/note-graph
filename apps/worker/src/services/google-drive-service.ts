@@ -211,8 +211,8 @@ export class GoogleDriveService {
 
     // Store in DB
     await this.db.execute(
-      `INSERT OR IGNORE INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
+       VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`,
       [workId, folder.id, folder.webViewLink, now]
     );
 

@@ -1,4 +1,6 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import { D1FtsDialect } from '../adapters/d1-fts-dialect';
+import type { DatabaseClient } from '../types/database';
+import type { FtsDialect } from '../types/fts-dialect';
 import {
   buildMeetingMinutesFtsQuery,
   mapMeetingMinutesFtsScores,
@@ -30,7 +32,10 @@ function safeParseJsonArray(json: string | null | undefined): string[] {
 }
 
 export class MeetingMinuteReferenceService {
-  constructor(private db: D1Database) {}
+  constructor(
+    private db: DatabaseClient,
+    private dialect: FtsDialect = new D1FtsDialect()
+  ) {}
 
   async search(
     query: string,
@@ -45,29 +50,23 @@ export class MeetingMinuteReferenceService {
 
     // Over-fetch to compensate for minScore filtering
     const FETCH_MULTIPLIER = 3;
-    const result = await this.db
-      .prepare(
-        `WITH fts_matches AS (
-           SELECT rowid, rank
-           FROM meeting_minutes_fts
-           WHERE meeting_minutes_fts MATCH ?
-           ORDER BY rank ASC
-           LIMIT ?
-         )
+    const cte = this.dialect.buildMeetingMinuteFtsCte();
+    const cteSql = cte.sql.replace(/\)$/, ` ORDER BY ${cte.rankColumn} ASC LIMIT ?)`);
+    const { rows } = await this.db.query<MeetingMinuteFtsRow>(
+      `${cteSql}
          SELECT
            mm.meeting_id as meetingId,
            mm.meeting_date as meetingDate,
            mm.topic as topic,
            mm.keywords_json as keywordsJson,
-           fts.rank as ftsRank
+           fts.${cte.rankColumn} as ftsRank
          FROM fts_matches fts
-         INNER JOIN meeting_minutes mm ON mm.rowid = fts.rowid
-         ORDER BY fts.rank ASC`
-      )
-      .bind(ftsQuery, limit * FETCH_MULTIPLIER)
-      .all<MeetingMinuteFtsRow>();
+         INNER JOIN meeting_minutes mm ON ${cte.joinCondition}
+         ORDER BY fts.${cte.rankColumn} ASC`,
+      [ftsQuery, limit * FETCH_MULTIPLIER]
+    );
 
-    return mapMeetingMinutesFtsScores(result.results || [])
+    return mapMeetingMinutesFtsScores(rows)
       .filter((row) => row.score >= minScore)
       .slice(0, limit)
       .map((row) => ({

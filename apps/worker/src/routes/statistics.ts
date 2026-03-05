@@ -24,7 +24,7 @@ const statistics = createProtectedRouter();
  */
 statistics.get('/', queryValidator(statisticsQuerySchema), async (c) => {
   const query = getValidatedQuery<typeof statisticsQuerySchema>(c);
-  const service = new StatisticsService(c.env);
+  const service = new StatisticsService(c.get('db'));
 
   const stats = await service.getStatistics(query.period, {
     year: query.year,

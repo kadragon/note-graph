@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:test';
 import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
+import { D1FtsDialect } from '@worker/adapters/d1-fts-dialect';
 import { MeetingMinuteRepository } from '@worker/repositories/meeting-minute-repository';
 import type { CreateMeetingMinuteInput } from '@worker/schemas/meeting-minute';
 import type { Env } from '@worker/types/env';
@@ -12,7 +13,7 @@ describe('MeetingMinuteRepository', () => {
   let repository: MeetingMinuteRepository;
 
   beforeEach(async () => {
-    repository = new MeetingMinuteRepository(testDb);
+    repository = new MeetingMinuteRepository(testDb, new D1FtsDialect());
 
     await testEnv.DB.batch([
       testEnv.DB.prepare('DELETE FROM work_note_meeting_minute'),

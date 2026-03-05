@@ -1,5 +1,6 @@
 import {
   buildWorkNoteFtsQuery,
+  buildWorkNoteTsQuery,
   extractWorkNoteFtsTokens,
   normalizeWorkNoteSearchPhrase,
 } from '@worker/utils/work-notes-fts';
@@ -34,5 +35,23 @@ describe('work-notes-fts utils', () => {
     const phrase = normalizeWorkNoteSearchPhrase('  검색    성능   개선  ');
 
     expect(phrase).toBe('검색 성능 개선');
+  });
+
+  it('builds tsquery AND syntax for PostgreSQL', () => {
+    const query = buildWorkNoteTsQuery('검색 성능', 'AND');
+
+    expect(query).toBe("'검색' & '성능'");
+  });
+
+  it('builds tsquery OR syntax for PostgreSQL', () => {
+    const query = buildWorkNoteTsQuery('검색 성능', 'OR');
+
+    expect(query).toBe("'검색' | '성능'");
+  });
+
+  it('returns empty tsquery for punctuation-only input', () => {
+    const query = buildWorkNoteTsQuery(' !!! ((( ))) ::: ', 'AND');
+
+    expect(query).toBe('');
   });
 });

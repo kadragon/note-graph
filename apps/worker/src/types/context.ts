@@ -13,6 +13,7 @@ import type { TaskCategoryRepository } from '../repositories/task-category-repos
 import type { TodoRepository } from '../repositories/todo-repository';
 import type { WorkNoteGroupRepository } from '../repositories/work-note-group-repository';
 import type { SettingService } from '../services/setting-service';
+import type { DatabaseClient } from './database';
 import type { Env } from './env';
 
 export interface Repositories {
@@ -36,6 +37,7 @@ export interface Repositories {
  */
 export interface AppVariables {
   user?: AuthUser;
+  db: DatabaseClient;
   repositories: Repositories;
   settingService: SettingService;
   body?: Record<string | symbol, unknown>;

@@ -1,0 +1,33 @@
+/**
+ * Real PostgreSQL connection implementing SupabaseConnection.
+ * Uses postgres.js (porsager) to connect to Supabase's PostgreSQL.
+ */
+
+import postgres from 'postgres';
+import type { SupabaseConnection } from './supabase-database-client';
+
+export function createSupabaseConnection(
+  databaseUrl: string
+): SupabaseConnection & { close: () => Promise<void> } {
+  const sql = postgres(databaseUrl, {
+    max: 1,
+    idle_timeout: 20,
+    connect_timeout: 10,
+  });
+
+  return {
+    async query<T>(sqlText: string, params?: unknown[]): Promise<{ rows: T[] }> {
+      const rows = await sql.unsafe<T[]>(sqlText, params as any[]);
+      return { rows: rows as T[] };
+    },
+
+    async execute(sqlText: string, params?: unknown[]): Promise<{ rowCount: number }> {
+      const result = await sql.unsafe(sqlText, params as any[]);
+      return { rowCount: result.count ?? 0 };
+    },
+
+    async close() {
+      await sql.end();
+    },
+  };
+}

@@ -96,7 +96,7 @@ app.post(
     const todoDueDateContext = c.get('todoDueDateContext');
 
     // Search for similar work notes using shared service
-    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
+    const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
     const similarNotes = await workNoteService.findSimilarNotes(
       body.inputText,
       SIMILAR_NOTES_TOP_K
@@ -130,7 +130,7 @@ app.post(
 
     let scoredMeetingReferences: Awaited<ReturnType<MeetingMinuteReferenceService['search']>> = [];
     try {
-      const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.env.DB);
+      const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.get('db'));
       scoredMeetingReferences = await meetingMinuteReferenceService.search(
         body.inputText,
         MEETING_REFERENCES_TOP_K,
@@ -162,7 +162,7 @@ app.post(
     const todoDueDateContext = c.get('todoDueDateContext');
 
     // Fetch work note
-    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
+    const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
     const workNote = await workNoteService.findById(workId);
 
     if (!workNote) {
@@ -228,7 +228,7 @@ app.post(
     const { newContent, generateNewTodos } = validationResult.data;
 
     // Fetch existing work note
-    const workNoteService = new WorkNoteService(c.env, c.get('settingService'));
+    const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
     const workNote = await workNoteService.findById(workId);
 
     if (!workNote) {

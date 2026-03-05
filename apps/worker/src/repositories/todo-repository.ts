@@ -21,6 +21,7 @@ import type {
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI, TodoDueDateCount } from '../types/todo-due-date-context';
+import { queryInChunks } from '../utils/db-utils';
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -216,11 +217,11 @@ export class TodoRepository {
     const conditions: string[] = [];
     const params: (string | number)[] = [];
 
-    // Use json_each to avoid SQLite's 999 parameter limit for large workIds arrays
     const workIds = query.workIds ?? [];
     if (workIds.length > 0) {
-      conditions.push(`t.work_id IN (SELECT value FROM json_each(?))`);
-      params.push(JSON.stringify(workIds));
+      const placeholders = workIds.map(() => '?').join(',');
+      conditions.push(`t.work_id IN (${placeholders})`);
+      params.push(...workIds);
     }
 
     switch (query.view) {
@@ -559,15 +560,15 @@ export class TodoRepository {
   }> {
     const { todoIds, amount, unit } = data;
 
-    // Fetch all requested todos (use json_each to avoid SQLite's 999 parameter limit)
-    const result = await this.db.query<{ todoId: string; workId: string; dueDate: string | null }>(
-      `SELECT todo_id as todoId, work_id as workId, due_date as dueDate
-       FROM todos
-       WHERE todo_id IN (SELECT value FROM json_each(?))`,
-      [JSON.stringify(todoIds)]
-    );
-
-    const todos = result.rows;
+    const todos = await queryInChunks(this.db, todoIds, async (db, chunk, placeholders) => {
+      const r = await db.query<{ todoId: string; workId: string; dueDate: string | null }>(
+        `SELECT todo_id as todoId, work_id as workId, due_date as dueDate
+         FROM todos
+         WHERE todo_id IN (${placeholders})`,
+        chunk
+      );
+      return r.rows;
+    });
 
     if (todos.length === 0) {
       throw new NotFoundError('Todo', todoIds.join(', '));

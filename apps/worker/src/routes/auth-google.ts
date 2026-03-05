@@ -2,7 +2,6 @@
  * Google OAuth routes for Drive integration
  */
 
-import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { getAuthUser } from '../middleware/auth';
 import { GoogleOAuthService, hasSufficientDriveScope } from '../services/google-oauth-service';
 import { createProtectedRouter } from './_shared/router-factory';
@@ -15,7 +14,7 @@ const authGoogle = createProtectedRouter();
  */
 authGoogle.get('/authorize', async (c) => {
   const user = getAuthUser(c);
-  const oauthService = new GoogleOAuthService(c.env, new D1DatabaseClient(c.env.DB));
+  const oauthService = new GoogleOAuthService(c.env, c.get('db'));
 
   // Use user email as state for verification
   const state = btoa(user.email);
@@ -30,7 +29,7 @@ authGoogle.get('/authorize', async (c) => {
  */
 authGoogle.get('/callback', async (c) => {
   const user = getAuthUser(c);
-  const oauthService = new GoogleOAuthService(c.env, new D1DatabaseClient(c.env.DB));
+  const oauthService = new GoogleOAuthService(c.env, c.get('db'));
 
   const code = c.req.query('code');
   const state = c.req.query('state');
@@ -73,7 +72,7 @@ authGoogle.get('/callback', async (c) => {
  */
 authGoogle.get('/status', async (c) => {
   const user = getAuthUser(c);
-  const oauthService = new GoogleOAuthService(c.env, new D1DatabaseClient(c.env.DB));
+  const oauthService = new GoogleOAuthService(c.env, c.get('db'));
   const isConfigured = !!(
     c.env.GOOGLE_CLIENT_ID &&
     c.env.GOOGLE_CLIENT_SECRET &&
@@ -104,7 +103,7 @@ authGoogle.get('/status', async (c) => {
  */
 authGoogle.post('/disconnect', async (c) => {
   const user = getAuthUser(c);
-  const oauthService = new GoogleOAuthService(c.env, new D1DatabaseClient(c.env.DB));
+  const oauthService = new GoogleOAuthService(c.env, c.get('db'));
 
   await oauthService.disconnect(user.email);
 

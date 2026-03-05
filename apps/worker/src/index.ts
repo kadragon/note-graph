@@ -205,10 +205,11 @@ app.onError((err, c) => {
 const SCHEDULED_EMBED_PENDING_BATCH_SIZE = 20;
 
 async function runScheduledEmbedPending(env: Env): Promise<void> {
-  const settingRepo = new SettingRepository(new D1DatabaseClient(env.DB));
+  const db = new D1DatabaseClient(env.DB);
+  const settingRepo = new SettingRepository(db);
   const settingService = new SettingService(settingRepo);
   await settingService.preload();
-  const processor = new EmbeddingProcessor(env, settingService);
+  const processor = new EmbeddingProcessor(db, env, settingService);
   const result = await processor.embedPending(SCHEDULED_EMBED_PENDING_BATCH_SIZE);
 
   const skipReasons = {

@@ -1,13 +1,18 @@
 // Trace: SPEC-search-1, TASK-009
-import type { D1Database } from '@cloudflare/workers-types';
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
+import { D1FtsDialect } from '../adapters/d1-fts-dialect';
+import type { DatabaseClient } from '../types/database';
+import type { FtsDialect } from '../types/fts-dialect';
 
 /**
  * FTS (Full-Text Search) service for lexical search using D1 FTS5
  */
 export class FtsSearchService {
-  constructor(private db: D1Database) {}
+  constructor(
+    private db: DatabaseClient,
+    private dialect: FtsDialect = new D1FtsDialect()
+  ) {}
 
   /**
    * Search work notes using FTS5 with trigram tokenizer
@@ -26,10 +31,9 @@ export class FtsSearchService {
 
     // Build SQL query with CTE to filter FTS results first
     // This optimizes join by limiting rows before full table scan
+    const cte = this.dialect.buildWorkNoteFtsCte();
     let sql = `
-      WITH fts_matches AS (
-        SELECT rowid, rank FROM notes_fts WHERE notes_fts MATCH ?
-      )
+      ${cte.sql}
       SELECT
         wn.work_id as workId,
         wn.title,
@@ -37,9 +41,9 @@ export class FtsSearchService {
         wn.category,
         wn.created_at as createdAt,
         wn.updated_at as updatedAt,
-        fts.rank as fts_rank
+        fts.${cte.rankColumn} as fts_rank
       FROM fts_matches fts
-      INNER JOIN work_notes wn ON wn.rowid = fts.rowid
+      INNER JOIN work_notes wn ON ${cte.joinCondition}
     `;
 
     const conditions: string[] = [];
@@ -84,25 +88,18 @@ export class FtsSearchService {
     }
 
     // Order by FTS rank (higher rank = better match)
-    sql += ` ORDER BY fts.rank DESC`;
+    sql += ` ORDER BY fts.${cte.rankColumn} DESC`;
 
     // Add limit
     sql += ` LIMIT ?`;
     params.push(limit);
 
     // Execute query
-    const result = await this.db
-      .prepare(sql)
-      .bind(...params)
-      .all<WorkNote & { fts_rank: number }>();
-
-    if (!result.success) {
-      throw new Error('FTS search query failed');
-    }
+    const { rows } = await this.db.query<WorkNote & { fts_rank: number }>(sql, params);
 
     // Convert to SearchResultItem format
     // FTS rank is negative (better matches are less negative), normalize to positive score
-    return result.results.map((row) => {
+    return rows.map((row) => {
       const { fts_rank, ...workNote } = row;
 
       // Normalize FTS rank to 0-1 range
@@ -140,15 +137,15 @@ export class FtsSearchService {
    * @returns True if FTS is synchronized with work_notes
    */
   async verifyFtsSync(): Promise<boolean> {
-    const result = await this.db
-      .prepare(
-        `
-      SELECT
+    if (this.dialect.isAlwaysSynced()) {
+      return true;
+    }
+
+    const result = await this.db.queryOne<{ work_notes_count: number; fts_count: number }>(
+      `SELECT
         (SELECT COUNT(*) FROM work_notes) as work_notes_count,
-        (SELECT COUNT(*) FROM notes_fts) as fts_count
-    `
-      )
-      .first<{ work_notes_count: number; fts_count: number }>();
+        (SELECT COUNT(*) FROM notes_fts) as fts_count`
+    );
 
     if (!result) {
       return false;

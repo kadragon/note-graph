@@ -7,13 +7,13 @@
 import type { SimilarWorkNoteReference } from '@shared/types/search';
 import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { format } from 'date-fns';
-import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import type {
   CreateWorkNoteInput,
   ListWorkNotesQuery,
   UpdateWorkNoteInput,
 } from '../schemas/work-note';
+import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { ChunkingService } from './chunking-service';
 import { EmbeddingProcessor } from './embedding-processor';
@@ -45,13 +45,13 @@ export class WorkNoteService {
   private embeddingProcessor: EmbeddingProcessor;
   private fileService: WorkNoteFileService | null;
 
-  constructor(env: Env, settingService?: SettingService) {
-    this.repository = new WorkNoteRepository(new D1DatabaseClient(env.DB));
+  constructor(db: DatabaseClient, env: Env, settingService?: SettingService) {
+    this.repository = new WorkNoteRepository(db);
     this.chunkingService = new ChunkingService();
 
     this.embeddingService = new OpenAIEmbeddingService(env, settingService);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
-    this.embeddingProcessor = new EmbeddingProcessor(env, settingService);
+    this.embeddingProcessor = new EmbeddingProcessor(db, env, settingService);
 
     // Initialize file service only when Google Drive credentials are configured
     const hasGoogleDrive = !!(
@@ -60,9 +60,7 @@ export class WorkNoteService {
       env.GDRIVE_ROOT_FOLDER_ID
     );
     this.fileService =
-      env.R2_BUCKET && hasGoogleDrive
-        ? new WorkNoteFileService(env.R2_BUCKET, new D1DatabaseClient(env.DB), env)
-        : null;
+      env.R2_BUCKET && hasGoogleDrive ? new WorkNoteFileService(env.R2_BUCKET, db, env) : null;
   }
 
   /**

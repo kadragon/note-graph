@@ -214,7 +214,7 @@ export class PersonRepository {
       statements.push({
         sql: `UPDATE person_dept_history
               SET is_active = 0, end_date = ?
-              WHERE person_id = ? AND is_active = 1`,
+              WHERE person_id = ? AND is_active`,
         params: [now, personId],
       });
 

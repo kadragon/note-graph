@@ -1,7 +1,9 @@
 import { nanoid } from 'nanoid';
+import { D1FtsDialect } from '../adapters/d1-fts-dialect';
 import type { CreateMeetingMinuteInput, UpdateMeetingMinuteInput } from '../schemas/meeting-minute';
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
+import type { FtsDialect } from '../types/fts-dialect';
 import { buildMeetingMinutesFtsQuery } from '../utils/meeting-minutes-fts';
 
 export interface MeetingMinute {
@@ -36,7 +38,10 @@ export interface PaginatedMeetingMinutesResult {
 }
 
 export class MeetingMinuteRepository {
-  constructor(private db: DatabaseClient) {}
+  constructor(
+    private db: DatabaseClient,
+    private dialect: FtsDialect = new D1FtsDialect()
+  ) {}
 
   private generateMeetingId(): string {
     return `MEET-${nanoid()}`;
@@ -244,13 +249,9 @@ export class MeetingMinuteRepository {
         return { items: [], total: 0, page, pageSize };
       }
 
-      withClause = `
-      WITH fts_matches AS (
-        SELECT rowid
-        FROM meeting_minutes_fts
-        WHERE meeting_minutes_fts MATCH ?
-      )`;
-      joins.push('INNER JOIN fts_matches fts ON fts.rowid = mm.rowid');
+      const cte = this.dialect.buildMeetingMinuteFilterCte();
+      withClause = cte.sql;
+      joins.push(`INNER JOIN fts_matches fts ON ${cte.joinCondition}`);
       params.push(ftsQuery);
     }
 
