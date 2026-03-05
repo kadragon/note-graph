@@ -5,6 +5,7 @@
 name = "note-graph"
 main = "apps/worker/src/index.ts"
 compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
 keep_vars = true
 
 # Disable workers.dev subdomain (using custom domain instead)
