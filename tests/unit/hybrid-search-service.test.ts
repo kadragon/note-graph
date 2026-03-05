@@ -1,8 +1,9 @@
 // Trace: SPEC-search-1, TASK-011, TASK-016
 // Unit tests for Hybrid Search Service - Public API Testing
 
-import type { D1Database, D1PreparedStatement, D1Result } from '@cloudflare/workers-types';
+import { D1FtsDialect } from '@worker/adapters/d1-fts-dialect';
 import { HybridSearchService } from '@worker/services/hybrid-search-service';
+import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,8 +11,14 @@ interface MockVectorizeIndex {
   query: ReturnType<typeof vi.fn>;
 }
 
-interface MockD1Database extends D1Database {
-  prepare: ReturnType<typeof vi.fn<[string], D1PreparedStatement>>;
+function createMockDb(queryResult: { rows: unknown[] } = { rows: [] }): DatabaseClient {
+  return {
+    query: vi.fn().mockResolvedValue(queryResult),
+    queryOne: vi.fn().mockResolvedValue(null),
+    execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+    transaction: vi.fn(),
+    executeBatch: vi.fn(),
+  } as unknown as DatabaseClient;
 }
 
 /**
@@ -20,24 +27,11 @@ interface MockD1Database extends D1Database {
  * treating the service as a black box and verifying outputs and side effects.
  */
 describe('HybridSearchService - Public API', () => {
-  let mockDb: MockD1Database;
+  let mockDb: DatabaseClient;
   let mockEnv: Env;
-  let mockStmt: D1PreparedStatement;
 
   beforeEach(() => {
-    // Setup mock database and statement
-    mockStmt = {
-      bind: vi.fn().mockReturnThis(),
-      all: vi.fn().mockResolvedValue({
-        success: true,
-        results: [],
-      } as D1Result),
-      first: vi.fn().mockResolvedValue(null),
-    } as unknown as D1PreparedStatement;
-
-    mockDb = {
-      prepare: vi.fn().mockReturnValue(mockStmt),
-    } as unknown as MockD1Database;
+    mockDb = createMockDb();
 
     // Setup mock environment
     mockEnv = {
@@ -49,7 +43,7 @@ describe('HybridSearchService - Public API', () => {
           matches: [],
           count: 0,
         }),
-      } as unknown as MockVectorizeIndex, // Cast to our mock interface
+      } as unknown as MockVectorizeIndex,
     } as Env;
 
     // Mock global fetch for OpenAI embedding calls
@@ -63,61 +57,35 @@ describe('HybridSearchService - Public API', () => {
 
   describe('search() method', () => {
     it('should accept query string and return array of results', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       const results = await service.search('test query');
 
-      // Assert
       expect(results).toBeDefined();
       expect(Array.isArray(results)).toBe(true);
     });
 
     it('should handle empty query results gracefully', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-      mockStmt.all.mockResolvedValue({
-        success: true,
-        results: [],
-      });
-      mockEnv.VECTORIZE.query.mockResolvedValue({
-        matches: [],
-        count: 0,
-      });
-
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       const results = await service.search('nonexistent term');
-
-      // Assert
       expect(results).toEqual([]);
     });
 
     it('should accept and apply filter parameters', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       const filters = {
         category: '회의',
         personId: '123456',
         limit: 20,
       };
 
-      // Act
       await service.search('test', filters);
 
-      // Assert - verify DB was called (FTS search happens)
-      expect(mockDb.prepare).toHaveBeenCalled();
-      // Verify filters were used in SQL query
-      const sqlCalls = mockDb.prepare.mock.calls;
-      const sqlQuery = sqlCalls[0][0];
-      expect(sqlQuery).toContain('WHERE');
+      expect(mockDb.query).toHaveBeenCalled();
+      const [sql] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('WHERE');
     });
 
     it('should respect limit parameter and not exceed it', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      // Mock FTS results with more items than limit
       const manyResults = Array.from({ length: 30 }, (_, i) => ({
         workId: `WORK-${i.toString().padStart(3, '0')}`,
         title: `Result ${i}`,
@@ -128,38 +96,23 @@ describe('HybridSearchService - Public API', () => {
         fts_rank: -1,
       }));
 
-      mockStmt.all.mockResolvedValue({
-        success: true,
-        results: manyResults,
-      });
+      mockDb = createMockDb({ rows: manyResults });
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
 
-      // Act
       const results = await service.search('test', { limit: 10 });
-
-      // Assert
       expect(results.length).toBeLessThanOrEqual(10);
     });
 
     it('should handle Korean text in queries', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       const results = await service.search('한글 검색 테스트');
-
-      // Assert - should complete without errors
       expect(results).toBeDefined();
       expect(Array.isArray(results)).toBe(true);
     });
 
     it('should return results with required fields', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      // Mock at least one result from FTS
-      mockStmt.all.mockResolvedValue({
-        success: true,
-        results: [
+      mockDb = createMockDb({
+        rows: [
           {
             workId: 'WORK-001',
             title: 'Test Result',
@@ -171,11 +124,10 @@ describe('HybridSearchService - Public API', () => {
           },
         ],
       });
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
 
-      // Act
       const results = await service.search('test');
 
-      // Assert
       if (results.length > 0) {
         const result = results[0];
         expect(result).toHaveProperty('workNote');
@@ -190,23 +142,17 @@ describe('HybridSearchService - Public API', () => {
     });
 
     it('should handle database errors without crashing', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-      mockStmt.all.mockRejectedValue(new Error('Database connection failed'));
+      (mockDb.query as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Database connection failed')
+      );
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
 
-      // Act & Assert - should not throw, should return empty or handle gracefully
       await expect(service.search('test')).resolves.toBeDefined();
     });
 
     it('should handle Vectorize errors without crashing', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-      mockEnv.VECTORIZE.query.mockRejectedValue(new Error('Vectorize service down'));
-
-      // Mock FTS to return results
-      mockStmt.all.mockResolvedValue({
-        success: true,
-        results: [
+      mockDb = createMockDb({
+        rows: [
           {
             workId: 'WORK-001',
             title: 'FTS Result',
@@ -218,37 +164,30 @@ describe('HybridSearchService - Public API', () => {
           },
         ],
       });
+      (mockEnv.VECTORIZE as unknown as MockVectorizeIndex).query.mockRejectedValue(
+        new Error('Vectorize service down')
+      );
 
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       const results = await service.search('test');
 
-      // Assert - should still return FTS results
       expect(results).toBeDefined();
       expect(Array.isArray(results)).toBe(true);
     });
 
     it('should call both FTS and Vectorize for search', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       await service.search('test query');
 
-      // Assert - verify both search methods were attempted
-      expect(mockDb.prepare).toHaveBeenCalled(); // FTS
+      expect(mockDb.query).toHaveBeenCalled(); // FTS
       expect(global.fetch).toHaveBeenCalled(); // OpenAI embedding for Vectorize
     });
   });
 
   describe('Result Quality', () => {
     it('should return results sorted by score in descending order', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      // Mock multiple FTS results with different ranks
-      mockStmt.all.mockResolvedValue({
-        success: true,
-        results: [
+      mockDb = createMockDb({
+        rows: [
           {
             workId: 'WORK-001',
             title: 'Result 1',
@@ -278,11 +217,9 @@ describe('HybridSearchService - Public API', () => {
           },
         ],
       });
-
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       const results = await service.search('test');
 
-      // Assert - scores should be in descending order
       if (results.length > 1) {
         for (let i = 1; i < results.length; i++) {
           expect(results[i - 1].score).toBeGreaterThanOrEqual(results[i].score);
@@ -291,12 +228,8 @@ describe('HybridSearchService - Public API', () => {
     });
 
     it('should normalize scores to reasonable range', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      mockStmt.all.mockResolvedValue({
-        success: true,
-        results: [
+      mockDb = createMockDb({
+        rows: [
           {
             workId: 'WORK-001',
             title: 'Result',
@@ -308,11 +241,9 @@ describe('HybridSearchService - Public API', () => {
           },
         ],
       });
-
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       const results = await service.search('test');
 
-      // Assert - scores should be reasonable
       if (results.length > 0) {
         expect(results[0].score).toBeGreaterThanOrEqual(0);
         expect(results[0].score).toBeLessThanOrEqual(1);
@@ -322,45 +253,30 @@ describe('HybridSearchService - Public API', () => {
 
   describe('Filter Application', () => {
     it('should construct appropriate SQL for category filter', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       await service.search('test', { category: '회의' });
 
-      // Assert
-      expect(mockDb.prepare).toHaveBeenCalled();
-      const sqlCalls = mockDb.prepare.mock.calls;
-      const sqlQuery = sqlCalls[0][0];
-      expect(sqlQuery).toContain('category');
+      expect(mockDb.query).toHaveBeenCalled();
+      const [sql] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('category');
     });
 
     it('should construct appropriate SQL for person filter', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       await service.search('test', { personId: '123456' });
 
-      // Assert
-      expect(mockDb.prepare).toHaveBeenCalled();
-      const sqlCalls = mockDb.prepare.mock.calls;
-      const sqlQuery = sqlCalls[0][0];
-      expect(sqlQuery).toContain('person');
+      expect(mockDb.query).toHaveBeenCalled();
+      const [sql] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('person');
     });
 
     it('should construct appropriate SQL for department filter', async () => {
-      // Arrange
-      const service = new HybridSearchService(mockDb, mockEnv);
-
-      // Act
+      const service = new HybridSearchService(mockDb, mockEnv, new D1FtsDialect());
       await service.search('test', { deptName: '개발팀' });
 
-      // Assert
-      expect(mockDb.prepare).toHaveBeenCalled();
-      const sqlCalls = mockDb.prepare.mock.calls;
-      const sqlQuery = sqlCalls[0][0];
-      expect(sqlQuery).toContain('dept');
+      expect(mockDb.query).toHaveBeenCalled();
+      const [sql] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('dept');
     });
   });
 });

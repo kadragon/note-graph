@@ -38,7 +38,7 @@ describe('route shared utils', () => {
       .spyOn(WorkNoteService.prototype, 'reembedOnly')
       .mockResolvedValue(undefined);
 
-    await triggerReembed({} as AppContext['Bindings'], 'WORK-1', 'TODO-1', 'update');
+    await triggerReembed({} as never, {} as AppContext['Bindings'], 'WORK-1', 'TODO-1', 'update');
 
     expect(reembedSpy).toHaveBeenCalledWith('WORK-1');
   });
@@ -48,7 +48,7 @@ describe('route shared utils', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     await expect(
-      triggerReembed({} as AppContext['Bindings'], 'WORK-2', 'TODO-2', 'deletion')
+      triggerReembed({} as never, {} as AppContext['Bindings'], 'WORK-2', 'TODO-2', 'deletion')
     ).resolves.toBeUndefined();
 
     expect(consoleSpy).toHaveBeenCalledWith('[WorkNote] Failed to re-embed after todo deletion:', {

@@ -11,6 +11,7 @@ import type {
   WorkNoteWithStats,
 } from '@shared/types/statistics';
 import type { DatabaseClient } from '../types/database';
+import { queryInChunks } from '../utils/db-utils';
 
 interface FindCompletedWorkNotesOptions {
   personId?: string;
@@ -139,23 +140,29 @@ export class StatisticsRepository {
       return workNotes;
     }
 
-    // Use json_each to avoid dynamic IN clause construction for large lists
-    const personsResult = await this.db.query<AssignedPersonDetail>(
-      `SELECT
-        wnp.work_id as workId,
-        wnp.person_id as personId,
-        p.name as personName,
-        p.current_dept as currentDept,
-        wnp.role
-       FROM work_note_person wnp
-       INNER JOIN persons p ON wnp.person_id = p.person_id
-       WHERE wnp.work_id IN (SELECT value FROM json_each(?))`,
-      [JSON.stringify(workNoteIds)]
+    const personsRows = await queryInChunks(
+      this.db,
+      workNoteIds,
+      async (db, chunk, placeholders) => {
+        const r = await db.query<AssignedPersonDetail>(
+          `SELECT
+          wnp.work_id as workId,
+          wnp.person_id as personId,
+          p.name as personName,
+          p.current_dept as currentDept,
+          wnp.role
+         FROM work_note_person wnp
+         INNER JOIN persons p ON wnp.person_id = p.person_id
+         WHERE wnp.work_id IN (${placeholders})`,
+          chunk
+        );
+        return r.rows;
+      }
     );
 
     // Map persons back to work notes
     const personsByWorkId = new Map<string, AssignedPersonDetail[]>();
-    for (const person of personsResult.rows) {
+    for (const person of personsRows) {
       const persons = personsByWorkId.get(person.workId) || [];
       persons.push({
         workId: person.workId,
@@ -198,23 +205,30 @@ export class StatisticsRepository {
     const workNoteIds = workNotes.map((wn) => wn.workId);
 
     if (workNoteIds.length > 0) {
-      const categoriesResult = await this.db.query<{
-        workId: string;
-        categoryId: string;
-        categoryName: string;
-      }>(
-        `SELECT
-          wntc.work_id as workId,
-          tc.category_id as categoryId,
-          tc.name as categoryName
-         FROM work_note_task_category wntc
-         INNER JOIN task_categories tc ON wntc.category_id = tc.category_id
-         WHERE wntc.work_id IN (SELECT value FROM json_each(?))`,
-        [JSON.stringify(workNoteIds)]
+      const categoriesRows = await queryInChunks(
+        this.db,
+        workNoteIds,
+        async (db, chunk, placeholders) => {
+          const r = await db.query<{
+            workId: string;
+            categoryId: string;
+            categoryName: string;
+          }>(
+            `SELECT
+            wntc.work_id as workId,
+            tc.category_id as categoryId,
+            tc.name as categoryName
+           FROM work_note_task_category wntc
+           INNER JOIN task_categories tc ON wntc.category_id = tc.category_id
+           WHERE wntc.work_id IN (${placeholders})`,
+            chunk
+          );
+          return r.rows;
+        }
       );
 
       const categoryByWorkId = new Map<string, { categoryId: string; categoryName: string }>();
-      for (const row of categoriesResult.rows) {
+      for (const row of categoriesRows) {
         if (!categoryByWorkId.has(row.workId)) {
           categoryByWorkId.set(row.workId, {
             categoryId: row.categoryId,

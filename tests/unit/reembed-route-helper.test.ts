@@ -13,7 +13,7 @@ describe('triggerReembed', () => {
       .mockResolvedValue(undefined);
 
     await expect(
-      triggerReembed({} as never, 'WORK-1', 'TODO-1', 'update')
+      triggerReembed({} as never, {} as never, 'WORK-1', 'TODO-1', 'update')
     ).resolves.toBeUndefined();
     expect(reembedOnlySpy).toHaveBeenCalledWith('WORK-1');
   });
@@ -23,7 +23,7 @@ describe('triggerReembed', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     await expect(
-      triggerReembed({} as never, 'WORK-ERR', 'TODO-ERR', 'deletion')
+      triggerReembed({} as never, {} as never, 'WORK-ERR', 'TODO-ERR', 'deletion')
     ).resolves.toBeUndefined();
 
     expect(errorSpy).toHaveBeenCalledWith(

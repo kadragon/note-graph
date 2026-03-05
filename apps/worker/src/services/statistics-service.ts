@@ -4,16 +4,15 @@
  */
 
 import type { StatisticsDateRange, WorkNoteStatistics } from '@shared/types/statistics';
-import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { StatisticsRepository } from '../repositories/statistics-repository';
 import type { StatisticsPeriod } from '../schemas/statistics';
-import type { Env } from '../types/env';
+import type { DatabaseClient } from '../types/database';
 
 export class StatisticsService {
   private repository: StatisticsRepository;
 
-  constructor(env: Env) {
-    this.repository = new StatisticsRepository(new D1DatabaseClient(env.DB));
+  constructor(db: DatabaseClient) {
+    this.repository = new StatisticsRepository(db);
   }
 
   /**

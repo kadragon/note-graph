@@ -1,4 +1,6 @@
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
+import { D1FtsDialect } from '@worker/adapters/d1-fts-dialect';
 import { MeetingMinuteReferenceService } from '@worker/services/meeting-minute-reference-service';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -9,7 +11,10 @@ describe('MeetingMinuteReferenceService', () => {
   let service: MeetingMinuteReferenceService;
 
   beforeEach(async () => {
-    service = new MeetingMinuteReferenceService(testEnv.DB);
+    service = new MeetingMinuteReferenceService(
+      new D1DatabaseClient(testEnv.DB),
+      new D1FtsDialect()
+    );
 
     await testEnv.DB.batch([
       testEnv.DB.prepare('DELETE FROM work_note_meeting_minute'),

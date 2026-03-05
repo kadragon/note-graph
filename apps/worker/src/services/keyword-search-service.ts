@@ -1,8 +1,11 @@
-import type { D1Database } from '@cloudflare/workers-types';
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
+import { D1FtsDialect } from '../adapters/d1-fts-dialect';
+import type { DatabaseClient } from '../types/database';
+import type { FtsDialect } from '../types/fts-dialect';
 import {
   buildWorkNoteFtsQuery,
+  buildWorkNoteTsQuery,
   extractWorkNoteFtsTokens,
   normalizeWorkNoteSearchPhrase,
 } from '../utils/work-notes-fts';
@@ -35,12 +38,21 @@ function toTimestamp(isoString: string): number | null {
 }
 
 export class KeywordSearchService {
-  constructor(private db: D1Database) {}
+  constructor(
+    private db: DatabaseClient,
+    private dialect: FtsDialect = new D1FtsDialect()
+  ) {}
+
+  private buildQuery(rawQuery: string, operator: 'AND' | 'OR'): string {
+    return this.dialect.isTsQuerySyntax()
+      ? buildWorkNoteTsQuery(rawQuery, operator)
+      : buildWorkNoteFtsQuery(rawQuery, operator);
+  }
 
   async search(query: string, filters?: SearchFilters): Promise<SearchResultItem[]> {
     const limit = Math.min(filters?.limit ?? 10, 100);
-    const andQuery = buildWorkNoteFtsQuery(query, 'AND');
-    const orQuery = buildWorkNoteFtsQuery(query, 'OR');
+    const andQuery = this.buildQuery(query, 'AND');
+    const orQuery = this.buildQuery(query, 'OR');
     const tokens = extractWorkNoteFtsTokens(query).map((token) => token.toLowerCase());
 
     if (!andQuery) {
@@ -141,14 +153,9 @@ export class KeywordSearchService {
     filters: SearchFilters | undefined,
     candidateLimit: number
   ): Promise<KeywordCandidateRow[]> {
+    const cte = this.dialect.buildWorkNoteBm25Cte();
     let sql = `
-      WITH fts_matches AS (
-        SELECT rowid, bm25(notes_fts, 8.0, 2.0, 0.3) AS bm25_score
-        FROM notes_fts
-        WHERE notes_fts MATCH ?
-        ORDER BY bm25_score ASC
-        LIMIT ?
-      )
+      ${cte.sql}
       SELECT
         wn.work_id as workId,
         wn.title,
@@ -156,9 +163,9 @@ export class KeywordSearchService {
         wn.category,
         wn.created_at as createdAt,
         wn.updated_at as updatedAt,
-        fts.bm25_score as bm25Score
+        fts.${cte.scoreColumn} as bm25Score
       FROM fts_matches fts
-      INNER JOIN work_notes wn ON wn.rowid = fts.rowid
+      INNER JOIN work_notes wn ON ${cte.joinCondition}
     `;
 
     const conditions: string[] = [];
@@ -198,17 +205,10 @@ export class KeywordSearchService {
       sql += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    sql += ` ORDER BY fts.bm25_score ASC`;
+    sql += ` ORDER BY fts.${cte.scoreColumn} ASC`;
 
-    const result = await this.db
-      .prepare(sql)
-      .bind(...params)
-      .all<KeywordCandidateRow>();
+    const { rows } = await this.db.query<KeywordCandidateRow>(sql, params);
 
-    if (!result.success) {
-      throw new Error('Keyword search query failed');
-    }
-
-    return result.results || [];
+    return rows;
   }
 }

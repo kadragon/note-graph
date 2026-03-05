@@ -3,8 +3,12 @@
 import type { ReferenceTodo } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
 import { WorkNoteService } from '@worker/services/work-note-service';
+import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
 import { describe, expect, it, vi } from 'vitest';
+
+// Minimal db stub to satisfy constructor; services are mocked per test
+const dummyDb = {} as unknown as DatabaseClient;
 
 // Minimal env stub to satisfy constructor; services are mocked per test
 const dummyEnv = {
@@ -23,7 +27,7 @@ const dummyEnv = {
 
 describe('WorkNoteService.findSimilarNotes', () => {
   it('returns workId and similarity score for matched notes above threshold', async () => {
-    const service = new WorkNoteService(dummyEnv);
+    const service = new WorkNoteService(dummyDb, dummyEnv);
 
     const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
     const mockQuery = vi.fn().mockResolvedValue({
@@ -86,7 +90,7 @@ describe('WorkNoteService.findSimilarNotes', () => {
   });
 
   it('deduplicates chunks by work ID keeping max score and sorts by score descending', async () => {
-    const service = new WorkNoteService(dummyEnv);
+    const service = new WorkNoteService(dummyDb, dummyEnv);
 
     const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
     const mockQuery = vi.fn().mockResolvedValue({
@@ -146,7 +150,7 @@ describe('WorkNoteService.findSimilarNotes', () => {
   });
 
   it('limits deduplicated results to topK', async () => {
-    const service = new WorkNoteService(dummyEnv);
+    const service = new WorkNoteService(dummyDb, dummyEnv);
 
     const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
     const mockQuery = vi.fn().mockResolvedValue({
@@ -195,7 +199,7 @@ describe('WorkNoteService.findSimilarNotes', () => {
   });
 
   it('returns no results when all matches are below scoreThreshold', async () => {
-    const service = new WorkNoteService(dummyEnv);
+    const service = new WorkNoteService(dummyDb, dummyEnv);
 
     const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
     const mockQuery = vi.fn().mockResolvedValue({
@@ -223,7 +227,7 @@ describe('WorkNoteService.findSimilarNotes', () => {
   });
 
   it('includes todos in similar notes results', async () => {
-    const service = new WorkNoteService(dummyEnv);
+    const service = new WorkNoteService(dummyDb, dummyEnv);
 
     const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
     const mockQuery = vi.fn().mockResolvedValue({
@@ -290,7 +294,7 @@ describe('WorkNoteService.findSimilarNotes', () => {
   });
 
   it('returns empty todos array when work note has no todos', async () => {
-    const service = new WorkNoteService(dummyEnv);
+    const service = new WorkNoteService(dummyDb, dummyEnv);
 
     const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
     const mockQuery = vi.fn().mockResolvedValue({
@@ -337,7 +341,7 @@ describe('WorkNoteService Google Drive integration', () => {
       GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
     } as Env;
 
-    const service = new WorkNoteService(envWithDrive);
+    const service = new WorkNoteService(dummyDb, envWithDrive);
     const fileService = (service as unknown as { fileService: unknown }).fileService as null | {
       driveService?: unknown;
     };
@@ -349,7 +353,7 @@ describe('WorkNoteService Google Drive integration', () => {
 
 describe('WorkNoteService.delete', () => {
   it('returns cleanupPromise and passes userEmail to deleteWorkNoteFiles when provided', async () => {
-    const service = new WorkNoteService(dummyEnv);
+    const service = new WorkNoteService(dummyDb, dummyEnv);
 
     const deleteWorkNoteFiles = vi.fn().mockResolvedValue(undefined);
     const deleteChunkRange = vi.fn().mockResolvedValue(undefined);
@@ -390,7 +394,7 @@ describe('WorkNoteService.delete', () => {
 
 describe('WorkNoteService embedding guards and deterministic stale deletion', () => {
   it('deletes stale chunk IDs by deterministic range', async () => {
-    const service = new WorkNoteService(dummyEnv);
+    const service = new WorkNoteService(dummyDb, dummyEnv);
 
     const findById = vi.fn().mockResolvedValue({
       workId: 'WORK-1',
@@ -456,7 +460,7 @@ describe('WorkNoteService embedding guards and deterministic stale deletion', ()
   });
 
   it('rolls back freshly upserted chunks when post-upsert version check fails', async () => {
-    const service = new WorkNoteService(dummyEnv);
+    const service = new WorkNoteService(dummyDb, dummyEnv);
 
     const findById = vi
       .fn()

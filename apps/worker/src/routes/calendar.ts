@@ -3,7 +3,6 @@
  */
 
 import { z } from 'zod';
-import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { getAuthUser } from '../middleware/auth';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { GoogleCalendarService } from '../services/google-calendar-service';
@@ -39,7 +38,7 @@ calendar.get('/events', async (c) => {
   }
 
   // Check if Google account is connected with calendar scope
-  const oauthService = new GoogleOAuthService(c.env, new D1DatabaseClient(c.env.DB));
+  const oauthService = new GoogleOAuthService(c.env, c.get('db'));
   const tokens = await oauthService.getStoredTokens(user.email);
 
   if (!tokens) {
@@ -61,7 +60,7 @@ calendar.get('/events', async (c) => {
   }
 
   // Fetch calendar events
-  const calendarService = new GoogleCalendarService(c.env, new D1DatabaseClient(c.env.DB));
+  const calendarService = new GoogleCalendarService(c.env, c.get('db'));
   const events = await calendarService.getEvents(user.email, startDate, endDate, timezoneOffset);
 
   return c.json({ events });

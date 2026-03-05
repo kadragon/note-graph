@@ -172,7 +172,10 @@ describe('Work Note Google Drive Integration', () => {
     const stored = await fileService.getFileById(uploaded.fileId);
     expect(stored?.storageType).toBe('GDRIVE');
     expect(stored?.gdriveWebViewLink).toBe('https://drive.example/file');
-    const workNoteService = new WorkNoteService(testEnv as unknown as Env);
+    const workNoteService = new WorkNoteService(
+      new D1DatabaseClient((testEnv as unknown as Env).DB),
+      testEnv as unknown as Env
+    );
     const { cleanupPromise } = await workNoteService.delete(workId, userEmail);
     await cleanupPromise;
 

@@ -74,10 +74,11 @@ export class SettingRepository {
       throw new NotFoundError('AppSetting', key);
     }
 
-    await this.db.execute(
-      `UPDATE app_settings SET value = ?, updated_at = datetime('now') WHERE key = ?`,
-      [value, key]
-    );
+    await this.db.execute(`UPDATE app_settings SET value = ?, updated_at = ? WHERE key = ?`, [
+      value,
+      new Date().toISOString(),
+      key,
+    ]);
 
     const updated = await this.findByKey(key);
     return updated as AppSetting;
@@ -90,8 +91,8 @@ export class SettingRepository {
     }
 
     await this.db.execute(
-      `UPDATE app_settings SET value = default_value, updated_at = datetime('now') WHERE key = ?`,
-      [key]
+      `UPDATE app_settings SET value = default_value, updated_at = ? WHERE key = ?`,
+      [new Date().toISOString(), key]
     );
 
     const updated = await this.findByKey(key);
@@ -103,8 +104,8 @@ export class SettingRepository {
 
     await this.db.executeBatch(
       defaults.map((d) => ({
-        sql: `INSERT OR IGNORE INTO app_settings (key, value, category, label, description, default_value)
-              VALUES (?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO app_settings (key, value, category, label, description, default_value)
+              VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
         params: [d.key, d.value, d.category, d.label, d.description, d.value],
       }))
     );

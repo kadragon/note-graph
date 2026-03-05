@@ -25,7 +25,7 @@ search.post('/work-notes', bodyValidator(searchWorkNotesSchema), async (c: Conte
   const body = getValidatedBody<typeof searchWorkNotesSchema>(c);
 
   // Create keyword search service
-  const keywordSearchService = new KeywordSearchService(c.env.DB);
+  const keywordSearchService = new KeywordSearchService(c.get('db'));
 
   // Execute keyword search
   const results = await keywordSearchService.search(body.query, {
@@ -55,7 +55,8 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
   const query = body.query.trim();
 
   // Initialize repositories and services
-  const keywordSearchService = new KeywordSearchService(c.env.DB);
+  const db = c.get('db');
+  const keywordSearchService = new KeywordSearchService(db);
   const { persons: personRepository, departments: departmentRepository } = c.get('repositories');
 
   // Execute searches in parallel
@@ -75,7 +76,7 @@ search.post('/unified', bodyValidator(searchWorkNotesSchema), async (c: Context<
     departmentRepository.findAll(query),
     // Meeting minutes search (FTS)
     (async (): Promise<MeetingMinuteSearchItem[]> => {
-      const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.env.DB);
+      const meetingMinuteReferenceService = new MeetingMinuteReferenceService(db);
       const references = await meetingMinuteReferenceService.search(query, body.limit);
       return references.map((reference) => ({
         ...reference,

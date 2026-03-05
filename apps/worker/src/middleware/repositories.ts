@@ -45,6 +45,7 @@ import type { AppContext, Repositories } from '../types/context';
 
 export async function repositoriesMiddleware(c: Context<AppContext>, next: Next): Promise<void> {
   const db = new D1DatabaseClient(c.env.DB);
+  c.set('db', db);
 
   const repositories: Repositories = {
     departments: new DepartmentRepository(db),

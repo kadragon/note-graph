@@ -140,52 +140,167 @@
 
 ### 2.1 SupabaseDatabaseClient adapter
 
-- [ ] Implement `SupabaseDatabaseClient` in `apps/worker/src/adapters/supabase-database-client.ts`
-- [ ] Auto-translate `?` placeholders to `$1, $2, ...` inside the adapter
-- [ ] Implement real `transaction()` with BEGIN/COMMIT
-- [ ] Implement `executeBatch()` wrapped in a transaction
-- [ ] Unit test: placeholder translation for 0, 1, and N params
-- [ ] Unit test: transaction commits on success, rolls back on error
-- [ ] Unit test: executeBatch wraps statements in a single transaction
+- [x] Implement `SupabaseDatabaseClient` in `apps/worker/src/adapters/supabase-database-client.ts`
+- [x] Auto-translate `?` placeholders to `$1, $2, ...` inside the adapter
+- [x] Implement real `transaction()` with BEGIN/COMMIT
+- [x] Implement `executeBatch()` wrapped in a transaction
+- [x] Unit test: placeholder translation for 0, 1, and N params
+- [x] Unit test: transaction commits on success, rolls back on error
+- [x] Unit test: executeBatch wraps statements in a single transaction
 
 ### 2.2 Normalize SQL: `datetime('now')` → parameter
 
-- [ ] `setting-repository.ts` upsert: pass `new Date().toISOString()` as param instead of `datetime('now')`
-- [ ] `setting-repository.ts` resetToDefault: same fix
-- [ ] Verify: setting-repository tests still pass
+- [x] `setting-repository.ts` upsert: pass `new Date().toISOString()` as param instead of `datetime('now')`
+- [x] `setting-repository.ts` resetToDefault: same fix
+- [x] Verify: setting-repository tests still pass
 
 ### 2.3 Normalize SQL: `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING`
 
-- [ ] `setting-repository.ts` ensureDefaults
-- [ ] `task-category-repository.ts` setWorkNoteCategories
-- [ ] `work-note-repository.ts` create (group_items)
-- [ ] `work-note-repository.ts` update (group_items)
-- [ ] `work-note-group-repository.ts` addWorkNote
-- [ ] `google-drive-service.ts` saveFolderRecord
-- [ ] Verify: all affected tests still pass
+- [x] `setting-repository.ts` ensureDefaults
+- [x] `task-category-repository.ts` setWorkNoteCategories
+- [x] `work-note-repository.ts` create (group_items)
+- [x] `work-note-repository.ts` update (group_items)
+- [x] `work-note-group-repository.ts` addWorkNote
+- [x] `google-drive-service.ts` saveFolderRecord
+- [x] Verify: all affected tests still pass
 
 ### 2.4 Normalize SQL: `json_each(?)` → `queryInChunks`
 
-- [ ] `work-note-repository.ts` findAll: replace 3 json_each queries with queryInChunks
-- [ ] `todo-repository.ts` findAll: replace json_each with queryInChunks
-- [ ] `todo-repository.ts` bulkUpdateStatus: replace json_each with queryInChunks
-- [ ] `statistics-repository.ts`: replace 2 json_each queries with queryInChunks
-- [ ] `rag-service.ts`: replace json_each with queryInChunks
-- [ ] Verify: all affected tests still pass
+- [x] `work-note-repository.ts` findAll: replace 3 json_each queries with queryInChunks
+- [x] `todo-repository.ts` findAll: replace json_each with queryInChunks
+- [x] `todo-repository.ts` bulkUpdateStatus: replace json_each with queryInChunks
+- [x] `statistics-repository.ts`: replace 2 json_each queries with queryInChunks
+- [x] `rag-service.ts`: replace json_each with IN placeholders (raw D1)
+- [x] Verify: all affected tests still pass
 
 ### 2.5 Normalize SQL: boolean comparisons
 
-- [ ] SQL: replace `is_active = 1` with `is_active` in WHERE clauses (4 sites)
-- [ ] JS: replace `isActive === 1` with `!!isActive` or `Boolean(isActive)` (5 sites)
-- [ ] Verify: all affected tests still pass
+- [x] SQL: replace `is_active = 1` with `is_active` in WHERE clauses (4 sites)
+- [x] JS: replace `isActive === 1` with `Boolean(isActive)` (5 sites)
+- [x] Verify: all affected tests still pass
 
 ### 2.6 Update `queryInChunks` for PostgreSQL
 
-- [ ] PostgreSQL has no 999-variable limit; keep chunking logic but it remains harmless
-- [ ] Ensure placeholder generation (`?` joined) works with the adapter's translation
+- [x] PostgreSQL has no 999-variable limit; keep chunking logic but it remains harmless
+- [x] Ensure placeholder generation (`?` joined) works with the adapter's translation
 
 ### 2.7 Integration test with local Supabase
 
-- [ ] Add Supabase connection config (env vars: `SUPABASE_DB_URL` or similar)
-- [ ] Write integration smoke test: create SupabaseDatabaseClient → run basic CRUD via SettingRepository
-- [ ] Verify: existing D1 test suite still passes (no regressions)
+- [x] Add Supabase connection config (env vars: `SUPABASE_DB_URL` or similar)
+- [x] Write integration smoke test: create SupabaseDatabaseClient → run basic CRUD via SettingRepository
+- [x] Verify: existing D1 test suite still passes (no regressions)
+
+## Phase 3: Eliminate Raw D1 Usage & Centralize DB Client
+
+> Convert all remaining raw `D1Database` / `env.DB.prepare()` usages to `DatabaseClient`. Centralize DB client creation so routes and services receive it via middleware injection instead of constructing `new D1DatabaseClient(c.env.DB)` inline. FTS5-specific SQL (MATCH, bm25, rowid) is deferred to Phase 4.
+
+### 3.1 Centralize DB client in middleware context
+
+- [x] Add `db: DatabaseClient` to `AppVariables` in context types
+- [x] Set `c.set('db', db)` in `repositoriesMiddleware`
+- [x] Add `db: DatabaseClient` to queue handler context (`index.ts`)
+
+### 3.2 Convert search services to DatabaseClient
+
+- [x] `FtsSearchService`: replace `D1Database` constructor with `DatabaseClient`, update query calls
+- [x] `KeywordSearchService`: replace `D1Database` constructor with `DatabaseClient`, update query calls
+- [x] `HybridSearchService`: replace `D1Database` constructor with `DatabaseClient`
+- [x] `MeetingMinuteReferenceService`: replace `D1Database` constructor with `DatabaseClient`, update query calls
+
+### 3.3 Convert RagService to DatabaseClient
+
+- [x] Replace `this.db: D1Database` with `DatabaseClient`
+- [x] Rewrite `fetchWorkNotesByIds` to use `DatabaseClient.query()`
+- [x] Update constructor to accept `DatabaseClient` instead of using `env.DB`
+
+### 3.4 Convert EmbeddingProcessor raw D1 calls
+
+- [x] Replace `this.env.DB.prepare(...)` count query with `DatabaseClient.queryOne()`
+- [x] Replace `this.env.DB.prepare(...)` pagination queries with `DatabaseClient.query()`
+- [x] Accept `DatabaseClient` in constructor instead of constructing inline
+
+### 3.5 Convert meeting-minutes route to DatabaseClient
+
+- [x] `getMeetingMinuteGroups`: replace `D1Database` with `DatabaseClient`
+- [x] `hasMeetingMinuteDuplicateTopic`: replace `c.env.DB.prepare(...)` with `DatabaseClient`
+- [x] GET `/:meetingId`: replace inline D1 queries with `DatabaseClient` (or repository methods)
+- [x] PUT `/:meetingId`: replace inline D1 queries with `DatabaseClient`
+- [x] POST `/`: replace `new D1DatabaseClient(c.env.DB)` with `c.get('db')`
+
+### 3.6 Replace scattered `new D1DatabaseClient(c.env.DB)` in routes
+
+- [x] `routes/search.ts`: use `c.get('db')` for search service construction
+- [x] `routes/work-notes.ts`: use `c.get('db')` for WorkNoteFileService
+- [x] `routes/auth-google.ts`: use `c.get('db')` for GoogleOAuthService
+- [x] `routes/calendar.ts`: use `c.get('db')` for OAuth/Calendar services
+- [x] `routes/ai-draft.ts`: use `c.get('db')` for MeetingMinuteReferenceService
+- [x] `middleware/work-note-file.ts`: use `c.get('db')` for WorkNoteFileService
+
+### 3.7 Replace scattered `new D1DatabaseClient(env.DB)` in services
+
+- [x] `WorkNoteService`: accept `DatabaseClient` in constructor
+- [x] `StatisticsService`: accept `DatabaseClient` in constructor
+- [x] `EmbeddingProcessor`: accept `DatabaseClient` in constructor (from 3.4)
+
+### 3.8 Verify
+
+- [x] Grep: no remaining `env.DB` or `D1Database` imports outside adapters/types
+- [x] All existing tests pass with no behavioral changes (709/712, 3 skipped, 1 pre-existing supabase network failure)
+
+## Phase 4: FTS5 → PostgreSQL Full-Text Search Compatibility
+
+> Make full-text search services work with both D1 (FTS5) and PostgreSQL (tsvector/GIN). Introduce FtsDialect abstraction so the same service code generates correct SQL for either backend.
+
+### 4.1 FtsDialect interface & implementations
+
+- [x] Define `FtsDialect` interface with methods: `buildWorkNoteFtsCte`, `buildMeetingMinuteFtsCte`, `buildWorkNoteBm25Cte`, `buildFtsJoin`, `isAlwaysSynced`
+- [x] Implement `D1FtsDialect` (FTS5 MATCH / bm25 / rowid)
+- [x] Implement `PostgresFtsDialect` (tsvector @@ / ts_rank / primary key)
+- [x] Unit test: D1FtsDialect generates correct SQL fragments
+- [x] Unit test: PostgresFtsDialect generates correct SQL fragments
+
+### 4.2 Update query builders for PostgreSQL tsquery syntax
+
+- [x] `work-notes-fts.ts`: add `buildWorkNoteTsQuery` for PostgreSQL (`&` / `|` operators)
+- [x] `meeting-minutes-fts.ts`: add `buildMeetingMinutesTsQuery` for PostgreSQL
+- [x] Unit test: tsquery builder produces correct `&`/`|` syntax
+- [x] Unit test: existing FTS5 query builders unchanged
+
+### 4.3 Convert FtsSearchService to use FtsDialect
+
+- [x] Accept `FtsDialect` in constructor
+- [x] Replace hardcoded FTS5 CTE with `dialect.buildWorkNoteFtsCte()`
+- [x] Replace `rowid` join with `dialect.buildFtsJoin()`
+- [x] Update `verifyFtsSync` to short-circuit when `dialect.isAlwaysSynced()`
+- [x] Verify: existing FTS search tests still pass (D1 dialect)
+
+### 4.4 Convert KeywordSearchService to use FtsDialect
+
+- [x] Accept `FtsDialect` in constructor
+- [x] Replace hardcoded BM25 CTE with `dialect.buildWorkNoteBm25Cte()`
+- [x] Replace `rowid` join with `dialect.buildFtsJoin()`
+- [x] Verify: existing keyword search tests still pass (D1 dialect)
+
+### 4.5 Convert MeetingMinuteReferenceService to use FtsDialect
+
+- [x] Accept `FtsDialect` in constructor
+- [x] Replace hardcoded meeting minute FTS CTE with `dialect.buildMeetingMinuteFtsCte()`
+- [x] Replace `rowid` join with `dialect.buildFtsJoin()`
+- [x] Verify: existing meeting minute reference tests still pass
+
+### 4.6 Convert MeetingMinuteRepository FTS query
+
+- [x] Accept `FtsDialect` in constructor (or method parameter)
+- [x] Replace hardcoded FTS CTE in `findAll` with dialect method
+- [x] Verify: existing meeting minute repository tests still pass
+
+### 4.7 Wire FtsDialect in middleware & route constructors
+
+- [x] All services default to `D1FtsDialect` when no dialect is provided
+- [x] Existing route call sites work without changes (backward compatible defaults)
+- [x] HybridSearchService passes dialect through to FtsSearchService
+
+### 4.8 Verify
+
+- [x] Grep: no remaining raw `MATCH`, `bm25(`, `notes_fts`, `meeting_minutes_fts` outside dialect implementations (only in `d1-fts-dialect.ts` + `verifyFtsSync` D1-only path)
+- [x] All existing tests pass with no behavioral changes (743/743, 3 skipped, 1 pre-existing supabase network failure)

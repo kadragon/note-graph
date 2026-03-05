@@ -206,7 +206,11 @@ describe('GoogleDriveService', () => {
     await service.getOrCreateWorkNoteFolder('tester@example.com', 'WORK-123');
 
     expect(
-      db.queries.some((query) => query.includes('INSERT OR IGNORE INTO work_note_gdrive_folders'))
+      db.queries.some(
+        (query) =>
+          query.includes('INSERT INTO work_note_gdrive_folders') &&
+          query.includes('ON CONFLICT DO NOTHING')
+      )
     ).toBe(true);
   });
 

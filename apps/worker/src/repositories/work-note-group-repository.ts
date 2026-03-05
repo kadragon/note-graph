@@ -17,7 +17,7 @@ export class WorkNoteGroupRepository {
     return {
       groupId: row.groupId,
       name: row.name,
-      isActive: row.isActive === 1,
+      isActive: Boolean(row.isActive),
       createdAt: row.createdAt,
     };
   }
@@ -60,7 +60,7 @@ export class WorkNoteGroupRepository {
     }
 
     if (activeOnly) {
-      conditions.push('is_active = 1');
+      conditions.push('is_active');
     }
 
     if (conditions.length > 0) {
@@ -169,7 +169,7 @@ export class WorkNoteGroupRepository {
 
   async addWorkNote(groupId: string, workId: string): Promise<void> {
     await this.db.execute(
-      'INSERT OR IGNORE INTO work_note_group_items (work_id, group_id) VALUES (?, ?)',
+      'INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?) ON CONFLICT DO NOTHING',
       [workId, groupId]
     );
   }

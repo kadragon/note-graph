@@ -4,8 +4,8 @@
 import type { ChunkMetadata } from '@shared/types/search';
 import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { format } from 'date-fns';
-import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
+import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { ChunkingService } from './chunking-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
@@ -69,16 +69,15 @@ class EmbeddingSkipError extends Error {
  * Embedding processor for bulk operations
  */
 export class EmbeddingProcessor {
+  private db: DatabaseClient;
   private repository: WorkNoteRepository;
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
   private embeddingService: OpenAIEmbeddingService;
 
-  constructor(
-    private env: Env,
-    settingService?: SettingService
-  ) {
-    this.repository = new WorkNoteRepository(new D1DatabaseClient(env.DB));
+  constructor(db: DatabaseClient, env: Env, settingService?: SettingService) {
+    this.db = db;
+    this.repository = new WorkNoteRepository(db);
     this.chunkingService = new ChunkingService();
 
     this.embeddingService = new OpenAIEmbeddingService(env, settingService);
@@ -102,9 +101,9 @@ export class EmbeddingProcessor {
     };
 
     // Get total count
-    const countResult = await this.env.DB.prepare(
+    const countResult = await this.db.queryOne<{ count: number }>(
       'SELECT COUNT(*) as count FROM work_notes'
-    ).first<{ count: number }>();
+    );
 
     result.total = countResult?.count || 0;
 
@@ -134,11 +133,10 @@ export class EmbeddingProcessor {
            ORDER BY created_at ASC
            LIMIT ?`;
 
-      const workNotes: D1Result<WorkNote> = lastCreatedAt
-        ? await this.env.DB.prepare(query).bind(lastCreatedAt, batchSize).all<WorkNote>()
-        : await this.env.DB.prepare(query).bind(batchSize).all<WorkNote>();
-
-      const notes: WorkNote[] = workNotes.results || [];
+      const result_batch = lastCreatedAt
+        ? await this.db.query<WorkNote>(query, [lastCreatedAt, batchSize])
+        : await this.db.query<WorkNote>(query, [batchSize]);
+      const notes: WorkNote[] = result_batch.rows;
 
       if (notes.length === 0) {
         break;
@@ -196,7 +194,7 @@ export class EmbeddingProcessor {
       }
 
       // Update cursor for next batch
-      const lastNote = notes[notes.length - 1];
+      const lastNote: WorkNote | undefined = notes[notes.length - 1];
       if (lastNote) {
         lastCreatedAt = lastNote.createdAt;
       }

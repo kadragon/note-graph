@@ -9,7 +9,6 @@
 
 import type { WorkNoteFile } from '@shared/types/work-note';
 import type { Context, Next } from 'hono';
-import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { WorkNoteFileService } from '../services/work-note-file-service';
 import type { AppContext, AppVariables } from '../types/context';
 import { getR2Bucket } from '../utils/r2-access';
@@ -43,7 +42,7 @@ export async function workNoteFileMiddleware(
   const r2Bucket = getR2Bucket(c.env);
 
   // Create file service and add to context
-  const fileService = new WorkNoteFileService(r2Bucket, new D1DatabaseClient(c.env.DB), c.env);
+  const fileService = new WorkNoteFileService(r2Bucket, c.get('db'), c.env);
   c.set('fileService', fileService);
   c.set('driveConfigured', fileService.isDriveConfigured());
 

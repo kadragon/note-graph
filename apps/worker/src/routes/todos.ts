@@ -38,6 +38,7 @@ todos.patch('/batch-postpone', bodyValidator(batchPostponeTodosSchema), async (c
   if (result.updatedCount > 0) {
     c.executionCtx.waitUntil(
       triggerReembed(
+        c.get('db'),
         c.env,
         result.workId,
         result.updatedTodoIds[0] as string,
@@ -62,7 +63,7 @@ todos.patch('/:todoId', bodyValidator(updateTodoSchema), async (c) => {
 
   // Re-embed work note to reflect updated todo in vector store (async, non-blocking)
   c.executionCtx.waitUntil(
-    triggerReembed(c.env, todo.workId, todo.todoId, 'update', c.get('settingService'))
+    triggerReembed(c.get('db'), c.env, todo.workId, todo.todoId, 'update', c.get('settingService'))
   );
 
   return c.json(todo);
@@ -81,7 +82,7 @@ todos.delete('/:todoId', async (c) => {
 
   // Re-embed work note to remove deleted todo from vector store (async, non-blocking)
   c.executionCtx.waitUntil(
-    triggerReembed(c.env, workId, todoId, 'deletion', c.get('settingService'))
+    triggerReembed(c.get('db'), c.env, workId, todoId, 'deletion', c.get('settingService'))
   );
 
   return c.body(null, 204);

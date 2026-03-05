@@ -2,6 +2,7 @@
 // Tests that reindexAll uses batch fetching instead of N+1 queries
 
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { EmbeddingProcessor } from '@worker/services/embedding-processor';
 import type { Env } from '@worker/types/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,7 +29,7 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
 
   beforeEach(() => {
     originalDB = baseEnv.DB;
-    processor = new EmbeddingProcessor(baseEnv);
+    processor = new EmbeddingProcessor(new D1DatabaseClient(baseEnv.DB), baseEnv);
 
     // Mock repository methods
     (processor as TestEmbeddingProcessor).repository = {
@@ -61,14 +62,15 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
       { workId: 'WORK-C', title: 'Note C', contentRaw: 'Content C', createdAt: '2024-01-03' },
     ];
 
-    // Mock D1 queries for count and fetching work notes
-    const mockDB = {
-      prepare: vi.fn().mockReturnThis(),
-      bind: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue({ count: 3 }),
-      all: vi.fn().mockResolvedValue({ results: mockWorkNotes }),
+    // Mock DatabaseClient queries for count and fetching work notes
+    (
+      processor as unknown as {
+        db: { queryOne: ReturnType<typeof vi.fn>; query: ReturnType<typeof vi.fn> };
+      }
+    ).db = {
+      queryOne: vi.fn().mockResolvedValue({ count: 3 }),
+      query: vi.fn().mockResolvedValue({ rows: mockWorkNotes }),
     };
-    (processor as unknown as { env: { DB: typeof mockDB } }).env.DB = mockDB;
 
     // Mock batch fetch - should be called once with all 3 work IDs
     const mockDetailsMap = new Map([

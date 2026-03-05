@@ -116,7 +116,7 @@ export class WorkNoteRepository {
       groups: groupsResult.rows.map((g) => ({
         groupId: g.groupId,
         name: g.name,
-        isActive: g.isActive === 1,
+        isActive: Boolean(g.isActive),
         createdAt: g.createdAt,
       })),
       relatedMeetingMinutes: meetingsResult.rows.map((meeting) => ({
@@ -313,62 +313,70 @@ export class WorkNoteRepository {
       return [];
     }
 
-    // Batch fetch categories, persons, and groups using json_each
-    const workIdsJson = JSON.stringify(workIds);
-    const [categoriesResult, personsResult, groupsResult] = await Promise.all([
-      this.db.query<{
-        workId: string;
-        categoryId: string;
-        name: string;
-        isActive: number;
-        createdAt: string;
-      }>(
-        `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
-         FROM task_categories tc
-         INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
-         WHERE wntc.work_id IN (SELECT value FROM json_each(?))`,
-        [workIdsJson]
-      ),
-      this.db.query<WorkNotePersonAssociation & { workId: string }>(
-        `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                wnp.role, p.name as personName, p.current_dept as currentDept,
-                p.current_position as currentPosition, p.phone_ext as phoneExt
-         FROM work_note_person wnp
-         INNER JOIN persons p ON wnp.person_id = p.person_id
-         WHERE wnp.work_id IN (SELECT value FROM json_each(?))`,
-        [workIdsJson]
-      ),
-      this.db.query<{
-        workId: string;
-        groupId: string;
-        name: string;
-        isActive: number;
-        createdAt: string;
-      }>(
-        `SELECT wngi.work_id as workId, g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
-         FROM work_note_groups g
-         INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
-         WHERE wngi.work_id IN (SELECT value FROM json_each(?))
-         ORDER BY g.name ASC`,
-        [workIdsJson]
-      ),
+    // Batch fetch categories, persons, and groups using queryInChunks
+    const [categoriesRows, personsRows, groupsRows] = await Promise.all([
+      queryInChunks(this.db, workIds, async (db, chunk, placeholders) => {
+        const r = await db.query<{
+          workId: string;
+          categoryId: string;
+          name: string;
+          isActive: number;
+          createdAt: string;
+        }>(
+          `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
+           FROM task_categories tc
+           INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+           WHERE wntc.work_id IN (${placeholders})`,
+          chunk
+        );
+        return r.rows;
+      }),
+      queryInChunks(this.db, workIds, async (db, chunk, placeholders) => {
+        const r = await db.query<WorkNotePersonAssociation & { workId: string }>(
+          `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
+                  wnp.role, p.name as personName, p.current_dept as currentDept,
+                  p.current_position as currentPosition, p.phone_ext as phoneExt
+           FROM work_note_person wnp
+           INNER JOIN persons p ON wnp.person_id = p.person_id
+           WHERE wnp.work_id IN (${placeholders})`,
+          chunk
+        );
+        return r.rows;
+      }),
+      queryInChunks(this.db, workIds, async (db, chunk, placeholders) => {
+        const r = await db.query<{
+          workId: string;
+          groupId: string;
+          name: string;
+          isActive: number;
+          createdAt: string;
+        }>(
+          `SELECT wngi.work_id as workId, g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
+           FROM work_note_groups g
+           INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
+           WHERE wngi.work_id IN (${placeholders})
+           ORDER BY g.name ASC`,
+          chunk
+        );
+        return r.rows;
+      }),
     ]);
 
     const categoriesByWorkId = new Map<string, TaskCategory[]>();
-    for (const cat of categoriesResult.rows) {
+    for (const cat of categoriesRows) {
       if (!categoriesByWorkId.has(cat.workId)) {
         categoriesByWorkId.set(cat.workId, []);
       }
       categoriesByWorkId.get(cat.workId)?.push({
         categoryId: cat.categoryId,
         name: cat.name,
-        isActive: cat.isActive === 1,
+        isActive: Boolean(cat.isActive),
         createdAt: cat.createdAt,
       });
     }
 
     const personsByWorkId = new Map<string, WorkNotePersonAssociation[]>();
-    for (const person of personsResult.rows) {
+    for (const person of personsRows) {
       if (!personsByWorkId.has(person.workId)) {
         personsByWorkId.set(person.workId, []);
       }
@@ -385,14 +393,14 @@ export class WorkNoteRepository {
     }
 
     const groupsByWorkId = new Map<string, WorkNoteGroup[]>();
-    for (const group of groupsResult.rows) {
+    for (const group of groupsRows) {
       if (!groupsByWorkId.has(group.workId)) {
         groupsByWorkId.set(group.workId, []);
       }
       groupsByWorkId.get(group.workId)?.push({
         groupId: group.groupId,
         name: group.name,
-        isActive: group.isActive === 1,
+        isActive: Boolean(group.isActive),
         createdAt: group.createdAt,
       });
     }
@@ -502,7 +510,7 @@ export class WorkNoteRepository {
     if (data.groupIds && data.groupIds.length > 0) {
       for (const groupId of data.groupIds) {
         statements.push({
-          sql: `INSERT OR IGNORE INTO work_note_group_items (work_id, group_id) VALUES (?, ?)`,
+          sql: `INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?) ON CONFLICT DO NOTHING`,
           params: [workId, groupId],
         });
       }
@@ -694,7 +702,7 @@ export class WorkNoteRepository {
       });
       for (const groupId of data.groupIds) {
         statements.push({
-          sql: `INSERT OR IGNORE INTO work_note_group_items (work_id, group_id) VALUES (?, ?)`,
+          sql: `INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?) ON CONFLICT DO NOTHING`,
           params: [workId, groupId],
         });
       }

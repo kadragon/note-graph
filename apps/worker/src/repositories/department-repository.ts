@@ -136,7 +136,7 @@ export class DepartmentRepository {
     `;
 
     if (onlyActive) {
-      query += ` AND pdh.is_active = 1`;
+      query += ` AND pdh.is_active`;
     }
 
     query += ` ORDER BY pdh.start_date DESC`;

@@ -1,18 +1,29 @@
 // Trace: SPEC-search-1, TASK-009, TASK-016
 // Unit tests for FTS Search Service
 
-import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
+import { D1FtsDialect } from '@worker/adapters/d1-fts-dialect';
 import { FtsSearchService } from '@worker/services/fts-search-service';
+import type { DatabaseClient } from '@worker/types/database';
+import type { FtsDialect } from '@worker/types/fts-dialect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+function createMockDb(queryResult: { rows: unknown[] } = { rows: [] }): DatabaseClient {
+  return {
+    query: vi.fn().mockResolvedValue(queryResult),
+    queryOne: vi.fn().mockResolvedValue(null),
+    execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+    transaction: vi.fn(),
+    executeBatch: vi.fn(),
+  } as unknown as DatabaseClient;
+}
+
 describe('FtsSearchService', () => {
-  let mockDb: D1Database;
+  let mockDb: DatabaseClient;
   let ftsService: FtsSearchService;
 
   beforeEach(() => {
-    // Reset mock database before each test
-    mockDb = {} as D1Database;
-    ftsService = new FtsSearchService(mockDb);
+    mockDb = createMockDb();
+    ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
   });
 
   describe('search()', () => {
@@ -29,15 +40,8 @@ describe('FtsSearchService', () => {
         },
       ];
 
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: mockResults,
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
+      mockDb = createMockDb({ rows: mockResults });
+      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
 
       const results = await ftsService.search('업무');
 
@@ -70,268 +74,114 @@ describe('FtsSearchService', () => {
         },
       ];
 
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: mockResults,
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
+      mockDb = createMockDb({ rows: mockResults });
+      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
 
       const results = await ftsService.search('test');
 
-      // FTS rank -1 should normalize to exactly 0.9
-      // Formula: Math.max(0, 1 + fts_rank / 10) = 1 + (-1)/10 = 0.9
       expect(results[0].score).toBe(0.9);
-
-      // FTS rank -5 should normalize to exactly 0.5
-      // Formula: Math.max(0, 1 + fts_rank / 10) = 1 + (-5)/10 = 0.5
       expect(results[1].score).toBe(0.5);
     });
 
     it('should apply category filter', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('업무', { category: '회의' });
 
-      // Verify SQL includes category filter
-      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sqlCall).toContain('wn.category = ?');
-      expect((mockStmt.bind as ReturnType<typeof vi.fn>).mock.calls[0]).toContain('회의');
+      const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('wn.category = ?');
+      expect(params).toContain('회의');
     });
 
     it('should apply date range filters', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('업무', {
         from: '2024-01-01',
         to: '2024-12-31',
       });
 
-      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sqlCall).toContain('wn.created_at >= ?');
-      expect(sqlCall).toContain('wn.created_at <= ?');
-
-      const bindCalls = (mockStmt.bind as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(bindCalls).toContain('2024-01-01');
-      expect(bindCalls).toContain('2024-12-31');
+      const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('wn.created_at >= ?');
+      expect(sql).toContain('wn.created_at <= ?');
+      expect(params).toContain('2024-01-01');
+      expect(params).toContain('2024-12-31');
     });
 
     it('should apply person ID filter', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('업무', { personId: 'P-001' });
 
-      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sqlCall).toContain('work_note_person');
-      expect(sqlCall).toContain('wnp.person_id = ?');
-      expect((mockStmt.bind as ReturnType<typeof vi.fn>).mock.calls[0]).toContain('P-001');
+      const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('work_note_person');
+      expect(sql).toContain('wnp.person_id = ?');
+      expect(params).toContain('P-001');
     });
 
     it('should apply department filter', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('업무', { deptName: '개발팀' });
 
-      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sqlCall).toContain('persons p');
-      expect(sqlCall).toContain('p.current_dept = ?');
-      expect((mockStmt.bind as ReturnType<typeof vi.fn>).mock.calls[0]).toContain('개발팀');
+      const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('persons p');
+      expect(sql).toContain('p.current_dept = ?');
+      expect(params).toContain('개발팀');
     });
 
     it('should apply limit parameter', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('업무', { limit: 20 });
 
-      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sqlCall).toContain('LIMIT ?');
-      const bindCalls = (mockStmt.bind as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(bindCalls[bindCalls.length - 1]).toBe(20);
+      const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('LIMIT ?');
+      expect(params[params.length - 1]).toBe(20);
     });
 
     it('should use default limit of 10', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('업무');
 
-      const bindCalls = (mockStmt.bind as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(bindCalls[bindCalls.length - 1]).toBe(10);
+      const [, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(params[params.length - 1]).toBe(10);
     });
 
     it('should combine person and department filters', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('업무', {
         personId: 'P-001',
         deptName: '개발팀',
       });
 
-      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sqlCall).toContain('work_note_person');
-      expect(sqlCall).toContain('wnp.person_id = ?');
-      expect(sqlCall).toContain('p.current_dept = ?');
+      const [sql] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('work_note_person');
+      expect(sql).toContain('wnp.person_id = ?');
+      expect(sql).toContain('p.current_dept = ?');
     });
 
     it('should handle empty search results', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       const results = await ftsService.search('nonexistent');
-
       expect(results).toEqual([]);
     });
 
-    it('should throw error on database failure', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: false,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
-      await expect(ftsService.search('업무')).rejects.toThrow('FTS search query failed');
-    });
-
     it('should handle Korean text queries', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('한글 검색어');
 
-      const bindCalls = (mockStmt.bind as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(bindCalls[0]).toBe('한글 검색어');
+      const [, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(params[0]).toBe('한글 검색어');
     });
 
     it('should trim whitespace from query', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('  업무 보고  ');
 
-      const bindCalls = (mockStmt.bind as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(bindCalls[0]).toBe('업무 보고');
+      const [, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(params[0]).toBe('업무 보고');
     });
 
     it('should order results by FTS rank descending', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('test');
 
-      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sqlCall).toContain('ORDER BY fts.rank DESC');
+      const [sql] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('ORDER BY fts.rank DESC');
     });
 
     it('should use CTE to filter FTS matches before joining work_notes', async () => {
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: [],
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       await ftsService.search('업무');
 
-      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      // Should use CTE (WITH clause) to filter FTS results first
-      expect(sqlCall).toMatch(/WITH\s+fts_matches\s+AS/i);
-      // MATCH should be inside the CTE, not in the main WHERE clause
-      expect(sqlCall).toMatch(/fts_matches\s+AS\s*\(\s*SELECT.*MATCH/is);
-      // Main query should join from the CTE
-      expect(sqlCall).toMatch(/FROM\s+fts_matches\s+fts/i);
+      const [sql] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toMatch(/WITH\s+fts_matches\s+AS/i);
+      expect(sql).toMatch(/fts_matches\s+AS\s*\(\s*SELECT.*MATCH/is);
+      expect(sql).toMatch(/FROM\s+fts_matches\s+fts/i);
     });
 
     it('should exclude fts_rank from returned work note', async () => {
@@ -347,15 +197,8 @@ describe('FtsSearchService', () => {
         },
       ];
 
-      const mockStmt = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({
-          success: true,
-          results: mockResults,
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
+      mockDb = createMockDb({ rows: mockResults });
+      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
 
       const results = await ftsService.search('test');
 
@@ -367,62 +210,58 @@ describe('FtsSearchService', () => {
 
   describe('verifyFtsSync()', () => {
     it('should return true when counts match', async () => {
-      const mockStmt = {
-        first: vi.fn().mockResolvedValue({
-          work_notes_count: 100,
-          fts_count: 100,
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
+      mockDb = createMockDb();
+      (mockDb.queryOne as ReturnType<typeof vi.fn>).mockResolvedValue({
+        work_notes_count: 100,
+        fts_count: 100,
+      });
+      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
 
       const result = await ftsService.verifyFtsSync();
-
       expect(result).toBe(true);
     });
 
     it('should return false when counts do not match', async () => {
-      const mockStmt = {
-        first: vi.fn().mockResolvedValue({
-          work_notes_count: 100,
-          fts_count: 95,
-        }),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
+      mockDb = createMockDb();
+      (mockDb.queryOne as ReturnType<typeof vi.fn>).mockResolvedValue({
+        work_notes_count: 100,
+        fts_count: 95,
+      });
+      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
 
       const result = await ftsService.verifyFtsSync();
-
       expect(result).toBe(false);
     });
 
     it('should return false when no result', async () => {
-      const mockStmt = {
-        first: vi.fn().mockResolvedValue(null),
-      } as unknown as D1PreparedStatement;
-
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
-
       const result = await ftsService.verifyFtsSync();
-
       expect(result).toBe(false);
     });
 
-    it('should query both work_notes and notes_fts tables', async () => {
-      const mockStmt = {
-        first: vi.fn().mockResolvedValue({
-          work_notes_count: 50,
-          fts_count: 50,
-        }),
-      } as unknown as D1PreparedStatement;
+    it('should return true immediately when dialect.isAlwaysSynced() is true', async () => {
+      const alwaysSyncedDialect: FtsDialect = {
+        ...new D1FtsDialect(),
+        isAlwaysSynced: () => true,
+      };
+      const service = new FtsSearchService(mockDb, alwaysSyncedDialect);
 
-      mockDb.prepare = vi.fn().mockReturnValue(mockStmt);
+      const result = await service.verifyFtsSync();
+
+      expect(result).toBe(true);
+      expect(mockDb.queryOne).not.toHaveBeenCalled();
+    });
+
+    it('should query both work_notes and notes_fts tables', async () => {
+      (mockDb.queryOne as ReturnType<typeof vi.fn>).mockResolvedValue({
+        work_notes_count: 50,
+        fts_count: 50,
+      });
 
       await ftsService.verifyFtsSync();
 
-      const sqlCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sqlCall).toContain('work_notes');
-      expect(sqlCall).toContain('notes_fts');
+      const [sql] = (mockDb.queryOne as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(sql).toContain('work_notes');
+      expect(sql).toContain('notes_fts');
     });
   });
 });

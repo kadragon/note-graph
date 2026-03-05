@@ -1,6 +1,4 @@
-import type { Context } from 'hono';
 import { z } from 'zod';
-import { D1DatabaseClient } from '../adapters/d1-database-client';
 import {
   bodyValidator,
   getValidatedBody,
@@ -18,6 +16,7 @@ import {
 import { MeetingMinuteKeywordService } from '../services/meeting-minute-keyword-service';
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import type { AppContext, AppVariables } from '../types/context';
+import type { DatabaseClient } from '../types/database';
 import { notFoundJson } from './_shared/route-responses';
 import { createProtectedRouter } from './_shared/router-factory';
 
@@ -59,22 +58,20 @@ function isHighlySimilarTopic(left: string, right: string): boolean {
   return shorter.length >= 8 && longer.includes(shorter);
 }
 
-async function getMeetingMinuteGroups(db: D1Database, meetingId: string) {
-  const groupsResult = await db
-    .prepare(
-      `SELECT wng.group_id as groupId, wng.name as name
-       FROM meeting_minute_group mmg
-       INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
-       WHERE mmg.meeting_id = ?
-       ORDER BY wng.group_id ASC`
-    )
-    .bind(meetingId)
-    .all<{ groupId: string; name: string }>();
-  return groupsResult.results || [];
+async function getMeetingMinuteGroups(db: DatabaseClient, meetingId: string) {
+  const { rows } = await db.query<{ groupId: string; name: string }>(
+    `SELECT wng.group_id as groupId, wng.name as name
+     FROM meeting_minute_group mmg
+     INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
+     WHERE mmg.meeting_id = ?
+     ORDER BY wng.group_id ASC`,
+    [meetingId]
+  );
+  return rows;
 }
 
 async function hasMeetingMinuteDuplicateTopic(
-  c: Context<MeetingMinutesContext>,
+  db: DatabaseClient,
   input: {
     meetingDate: string;
     topic: string;
@@ -89,17 +86,16 @@ async function hasMeetingMinuteDuplicateTopic(
     params.push(input.excludeMeetingId);
   }
 
-  const result = await c.env.DB.prepare(sql)
-    .bind(...params)
-    .all<{ topic: string }>();
+  const { rows } = await db.query<{ topic: string }>(sql, params);
 
-  return (result.results || []).some((row) => isHighlySimilarTopic(row.topic, input.topic));
+  return rows.some((row) => isHighlySimilarTopic(row.topic, input.topic));
 }
 
 meetingMinutes.get('/', queryValidator(listMeetingMinutesQuerySchema), async (c) => {
   const query = getValidatedQuery<typeof listMeetingMinutesQuerySchema>(c);
+  const db = c.get('db');
 
-  const repository = new MeetingMinuteRepository(new D1DatabaseClient(c.env.DB));
+  const repository = new MeetingMinuteRepository(db);
   const result = await repository.findPaginated({
     q: query.q,
     meetingDateFrom: query.meetingDateFrom,
@@ -117,7 +113,7 @@ meetingMinutes.get('/', queryValidator(listMeetingMinutesQuerySchema), async (c)
 meetingMinutes.post('/suggest', bodyValidator(suggestMeetingMinutesSchema), async (c) => {
   const body = getValidatedBody<typeof suggestMeetingMinutesSchema>(c);
   const limit = body.limit ?? 5;
-  const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.env.DB);
+  const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.get('db'));
   const meetingReferences = await meetingMinuteReferenceService.search(body.query, limit);
 
   return c.json({ meetingReferences });
@@ -125,8 +121,17 @@ meetingMinutes.post('/suggest', bodyValidator(suggestMeetingMinutesSchema), asyn
 
 meetingMinutes.get('/:meetingId', async (c) => {
   const meetingId = c.req.param('meetingId');
+  const db = c.get('db');
 
-  const row = await c.env.DB.prepare(
+  const row = await db.queryOne<{
+    meetingId: string;
+    meetingDate: string;
+    topic: string;
+    detailsRaw: string;
+    keywordsJson: string;
+    createdAt: string;
+    updatedAt: string;
+  }>(
     `SELECT
       meeting_id as meetingId,
       meeting_date as meetingDate,
@@ -136,52 +141,39 @@ meetingMinutes.get('/:meetingId', async (c) => {
       created_at as createdAt,
       updated_at as updatedAt
      FROM meeting_minutes
-     WHERE meeting_id = ?`
-  )
-    .bind(meetingId)
-    .first<{
-      meetingId: string;
-      meetingDate: string;
-      topic: string;
-      detailsRaw: string;
-      keywordsJson: string;
-      createdAt: string;
-      updatedAt: string;
-    }>();
+     WHERE meeting_id = ?`,
+    [meetingId]
+  );
 
   if (!row) {
     return notFoundJson(c, 'Meeting minute', meetingId);
   }
 
-  const attendeesResult = await c.env.DB.prepare(
-    `SELECT p.person_id as personId, p.name as name
-       FROM meeting_minute_person mmp
-       INNER JOIN persons p ON p.person_id = mmp.person_id
-       WHERE mmp.meeting_id = ?
-       ORDER BY p.person_id ASC`
-  )
-    .bind(meetingId)
-    .all<{ personId: string; name: string }>();
-
-  const categoriesResult = await c.env.DB.prepare(
-    `SELECT tc.category_id as categoryId, tc.name as name
-       FROM meeting_minute_task_category mmtc
-       INNER JOIN task_categories tc ON tc.category_id = mmtc.category_id
-       WHERE mmtc.meeting_id = ?
-       ORDER BY tc.category_id ASC`
-  )
-    .bind(meetingId)
-    .all<{ categoryId: string; name: string }>();
-
-  const groups = await getMeetingMinuteGroups(c.env.DB, meetingId);
-
-  const linkedWorkNoteCountRow = await c.env.DB.prepare(
-    `SELECT COUNT(*) as linkedWorkNoteCount
-       FROM work_note_meeting_minute
-       WHERE meeting_id = ?`
-  )
-    .bind(meetingId)
-    .first<{ linkedWorkNoteCount: number }>();
+  const [attendeesResult, categoriesResult, groups, linkedWorkNoteCountRow] = await Promise.all([
+    db.query<{ personId: string; name: string }>(
+      `SELECT p.person_id as personId, p.name as name
+         FROM meeting_minute_person mmp
+         INNER JOIN persons p ON p.person_id = mmp.person_id
+         WHERE mmp.meeting_id = ?
+         ORDER BY p.person_id ASC`,
+      [meetingId]
+    ),
+    db.query<{ categoryId: string; name: string }>(
+      `SELECT tc.category_id as categoryId, tc.name as name
+         FROM meeting_minute_task_category mmtc
+         INNER JOIN task_categories tc ON tc.category_id = mmtc.category_id
+         WHERE mmtc.meeting_id = ?
+         ORDER BY tc.category_id ASC`,
+      [meetingId]
+    ),
+    getMeetingMinuteGroups(db, meetingId),
+    db.queryOne<{ linkedWorkNoteCount: number }>(
+      `SELECT COUNT(*) as linkedWorkNoteCount
+         FROM work_note_meeting_minute
+         WHERE meeting_id = ?`,
+      [meetingId]
+    ),
+  ]);
 
   return c.json({
     meetingId: row.meetingId,
@@ -191,8 +183,8 @@ meetingMinutes.get('/:meetingId', async (c) => {
     keywords: JSON.parse(row.keywordsJson || '[]'),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
-    attendees: attendeesResult.results || [],
-    categories: categoriesResult.results || [],
+    attendees: attendeesResult.rows,
+    categories: categoriesResult.rows,
     groups,
     linkedWorkNoteCount: Number(linkedWorkNoteCountRow?.linkedWorkNoteCount || 0),
   });
@@ -201,19 +193,19 @@ meetingMinutes.get('/:meetingId', async (c) => {
 meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), async (c) => {
   const meetingId = c.req.param('meetingId');
   const data = getValidatedBody<typeof updateMeetingMinuteSchema>(c);
+  const db = c.get('db');
 
-  const existing = await c.env.DB.prepare(
+  const existing = await db.queryOne<{
+    meetingId: string;
+    meetingDate: string;
+    topic: string;
+    detailsRaw: string;
+  }>(
     `SELECT meeting_id as meetingId, meeting_date as meetingDate, topic, details_raw as detailsRaw
        FROM meeting_minutes
-       WHERE meeting_id = ?`
-  )
-    .bind(meetingId)
-    .first<{
-      meetingId: string;
-      meetingDate: string;
-      topic: string;
-      detailsRaw: string;
-    }>();
+       WHERE meeting_id = ?`,
+    [meetingId]
+  );
 
   if (!existing) {
     return notFoundJson(c, 'Meeting minute', meetingId);
@@ -223,7 +215,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
     const nextMeetingDate = data.meetingDate ?? existing.meetingDate;
     const nextTopic = data.topic ?? existing.topic;
 
-    const hasDuplicate = await hasMeetingMinuteDuplicateTopic(c, {
+    const hasDuplicate = await hasMeetingMinuteDuplicateTopic(db, {
       meetingDate: nextMeetingDate,
       topic: nextTopic,
       excludeMeetingId: meetingId,
@@ -241,7 +233,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
   }
 
   const keywordService = new MeetingMinuteKeywordService(c.env, c.get('settingService'));
-  const repository = new MeetingMinuteRepository(new D1DatabaseClient(c.env.DB));
+  const repository = new MeetingMinuteRepository(db);
 
   const keywords = await keywordService.extractKeywords({
     topic: data.topic ?? existing.topic,
@@ -253,39 +245,37 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
     keywords,
   });
 
-  const attendeesResult = await c.env.DB.prepare(
-    `SELECT p.person_id as personId, p.name as name
-       FROM meeting_minute_person mmp
-       INNER JOIN persons p ON p.person_id = mmp.person_id
-       WHERE mmp.meeting_id = ?
-       ORDER BY p.person_id ASC`
-  )
-    .bind(meetingId)
-    .all<{ personId: string; name: string }>();
-
-  const categoriesResult = await c.env.DB.prepare(
-    `SELECT tc.category_id as categoryId, tc.name as name
-       FROM meeting_minute_task_category mmtc
-       INNER JOIN task_categories tc ON tc.category_id = mmtc.category_id
-       WHERE mmtc.meeting_id = ?
-       ORDER BY tc.category_id ASC`
-  )
-    .bind(meetingId)
-    .all<{ categoryId: string; name: string }>();
-
-  const groups = await getMeetingMinuteGroups(c.env.DB, meetingId);
+  const [attendeesResult, categoriesResult, groups] = await Promise.all([
+    db.query<{ personId: string; name: string }>(
+      `SELECT p.person_id as personId, p.name as name
+         FROM meeting_minute_person mmp
+         INNER JOIN persons p ON p.person_id = mmp.person_id
+         WHERE mmp.meeting_id = ?
+         ORDER BY p.person_id ASC`,
+      [meetingId]
+    ),
+    db.query<{ categoryId: string; name: string }>(
+      `SELECT tc.category_id as categoryId, tc.name as name
+         FROM meeting_minute_task_category mmtc
+         INNER JOIN task_categories tc ON tc.category_id = mmtc.category_id
+         WHERE mmtc.meeting_id = ?
+         ORDER BY tc.category_id ASC`,
+      [meetingId]
+    ),
+    getMeetingMinuteGroups(db, meetingId),
+  ]);
 
   return c.json({
     ...updated,
-    attendees: attendeesResult.results || [],
-    categories: categoriesResult.results || [],
+    attendees: attendeesResult.rows,
+    categories: categoriesResult.rows,
     groups,
   });
 });
 
 meetingMinutes.delete('/:meetingId', async (c) => {
   const meetingId = c.req.param('meetingId');
-  const repository = new MeetingMinuteRepository(new D1DatabaseClient(c.env.DB));
+  const repository = new MeetingMinuteRepository(c.get('db'));
   await repository.delete(meetingId);
   return c.body(null, 204);
 });
@@ -293,7 +283,9 @@ meetingMinutes.delete('/:meetingId', async (c) => {
 meetingMinutes.post('/', bodyValidator(createMeetingMinuteSchema), async (c) => {
   const data = getValidatedBody<typeof createMeetingMinuteSchema>(c);
 
-  const hasDuplicate = await hasMeetingMinuteDuplicateTopic(c, {
+  const db = c.get('db');
+
+  const hasDuplicate = await hasMeetingMinuteDuplicateTopic(db, {
     meetingDate: data.meetingDate,
     topic: data.topic,
   });
@@ -309,9 +301,9 @@ meetingMinutes.post('/', bodyValidator(createMeetingMinuteSchema), async (c) => 
   }
 
   const keywordService = new MeetingMinuteKeywordService(c.env, c.get('settingService'));
-  const repository = new MeetingMinuteRepository(new D1DatabaseClient(c.env.DB));
-  const personRepository = new PersonRepository(new D1DatabaseClient(c.env.DB));
-  const categoryRepository = new TaskCategoryRepository(new D1DatabaseClient(c.env.DB));
+  const repository = new MeetingMinuteRepository(db);
+  const personRepository = new PersonRepository(db);
+  const categoryRepository = new TaskCategoryRepository(db);
 
   const keywords = await keywordService.extractKeywords({
     topic: data.topic,
@@ -338,7 +330,7 @@ meetingMinutes.post('/', bodyValidator(createMeetingMinuteSchema), async (c) => 
     name: category.name,
   }));
 
-  const groups = await getMeetingMinuteGroups(c.env.DB, created.meetingId);
+  const groups = await getMeetingMinuteGroups(db, created.meetingId);
 
   return c.json(
     {

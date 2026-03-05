@@ -1,7 +1,7 @@
 // Trace: SPEC-rag-1, TASK-012, TASK-041, SPEC-refactor-embedding-service, TASK-REFACTOR-005
-import type { D1Database } from '@cloudflare/workers-types';
 import type { RagContextSnippet, RagQueryFilters, RagQueryResponse } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
+import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
@@ -20,7 +20,7 @@ import { VectorizeService } from './vectorize-service';
  * 3. Calling GPT-4.5 for answer generation
  */
 export class RagService {
-  private db: D1Database;
+  private db: DatabaseClient;
   private vectorizeService: VectorizeService;
   private embeddingService: OpenAIEmbeddingService;
   private env: Env;
@@ -38,9 +38,9 @@ export class RagService {
    */
   private static readonly GPT_MAX_COMPLETION_TOKENS = 1000;
 
-  constructor(env: Env, settingService?: SettingService) {
+  constructor(db: DatabaseClient, env: Env, settingService?: SettingService) {
+    this.db = db;
     this.env = env;
-    this.db = env.DB;
     this.settingService = settingService;
     this.embeddingService = new OpenAIEmbeddingService(env, settingService);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
@@ -199,7 +199,7 @@ export class RagService {
   }
 
   /**
-   * Batch fetch work notes by IDs from D1
+   * Batch fetch work notes by IDs
    * Eliminates N+1 query pattern by fetching all notes in a single query
    */
   private async fetchWorkNotesByIds(workIds: string[]): Promise<Map<string, WorkNote>> {
@@ -207,18 +207,17 @@ export class RagService {
       return new Map();
     }
 
-    const results = await this.db
-      .prepare(
-        `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, created_at as createdAt, updated_at as updatedAt
-         FROM work_notes
-         WHERE work_id IN (SELECT value FROM json_each(?))`
-      )
-      .bind(JSON.stringify(workIds))
-      .all<WorkNote>();
+    const placeholders = workIds.map(() => '?').join(',');
+    const { rows } = await this.db.query<WorkNote>(
+      `SELECT work_id as workId, title, content_raw as contentRaw,
+              category, created_at as createdAt, updated_at as updatedAt
+       FROM work_notes
+       WHERE work_id IN (${placeholders})`,
+      workIds
+    );
 
     const map = new Map<string, WorkNote>();
-    for (const note of results.results) {
+    for (const note of rows) {
       map.set(note.workId, note);
     }
     return map;
