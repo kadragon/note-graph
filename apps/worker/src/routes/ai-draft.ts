@@ -128,12 +128,17 @@ app.post(
       similarityScore: note.similarityScore,
     }));
 
-    const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.env.DB);
-    const scoredMeetingReferences = await meetingMinuteReferenceService.search(
-      body.inputText,
-      MEETING_REFERENCES_TOP_K,
-      MEETING_REFERENCES_MIN_SCORE
-    );
+    let scoredMeetingReferences: Awaited<ReturnType<MeetingMinuteReferenceService['search']>> = [];
+    try {
+      const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.env.DB);
+      scoredMeetingReferences = await meetingMinuteReferenceService.search(
+        body.inputText,
+        MEETING_REFERENCES_TOP_K,
+        MEETING_REFERENCES_MIN_SCORE
+      );
+    } catch (error) {
+      console.error('[ai-draft] Meeting minute reference search failed:', error);
+    }
 
     return c.json({
       draft,

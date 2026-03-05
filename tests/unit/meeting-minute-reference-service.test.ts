@@ -116,15 +116,13 @@ describe('MeetingMinuteReferenceService', () => {
       ),
     ]);
 
-    // With high minScore, only the most relevant result should pass
+    // With high minScore, only the top-scored result passes (normalized score=1.0)
     const strict = await service.search('budget planning', 10, 0.9);
-    // With default minScore (0.3), more results may pass
+    // With default minScore (0), all FTS matches are returned
     const relaxed = await service.search('budget planning', 10);
 
-    expect(strict.length).toBeLessThanOrEqual(relaxed.length);
-    // The top result should be the budget-focused meeting
-    if (strict.length > 0) {
-      expect(strict[0].meetingId).toBe('MEET-SCORE-1');
-    }
+    expect(relaxed).toHaveLength(2);
+    expect(strict).toHaveLength(1);
+    expect(strict[0].meetingId).toBe('MEET-SCORE-1');
   });
 });
