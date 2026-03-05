@@ -6,6 +6,8 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import type { DatabaseClient, TransactionClient } from '../types/database';
 
+const D1_BATCH_LIMIT = 100;
+
 export class D1DatabaseClient implements DatabaseClient {
   constructor(private db: D1Database) {}
 
@@ -13,21 +15,21 @@ export class D1DatabaseClient implements DatabaseClient {
     const stmt = this.db.prepare(sql);
     const bound = params && params.length > 0 ? stmt.bind(...params) : stmt;
     const result = await bound.all<T>();
-    return { rows: result.results || [] };
+    return { rows: result.results ?? [] };
   }
 
   async queryOne<T>(sql: string, params?: unknown[]): Promise<T | null> {
     const stmt = this.db.prepare(sql);
     const bound = params && params.length > 0 ? stmt.bind(...params) : stmt;
     const result = await bound.first<T>();
-    return result || null;
+    return result ?? null;
   }
 
   async execute(sql: string, params?: unknown[]): Promise<{ rowCount: number }> {
     const stmt = this.db.prepare(sql);
     const bound = params && params.length > 0 ? stmt.bind(...params) : stmt;
     const result = await bound.run();
-    return { rowCount: result.meta.changes || 0 };
+    return { rowCount: result.meta.changes ?? 0 };
   }
 
   async transaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
@@ -46,12 +48,14 @@ export class D1DatabaseClient implements DatabaseClient {
   async executeBatch(statements: Array<{ sql: string; params?: unknown[] }>): Promise<void> {
     if (statements.length === 0) return;
 
-    const prepared = statements.map((s) => {
-      const stmt = this.db.prepare(s.sql);
-      return s.params && s.params.length > 0 ? stmt.bind(...s.params) : stmt;
-    });
-
-    await this.db.batch(prepared);
+    for (let i = 0; i < statements.length; i += D1_BATCH_LIMIT) {
+      const chunk = statements.slice(i, i + D1_BATCH_LIMIT);
+      const prepared = chunk.map((s) => {
+        const stmt = this.db.prepare(s.sql);
+        return s.params && s.params.length > 0 ? stmt.bind(...s.params) : stmt;
+      });
+      await this.db.batch(prepared);
+    }
   }
 
   /** Access the underlying D1Database (for test setup and migration-period code) */
