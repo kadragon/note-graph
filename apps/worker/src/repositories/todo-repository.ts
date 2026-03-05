@@ -1,9 +1,8 @@
 // Trace: SPEC-todo-1, TASK-008, TASK-033, TASK-046
 /**
- * Todo repository for D1 database operations
+ * Todo repository for database operations
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
 import type {
   CustomIntervalUnit,
   RecurrenceType,
@@ -19,13 +18,14 @@ import type {
   ListTodosQuery,
   UpdateTodoInput,
 } from '../schemas/todo';
+import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI, TodoDueDateCount } from '../types/todo-due-date-context';
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 export class TodoRepository {
-  constructor(private db: D1Database) {}
+  constructor(private db: DatabaseClient) {}
 
   /**
    * Generate todo_id in format TODO-{nanoid}
@@ -36,7 +36,6 @@ export class TodoRepository {
 
   /**
    * Convert SQLite integer to boolean for skipWeekends field
-   * Centralizes the database-to-domain object mapping
    */
   private convertTodoFromDb<T extends { skipWeekends: boolean }>(todo: T): T {
     return {
@@ -47,16 +46,13 @@ export class TodoRepository {
 
   /**
    * Skip weekends by moving to next Monday if the date falls on Sat/Sun
-   * Returns a new Date instance to avoid mutating the input
    */
   private skipWeekendsForDate(date: Date): Date {
     const result = new Date(date.getTime());
     const dayOfWeek = result.getDay();
     if (dayOfWeek === 0) {
-      // Sunday -> Monday
       result.setDate(result.getDate() + 1);
     } else if (dayOfWeek === 6) {
-      // Saturday -> Monday
       result.setDate(result.getDate() + 2);
     }
     return result;
@@ -115,9 +111,7 @@ export class TodoRepository {
         return null;
     }
 
-    // Apply skip weekends if enabled
     const finalDate = skipWeekends ? this.skipWeekendsForDate(baseDate) : baseDate;
-
     return finalDate.toISOString();
   }
 
@@ -125,19 +119,17 @@ export class TodoRepository {
    * Find todo by ID
    */
   async findById(todoId: string): Promise<Todo | null> {
-    const result = await this.db
-      .prepare(
-        `SELECT todo_id as todoId, work_id as workId,
-                title, description, created_at as createdAt, updated_at as updatedAt,
-                due_date as dueDate, wait_until as waitUntil, status,
-                repeat_rule as repeatRule, recurrence_type as recurrenceType,
-                custom_interval as customInterval, custom_unit as customUnit,
-                skip_weekends as skipWeekends
-         FROM todos
-         WHERE todo_id = ?`
-      )
-      .bind(todoId)
-      .first<Todo>();
+    const result = await this.db.queryOne<Todo>(
+      `SELECT todo_id as todoId, work_id as workId,
+              title, description, created_at as createdAt, updated_at as updatedAt,
+              due_date as dueDate, wait_until as waitUntil, status,
+              repeat_rule as repeatRule, recurrence_type as recurrenceType,
+              custom_interval as customInterval, custom_unit as customUnit,
+              skip_weekends as skipWeekends
+       FROM todos
+       WHERE todo_id = ?`,
+      [todoId]
+    );
 
     return result ? this.convertTodoFromDb(result) : null;
   }
@@ -146,30 +138,22 @@ export class TodoRepository {
    * Find todos by work note ID
    */
   async findByWorkId(workId: string): Promise<Todo[]> {
-    const result = await this.db
-      .prepare(
-        `SELECT todo_id as todoId, work_id as workId,
-                title, description, created_at as createdAt, updated_at as updatedAt,
-                due_date as dueDate, wait_until as waitUntil, status,
-                repeat_rule as repeatRule, recurrence_type as recurrenceType,
-                custom_interval as customInterval, custom_unit as customUnit,
-                skip_weekends as skipWeekends
-         FROM todos
-         WHERE work_id = ?
-         ORDER BY created_at DESC`
-      )
-      .bind(workId)
-      .all<Todo>();
+    const result = await this.db.query<Todo>(
+      `SELECT todo_id as todoId, work_id as workId,
+              title, description, created_at as createdAt, updated_at as updatedAt,
+              due_date as dueDate, wait_until as waitUntil, status,
+              repeat_rule as repeatRule, recurrence_type as recurrenceType,
+              custom_interval as customInterval, custom_unit as customUnit,
+              skip_weekends as skipWeekends
+       FROM todos
+       WHERE work_id = ?
+       ORDER BY created_at DESC`,
+      [workId]
+    );
 
-    return (result.results || []).map((todo) => this.convertTodoFromDb(todo));
+    return result.rows.map((todo) => this.convertTodoFromDb(todo));
   }
 
-  /**
-   * Find all todos with view filters
-   */
-  /**
-   * Helper functions to calculate KST date boundaries in UTC for time-based views
-   */
   private getKSTDateParts(date: Date = new Date()) {
     const kstDate = new Date(date.getTime() + KST_OFFSET_MS);
     return {
@@ -210,6 +194,9 @@ export class TodoRepository {
     }
   }
 
+  /**
+   * Find all todos with view filters
+   */
   async findAll(query: ListTodosQuery): Promise<TodoWithWorkNote[]> {
     const startOfTodayUTC = this.getStartOfTodayUTC();
     const startOfTomorrowUTC = this.getStartOfTomorrowUTC();
@@ -236,14 +223,10 @@ export class TodoRepository {
       params.push(JSON.stringify(workIds));
     }
 
-    // Apply view filters
     switch (query.view) {
       case 'today':
       case 'week':
       case 'month': {
-        // Time-based views: show incomplete todos up to period end.
-        // Include wait_until-only todos as well, but still hide todos gated by future wait_until.
-        // Restrict to active status only
         const endExclusiveUTC = this.getPeriodEndExclusiveUTC(query.view);
 
         conditions.push(
@@ -257,8 +240,6 @@ export class TodoRepository {
       }
 
       case 'backlog': {
-        // Overdue todos (due_date < now and not completed)
-        // Restrict to active status only
         conditions.push(
           `t.status = ?`,
           `t.due_date IS NOT NULL`,
@@ -270,31 +251,25 @@ export class TodoRepository {
       }
 
       case 'remaining': {
-        // All incomplete todos (no year restriction)
-        // Restrict to active status only
         conditions.push(`t.status = ?`, `(t.wait_until IS NULL OR t.wait_until < ?)`);
         params.push('진행중', startOfTomorrowUTC);
         break;
       }
 
       case 'completed': {
-        // All completed todos (no year restriction)
         conditions.push(`t.status = ?`);
         params.push('완료');
         break;
       }
 
       case 'all': {
-        // All todos without status or date filtering (for work note stats)
         break;
       }
 
       default:
-        // No date filtering for unknown view
         break;
     }
 
-    // Filter by status if provided (overrides view-based status filter)
     if (query.status) {
       conditions.push(`t.status = ?`);
       params.push(query.status);
@@ -306,46 +281,39 @@ export class TodoRepository {
 
     sql += ` ORDER BY t.due_date ASC NULLS LAST, t.created_at DESC`;
 
-    const stmt = this.db.prepare(sql);
-    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<TodoWithWorkNote>();
-
-    return (result.results || []).map((todo) => this.convertTodoFromDb(todo));
+    const result = await this.db.query<TodoWithWorkNote>(sql, params);
+    return result.rows.map((todo) => this.convertTodoFromDb(todo));
   }
 
   /**
    * Get open todo due date distribution context for AI prompt guidance.
-   * Includes all non-completed statuses (진행중, 보류, 중단).
    */
   async getOpenTodoDueDateContextForAI(limit: number = 10): Promise<OpenTodoDueDateContextForAI> {
     const normalizedLimit = Math.max(1, Math.floor(limit));
     const openStatuses = ['진행중', '보류', '중단'] as const;
 
     const [summaryResult, distributionResult] = await Promise.all([
-      this.db
-        .prepare(
-          `SELECT COUNT(*) as totalOpenTodos,
-                  SUM(CASE WHEN due_date IS NULL THEN 1 ELSE 0 END) as undatedOpenTodos
-           FROM todos
-           WHERE status IN (?, ?, ?)`
-        )
-        .bind(...openStatuses)
-        .first<{ totalOpenTodos: number; undatedOpenTodos: number | null }>(),
-      this.db
-        .prepare(
-          `SELECT date(due_date) as dueDate,
-                  COUNT(*) as count
-           FROM todos
-           WHERE status IN (?, ?, ?)
-             AND date(due_date) IS NOT NULL
-           GROUP BY date(due_date)
-           ORDER BY count DESC, dueDate ASC
-           LIMIT ?`
-        )
-        .bind(...openStatuses, normalizedLimit)
-        .all<{ dueDate: string; count: number }>(),
+      this.db.queryOne<{ totalOpenTodos: number; undatedOpenTodos: number | null }>(
+        `SELECT COUNT(*) as totalOpenTodos,
+                SUM(CASE WHEN due_date IS NULL THEN 1 ELSE 0 END) as undatedOpenTodos
+         FROM todos
+         WHERE status IN (?, ?, ?)`,
+        [...openStatuses]
+      ),
+      this.db.query<{ dueDate: string; count: number }>(
+        `SELECT date(due_date) as dueDate,
+                COUNT(*) as count
+         FROM todos
+         WHERE status IN (?, ?, ?)
+           AND date(due_date) IS NOT NULL
+         GROUP BY date(due_date)
+         ORDER BY count DESC, dueDate ASC
+         LIMIT ?`,
+        [...openStatuses, normalizedLimit]
+      ),
     ]);
 
-    const topDueDateCounts: TodoDueDateCount[] = (distributionResult.results || []).map((row) => ({
+    const topDueDateCounts: TodoDueDateCount[] = distributionResult.rows.map((row) => ({
       dueDate: row.dueDate,
       count: Number(row.count),
     }));
@@ -367,12 +335,10 @@ export class TodoRepository {
     const effectiveWaitUntil = data.waitUntil || null;
     const effectiveDueDate = data.dueDate || effectiveWaitUntil || null;
 
-    await this.db
-      .prepare(
-        `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .bind(
+    await this.db.execute(
+      `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
         todoId,
         workId,
         data.title,
@@ -381,16 +347,15 @@ export class TodoRepository {
         now,
         effectiveDueDate,
         effectiveWaitUntil,
-        '진행중', // Default status
+        '진행중',
         data.repeatRule,
         data.recurrenceType || null,
         data.customInterval || null,
         data.customUnit || null,
-        data.skipWeekends ? 1 : 0
-      )
-      .run();
+        data.skipWeekends ? 1 : 0,
+      ]
+    );
 
-    // Return the created todo without extra DB roundtrip
     return {
       todoId,
       workId,
@@ -411,7 +376,6 @@ export class TodoRepository {
 
   /**
    * Delete todo by ID
-   * Returns the workId of the deleted todo for potential re-embedding
    */
   async delete(todoId: string): Promise<string> {
     const existing = await this.findById(todoId);
@@ -419,7 +383,7 @@ export class TodoRepository {
       throw new NotFoundError('Todo', todoId);
     }
 
-    await this.db.prepare(`DELETE FROM todos WHERE todo_id = ?`).bind(todoId).run();
+    await this.db.execute(`DELETE FROM todos WHERE todo_id = ?`, [todoId]);
 
     return existing.workId;
   }
@@ -433,11 +397,10 @@ export class TodoRepository {
       throw new NotFoundError('Todo', todoId);
     }
 
-    const statements = [];
+    const statements: Array<{ sql: string; params?: unknown[] }> = [];
     const now = new Date();
     const nowISO = now.toISOString();
 
-    // Check if status is being changed to '완료' (completed)
     const isBeingCompleted = data.status === '완료' && existing.status !== '완료';
 
     // Build update fields
@@ -464,12 +427,6 @@ export class TodoRepository {
       nextWaitUntil !== null &&
       this.isEarlierDateValue(nextDueDate, nextWaitUntil);
 
-    // Auto-fill due_date from wait_until when:
-    // 1. User is setting wait_until in this update
-    // 2. User didn't provide due_date in this update
-    // 3. wait_until is not being cleared
-    // 4. Either no existing due_date, OR existing due_date is before new wait_until
-    //    (ensures due_date is never earlier than wait_until)
     const shouldAutoFillDueDate =
       data.waitUntil !== undefined &&
       data.dueDate === undefined &&
@@ -510,15 +467,13 @@ export class TodoRepository {
     }
 
     if (updateFields.length > 0) {
-      // Always update updated_at when any field changes
       updateFields.push('updated_at = ?');
       updateParams.push(nowISO);
       updateParams.push(todoId);
-      statements.push(
-        this.db
-          .prepare(`UPDATE todos SET ${updateFields.join(', ')} WHERE todo_id = ?`)
-          .bind(...updateParams)
-      );
+      statements.push({
+        sql: `UPDATE todos SET ${updateFields.join(', ')} WHERE todo_id = ?`,
+        params: updateParams,
+      });
     }
 
     // Handle recurrence if todo is being completed and has repeat rule
@@ -534,38 +489,34 @@ export class TodoRepository {
       );
 
       if (nextDueDate) {
-        // Create new todo instance for next occurrence
         const newTodoId = this.generateTodoId();
         const nextWaitUntil = nextDueDate;
 
-        statements.push(
-          this.db
-            .prepare(
-              `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-            )
-            .bind(
-              newTodoId,
-              existing.workId,
-              existing.title,
-              existing.description,
-              nowISO,
-              nowISO,
-              nextDueDate,
-              nextWaitUntil,
-              '진행중',
-              existing.repeatRule,
-              existing.recurrenceType,
-              existing.customInterval,
-              existing.customUnit,
-              existing.skipWeekends ? 1 : 0
-            )
-        );
+        statements.push({
+          sql: `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          params: [
+            newTodoId,
+            existing.workId,
+            existing.title,
+            existing.description,
+            nowISO,
+            nowISO,
+            nextDueDate,
+            nextWaitUntil,
+            '진행중',
+            existing.repeatRule,
+            existing.recurrenceType,
+            existing.customInterval,
+            existing.customUnit,
+            existing.skipWeekends ? 1 : 0,
+          ],
+        });
       }
     }
 
     if (statements.length > 0) {
-      await this.db.batch(statements);
+      await this.db.executeBatch(statements);
     }
 
     const resultingDueDate =
@@ -579,7 +530,6 @@ export class TodoRepository {
 
     const resultingWaitUntil = nextWaitUntil;
 
-    // Return the updated todo without extra DB roundtrip
     return {
       ...existing,
       title: data.title !== undefined ? data.title : existing.title,
@@ -600,7 +550,6 @@ export class TodoRepository {
 
   /**
    * Batch postpone due dates for multiple todos
-   * Only updates todos that have a due_date; skips those without.
    */
   async batchPostponeDueDates(data: BatchPostponeTodosInput): Promise<{
     workId: string;
@@ -611,16 +560,14 @@ export class TodoRepository {
     const { todoIds, amount, unit } = data;
 
     // Fetch all requested todos (use json_each to avoid SQLite's 999 parameter limit)
-    const result = await this.db
-      .prepare(
-        `SELECT todo_id as todoId, work_id as workId, due_date as dueDate
-         FROM todos
-         WHERE todo_id IN (SELECT value FROM json_each(?))`
-      )
-      .bind(JSON.stringify(todoIds))
-      .all<{ todoId: string; workId: string; dueDate: string | null }>();
+    const result = await this.db.query<{ todoId: string; workId: string; dueDate: string | null }>(
+      `SELECT todo_id as todoId, work_id as workId, due_date as dueDate
+       FROM todos
+       WHERE todo_id IN (SELECT value FROM json_each(?))`,
+      [JSON.stringify(todoIds)]
+    );
 
-    const todos = result.results || [];
+    const todos = result.rows;
 
     if (todos.length === 0) {
       throw new NotFoundError('Todo', todoIds.join(', '));
@@ -631,7 +578,6 @@ export class TodoRepository {
     if (workIds.size > 1) {
       throw new Error('All todos must belong to the same work note');
     }
-    // Length checked above — safe to access first element
     const firstTodo = todos[0] as (typeof todos)[number];
     const workId = firstTodo.workId;
 
@@ -647,12 +593,13 @@ export class TodoRepository {
 
     const statements = withDueDate.map((todo) => {
       const newDueDate = addFn(new Date(todo.dueDate as string), amount).toISOString();
-      return this.db
-        .prepare(`UPDATE todos SET due_date = ?, updated_at = ? WHERE todo_id = ?`)
-        .bind(newDueDate, nowISO, todo.todoId);
+      return {
+        sql: `UPDATE todos SET due_date = ?, updated_at = ? WHERE todo_id = ?`,
+        params: [newDueDate, nowISO, todo.todoId],
+      };
     });
 
-    await this.db.batch(statements);
+    await this.db.executeBatch(statements);
 
     return {
       workId,

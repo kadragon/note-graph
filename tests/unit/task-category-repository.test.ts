@@ -1,15 +1,17 @@
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { TaskCategoryRepository } from '@worker/repositories/task-category-repository';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('TaskCategoryRepository', () => {
   let repository: TaskCategoryRepository;
 
   beforeEach(async () => {
-    repository = new TaskCategoryRepository(testEnv.DB);
+    repository = new TaskCategoryRepository(testDb);
 
     await testEnv.DB.batch([
       testEnv.DB.prepare('DELETE FROM work_note_task_category'),

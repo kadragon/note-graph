@@ -1,10 +1,10 @@
 // Trace: SPEC-rag-2, TASK-022, TASK-041, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 // Embedding processor for bulk reindexing operations
 
-import type { D1Result } from '@cloudflare/workers-types';
 import type { ChunkMetadata } from '@shared/types/search';
 import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { format } from 'date-fns';
+import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import type { Env } from '../types/env';
 import { ChunkingService } from './chunking-service';
@@ -78,7 +78,7 @@ export class EmbeddingProcessor {
     private env: Env,
     settingService?: SettingService
   ) {
-    this.repository = new WorkNoteRepository(env.DB);
+    this.repository = new WorkNoteRepository(new D1DatabaseClient(env.DB));
     this.chunkingService = new ChunkingService();
 
     this.embeddingService = new OpenAIEmbeddingService(env, settingService);

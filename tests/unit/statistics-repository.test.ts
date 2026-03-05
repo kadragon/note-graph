@@ -4,17 +4,19 @@
  */
 
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { StatisticsRepository } from '@worker/repositories/statistics-repository';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('StatisticsRepository', () => {
   let repo: StatisticsRepository;
 
   beforeEach(async () => {
-    repo = new StatisticsRepository(testEnv.DB);
+    repo = new StatisticsRepository(testDb);
 
     // Clean up before each test
     await testEnv.DB.batch([

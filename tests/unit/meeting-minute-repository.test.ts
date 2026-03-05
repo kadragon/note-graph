@@ -1,16 +1,18 @@
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { MeetingMinuteRepository } from '@worker/repositories/meeting-minute-repository';
 import type { CreateMeetingMinuteInput } from '@worker/schemas/meeting-minute';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('MeetingMinuteRepository', () => {
   let repository: MeetingMinuteRepository;
 
   beforeEach(async () => {
-    repository = new MeetingMinuteRepository(testEnv.DB);
+    repository = new MeetingMinuteRepository(testDb);
 
     await testEnv.DB.batch([
       testEnv.DB.prepare('DELETE FROM work_note_meeting_minute'),

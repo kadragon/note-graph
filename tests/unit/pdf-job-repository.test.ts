@@ -6,18 +6,20 @@ import type {
   WorkNoteDraft,
   WorkNoteDraftWithReferences,
 } from '@shared/types/pdf';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { PdfJobRepository } from '@worker/repositories/pdf-job-repository';
 import type { Env } from '@worker/types/env';
 import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('PdfJobRepository', () => {
   let repository: PdfJobRepository;
 
   beforeEach(async () => {
-    repository = new PdfJobRepository(testEnv.DB);
+    repository = new PdfJobRepository(testDb);
 
     // Clean up test data
     await testEnv.DB.prepare('DELETE FROM pdf_jobs').run();

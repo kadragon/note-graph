@@ -1,5 +1,5 @@
-import type { D1Database } from '@cloudflare/workers-types';
 import { GoogleCalendarService } from '@worker/services/google-calendar-service';
+import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -23,7 +23,7 @@ describe('GoogleCalendarService', () => {
   describe('constructor', () => {
     it('creates an instance with env and db', () => {
       const env = createEnv();
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
 
       const service = new GoogleCalendarService(env, db);
 
@@ -34,7 +34,7 @@ describe('GoogleCalendarService', () => {
   describe('getEvents', () => {
     it('calls Google Calendar API with correct parameters', async () => {
       const env = createEnv();
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -84,7 +84,7 @@ describe('GoogleCalendarService', () => {
 
     it('handles all-day events with date instead of dateTime', async () => {
       const env = createEnv();
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -121,7 +121,7 @@ describe('GoogleCalendarService', () => {
 
     it('returns empty array when no events', async () => {
       const env = createEnv();
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -140,7 +140,7 @@ describe('GoogleCalendarService', () => {
 
     it('throws DomainError when calendar returns 403 permission denied', async () => {
       const env = createEnv();
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -157,7 +157,7 @@ describe('GoogleCalendarService', () => {
 
     it('filters out malformed events missing required fields', async () => {
       const env = createEnv();
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -208,7 +208,7 @@ describe('GoogleCalendarService', () => {
 
     it('uses primary calendar when GOOGLE_CALENDAR_IDS is not set', async () => {
       const env = createEnv(); // No GOOGLE_CALENDAR_IDS
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -231,7 +231,7 @@ describe('GoogleCalendarService', () => {
       const env = createEnv({
         GOOGLE_CALENDAR_IDS: 'primary,work@group.calendar.google.com',
       });
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -292,7 +292,7 @@ describe('GoogleCalendarService', () => {
       const env = createEnv({
         GOOGLE_CALENDAR_IDS: 'cal-a,cal-b',
       });
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -353,7 +353,7 @@ describe('GoogleCalendarService', () => {
       const env = createEnv({
         GOOGLE_CALENDAR_IDS: 'good-cal,forbidden-cal',
       });
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -399,7 +399,7 @@ describe('GoogleCalendarService', () => {
       const env = createEnv({
         GOOGLE_CALENDAR_IDS: 'good-cal,missing-cal',
       });
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -444,7 +444,7 @@ describe('GoogleCalendarService', () => {
       const env = createEnv({
         GOOGLE_CALENDAR_IDS: '  , , ', // Empty/whitespace only
       });
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -467,7 +467,7 @@ describe('GoogleCalendarService', () => {
       const env = createEnv({
         GOOGLE_CALENDAR_IDS: 'cal-a,cal-b',
       });
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(
@@ -488,7 +488,7 @@ describe('GoogleCalendarService', () => {
       const env = createEnv({
         GOOGLE_CALENDAR_IDS: 'korea,us-east',
       });
-      const db = {} as D1Database;
+      const db = {} as unknown as DatabaseClient;
       const service = new GoogleCalendarService(env, db);
 
       vi.spyOn(

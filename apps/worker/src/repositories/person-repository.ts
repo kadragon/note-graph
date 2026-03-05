@@ -1,11 +1,11 @@
 // Trace: SPEC-person-1, SPEC-person-3, TASK-005, TASK-018, TASK-027, TASK-045, TASK-058
 /**
- * Person repository for D1 database operations
+ * Person repository for database operations
  */
 
-import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import type { Person, PersonDeptHistory, PersonWorkNote } from '@shared/types/person';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/person';
+import type { DatabaseClient } from '../types/database';
 import { ConflictError, NotFoundError, ValidationError } from '../types/errors';
 
 export interface PersonRepositoryOptions {
@@ -14,7 +14,7 @@ export interface PersonRepositoryOptions {
 
 export class PersonRepository {
   constructor(
-    private db: D1Database,
+    private db: DatabaseClient,
     private options: PersonRepositoryOptions = {}
   ) {}
 
@@ -22,39 +22,30 @@ export class PersonRepository {
    * Check if department exists
    */
   private async departmentExists(deptName: string): Promise<boolean> {
-    const exists = await this.db
-      .prepare('SELECT 1 as present FROM departments WHERE dept_name = ?')
-      .bind(deptName)
-      .first<{ present: number }>();
+    const exists = await this.db.queryOne<{ present: number }>(
+      'SELECT 1 as present FROM departments WHERE dept_name = ?',
+      [deptName]
+    );
 
     return !!exists;
   }
 
   /**
-   * Create department insert statement for batch operations
-   */
-  private createDepartmentStatement(deptName: string) {
-    const now = new Date().toISOString();
-    return this.db
-      .prepare(
-        `INSERT INTO departments (dept_name, description, is_active, created_at)
-         VALUES (?, NULL, 1, ?)`
-      )
-      .bind(deptName, now);
-  }
-
-  /**
-   * Helper to check department existence and handle auto-creation
+   * Helper to check department existence and collect auto-creation statements
    */
   private async handleDepartmentCreation(
     deptName: string,
-    statements: D1PreparedStatement[]
+    statements: Array<{ sql: string; params?: unknown[] }>
   ): Promise<void> {
     const deptExists = await this.departmentExists(deptName);
     if (!deptExists) {
       if (this.options.autoCreateDepartment) {
-        // Add department creation to the same batch (atomic transaction)
-        statements.push(this.createDepartmentStatement(deptName));
+        const now = new Date().toISOString();
+        statements.push({
+          sql: `INSERT INTO departments (dept_name, description, is_active, created_at)
+                VALUES (?, NULL, 1, ?)`,
+          params: [deptName, now],
+        });
       } else {
         throw new ValidationError('존재하지 않는 부서입니다. 부서를 먼저 생성해주세요.', {
           deptName,
@@ -67,20 +58,16 @@ export class PersonRepository {
    * Find person by ID
    */
   async findById(personId: string): Promise<Person | null> {
-    const result = await this.db
-      .prepare(
-        `SELECT person_id as personId, name, phone_ext as phoneExt,
-                current_dept as currentDept, current_position as currentPosition,
-                current_role_desc as currentRoleDesc,
-                employment_status as employmentStatus,
-                created_at as createdAt, updated_at as updatedAt
-         FROM persons
-         WHERE person_id = ?`
-      )
-      .bind(personId)
-      .first<Person>();
-
-    return result || null;
+    return this.db.queryOne<Person>(
+      `SELECT person_id as personId, name, phone_ext as phoneExt,
+              current_dept as currentDept, current_position as currentPosition,
+              current_role_desc as currentRoleDesc,
+              employment_status as employmentStatus,
+              created_at as createdAt, updated_at as updatedAt
+       FROM persons
+       WHERE person_id = ?`,
+      [personId]
+    );
   }
 
   /**
@@ -94,20 +81,18 @@ export class PersonRepository {
     const uniquePersonIds = [...new Set(personIds)];
     const placeholders = uniquePersonIds.map(() => '?').join(', ');
 
-    const result = await this.db
-      .prepare(
-        `SELECT person_id as personId, name, phone_ext as phoneExt,
-                current_dept as currentDept, current_position as currentPosition,
-                current_role_desc as currentRoleDesc,
-                employment_status as employmentStatus,
-                created_at as createdAt, updated_at as updatedAt
-         FROM persons
-         WHERE person_id IN (${placeholders})`
-      )
-      .bind(...uniquePersonIds)
-      .all<Person>();
+    const result = await this.db.query<Person>(
+      `SELECT person_id as personId, name, phone_ext as phoneExt,
+              current_dept as currentDept, current_position as currentPosition,
+              current_role_desc as currentRoleDesc,
+              employment_status as employmentStatus,
+              created_at as createdAt, updated_at as updatedAt
+       FROM persons
+       WHERE person_id IN (${placeholders})`,
+      uniquePersonIds
+    );
 
-    const personById = new Map((result.results || []).map((person) => [person.personId, person]));
+    const personById = new Map(result.rows.map((person) => [person.personId, person]));
     return uniquePersonIds
       .map((personId) => personById.get(personId))
       .filter((person): person is Person => person !== undefined);
@@ -115,7 +100,6 @@ export class PersonRepository {
 
   /**
    * Find all persons with optional search query
-   * Sorted by dept → name → position → personId → phoneExt → createdAt
    */
   async findAll(searchQuery?: string): Promise<Person[]> {
     let query = `SELECT person_id as personId, name, phone_ext as phoneExt,
@@ -131,18 +115,14 @@ export class PersonRepository {
       params.push(`%${searchQuery}%`, `%${searchQuery}%`);
     }
 
-    // Sort priority: dept → name → position → personId → phoneExt → createdAt
     query += ` ORDER BY current_dept ASC NULLS LAST, name ASC, current_position ASC NULLS LAST, person_id ASC, phone_ext ASC NULLS LAST, created_at ASC`;
 
-    const stmt = this.db.prepare(query);
-    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<Person>();
-
-    return result.results || [];
+    const result = await this.db.query<Person>(query, params);
+    return result.rows;
   }
 
   /**
    * Create new person with optional department history entry
-   * If autoCreateDepartment is enabled, creates department in the same transaction
    */
   async create(data: CreatePersonInput): Promise<Person> {
     const now = new Date().toISOString();
@@ -153,7 +133,7 @@ export class PersonRepository {
       throw new ConflictError(`Person already exists with ID: ${data.personId}`);
     }
 
-    const statements: D1PreparedStatement[] = [];
+    const statements: Array<{ sql: string; params?: unknown[] }> = [];
 
     // Handle department: check existence and optionally auto-create
     if (data.currentDept) {
@@ -161,44 +141,38 @@ export class PersonRepository {
     }
 
     // Insert person
-    statements.push(
-      this.db
-        .prepare(
-          `INSERT INTO persons (person_id, name, phone_ext, current_dept, current_position, current_role_desc, employment_status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        )
-        .bind(
-          data.personId,
-          data.name,
-          data.phoneExt || null,
-          data.currentDept || null,
-          data.currentPosition || null,
-          data.currentRoleDesc || null,
-          data.employmentStatus || '재직',
-          now,
-          now
-        )
-    );
+    statements.push({
+      sql: `INSERT INTO persons (person_id, name, phone_ext, current_dept, current_position, current_role_desc, employment_status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      params: [
+        data.personId,
+        data.name,
+        data.phoneExt || null,
+        data.currentDept || null,
+        data.currentPosition || null,
+        data.currentRoleDesc || null,
+        data.employmentStatus || '재직',
+        now,
+        now,
+      ],
+    });
 
     // Create initial department history entry if department is provided
     if (data.currentDept) {
-      statements.push(
-        this.db
-          .prepare(
-            `INSERT INTO person_dept_history (person_id, dept_name, position, role_desc, start_date, is_active)
-             VALUES (?, ?, ?, ?, ?, 1)`
-          )
-          .bind(
-            data.personId,
-            data.currentDept,
-            data.currentPosition || null,
-            data.currentRoleDesc || null,
-            now
-          )
-      );
+      statements.push({
+        sql: `INSERT INTO person_dept_history (person_id, dept_name, position, role_desc, start_date, is_active)
+              VALUES (?, ?, ?, ?, ?, 1)`,
+        params: [
+          data.personId,
+          data.currentDept,
+          data.currentPosition || null,
+          data.currentRoleDesc || null,
+          now,
+        ],
+      });
     }
 
-    await this.db.batch(statements);
+    await this.db.executeBatch(statements);
 
     // Return the created person without extra DB roundtrip
     return {
@@ -216,7 +190,6 @@ export class PersonRepository {
 
   /**
    * Update person and manage department history
-   * If autoCreateDepartment is enabled, creates department in the same transaction
    */
   async update(personId: string, data: UpdatePersonInput): Promise<Person> {
     const existing = await this.findById(personId);
@@ -225,7 +198,7 @@ export class PersonRepository {
     }
 
     const now = new Date().toISOString();
-    const statements: D1PreparedStatement[] = [];
+    const statements: Array<{ sql: string; params?: unknown[] }> = [];
 
     // Check if department is being changed
     const isDeptChanging =
@@ -238,32 +211,26 @@ export class PersonRepository {
       }
 
       // Deactivate current department history entry
-      statements.push(
-        this.db
-          .prepare(
-            `UPDATE person_dept_history
-             SET is_active = 0, end_date = ?
-             WHERE person_id = ? AND is_active = 1`
-          )
-          .bind(now, personId)
-      );
+      statements.push({
+        sql: `UPDATE person_dept_history
+              SET is_active = 0, end_date = ?
+              WHERE person_id = ? AND is_active = 1`,
+        params: [now, personId],
+      });
 
       // Create new department history entry
       if (data.currentDept) {
-        statements.push(
-          this.db
-            .prepare(
-              `INSERT INTO person_dept_history (person_id, dept_name, position, role_desc, start_date, is_active)
-               VALUES (?, ?, ?, ?, ?, 1)`
-            )
-            .bind(
-              personId,
-              data.currentDept,
-              data.currentPosition || existing.currentPosition || null,
-              data.currentRoleDesc || existing.currentRoleDesc || null,
-              now
-            )
-        );
+        statements.push({
+          sql: `INSERT INTO person_dept_history (person_id, dept_name, position, role_desc, start_date, is_active)
+                VALUES (?, ?, ?, ?, ?, 1)`,
+          params: [
+            personId,
+            data.currentDept,
+            data.currentPosition || existing.currentPosition || null,
+            data.currentRoleDesc || existing.currentRoleDesc || null,
+            now,
+          ],
+        });
       }
     }
 
@@ -301,15 +268,14 @@ export class PersonRepository {
       updateParams.push(now);
       updateParams.push(personId);
 
-      statements.push(
-        this.db
-          .prepare(`UPDATE persons SET ${updateFields.join(', ')} WHERE person_id = ?`)
-          .bind(...updateParams)
-      );
+      statements.push({
+        sql: `UPDATE persons SET ${updateFields.join(', ')} WHERE person_id = ?`,
+        params: updateParams,
+      });
     }
 
     if (statements.length > 0) {
-      await this.db.batch(statements);
+      await this.db.executeBatch(statements);
     }
 
     // Return the updated person without extra DB roundtrip
@@ -341,19 +307,17 @@ export class PersonRepository {
       throw new NotFoundError('Person', personId);
     }
 
-    const result = await this.db
-      .prepare(
-        `SELECT id, person_id as personId, dept_name as deptName,
-                position, role_desc as roleDesc, start_date as startDate,
-                end_date as endDate, is_active as isActive
-         FROM person_dept_history
-         WHERE person_id = ?
-         ORDER BY start_date DESC, id DESC`
-      )
-      .bind(personId)
-      .all<PersonDeptHistory>();
+    const result = await this.db.query<PersonDeptHistory>(
+      `SELECT id, person_id as personId, dept_name as deptName,
+              position, role_desc as roleDesc, start_date as startDate,
+              end_date as endDate, is_active as isActive
+       FROM person_dept_history
+       WHERE person_id = ?
+       ORDER BY start_date DESC, id DESC`,
+      [personId]
+    );
 
-    return result.results || [];
+    return result.rows;
   }
 
   /**
@@ -365,23 +329,21 @@ export class PersonRepository {
       throw new NotFoundError('Person', personId);
     }
 
-    const result = await this.db
-      .prepare(
-        `SELECT
-          wn.work_id as workId,
-          wn.title,
-          wn.category,
-          wnp.role,
-          wn.created_at as createdAt,
-          wn.updated_at as updatedAt
-         FROM work_notes wn
-         INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id
-         WHERE wnp.person_id = ?
-         ORDER BY wn.created_at DESC`
-      )
-      .bind(personId)
-      .all<PersonWorkNote>();
+    const result = await this.db.query<PersonWorkNote>(
+      `SELECT
+        wn.work_id as workId,
+        wn.title,
+        wn.category,
+        wnp.role,
+        wn.created_at as createdAt,
+        wn.updated_at as updatedAt
+       FROM work_notes wn
+       INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id
+       WHERE wnp.person_id = ?
+       ORDER BY wn.created_at DESC`,
+      [personId]
+    );
 
-    return result.results || [];
+    return result.rows;
   }
 }

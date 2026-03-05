@@ -1,8 +1,8 @@
 /**
- * Google OAuth token repository for D1 database operations
+ * Google OAuth token repository for database operations
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
+import type { DatabaseClient } from '../types/database';
 
 export interface GoogleOAuthToken {
   userEmail: string;
@@ -16,30 +16,26 @@ export interface GoogleOAuthToken {
 }
 
 export class GoogleOAuthRepository {
-  constructor(private db: D1Database) {}
+  constructor(private db: DatabaseClient) {}
 
   /**
    * Find token by user email
    */
   async findByEmail(userEmail: string): Promise<GoogleOAuthToken | null> {
-    const result = await this.db
-      .prepare(
-        `SELECT
-          user_email as userEmail,
-          access_token as accessToken,
-          refresh_token as refreshToken,
-          token_type as tokenType,
-          expires_at as expiresAt,
-          scope,
-          created_at as createdAt,
-          updated_at as updatedAt
-         FROM google_oauth_tokens
-         WHERE user_email = ?`
-      )
-      .bind(userEmail)
-      .first<GoogleOAuthToken>();
-
-    return result || null;
+    return this.db.queryOne<GoogleOAuthToken>(
+      `SELECT
+        user_email as userEmail,
+        access_token as accessToken,
+        refresh_token as refreshToken,
+        token_type as tokenType,
+        expires_at as expiresAt,
+        scope,
+        created_at as createdAt,
+        updated_at as updatedAt
+       FROM google_oauth_tokens
+       WHERE user_email = ?`,
+      [userEmail]
+    );
   }
 
   /**
@@ -55,20 +51,18 @@ export class GoogleOAuthRepository {
   }): Promise<GoogleOAuthToken> {
     const now = new Date().toISOString();
 
-    await this.db
-      .prepare(
-        `INSERT INTO google_oauth_tokens
-          (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(user_email) DO UPDATE SET
-          access_token = excluded.access_token,
-          refresh_token = excluded.refresh_token,
-          token_type = excluded.token_type,
-          expires_at = excluded.expires_at,
-          scope = excluded.scope,
-          updated_at = excluded.updated_at`
-      )
-      .bind(
+    await this.db.execute(
+      `INSERT INTO google_oauth_tokens
+        (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(user_email) DO UPDATE SET
+        access_token = excluded.access_token,
+        refresh_token = excluded.refresh_token,
+        token_type = excluded.token_type,
+        expires_at = excluded.expires_at,
+        scope = excluded.scope,
+        updated_at = excluded.updated_at`,
+      [
         data.userEmail,
         data.accessToken,
         data.refreshToken,
@@ -76,9 +70,9 @@ export class GoogleOAuthRepository {
         data.expiresAt,
         data.scope,
         now,
-        now
-      )
-      .run();
+        now,
+      ]
+    );
 
     const result = await this.findByEmail(data.userEmail);
     if (!result) {
@@ -97,23 +91,18 @@ export class GoogleOAuthRepository {
   ): Promise<void> {
     const now = new Date().toISOString();
 
-    await this.db
-      .prepare(
-        `UPDATE google_oauth_tokens
-         SET access_token = ?, expires_at = ?, updated_at = ?
-         WHERE user_email = ?`
-      )
-      .bind(accessToken, expiresAt, now, userEmail)
-      .run();
+    await this.db.execute(
+      `UPDATE google_oauth_tokens
+       SET access_token = ?, expires_at = ?, updated_at = ?
+       WHERE user_email = ?`,
+      [accessToken, expiresAt, now, userEmail]
+    );
   }
 
   /**
    * Delete OAuth tokens (disconnect)
    */
   async delete(userEmail: string): Promise<void> {
-    await this.db
-      .prepare(`DELETE FROM google_oauth_tokens WHERE user_email = ?`)
-      .bind(userEmail)
-      .run();
+    await this.db.execute(`DELETE FROM google_oauth_tokens WHERE user_email = ?`, [userEmail]);
   }
 }

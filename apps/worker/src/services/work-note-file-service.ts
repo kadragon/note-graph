@@ -12,6 +12,7 @@ import type {
   WorkNoteFilesListResponse,
 } from '@shared/types/work-note';
 import { nanoid } from 'nanoid';
+import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { DomainError } from '../types/errors';
 import { BaseFileService } from './base-file-service.js';
@@ -67,7 +68,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   protected ownerIdColumn = 'work_id';
   private driveService: GoogleDriveService | null;
 
-  constructor(r2: R2Bucket, db: D1Database, env?: Env) {
+  constructor(r2: R2Bucket, db: DatabaseClient, env?: Env) {
     super(r2, db);
     if (env?.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GDRIVE_ROOT_FOLDER_ID) {
       this.driveService = new GoogleDriveService(env, db);
@@ -148,15 +149,13 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     );
 
     // Create DB record with Google Drive info
-    await this.db
-      .prepare(
-        `INSERT INTO work_note_files (
-          file_id, work_id, r2_key, original_name, file_type, file_size,
-          uploaded_by, uploaded_at, storage_type,
-          gdrive_file_id, gdrive_folder_id, gdrive_web_view_link
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .bind(
+    await this.db.execute(
+      `INSERT INTO work_note_files (
+        file_id, work_id, r2_key, original_name, file_type, file_size,
+        uploaded_by, uploaded_at, storage_type,
+        gdrive_file_id, gdrive_folder_id, gdrive_web_view_link
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
         fileId,
         workId,
         '', // r2_key is empty for Google Drive files
@@ -168,9 +167,9 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
         'GDRIVE',
         driveFile.id,
         folder.gdriveFolderId,
-        driveFile.webViewLink
-      )
-      .run();
+        driveFile.webViewLink,
+      ]
+    );
 
     return {
       fileId,
@@ -214,36 +213,32 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   async deleteWorkNoteFiles(workId: string, userEmail?: string): Promise<void> {
     const folderId = userEmail
       ? ((
-          await this.db
-            .prepare(`SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?`)
-            .bind(workId)
-            .first<{ gdrive_folder_id: string }>()
+          await this.db.queryOne<{ gdrive_folder_id: string }>(
+            `SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?`,
+            [workId]
+          )
         )?.gdrive_folder_id ?? null)
       : null;
     const shouldDeleteDriveFiles = !!(userEmail && !folderId);
 
-    const files = await this.db
-      .prepare(
-        `
-      SELECT file_id, r2_key, storage_type, gdrive_file_id FROM work_note_files
-      WHERE work_id = ? AND deleted_at IS NULL
-    `
-      )
-      .bind(workId)
-      .all<{
-        file_id: string;
-        r2_key: string;
-        storage_type: WorkNoteFileStorageType;
-        gdrive_file_id: string | null;
-      }>();
+    const { rows: fileRows } = await this.db.query<{
+      file_id: string;
+      r2_key: string;
+      storage_type: WorkNoteFileStorageType;
+      gdrive_file_id: string | null;
+    }>(
+      `SELECT file_id, r2_key, storage_type, gdrive_file_id FROM work_note_files
+       WHERE work_id = ? AND deleted_at IS NULL`,
+      [workId]
+    );
 
-    if (!files.results || files.results.length === 0) {
+    if (fileRows.length === 0) {
       return;
     }
 
     // Delete storage objects in parallel. DB records will be cleaned up by ON DELETE CASCADE.
     await Promise.all(
-      files.results.map(async (row) => {
+      fileRows.map(async (row) => {
         try {
           if (row.storage_type === 'GDRIVE') {
             if (shouldDeleteDriveFiles && row.gdrive_file_id && this.driveService && userEmail) {
@@ -278,14 +273,12 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     folderId: string,
     driveFile: { id: string; webViewLink: string }
   ): Promise<void> {
-    await this.db
-      .prepare(
-        `UPDATE work_note_files
-         SET storage_type = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
-         WHERE file_id = ?`
-      )
-      .bind('GDRIVE', driveFile.id, folderId, driveFile.webViewLink, fileId)
-      .run();
+    await this.db.execute(
+      `UPDATE work_note_files
+       SET storage_type = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
+       WHERE file_id = ?`,
+      ['GDRIVE', driveFile.id, folderId, driveFile.webViewLink, fileId]
+    );
   }
 
   /**
@@ -461,22 +454,21 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     const googleDriveConfigured = this.isDriveConfigured();
 
     // Get existing Drive folder from DB (if any)
-    const folderRecord = await this.db
-      .prepare(
-        `SELECT gdrive_folder_id as gdriveFolderId, gdrive_folder_link as gdriveFolderLink
-         FROM work_note_gdrive_folders WHERE work_id = ?`
-      )
-      .bind(workId)
-      .first<{ gdriveFolderId: string; gdriveFolderLink: string }>();
+    const folderRecord = await this.db.queryOne<{
+      gdriveFolderId: string;
+      gdriveFolderLink: string;
+    }>(
+      `SELECT gdrive_folder_id as gdriveFolderId, gdrive_folder_link as gdriveFolderLink
+       FROM work_note_gdrive_folders WHERE work_id = ?`,
+      [workId]
+    );
 
     // Check for legacy R2 files
-    const legacyCount = await this.db
-      .prepare(
-        `SELECT COUNT(*) as count FROM work_note_files
-         WHERE work_id = ? AND storage_type = 'R2' AND deleted_at IS NULL`
-      )
-      .bind(workId)
-      .first<{ count: number }>();
+    const legacyCount = await this.db.queryOne<{ count: number }>(
+      `SELECT COUNT(*) as count FROM work_note_files
+       WHERE work_id = ? AND storage_type = 'R2' AND deleted_at IS NULL`,
+      [workId]
+    );
 
     const hasLegacyFiles = (legacyCount?.count ?? 0) > 0;
 

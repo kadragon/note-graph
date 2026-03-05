@@ -6,6 +6,7 @@ import {
   GoogleOAuthRepository,
   type GoogleOAuthToken,
 } from '../repositories/google-oauth-repository';
+import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { DomainError } from '../types/errors';
 
@@ -50,7 +51,7 @@ export class GoogleOAuthService {
 
   constructor(
     private env: Env,
-    db: D1Database
+    db: DatabaseClient
   ) {
     this.repository = new GoogleOAuthRepository(db);
   }

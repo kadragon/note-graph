@@ -1,6 +1,7 @@
 // Trace: SPEC-worknote-attachments-1, TASK-057, TASK-058, TASK-066
 
 import type { R2Bucket } from '@cloudflare/workers-types';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { WorkNoteFileService } from '@worker/services/work-note-file-service';
 import type { Env } from '@worker/types/env';
 import { BadRequestError, NotFoundError } from '@worker/types/errors';
@@ -13,6 +14,7 @@ const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
 describe('WorkNoteFileService', () => {
   const baseEnv = testEnv as unknown as Env;
+  const testDb = new D1DatabaseClient(baseEnv.DB);
   let r2: MockR2;
   let service: WorkNoteFileService;
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -195,7 +197,7 @@ describe('WorkNoteFileService', () => {
 
     global.fetch = fetchMock as typeof fetch;
 
-    service = new WorkNoteFileService(r2 as unknown as R2Bucket, baseEnv.DB, baseEnv);
+    service = new WorkNoteFileService(r2 as unknown as R2Bucket, testDb, baseEnv);
   });
 
   afterEach(() => {
@@ -229,7 +231,7 @@ describe('WorkNoteFileService', () => {
 
     const legacyService = new WorkNoteFileService(
       r2 as unknown as R2Bucket,
-      baseEnv.DB,
+      testDb,
       envWithoutGoogle
     );
 
@@ -616,26 +618,22 @@ describe('WorkNoteFileService', () => {
 
     await r2.put(r2Key, new Blob(['rollback'], { type: 'application/pdf' }));
 
-    const failingDb = new Proxy(baseEnv.DB, {
-      get(target, prop) {
-        if (prop === 'prepare') {
-          return (query: string) => {
-            if (query.includes('UPDATE work_note_files')) {
+    const failingDb = new Proxy(testDb, {
+      get(target, prop, receiver) {
+        if (prop === 'execute') {
+          return (sql: string, params?: unknown[]) => {
+            if (sql.includes('UPDATE work_note_files')) {
               throw new Error('DB update failed');
             }
-            return target.prepare(query);
+            return target.execute(sql, params);
           };
         }
-        const value = target[prop as keyof typeof target];
+        const value = Reflect.get(target, prop, receiver);
         return typeof value === 'function' ? value.bind(target) : value;
       },
     });
 
-    const failingService = new WorkNoteFileService(
-      r2 as unknown as R2Bucket,
-      failingDb as unknown as Env['DB'],
-      baseEnv
-    );
+    const failingService = new WorkNoteFileService(r2 as unknown as R2Bucket, failingDb, baseEnv);
 
     const result = await failingService.migrateR2FilesToDrive(workId, userEmail);
 
@@ -891,7 +889,7 @@ describe('WorkNoteFileService', () => {
 
       const noGoogleService = new WorkNoteFileService(
         r2 as unknown as R2Bucket,
-        baseEnv.DB,
+        testDb,
         envWithoutGoogle
       );
 

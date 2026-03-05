@@ -2,6 +2,7 @@
 // Unit tests for PersonRepository
 
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { PersonRepository } from '@worker/repositories/person-repository';
 import type { CreatePersonInput, UpdatePersonInput } from '@worker/schemas/person';
 import type { Env } from '@worker/types/env';
@@ -9,12 +10,13 @@ import { ConflictError, NotFoundError, ValidationError } from '@worker/types/err
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('PersonRepository', () => {
   let repository: PersonRepository;
 
   beforeEach(async () => {
-    repository = new PersonRepository(testEnv.DB);
+    repository = new PersonRepository(testDb);
 
     // Clean up test data
     await testEnv.DB.batch([
@@ -337,7 +339,7 @@ describe('PersonRepository', () => {
 
     it('should auto-create department when importing person', async () => {
       // Arrange
-      const importRepository = new PersonRepository(testEnv.DB, {
+      const importRepository = new PersonRepository(testDb, {
         autoCreateDepartment: true,
       });
       const deptName = '신규부서';

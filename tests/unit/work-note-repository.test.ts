@@ -2,6 +2,7 @@
 // Consolidated from crud, read, associations, and versions test files
 
 import { env } from 'cloudflare:test';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { WorkNoteRepository } from '@worker/repositories/work-note-repository';
 import type { CreateWorkNoteInput, UpdateWorkNoteInput } from '@worker/schemas/work-note';
 import type { Env } from '@worker/types/env';
@@ -9,12 +10,13 @@ import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const testEnv = env as unknown as Env;
+const testDb = new D1DatabaseClient(testEnv.DB);
 
 describe('WorkNoteRepository', () => {
   let repository: WorkNoteRepository;
 
   beforeEach(async () => {
-    repository = new WorkNoteRepository(testEnv.DB);
+    repository = new WorkNoteRepository(testDb);
 
     // Clean up test data
     await testEnv.DB.batch([

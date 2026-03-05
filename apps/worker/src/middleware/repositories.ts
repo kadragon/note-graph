@@ -31,6 +31,7 @@
  */
 
 import type { Context, Next } from 'hono';
+import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { DepartmentRepository } from '../repositories/department-repository';
 import { EmbeddingRetryQueueRepository } from '../repositories/embedding-retry-queue-repository';
 import { PdfJobRepository } from '../repositories/pdf-job-repository';
@@ -43,22 +44,20 @@ import { SettingService } from '../services/setting-service';
 import type { AppContext, Repositories } from '../types/context';
 
 export async function repositoriesMiddleware(c: Context<AppContext>, next: Next): Promise<void> {
-  // Errors during repository instantiation (e.g., invalid DB connection) will propagate
-  // to the global error handler middleware, ensuring centralized error handling and
-  // consistent error responses across the application. This approach allows the global
-  // handler to determine appropriate error formatting and HTTP status codes.
+  const db = new D1DatabaseClient(c.env.DB);
+
   const repositories: Repositories = {
-    departments: new DepartmentRepository(c.env.DB),
-    embeddingRetryQueue: new EmbeddingRetryQueueRepository(c.env.DB),
-    pdfJobs: new PdfJobRepository(c.env.DB),
-    persons: new PersonRepository(c.env.DB),
-    personsWithAutoCreateDepartment: new PersonRepository(c.env.DB, {
+    departments: new DepartmentRepository(db),
+    embeddingRetryQueue: new EmbeddingRetryQueueRepository(db),
+    pdfJobs: new PdfJobRepository(db),
+    persons: new PersonRepository(db),
+    personsWithAutoCreateDepartment: new PersonRepository(db, {
       autoCreateDepartment: true,
     }),
-    settings: new SettingRepository(c.env.DB),
-    taskCategories: new TaskCategoryRepository(c.env.DB),
-    todos: new TodoRepository(c.env.DB),
-    workNoteGroups: new WorkNoteGroupRepository(c.env.DB),
+    settings: new SettingRepository(db),
+    taskCategories: new TaskCategoryRepository(db),
+    todos: new TodoRepository(db),
+    workNoteGroups: new WorkNoteGroupRepository(db),
   };
 
   c.set('repositories', repositories);

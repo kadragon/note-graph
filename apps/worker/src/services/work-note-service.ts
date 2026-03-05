@@ -7,6 +7,7 @@
 import type { SimilarWorkNoteReference } from '@shared/types/search';
 import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { format } from 'date-fns';
+import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import type {
   CreateWorkNoteInput,
@@ -45,7 +46,7 @@ export class WorkNoteService {
   private fileService: WorkNoteFileService | null;
 
   constructor(env: Env, settingService?: SettingService) {
-    this.repository = new WorkNoteRepository(env.DB);
+    this.repository = new WorkNoteRepository(new D1DatabaseClient(env.DB));
     this.chunkingService = new ChunkingService();
 
     this.embeddingService = new OpenAIEmbeddingService(env, settingService);
@@ -59,7 +60,9 @@ export class WorkNoteService {
       env.GDRIVE_ROOT_FOLDER_ID
     );
     this.fileService =
-      env.R2_BUCKET && hasGoogleDrive ? new WorkNoteFileService(env.R2_BUCKET, env.DB, env) : null;
+      env.R2_BUCKET && hasGoogleDrive
+        ? new WorkNoteFileService(env.R2_BUCKET, new D1DatabaseClient(env.DB), env)
+        : null;
   }
 
   /**

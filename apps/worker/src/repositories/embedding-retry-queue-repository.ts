@@ -4,25 +4,20 @@
  * Handles dead-letter queue queries and manual retry operations
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
 import type { EmbeddingFailure, EmbeddingRetryQueueItem } from '@shared/types/embedding-retry';
+import type { DatabaseClient } from '../types/database';
 
 export class EmbeddingRetryQueueRepository {
-  constructor(private db: D1Database) {}
+  constructor(private db: DatabaseClient) {}
 
   /**
    * Find all dead-letter embedding failures with work note details
    * Used by GET /admin/embedding-failures
-   *
-   * @param limit - Maximum number of items to return
-   * @param offset - Number of items to skip
-   * @returns List of dead-letter items with work note titles
    */
   async findDeadLetterItems(
     limit: number = 50,
     offset: number = 0
   ): Promise<{ items: EmbeddingFailure[]; total: number }> {
-    // Query dead-letter items with work note title
     const itemsQuery = `
       SELECT
         erq.id,
@@ -40,7 +35,6 @@ export class EmbeddingRetryQueueRepository {
       LIMIT ? OFFSET ?
     `;
 
-    // Query total count
     const countQuery = `
       SELECT COUNT(*) as count
       FROM embedding_retry_queue
@@ -48,26 +42,22 @@ export class EmbeddingRetryQueueRepository {
     `;
 
     const [itemsResult, countResult] = await Promise.all([
-      this.db.prepare(itemsQuery).bind(limit, offset).all<EmbeddingFailure>(),
-      this.db.prepare(countQuery).first<{ count: number }>(),
+      this.db.query<EmbeddingFailure>(itemsQuery, [limit, offset]),
+      this.db.queryOne<{ count: number }>(countQuery),
     ]);
 
     return {
-      items: itemsResult.results || [],
+      items: itemsResult.rows,
       total: countResult?.count || 0,
     };
   }
 
   /**
    * Find a single retry queue item by ID
-   * Used for validating retry requests
-   *
-   * @param id - Retry queue item ID
-   * @returns Retry queue item or null if not found
    */
   async findById(id: string): Promise<EmbeddingRetryQueueItem | null> {
-    const query = `
-      SELECT
+    return this.db.queryOne<EmbeddingRetryQueueItem>(
+      `SELECT
         id,
         work_id as workId,
         operation_type as operationType,
@@ -81,66 +71,49 @@ export class EmbeddingRetryQueueRepository {
         updated_at as updatedAt,
         dead_letter_at as deadLetterAt
       FROM embedding_retry_queue
-      WHERE id = ?
-    `;
-
-    const result = await this.db.prepare(query).bind(id).first<EmbeddingRetryQueueItem>();
-
-    return result || null;
+      WHERE id = ?`,
+      [id]
+    );
   }
 
   /**
    * Reset a dead-letter item to pending status for manual retry
-   * Used by POST /admin/embedding-failures/{id}/retry
-   *
-   * @param id - Retry queue item ID
-   * @returns Success boolean
    */
   async resetToPending(id: string): Promise<boolean> {
     const now = new Date().toISOString();
 
-    const query = `
-      UPDATE embedding_retry_queue
-      SET
-        status = 'pending',
-        next_retry_at = ?,
-        updated_at = ?,
-        dead_letter_at = NULL
-      WHERE id = ? AND status = 'dead_letter'
-    `;
+    const result = await this.db.execute(
+      `UPDATE embedding_retry_queue
+       SET
+         status = 'pending',
+         next_retry_at = ?,
+         updated_at = ?,
+         dead_letter_at = NULL
+       WHERE id = ? AND status = 'dead_letter'`,
+      [now, now, id]
+    );
 
-    const result = await this.db.prepare(query).bind(now, now, id).run();
-
-    return (result.meta.changes || 0) > 0;
+    return result.rowCount > 0;
   }
 
   /**
    * Update retry item status
-   * Used for tracking retry progress
-   *
-   * @param id - Retry queue item ID
-   * @param status - New status
    */
   async updateStatus(id: string, status: 'pending' | 'retrying' | 'dead_letter'): Promise<void> {
     const now = new Date().toISOString();
 
-    const query = `
-      UPDATE embedding_retry_queue
-      SET status = ?, updated_at = ?
-      WHERE id = ?
-    `;
-
-    await this.db.prepare(query).bind(status, now, id).run();
+    await this.db.execute(
+      `UPDATE embedding_retry_queue
+       SET status = ?, updated_at = ?
+       WHERE id = ?`,
+      [status, now, id]
+    );
   }
 
   /**
    * Delete a retry queue item
-   * Used when retry succeeds
-   *
-   * @param id - Retry queue item ID
    */
   async delete(id: string): Promise<void> {
-    const query = `DELETE FROM embedding_retry_queue WHERE id = ?`;
-    await this.db.prepare(query).bind(id).run();
+    await this.db.execute(`DELETE FROM embedding_retry_queue WHERE id = ?`, [id]);
   }
 }

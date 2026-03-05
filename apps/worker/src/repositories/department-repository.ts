@@ -1,30 +1,26 @@
 // Trace: SPEC-dept-1, TASK-006, TASK-020
 /**
- * Department repository for D1 database operations
+ * Department repository for database operations
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
 import type { Department, DepartmentMember, DepartmentWorkNote } from '@shared/types/department';
 import type { CreateDepartmentInput, UpdateDepartmentInput } from '../schemas/department';
+import type { DatabaseClient } from '../types/database';
 import { ConflictError, NotFoundError } from '../types/errors';
 
 export class DepartmentRepository {
-  constructor(private db: D1Database) {}
+  constructor(private db: DatabaseClient) {}
 
   /**
    * Find department by name
    */
   async findByName(deptName: string): Promise<Department | null> {
-    const result = await this.db
-      .prepare(
-        `SELECT dept_name as deptName, description, is_active as isActive, created_at as createdAt
-         FROM departments
-         WHERE dept_name = ?`
-      )
-      .bind(deptName)
-      .first<Department>();
-
-    return result || null;
+    return this.db.queryOne<Department>(
+      `SELECT dept_name as deptName, description, is_active as isActive, created_at as createdAt
+       FROM departments
+       WHERE dept_name = ?`,
+      [deptName]
+    );
   }
 
   /**
@@ -33,7 +29,7 @@ export class DepartmentRepository {
   async findAll(searchQuery?: string, limit: number = 100): Promise<Department[]> {
     let sql = `SELECT dept_name as deptName, description, is_active as isActive, created_at as createdAt
                FROM departments`;
-    const params: string[] = [];
+    const params: (string | number)[] = [];
 
     if (searchQuery) {
       sql += ` WHERE dept_name LIKE ?`;
@@ -41,12 +37,10 @@ export class DepartmentRepository {
     }
 
     sql += ` ORDER BY is_active DESC, dept_name ASC LIMIT ?`;
-    params.push(String(limit));
+    params.push(limit);
 
-    const stmt = this.db.prepare(sql);
-    const result = await (params.length > 0 ? stmt.bind(...params) : stmt).all<Department>();
-
-    return result.results || [];
+    const result = await this.db.query<Department>(sql, params);
+    return result.rows;
   }
 
   /**
@@ -61,13 +55,11 @@ export class DepartmentRepository {
       throw new ConflictError(`Department already exists: ${data.deptName}`);
     }
 
-    await this.db
-      .prepare(
-        `INSERT INTO departments (dept_name, description, is_active, created_at)
-         VALUES (?, ?, 1, ?)`
-      )
-      .bind(data.deptName, data.description || null, now)
-      .run();
+    await this.db.execute(
+      `INSERT INTO departments (dept_name, description, is_active, created_at)
+       VALUES (?, ?, 1, ?)`,
+      [data.deptName, data.description || null, now]
+    );
 
     // Return the created department without extra DB roundtrip
     return {
@@ -104,14 +96,12 @@ export class DepartmentRepository {
     // Only run update if there are fields to update
     if (updates.length > 0) {
       params.push(deptName);
-      await this.db
-        .prepare(
-          `UPDATE departments
-           SET ${updates.join(', ')}
-           WHERE dept_name = ?`
-        )
-        .bind(...params)
-        .run();
+      await this.db.execute(
+        `UPDATE departments
+         SET ${updates.join(', ')}
+         WHERE dept_name = ?`,
+        params
+      );
     }
 
     // Return the updated department without extra DB roundtrip
@@ -151,9 +141,8 @@ export class DepartmentRepository {
 
     query += ` ORDER BY pdh.start_date DESC`;
 
-    const result = await this.db.prepare(query).bind(deptName).all<DepartmentMember>();
-
-    return result.results || [];
+    const result = await this.db.query<DepartmentMember>(query, [deptName]);
+    return result.rows;
   }
 
   /**
@@ -165,28 +154,25 @@ export class DepartmentRepository {
       throw new NotFoundError('Department', deptName);
     }
 
-    // Get work notes associated with persons currently or previously in this department
-    const result = await this.db
-      .prepare(
-        `SELECT DISTINCT
-          wn.work_id as workId,
-          wn.title,
-          wn.category,
-          wn.created_at as createdAt,
-          wn.updated_at as updatedAt,
-          owner.person_id as ownerPersonId,
-          owner_person.name as ownerPersonName
-         FROM work_notes wn
-         INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id
-         INNER JOIN person_dept_history pdh ON wnp.person_id = pdh.person_id
-         LEFT JOIN work_note_person owner ON wn.work_id = owner.work_id AND owner.role = 'OWNER'
-         LEFT JOIN persons owner_person ON owner.person_id = owner_person.person_id
-         WHERE pdh.dept_name = ?
-         ORDER BY wn.created_at DESC`
-      )
-      .bind(deptName)
-      .all<DepartmentWorkNote>();
+    const result = await this.db.query<DepartmentWorkNote>(
+      `SELECT DISTINCT
+        wn.work_id as workId,
+        wn.title,
+        wn.category,
+        wn.created_at as createdAt,
+        wn.updated_at as updatedAt,
+        owner.person_id as ownerPersonId,
+        owner_person.name as ownerPersonName
+       FROM work_notes wn
+       INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id
+       INNER JOIN person_dept_history pdh ON wnp.person_id = pdh.person_id
+       LEFT JOIN work_note_person owner ON wn.work_id = owner.work_id AND owner.role = 'OWNER'
+       LEFT JOIN persons owner_person ON owner.person_id = owner_person.person_id
+       WHERE pdh.dept_name = ?
+       ORDER BY wn.created_at DESC`,
+      [deptName]
+    );
 
-    return result.results || [];
+    return result.rows;
   }
 }

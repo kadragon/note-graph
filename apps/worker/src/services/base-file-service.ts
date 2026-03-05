@@ -3,7 +3,8 @@
  * Shared file service utilities for R2-backed file storage.
  */
 
-import type { D1Database, R2Bucket, R2Object, R2ObjectBody } from '@cloudflare/workers-types';
+import type { R2Bucket, R2Object, R2ObjectBody } from '@cloudflare/workers-types';
+import type { DatabaseClient } from '../types/database';
 import { BadRequestError, NotFoundError } from '../types/errors';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -38,7 +39,7 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
 
   constructor(
     protected r2: R2Bucket,
-    protected db: D1Database
+    protected db: DatabaseClient
   ) {}
 
   protected abstract buildR2Key(ownerId: string, fileId: string): string;
@@ -155,28 +156,17 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
 
     const placeholders = columnNames.map(() => '?').join(', ');
 
-    await this.db
-      .prepare(
-        `
-      INSERT INTO ${this.tableName} (
-        ${columnNames.join(', ')}
-      ) VALUES (${placeholders})
-    `
-      )
-      .bind(...values)
-      .run();
+    await this.db.execute(
+      `INSERT INTO ${this.tableName} (${columnNames.join(', ')}) VALUES (${placeholders})`,
+      values
+    );
   }
 
   async getFileById(fileId: string): Promise<TFile | null> {
-    const result = await this.db
-      .prepare(
-        `
-      SELECT * FROM ${this.tableName}
-      WHERE file_id = ? AND deleted_at IS NULL
-    `
-      )
-      .bind(fileId)
-      .first<Record<string, unknown>>();
+    const result = await this.db.queryOne<Record<string, unknown>>(
+      `SELECT * FROM ${this.tableName} WHERE file_id = ? AND deleted_at IS NULL`,
+      [fileId]
+    );
 
     if (!result) return null;
 
@@ -184,18 +174,14 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
   }
 
   async listFiles(ownerId: string): Promise<TFile[]> {
-    const results = await this.db
-      .prepare(
-        `
-      SELECT * FROM ${this.tableName}
-      WHERE ${this.ownerIdColumn} = ? AND deleted_at IS NULL
-      ORDER BY uploaded_at DESC
-    `
-      )
-      .bind(ownerId)
-      .all<Record<string, unknown>>();
+    const { rows } = await this.db.query<Record<string, unknown>>(
+      `SELECT * FROM ${this.tableName}
+       WHERE ${this.ownerIdColumn} = ? AND deleted_at IS NULL
+       ORDER BY uploaded_at DESC`,
+      [ownerId]
+    );
 
-    return (results.results || []).map((r) => this.mapDbToFile(r));
+    return rows.map((r) => this.mapDbToFile(r));
   }
 
   async streamFile(
@@ -234,16 +220,10 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
 
   protected async softDeleteFileRecord(fileId: string): Promise<void> {
     const now = new Date().toISOString();
-    await this.db
-      .prepare(
-        `
-      UPDATE ${this.tableName}
-      SET deleted_at = ?
-      WHERE file_id = ?
-    `
-      )
-      .bind(now, fileId)
-      .run();
+    await this.db.execute(`UPDATE ${this.tableName} SET deleted_at = ? WHERE file_id = ?`, [
+      now,
+      fileId,
+    ]);
   }
 
   protected async deleteR2Object(r2Key: string): Promise<void> {

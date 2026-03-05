@@ -4,6 +4,7 @@
  */
 
 import type { WorkNoteFile } from '@shared/types/work-note';
+import { D1DatabaseClient } from '../adapters/d1-database-client';
 import { getAuthUser } from '../middleware/auth';
 import {
   bodyValidator,
@@ -169,7 +170,7 @@ workNotes.post('/:workId/files', async (c) => {
   const r2Bucket = getR2Bucket(c.env);
 
   // Upload file using service - returns DriveFileListItem (no DB tracking)
-  const fileService = new WorkNoteFileService(r2Bucket, c.env.DB, c.env);
+  const fileService = new WorkNoteFileService(r2Bucket, new D1DatabaseClient(c.env.DB), c.env);
   const uploadedFile = await fileService.uploadFileToDrive({
     workId,
     file: fileData,
@@ -277,7 +278,7 @@ workNotes.delete('/:workId/files/:fileId', async (c) => {
   const user = getAuthUser(c);
 
   const r2Bucket = getR2Bucket(c.env);
-  const fileService = new WorkNoteFileService(r2Bucket, c.env.DB, c.env);
+  const fileService = new WorkNoteFileService(r2Bucket, new D1DatabaseClient(c.env.DB), c.env);
 
   await fileService.deleteDriveFile(fileId, user.email);
 

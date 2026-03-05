@@ -256,7 +256,8 @@ async function defaultDriveFactory(env: Env, db: D1Database): Promise<DriveClien
   const { GoogleDriveService } = await import(
     '../apps/worker/src/services/google-drive-service.js'
   );
-  return new GoogleDriveService(env, db);
+  const { D1DatabaseClient } = await import('../apps/worker/src/adapters/d1-database-client.js');
+  return new GoogleDriveService(env, new D1DatabaseClient(db));
 }
 
 function buildEnvBindings(): Record<string, string> {

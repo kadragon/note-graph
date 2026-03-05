@@ -4,6 +4,7 @@ import { env } from 'cloudflare:test';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
+import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import type { Env } from '@worker/types/env';
 // Trace: SPEC-devx-1, TASK-028
 import { beforeAll } from 'vitest';
@@ -55,6 +56,9 @@ export async function testBatch(db: D1Database, statements: D1PreparedStatement[
 
 /** Export testEnv for tests that need direct access */
 export { testEnv };
+
+/** DatabaseClient wrapper around testEnv.DB for repository tests */
+export const testDb = new D1DatabaseClient(testEnv.DB);
 if (!testEnv.GOOGLE_CLIENT_ID) {
   testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
 }
