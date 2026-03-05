@@ -4,6 +4,7 @@ import type { WorkNote } from '@shared/types/work-note';
 import { D1FtsDialect } from '../adapters/d1-fts-dialect';
 import type { DatabaseClient } from '../types/database';
 import type { FtsDialect } from '../types/fts-dialect';
+import { buildWorkNoteTsQuery } from '../utils/work-notes-fts';
 
 /**
  * FTS (Full-Text Search) service for lexical search using D1 FTS5
@@ -114,20 +115,11 @@ export class FtsSearchService {
     });
   }
 
-  /**
-   * Build FTS query string from user input
-   * Uses unicode61 tokenizer for Korean text support
-   *
-   * @param query - User search query
-   * @returns FTS query string
-   */
   private buildFtsQuery(query: string): string {
-    // Clean query
-    const cleaned = query.trim();
-
-    // For unicode61 tokenizer, simple term matching works well
-    // For multi-word queries, FTS5 will match documents containing any of the terms
-    return cleaned;
+    if (this.dialect.isTsQuerySyntax()) {
+      return buildWorkNoteTsQuery(query, 'OR') || query.trim();
+    }
+    return query.trim();
   }
 
   /**

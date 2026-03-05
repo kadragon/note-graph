@@ -8,9 +8,15 @@ export interface FtsDialect {
   /** CTE for meeting minute FTS with rank scoring. SQL uses ? for ftsQuery. */
   buildMeetingMinuteFtsCte(): { sql: string; rankColumn: string; joinCondition: string };
 
+  /** CTE for meeting minute FTS with rank scoring, ORDER BY rank ASC and LIMIT. SQL uses ? for ftsQuery and ? for limit. */
+  buildMeetingMinuteFtsCteWithLimit(): { sql: string; rankColumn: string; joinCondition: string };
+
   /** CTE for meeting minute FTS (filter only, no scoring). SQL uses ? for ftsQuery. */
   buildMeetingMinuteFilterCte(): { sql: string; joinCondition: string };
 
   /** Whether FTS is always in sync (PostgreSQL generated column = true, D1 trigger-based = false). */
   isAlwaysSynced(): boolean;
+
+  /** Whether to use PostgreSQL tsquery syntax instead of D1 FTS5 MATCH syntax for query strings. */
+  isTsQuerySyntax(): boolean;
 }

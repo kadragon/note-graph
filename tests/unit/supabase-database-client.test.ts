@@ -26,6 +26,61 @@ describe('SupabaseDatabaseClient', () => {
       const sql = "SELECT * FROM t WHERE name = '?' AND id = ?";
       expect(translatePlaceholders(sql)).toBe("SELECT * FROM t WHERE name = '?' AND id = $1");
     });
+
+    it('handles SQL-standard escaped single quotes (double-quote escape)', () => {
+      const sql = "WHERE name = 'it''s' AND id = ?";
+      expect(translatePlaceholders(sql)).toBe("WHERE name = 'it''s' AND id = $1");
+    });
+
+    it('handles consecutive escaped quotes with trailing placeholder', () => {
+      const sql = "WHERE a = 'x''y''z' AND b = ?";
+      expect(translatePlaceholders(sql)).toBe("WHERE a = 'x''y''z' AND b = $1");
+    });
+  });
+
+  describe('query', () => {
+    it('translates placeholders and returns rows from connection', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [{ id: 1 }, { id: 2 }] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      const result = await client.query('SELECT * FROM t WHERE a = ? AND b = ?', ['x', 'y']);
+
+      expect(result.rows).toEqual([{ id: 1 }, { id: 2 }]);
+      expect(mockConn.query).toHaveBeenCalledWith('SELECT * FROM t WHERE a = $1 AND b = $2', [
+        'x',
+        'y',
+      ]);
+    });
+  });
+
+  describe('queryOne', () => {
+    it('returns first row when rows exist', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [{ id: 1 }, { id: 2 }] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      const result = await client.queryOne('SELECT * FROM t WHERE id = ?', [1]);
+
+      expect(result).toEqual({ id: 1 });
+      expect(mockConn.query).toHaveBeenCalledWith('SELECT * FROM t WHERE id = $1', [1]);
+    });
+
+    it('returns null when no rows', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      const result = await client.queryOne('SELECT * FROM t WHERE id = ?', [999]);
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('transaction', () => {
@@ -65,6 +120,27 @@ describe('SupabaseDatabaseClient', () => {
 
       expect(executeCalls[0].sql).toBe('BEGIN');
       expect(executeCalls[executeCalls.length - 1].sql).toBe('ROLLBACK');
+    });
+
+    it('preserves original error when ROLLBACK also fails', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockConn.execute = vi.fn().mockImplementation((sql: string) => {
+        executeCalls.push({ sql });
+        if (sql === 'ROLLBACK') return Promise.reject(new Error('connection lost'));
+        return Promise.resolve({ rowCount: 0 });
+      });
+
+      await expect(
+        client.transaction(async () => {
+          throw new Error('original error');
+        })
+      ).rejects.toThrow('original error');
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'ROLLBACK failed after transaction error:',
+        expect.any(Error)
+      );
+      consoleSpy.mockRestore();
     });
   });
 

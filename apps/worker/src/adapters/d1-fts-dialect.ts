@@ -25,6 +25,14 @@ export class D1FtsDialect implements FtsDialect {
     };
   }
 
+  buildMeetingMinuteFtsCteWithLimit(): { sql: string; rankColumn: string; joinCondition: string } {
+    return {
+      sql: `WITH fts_matches AS (SELECT rowid, rank FROM meeting_minutes_fts WHERE meeting_minutes_fts MATCH ? ORDER BY rank ASC LIMIT ?)`,
+      rankColumn: 'rank',
+      joinCondition: 'mm.rowid = fts.rowid',
+    };
+  }
+
   buildMeetingMinuteFilterCte(): { sql: string; joinCondition: string } {
     return {
       sql: `WITH fts_matches AS (SELECT rowid FROM meeting_minutes_fts WHERE meeting_minutes_fts MATCH ?)`,
@@ -33,6 +41,10 @@ export class D1FtsDialect implements FtsDialect {
   }
 
   isAlwaysSynced(): boolean {
+    return false;
+  }
+
+  isTsQuerySyntax(): boolean {
     return false;
   }
 }

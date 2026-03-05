@@ -66,7 +66,11 @@ export class SupabaseDatabaseClient implements DatabaseClient {
       await this.conn.execute('COMMIT');
       return result;
     } catch (error) {
-      await this.conn.execute('ROLLBACK');
+      try {
+        await this.conn.execute('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('ROLLBACK failed after transaction error:', rollbackError);
+      }
       throw error;
     }
   }
@@ -81,7 +85,11 @@ export class SupabaseDatabaseClient implements DatabaseClient {
       }
       await this.conn.execute('COMMIT');
     } catch (error) {
-      await this.conn.execute('ROLLBACK');
+      try {
+        await this.conn.execute('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('ROLLBACK failed after batch error:', rollbackError);
+      }
       throw error;
     }
   }

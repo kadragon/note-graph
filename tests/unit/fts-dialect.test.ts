@@ -68,6 +68,27 @@ describe('D1FtsDialect', () => {
     });
   });
 
+  describe('buildMeetingMinuteFtsCteWithLimit', () => {
+    it('returns SQL with meeting_minutes_fts MATCH and LIMIT', () => {
+      const result = dialect.buildMeetingMinuteFtsCteWithLimit();
+      expect(result.sql).toContain('meeting_minutes_fts');
+      expect(result.sql).toContain('MATCH');
+      expect(result.sql).toContain('ORDER BY');
+      expect(result.sql).toContain('LIMIT');
+    });
+
+    it('returns rank as rankColumn', () => {
+      const result = dialect.buildMeetingMinuteFtsCteWithLimit();
+      expect(result.rankColumn).toBe('rank');
+    });
+
+    it('uses two query parameters (ftsQuery, limit)', () => {
+      const result = dialect.buildMeetingMinuteFtsCteWithLimit();
+      const paramCount = (result.sql.match(/\?/g) || []).length;
+      expect(paramCount).toBe(2);
+    });
+  });
+
   describe('buildMeetingMinuteFilterCte', () => {
     it('returns SQL with meeting_minutes_fts MATCH', () => {
       const result = dialect.buildMeetingMinuteFilterCte();
@@ -89,6 +110,12 @@ describe('D1FtsDialect', () => {
   describe('isAlwaysSynced', () => {
     it('returns false for D1 trigger-based FTS', () => {
       expect(dialect.isAlwaysSynced()).toBe(false);
+    });
+  });
+
+  describe('isTsQuerySyntax', () => {
+    it('returns false for D1 FTS5 MATCH syntax', () => {
+      expect(dialect.isTsQuerySyntax()).toBe(false);
     });
   });
 });
@@ -162,6 +189,27 @@ describe('PostgresFtsDialect', () => {
     });
   });
 
+  describe('buildMeetingMinuteFtsCteWithLimit', () => {
+    it('returns SQL with tsvector match, ORDER BY, and LIMIT', () => {
+      const result = dialect.buildMeetingMinuteFtsCteWithLimit();
+      expect(result.sql).toContain('fts_vector @@');
+      expect(result.sql).toContain('to_tsquery');
+      expect(result.sql).toContain('ORDER BY');
+      expect(result.sql).toContain('LIMIT');
+    });
+
+    it('returns rank as rankColumn', () => {
+      const result = dialect.buildMeetingMinuteFtsCteWithLimit();
+      expect(result.rankColumn).toBe('rank');
+    });
+
+    it('uses two query parameters (ftsQuery, limit)', () => {
+      const result = dialect.buildMeetingMinuteFtsCteWithLimit();
+      const paramCount = (result.sql.match(/\?/g) || []).length;
+      expect(paramCount).toBe(2);
+    });
+  });
+
   describe('buildMeetingMinuteFilterCte', () => {
     it('returns SQL with tsvector match operator', () => {
       const result = dialect.buildMeetingMinuteFilterCte();
@@ -178,6 +226,12 @@ describe('PostgresFtsDialect', () => {
   describe('isAlwaysSynced', () => {
     it('returns true for PostgreSQL generated columns', () => {
       expect(dialect.isAlwaysSynced()).toBe(true);
+    });
+  });
+
+  describe('isTsQuerySyntax', () => {
+    it('returns true for PostgreSQL tsquery syntax', () => {
+      expect(dialect.isTsQuerySyntax()).toBe(true);
     });
   });
 });

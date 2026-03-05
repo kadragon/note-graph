@@ -91,18 +91,16 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
   });
 
   it('transaction rolls back on error', async () => {
-    try {
-      await db.transaction(async (tx) => {
+    await expect(
+      db.transaction(async (tx) => {
         await tx.execute(
           `INSERT INTO app_settings (key, value, category, label, default_value)
            VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
           ['test.smoke.tx2', 'should_not_persist', 'config', 'Rollback Test', 'val']
         );
         throw new Error('intentional rollback');
-      });
-    } catch {
-      // expected
-    }
+      })
+    ).rejects.toThrow('intentional rollback');
 
     const row = await db.queryOne<{ value: string }>(
       'SELECT value FROM app_settings WHERE key = ?',

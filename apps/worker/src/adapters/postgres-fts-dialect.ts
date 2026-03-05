@@ -25,6 +25,14 @@ export class PostgresFtsDialect implements FtsDialect {
     };
   }
 
+  buildMeetingMinuteFtsCteWithLimit(): { sql: string; rankColumn: string; joinCondition: string } {
+    return {
+      sql: `WITH fts_matches AS (SELECT meeting_id AS id, ts_rank(fts_vector, query) AS rank FROM meeting_minutes, to_tsquery('simple', ?) AS query WHERE fts_vector @@ query ORDER BY rank ASC LIMIT ?)`,
+      rankColumn: 'rank',
+      joinCondition: 'mm.meeting_id = fts.id',
+    };
+  }
+
   buildMeetingMinuteFilterCte(): { sql: string; joinCondition: string } {
     return {
       sql: `WITH fts_matches AS (SELECT meeting_id AS id FROM meeting_minutes WHERE fts_vector @@ to_tsquery('simple', ?))`,
@@ -33,6 +41,10 @@ export class PostgresFtsDialect implements FtsDialect {
   }
 
   isAlwaysSynced(): boolean {
+    return true;
+  }
+
+  isTsQuerySyntax(): boolean {
     return true;
   }
 }

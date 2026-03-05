@@ -3,6 +3,7 @@ import type { DatabaseClient } from '../types/database';
 import type { FtsDialect } from '../types/fts-dialect';
 import {
   buildMeetingMinutesFtsQuery,
+  buildMeetingMinutesTsQuery,
   mapMeetingMinutesFtsScores,
 } from '../utils/meeting-minutes-fts';
 
@@ -42,7 +43,9 @@ export class MeetingMinuteReferenceService {
     limit: number,
     minScore: number = 0
   ): Promise<MeetingMinuteReference[]> {
-    const ftsQuery = buildMeetingMinutesFtsQuery(query);
+    const ftsQuery = this.dialect.isTsQuerySyntax()
+      ? buildMeetingMinutesTsQuery(query)
+      : buildMeetingMinutesFtsQuery(query);
 
     if (ftsQuery.length === 0) {
       return [];
@@ -50,10 +53,9 @@ export class MeetingMinuteReferenceService {
 
     // Over-fetch to compensate for minScore filtering
     const FETCH_MULTIPLIER = 3;
-    const cte = this.dialect.buildMeetingMinuteFtsCte();
-    const cteSql = cte.sql.replace(/\)$/, ` ORDER BY ${cte.rankColumn} ASC LIMIT ?)`);
+    const cte = this.dialect.buildMeetingMinuteFtsCteWithLimit();
     const { rows } = await this.db.query<MeetingMinuteFtsRow>(
-      `${cteSql}
+      `${cte.sql}
          SELECT
            mm.meeting_id as meetingId,
            mm.meeting_date as meetingDate,

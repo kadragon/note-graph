@@ -5,6 +5,7 @@ import type { DatabaseClient } from '../types/database';
 import type { FtsDialect } from '../types/fts-dialect';
 import {
   buildWorkNoteFtsQuery,
+  buildWorkNoteTsQuery,
   extractWorkNoteFtsTokens,
   normalizeWorkNoteSearchPhrase,
 } from '../utils/work-notes-fts';
@@ -42,10 +43,16 @@ export class KeywordSearchService {
     private dialect: FtsDialect = new D1FtsDialect()
   ) {}
 
+  private buildQuery(rawQuery: string, operator: 'AND' | 'OR'): string {
+    return this.dialect.isTsQuerySyntax()
+      ? buildWorkNoteTsQuery(rawQuery, operator)
+      : buildWorkNoteFtsQuery(rawQuery, operator);
+  }
+
   async search(query: string, filters?: SearchFilters): Promise<SearchResultItem[]> {
     const limit = Math.min(filters?.limit ?? 10, 100);
-    const andQuery = buildWorkNoteFtsQuery(query, 'AND');
-    const orQuery = buildWorkNoteFtsQuery(query, 'OR');
+    const andQuery = this.buildQuery(query, 'AND');
+    const orQuery = this.buildQuery(query, 'OR');
     const tokens = extractWorkNoteFtsTokens(query).map((token) => token.toLowerCase());
 
     if (!andQuery) {

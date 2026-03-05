@@ -4,7 +4,10 @@ import type { CreateMeetingMinuteInput, UpdateMeetingMinuteInput } from '../sche
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { FtsDialect } from '../types/fts-dialect';
-import { buildMeetingMinutesFtsQuery } from '../utils/meeting-minutes-fts';
+import {
+  buildMeetingMinutesFtsQuery,
+  buildMeetingMinutesTsQuery,
+} from '../utils/meeting-minutes-fts';
 
 export interface MeetingMinute {
   meetingId: string;
@@ -244,7 +247,9 @@ export class MeetingMinuteRepository {
     const params: (string | number)[] = [];
 
     if (query.q && query.q.trim().length > 0) {
-      const ftsQuery = buildMeetingMinutesFtsQuery(query.q);
+      const ftsQuery = this.dialect.isTsQuerySyntax()
+        ? buildMeetingMinutesTsQuery(query.q)
+        : buildMeetingMinutesFtsQuery(query.q);
       if (!ftsQuery) {
         return { items: [], total: 0, page, pageSize };
       }
