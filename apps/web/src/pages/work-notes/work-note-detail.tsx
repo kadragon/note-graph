@@ -814,6 +814,7 @@ export default function WorkNoteDetail() {
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
+              autoFocus
               onClick={() => {
                 if (deleteTodoId) {
                   deleteTodoMutation.mutate(deleteTodoId);

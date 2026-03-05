@@ -83,4 +83,46 @@ describe('MeetingMinuteReferenceService', () => {
 
     expect(references).toEqual([]);
   });
+
+  it('filters out results below minScore threshold', async () => {
+    await testEnv.DB.batch([
+      testEnv.DB.prepare(
+        `INSERT INTO meeting_minutes (
+          meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        'MEET-SCORE-1',
+        '2026-03-01',
+        'Budget Planning Session',
+        'Detailed budget planning and allocation discussion',
+        JSON.stringify(['budget', 'planning']),
+        'budget planning',
+        '2026-03-01T09:00:00.000Z',
+        '2026-03-01T09:00:00.000Z'
+      ),
+      testEnv.DB.prepare(
+        `INSERT INTO meeting_minutes (
+          meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        'MEET-SCORE-2',
+        '2026-03-02',
+        'Team Standup',
+        'Quick standup with brief budget mention',
+        JSON.stringify(['standup']),
+        'standup',
+        '2026-03-02T09:00:00.000Z',
+        '2026-03-02T09:00:00.000Z'
+      ),
+    ]);
+
+    // With high minScore, only the top-scored result passes (normalized score=1.0)
+    const strict = await service.search('budget planning', 10, 0.9);
+    // With default minScore (0), all FTS matches are returned
+    const relaxed = await service.search('budget planning', 10);
+
+    expect(relaxed).toHaveLength(2);
+    expect(strict).toHaveLength(1);
+    expect(strict[0].meetingId).toBe('MEET-SCORE-1');
+  });
 });

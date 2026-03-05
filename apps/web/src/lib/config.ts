@@ -16,8 +16,8 @@ export const QUERY_CONFIG = {
   /** Auth query stale time (1 minute) */
   AUTH_STALE_TIME_MS: 60 * 1000,
 
-  /** Default garbage collection time (5 minutes) */
-  DEFAULT_GC_TIME_MS: 5 * 60 * 1000,
+  /** Default garbage collection time (30 minutes) — keeps cached data available longer for back-navigation */
+  DEFAULT_GC_TIME_MS: 30 * 60 * 1000,
 
   /** Default retry count for failed queries */
   DEFAULT_RETRY_COUNT: 1,

@@ -238,6 +238,7 @@ export default function WorkNotes() {
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
+              autoFocus
               onClick={() => void handleDeleteConfirm()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
