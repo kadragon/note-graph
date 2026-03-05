@@ -21,7 +21,7 @@ import type {
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI, TodoDueDateCount } from '../types/todo-due-date-context';
-import { queryInChunks, SQL_VAR_LIMIT } from '../utils/db-utils';
+import { queryInChunks } from '../utils/db-utils';
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -217,11 +217,10 @@ export class TodoRepository {
     const conditions: string[] = [];
     const params: (string | number)[] = [];
 
-    const workIds = (query.workIds ?? []).slice(0, SQL_VAR_LIMIT);
+    const workIds = query.workIds ?? [];
     if (workIds.length > 0) {
-      const placeholders = workIds.map(() => '?').join(',');
-      conditions.push(`t.work_id IN (${placeholders})`);
-      params.push(...workIds);
+      conditions.push(`t.work_id IN (SELECT value FROM json_each(?))`);
+      params.push(JSON.stringify(workIds));
     }
 
     switch (query.view) {
