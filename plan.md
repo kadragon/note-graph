@@ -304,3 +304,74 @@
 
 - [x] Grep: no remaining raw `MATCH`, `bm25(`, `notes_fts`, `meeting_minutes_fts` outside dialect implementations (only in `d1-fts-dialect.ts` + `verifyFtsSync` D1-only path)
 - [x] All existing tests pass with no behavioral changes (743/743, 3 skipped, 1 pre-existing supabase network failure)
+
+## Phase 5: Runtime Database Adapter Selection
+
+> Make the app run against either D1 or Supabase via Hyperdrive binding presence. Data migration deferred to Phase 6.
+
+### 5.1 Database client factory
+
+- [x] Create `createDatabaseClient(env)` factory in `adapters/database-factory.ts`
+- [x] Factory returns `SupabaseDatabaseClient` when `env.HYPERDRIVE` exists, else `D1DatabaseClient`
+- [x] Create `createFtsDialect(env)` in same factory file
+- [x] Unit test: factory returns correct adapter based on env
+
+### 5.2 Add Hyperdrive binding to Env
+
+- [x] Add optional `HYPERDRIVE` binding to `Env` type
+- [x] Update `supabase-connection.ts` to work with Hyperdrive connection string (already accepts any URL string)
+
+### 5.3 Wire factories into middleware
+
+- [x] `repositoriesMiddleware`: replace `new D1DatabaseClient(c.env.DB)` with factory
+- [x] Set `c.set('ftsDialect', dialect)` in middleware
+- [x] Add `ftsDialect: FtsDialect` to `AppVariables`
+
+### 5.4 Wire factories into scheduled handler
+
+- [x] `index.ts` `runScheduledEmbedPending`: use factory instead of `new D1DatabaseClient`
+
+### 5.5 Pass dialect to FTS services from context
+
+- [x] `routes/search.ts`: pass `c.get('ftsDialect')` to search services
+- [x] `routes/meeting-minutes.ts`: pass dialect to repository and reference service
+- [x] `routes/ai-draft.ts`: pass dialect to MeetingMinuteReferenceService
+
+### 5.6 Integration tests
+
+- [x] Expand smoke test: FTS queries with PostgresFtsDialect against local Supabase
+- [x] Verify: all existing D1 tests still pass (no regressions) (761/761, 5 skipped)
+
+### 5.7 Configuration & documentation
+
+- [x] Update `wrangler.toml` with commented Hyperdrive binding example
+- [x] Update `.dev.vars.example` with Supabase notes
+
+## Phase 6: Data Migration (D1 → Supabase)
+
+> Migrate production data from D1 to remote Supabase. ~1,500 rows across 23 tables.
+
+### 6.1 Schema & migration script
+
+- [x] Apply initial_schema migration to remote Supabase (23 tables created)
+- [x] Create migration script: export D1 → transform → insert Supabase
+- [x] Handle data transforms: booleans (0/1 → true/false), IDENTITY columns, JSONB
+
+### 6.2 Migrate data (dependency order)
+
+- [x] Independent tables: departments, app_settings, task_categories, work_note_groups
+- [x] persons, person_dept_history
+- [x] work_notes (156 rows)
+- [x] Junction tables: work_note_person, work_note_relation, work_note_task_category, work_note_group_items
+- [x] work_note_versions, work_note_files, work_note_gdrive_folders
+- [x] todos (660 rows)
+- [x] meeting_minutes, meeting_minute_person, meeting_minute_task_category
+- [x] work_note_meeting_minute
+- [x] pdf_jobs, google_oauth_tokens
+
+### 6.3 Verify
+
+- [x] Row count comparison: all 22 tables match D1 exactly
+- [x] FTS verification: 156/156 work_notes and 1/1 meeting_minutes have fts_vector populated
+- [x] Spot-check: FTS query for '성적' returns correct work notes
+- [x] IDENTITY sequences reset to MAX(id)+1 for all junction tables

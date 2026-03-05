@@ -15,6 +15,7 @@ import type { WorkNoteGroupRepository } from '../repositories/work-note-group-re
 import type { SettingService } from '../services/setting-service';
 import type { DatabaseClient } from './database';
 import type { Env } from './env';
+import type { FtsDialect } from './fts-dialect';
 
 export interface Repositories {
   departments: DepartmentRepository;
@@ -38,6 +39,7 @@ export interface Repositories {
 export interface AppVariables {
   user?: AuthUser;
   db: DatabaseClient;
+  ftsDialect: FtsDialect;
   repositories: Repositories;
   settingService: SettingService;
   body?: Record<string | symbol, unknown>;

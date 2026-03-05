@@ -130,7 +130,10 @@ app.post(
 
     let scoredMeetingReferences: Awaited<ReturnType<MeetingMinuteReferenceService['search']>> = [];
     try {
-      const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.get('db'));
+      const meetingMinuteReferenceService = new MeetingMinuteReferenceService(
+        c.get('db'),
+        c.get('ftsDialect')
+      );
       scoredMeetingReferences = await meetingMinuteReferenceService.search(
         body.inputText,
         MEETING_REFERENCES_TOP_K,

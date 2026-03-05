@@ -4,6 +4,7 @@
  */
 export interface Env {
   DB: D1Database;
+  HYPERDRIVE?: Hyperdrive; // Optional: Supabase PostgreSQL via Hyperdrive
   VECTORIZE: VectorizeIndex;
   AI_GATEWAY: Fetcher;
   ASSETS: Fetcher; // Static assets binding for serving frontend files

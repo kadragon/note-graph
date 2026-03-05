@@ -45,6 +45,15 @@ database_id = "04d814ad-5e61-4502-9e1d-85cfcdd1bea9"
 migrations_dir = "migrations"
 
 # ============================================================================
+# Hyperdrive (optional: Supabase PostgreSQL)
+# ============================================================================
+# When HYPERDRIVE binding is present, the app automatically switches to
+# SupabaseDatabaseClient + PostgresFtsDialect.
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "e0be183154624f8b96bdde8910b3d6a5"
+
+# ============================================================================
 # Vectorize
 # ============================================================================
 [[vectorize]]
