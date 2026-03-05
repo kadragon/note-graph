@@ -14,6 +14,7 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: QUERY_CONFIG.REFETCH_ON_WINDOW_FOCUS,
       retry: QUERY_CONFIG.DEFAULT_RETRY_COUNT,
       staleTime: QUERY_CONFIG.DEFAULT_STALE_TIME_MS,
+      gcTime: QUERY_CONFIG.DEFAULT_GC_TIME_MS,
     },
   },
 });

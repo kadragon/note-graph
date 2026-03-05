@@ -22,6 +22,7 @@ import { createProtectedRouter } from './_shared/router-factory';
 // Configuration constants
 const SIMILAR_NOTES_TOP_K = 3;
 const MEETING_REFERENCES_TOP_K = 5;
+const MEETING_REFERENCES_MIN_SCORE = 0.3;
 
 type Variables = {
   activeCategoryNames: string[];
@@ -130,7 +131,8 @@ app.post(
     const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.env.DB);
     const scoredMeetingReferences = await meetingMinuteReferenceService.search(
       body.inputText,
-      MEETING_REFERENCES_TOP_K
+      MEETING_REFERENCES_TOP_K,
+      MEETING_REFERENCES_MIN_SCORE
     );
 
     return c.json({

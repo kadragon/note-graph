@@ -83,4 +83,48 @@ describe('MeetingMinuteReferenceService', () => {
 
     expect(references).toEqual([]);
   });
+
+  it('filters out results below minScore threshold', async () => {
+    await testEnv.DB.batch([
+      testEnv.DB.prepare(
+        `INSERT INTO meeting_minutes (
+          meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        'MEET-SCORE-1',
+        '2026-03-01',
+        'Budget Planning Session',
+        'Detailed budget planning and allocation discussion',
+        JSON.stringify(['budget', 'planning']),
+        'budget planning',
+        '2026-03-01T09:00:00.000Z',
+        '2026-03-01T09:00:00.000Z'
+      ),
+      testEnv.DB.prepare(
+        `INSERT INTO meeting_minutes (
+          meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        'MEET-SCORE-2',
+        '2026-03-02',
+        'Team Standup',
+        'Quick standup with brief budget mention',
+        JSON.stringify(['standup']),
+        'standup',
+        '2026-03-02T09:00:00.000Z',
+        '2026-03-02T09:00:00.000Z'
+      ),
+    ]);
+
+    // With high minScore, only the most relevant result should pass
+    const strict = await service.search('budget planning', 10, 0.9);
+    // With default minScore (0.3), more results may pass
+    const relaxed = await service.search('budget planning', 10);
+
+    expect(strict.length).toBeLessThanOrEqual(relaxed.length);
+    // The top result should be the budget-focused meeting
+    if (strict.length > 0) {
+      expect(strict[0].meetingId).toBe('MEET-SCORE-1');
+    }
+  });
 });

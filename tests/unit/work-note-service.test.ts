@@ -66,6 +66,11 @@ describe('WorkNoteService.findSimilarNotes', () => {
 
     const result = await service.findSimilarNotes('프로젝트 회의', 3, 0.5);
 
+    // Vectorize should be called with topK * FETCH_MULTIPLIER (3 * 5 = 15)
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(Array), {
+      topK: 15,
+      returnMetadata: true,
+    });
     expect(result).toEqual([
       {
         workId: 'WORK-1',
@@ -78,6 +83,115 @@ describe('WorkNoteService.findSimilarNotes', () => {
     ]);
     expect(mockFindByIds).toHaveBeenCalledWith(['WORK-1']);
     expect(mockFindTodosByWorkIds).toHaveBeenCalledWith(['WORK-1']);
+  });
+
+  it('deduplicates chunks by work ID keeping max score and sorts by score descending', async () => {
+    const service = new WorkNoteService(dummyEnv);
+
+    const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
+    const mockQuery = vi.fn().mockResolvedValue({
+      matches: [
+        { id: 'WORK-A#chunk0', score: 0.7, metadata: {} },
+        { id: 'WORK-B#chunk0', score: 0.85, metadata: {} },
+        { id: 'WORK-A#chunk1', score: 0.9, metadata: {} }, // higher chunk for WORK-A
+        { id: 'WORK-C#chunk0', score: 0.75, metadata: {} },
+      ],
+    });
+
+    const mockFindByIds = vi.fn().mockResolvedValue([
+      {
+        workId: 'WORK-A',
+        title: 'A',
+        contentRaw: 'a',
+        category: null,
+        createdAt: '',
+        updatedAt: '',
+        embeddedAt: '',
+      },
+      {
+        workId: 'WORK-B',
+        title: 'B',
+        contentRaw: 'b',
+        category: null,
+        createdAt: '',
+        updatedAt: '',
+        embeddedAt: '',
+      },
+      {
+        workId: 'WORK-C',
+        title: 'C',
+        contentRaw: 'c',
+        category: null,
+        createdAt: '',
+        updatedAt: '',
+        embeddedAt: '',
+      },
+    ] as WorkNote[]);
+    const mockFindTodosByWorkIds = vi.fn().mockResolvedValue(new Map());
+
+    (service as unknown as { vectorizeService: unknown }).vectorizeService = { query: mockQuery };
+    (service as unknown as { embeddingService: unknown }).embeddingService = { embed: mockEmbed };
+    (service as unknown as { repository: unknown }).repository = {
+      findByIds: mockFindByIds,
+      findTodosByWorkIds: mockFindTodosByWorkIds,
+    } as unknown;
+
+    const result = await service.findSimilarNotes('test', 3, 0.6);
+
+    // WORK-A max=0.9, WORK-B=0.85, WORK-C=0.75 → sorted descending
+    expect(result.map((r) => r.workId)).toEqual(['WORK-A', 'WORK-B', 'WORK-C']);
+    expect(result[0].similarityScore).toBe(0.9);
+    expect(result[1].similarityScore).toBe(0.85);
+    expect(result[2].similarityScore).toBe(0.75);
+  });
+
+  it('limits deduplicated results to topK', async () => {
+    const service = new WorkNoteService(dummyEnv);
+
+    const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
+    const mockQuery = vi.fn().mockResolvedValue({
+      matches: [
+        { id: 'WORK-A#chunk0', score: 0.95, metadata: {} },
+        { id: 'WORK-B#chunk0', score: 0.9, metadata: {} },
+        { id: 'WORK-C#chunk0', score: 0.85, metadata: {} },
+        { id: 'WORK-D#chunk0', score: 0.8, metadata: {} },
+      ],
+    });
+
+    const mockFindByIds = vi.fn().mockResolvedValue([
+      {
+        workId: 'WORK-A',
+        title: 'A',
+        contentRaw: 'a',
+        category: null,
+        createdAt: '',
+        updatedAt: '',
+        embeddedAt: '',
+      },
+      {
+        workId: 'WORK-B',
+        title: 'B',
+        contentRaw: 'b',
+        category: null,
+        createdAt: '',
+        updatedAt: '',
+        embeddedAt: '',
+      },
+    ] as WorkNote[]);
+    const mockFindTodosByWorkIds = vi.fn().mockResolvedValue(new Map());
+
+    (service as unknown as { vectorizeService: unknown }).vectorizeService = { query: mockQuery };
+    (service as unknown as { embeddingService: unknown }).embeddingService = { embed: mockEmbed };
+    (service as unknown as { repository: unknown }).repository = {
+      findByIds: mockFindByIds,
+      findTodosByWorkIds: mockFindTodosByWorkIds,
+    } as unknown;
+
+    // topK=2 should only return 2 notes even though 4 match the threshold
+    const result = await service.findSimilarNotes('test', 2, 0.7);
+
+    expect(mockFindByIds).toHaveBeenCalledWith(['WORK-A', 'WORK-B']);
+    expect(result).toHaveLength(2);
   });
 
   it('returns no results when all matches are below scoreThreshold', async () => {

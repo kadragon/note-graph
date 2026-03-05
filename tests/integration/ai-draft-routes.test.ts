@@ -159,10 +159,24 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
       ).bind(
         'MEET-DRAFT-R2',
         '2026-02-10',
-        'Roadmap staffing',
-        'Roadmap with staffing topics',
-        JSON.stringify(['roadmap', 'staffing']),
-        'roadmap staffing',
+        'Roadmap budget staffing',
+        'Roadmap budget with staffing topics',
+        JSON.stringify(['roadmap', 'budget', 'staffing']),
+        'roadmap budget staffing',
+        now,
+        now
+      ),
+      testEnv.DB.prepare(
+        `INSERT INTO meeting_minutes (
+          meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        'MEET-DRAFT-R3',
+        '2026-02-09',
+        'General staffing only',
+        'Staffing only discussion unrelated to roadmap',
+        JSON.stringify(['staffing']),
+        'staffing',
         now,
         now
       ),
@@ -184,6 +198,7 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
       }>;
     }>();
 
+    // R3 (staffing only) should be filtered out by minScore threshold
     expect(data.meetingReferences).toHaveLength(2);
     expect(data.meetingReferences?.[0]?.meetingId).toBe('MEET-DRAFT-R1');
     expect(data.meetingReferences?.[1]?.meetingId).toBe('MEET-DRAFT-R2');

@@ -482,19 +482,20 @@ export class WorkNoteService {
    *
    * @param inputText - Text to find similar notes for
    * @param topK - Number of similar notes to return (default: 3)
-   * @param scoreThreshold - Minimum similarity score (default: 0.7)
+   * @param scoreThreshold - Minimum similarity score (default: 0.6)
    * @returns Array of similar notes with title, content, category, and todos
    */
   async findSimilarNotes(
     inputText: string,
     topK: number = 3,
-    scoreThreshold: number = 0.4
+    scoreThreshold: number = 0.6
   ): Promise<SimilarWorkNoteReference[]> {
     try {
-      // Search for similar work notes
+      // Fetch extra chunks to account for same-note duplicates
+      const FETCH_MULTIPLIER = 5;
       const queryEmbedding = await this.embeddingService.embed(inputText);
       const searchResults = await this.vectorizeService.query(queryEmbedding, {
-        topK,
+        topK: topK * FETCH_MULTIPLIER,
         returnMetadata: true,
       });
       const similarResults = searchResults.matches.map((match) => ({
@@ -503,24 +504,23 @@ export class WorkNoteService {
         metadata: (match.metadata ?? {}) as Record<string, string>,
       }));
 
-      // Filter by similarity threshold and extract work IDs
+      // Filter by similarity threshold and extract work IDs with max scores
       const relevantResults = similarResults.filter((r) => r.score >= scoreThreshold);
 
       const workIdScores = new Map<string, number>();
-      const workIds = [
-        ...new Set(
-          relevantResults
-            .map((r) => {
-              const workId = r.id?.split('#')[0];
-              if (workId) {
-                const currentScore = workIdScores.get(workId) || 0;
-                workIdScores.set(workId, Math.max(currentScore, r.score));
-              }
-              return workId;
-            })
-            .filter((id): id is string => id !== undefined)
-        ),
-      ]; // Handle chunk IDs, deduplicate
+      for (const r of relevantResults) {
+        const workId = r.id?.split('#')[0];
+        if (workId) {
+          const currentScore = workIdScores.get(workId) || 0;
+          workIdScores.set(workId, Math.max(currentScore, r.score));
+        }
+      }
+
+      // Sort by max score descending and take topK
+      const workIds = [...workIdScores.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, topK)
+        .map(([id]) => id);
 
       if (workIds.length === 0) {
         return [];

@@ -388,6 +388,7 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
+              autoFocus
               onClick={handleDeleteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

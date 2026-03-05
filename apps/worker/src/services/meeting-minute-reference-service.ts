@@ -23,7 +23,11 @@ export interface MeetingMinuteReference {
 export class MeetingMinuteReferenceService {
   constructor(private db: D1Database) {}
 
-  async search(query: string, limit: number): Promise<MeetingMinuteReference[]> {
+  async search(
+    query: string,
+    limit: number,
+    minScore: number = 0
+  ): Promise<MeetingMinuteReference[]> {
     const ftsQuery = buildMeetingMinutesFtsQuery(query);
 
     if (ftsQuery.length === 0) {
@@ -52,12 +56,14 @@ export class MeetingMinuteReferenceService {
       .bind(ftsQuery, limit)
       .all<MeetingMinuteFtsRow>();
 
-    return mapMeetingMinutesFtsScores(result.results || []).map((row) => ({
-      meetingId: row.meetingId,
-      meetingDate: row.meetingDate,
-      topic: row.topic,
-      keywords: JSON.parse(row.keywordsJson || '[]') as string[],
-      score: row.score,
-    }));
+    return mapMeetingMinutesFtsScores(result.results || [])
+      .filter((row) => row.score >= minScore)
+      .map((row) => ({
+        meetingId: row.meetingId,
+        meetingDate: row.meetingDate,
+        topic: row.topic,
+        keywords: JSON.parse(row.keywordsJson || '[]') as string[],
+        score: row.score,
+      }));
   }
 }
