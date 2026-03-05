@@ -114,15 +114,13 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
     const testWorkId = 'test-smoke-fts-' + Date.now();
 
     await db.execute(
-      `INSERT INTO work_notes (work_id, title, content_raw, category, note_date, is_public)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO work_notes (work_id, title, content_raw, category)
+       VALUES (?, ?, ?, ?)`,
       [
         testWorkId,
         'Smoke FTS Test Title',
         'Integration test content for full text search',
         'general',
-        '2026-01-01',
-        false,
       ]
     );
 
@@ -137,6 +135,8 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
 
       expect(rows.length).toBeGreaterThanOrEqual(1);
       expect(rows.some((r) => r.id === testWorkId)).toBe(true);
+      // Negated ts_rank: lower (more negative) = better match, consistent with D1 bm25
+      expect(rows.find((r) => r.id === testWorkId)!.rank).toBeLessThan(0);
     } finally {
       await db.execute('DELETE FROM work_notes WHERE work_id = ?', [testWorkId]);
     }
@@ -167,6 +167,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
 
       expect(rows.length).toBeGreaterThanOrEqual(1);
       expect(rows.some((r) => r.id === testMeetingId)).toBe(true);
+      expect(rows.find((r) => r.id === testMeetingId)!.rank).toBeLessThan(0);
     } finally {
       await db.execute('DELETE FROM meeting_minutes WHERE meeting_id = ?', [testMeetingId]);
     }
