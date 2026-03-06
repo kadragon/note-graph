@@ -1,4 +1,3 @@
-import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { MeetingMinuteRepository } from '@worker/repositories/meeting-minute-repository';
 import type { CreateMeetingMinuteInput } from '@worker/schemas/meeting-minute';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -8,7 +7,7 @@ describe('MeetingMinuteRepository', () => {
   let repository: MeetingMinuteRepository;
 
   beforeEach(async () => {
-    repository = new MeetingMinuteRepository(testPgDb, new PostgresFtsDialect());
+    repository = new MeetingMinuteRepository(testPgDb);
 
     await pglite.query(
       'TRUNCATE work_note_meeting_minute, meeting_minute_task_category, meeting_minute_group, meeting_minute_person, meeting_minutes, task_categories, persons CASCADE'

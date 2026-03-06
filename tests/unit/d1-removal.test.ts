@@ -42,7 +42,7 @@ const SELF_EXCLUDE = /tests\/unit\/d1-removal\.test\.ts|\/dist\//;
 describe('D1 removal cleanup', () => {
   it('removes D1-only adapters and legacy test setup references', () => {
     const raw = grepR(
-      'd1-database-client|d1-fts-dialect|tests/setup\\.ts|tests/test-setup\\.ts|D1DatabaseClient|D1FtsDialect',
+      'd1-database-client|d1-fts-dialect|tests/setup\\.ts|tests/test-setup\\.ts|D1DatabaseClient|D1FtsDialect|FtsDialect|createFtsDialect',
       'apps',
       'tests',
       'scripts'
@@ -52,6 +52,7 @@ describe('D1 removal cleanup', () => {
     expect(references).toBe('');
     expect(existsSync('apps/worker/src/adapters/d1-database-client.ts')).toBe(false);
     expect(existsSync('apps/worker/src/adapters/d1-fts-dialect.ts')).toBe(false);
+    expect(existsSync('apps/worker/src/types/fts-dialect.ts')).toBe(false);
     expect(existsSync('tests/setup.ts')).toBe(false);
     expect(existsSync('tests/test-setup.ts')).toBe(false);
   });
@@ -73,15 +74,27 @@ describe('D1 removal cleanup', () => {
     expect(existsSync('scripts/export-d1-chunked.ts')).toBe(false);
   });
 
-  it('removes stale D1 and Miniflare documentation from repo docs', () => {
+  it('removes D1 FTS query builders and SQLite-isms from production code', () => {
     const raw = grepR(
-      '\\bD1\\b|wrangler d1|miniflare|Miniflare|SQLite|sqlite_master|d1_databases',
+      'buildWorkNoteFtsQuery|buildMeetingMinutesFtsQuery|json_each|\\bD1\\b|SQLite|FTS5|notes_fts',
+      'apps'
+    );
+    const references = filterLines(raw, SELF_EXCLUDE).trim();
+
+    expect(references).toBe('');
+  });
+
+  it('removes stale D1, Miniflare, and SQLite-era references from repo docs', () => {
+    const raw = grepR(
+      '\\bD1\\b|wrangler d1|miniflare|Miniflare|SQLite|sqlite_master|d1_databases|FTS5|notes_fts',
       'README.md',
       'tests/README.md',
       'migrations/README.md',
-      'TEST_STRUCTURE.md'
+      'TEST_STRUCTURE.md',
+      'AGENTS.md'
     );
-    const references = filterLines(raw, SELF_EXCLUDE).trim();
+    const exclude = /tests\/unit\/d1-removal\.test\.ts|\/dist\/|plan\.md/;
+    const references = filterLines(raw, exclude).trim();
 
     expect(references).toBe('');
   });

@@ -1,10 +1,8 @@
 // Trace: SPEC-search-1, TASK-009, TASK-016
 // Unit tests for FTS Search Service
 
-import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { FtsSearchService } from '@worker/services/fts-search-service';
 import type { DatabaseClient } from '@worker/types/database';
-import type { FtsDialect } from '@worker/types/fts-dialect';
 import { buildWorkNoteTsQuery } from '@worker/utils/work-notes-fts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,20 +16,13 @@ function createMockDb(queryResult: { rows: unknown[] } = { rows: [] }): Database
   } as unknown as DatabaseClient;
 }
 
-function createUnsyncedDialect(): FtsDialect {
-  return {
-    ...new PostgresFtsDialect(),
-    isAlwaysSynced: () => false,
-  };
-}
-
 describe('FtsSearchService', () => {
   let mockDb: DatabaseClient;
   let ftsService: FtsSearchService;
 
   beforeEach(() => {
     mockDb = createMockDb();
-    ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
+    ftsService = new FtsSearchService(mockDb);
   });
 
   describe('search()', () => {
@@ -49,7 +40,7 @@ describe('FtsSearchService', () => {
       ];
 
       mockDb = createMockDb({ rows: mockResults });
-      ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
+      ftsService = new FtsSearchService(mockDb);
 
       const results = await ftsService.search('업무');
 
@@ -83,7 +74,7 @@ describe('FtsSearchService', () => {
       ];
 
       mockDb = createMockDb({ rows: mockResults });
-      ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
+      ftsService = new FtsSearchService(mockDb);
 
       const results = await ftsService.search('test');
 
@@ -206,7 +197,7 @@ describe('FtsSearchService', () => {
       ];
 
       mockDb = createMockDb({ rows: mockResults });
-      ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
+      ftsService = new FtsSearchService(mockDb);
 
       const results = await ftsService.search('test');
 
@@ -214,64 +205,11 @@ describe('FtsSearchService', () => {
       expect(results[0].workNote).toHaveProperty('workId');
       expect(results[0].workNote).toHaveProperty('title');
     });
-  });
 
-  describe('verifyFtsSync()', () => {
-    it('should return true when counts match', async () => {
-      mockDb = createMockDb();
-      (mockDb.queryOne as ReturnType<typeof vi.fn>).mockResolvedValue({
-        work_notes_count: 100,
-        fts_count: 100,
-      });
-      ftsService = new FtsSearchService(mockDb, createUnsyncedDialect());
-
-      const result = await ftsService.verifyFtsSync();
-      expect(result).toBe(true);
-    });
-
-    it('should return false when counts do not match', async () => {
-      mockDb = createMockDb();
-      (mockDb.queryOne as ReturnType<typeof vi.fn>).mockResolvedValue({
-        work_notes_count: 100,
-        fts_count: 95,
-      });
-      ftsService = new FtsSearchService(mockDb, createUnsyncedDialect());
-
-      const result = await ftsService.verifyFtsSync();
-      expect(result).toBe(false);
-    });
-
-    it('should return false when no result', async () => {
-      ftsService = new FtsSearchService(mockDb, createUnsyncedDialect());
-      const result = await ftsService.verifyFtsSync();
-      expect(result).toBe(false);
-    });
-
-    it('should return true immediately when dialect.isAlwaysSynced() is true', async () => {
-      const alwaysSyncedDialect: FtsDialect = {
-        ...new PostgresFtsDialect(),
-        isAlwaysSynced: () => true,
-      };
-      const service = new FtsSearchService(mockDb, alwaysSyncedDialect);
-
-      const result = await service.verifyFtsSync();
-
-      expect(result).toBe(true);
-      expect(mockDb.queryOne).not.toHaveBeenCalled();
-    });
-
-    it('should query both work_notes and notes_fts tables', async () => {
-      ftsService = new FtsSearchService(mockDb, createUnsyncedDialect());
-      (mockDb.queryOne as ReturnType<typeof vi.fn>).mockResolvedValue({
-        work_notes_count: 50,
-        fts_count: 50,
-      });
-
-      await ftsService.verifyFtsSync();
-
-      const [sql] = (mockDb.queryOne as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(sql).toContain('work_notes');
-      expect(sql).toContain('notes_fts');
+    it('should return empty array for empty query tokens', async () => {
+      const results = await ftsService.search('   ');
+      expect(results).toEqual([]);
+      expect(mockDb.query).not.toHaveBeenCalled();
     });
   });
 });

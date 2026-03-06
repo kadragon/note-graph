@@ -6,7 +6,7 @@ The active PostgreSQL schema lives under `supabase/migrations/`.
 
 ## Migration Files
 
-- `0001_initial_schema.sql` - Initial schema with all core tables, FTS5, triggers, and indexes
+- `0001_initial_schema.sql` - Initial schema with all core tables, full-text search, triggers, and indexes
 - `0002_add_task_categories.sql` → `0013_drop_embedding_retry_queue.sql` - Iterative enhancements (task categories, embedding retry queue lifecycle, phone/ employment fields, custom repeat settings, embedded_at)
 - `0014_add_project_management.sql` - Adds project management tables (projects, participants, work note links, files) and `project_id` column on `work_notes` with supporting indexes (Trace: SPEC-project-1, TASK-035)
 - `0018_cleanup_soft_deleted_project_work_note_links.sql` - Cleans up stale `project_work_notes` rows and clears `work_notes.project_id` when linked to soft-deleted projects (Trace: SPEC-project-1, TASK-065)
@@ -35,8 +35,8 @@ The active PostgreSQL schema lives under `supabase/migrations/`.
 
 ### Full-Text Search
 
-- **notes_fts** - FTS5 virtual table with trigram tokenizer for Korean partial matching
-- Automatic synchronization via triggers on INSERT/UPDATE/DELETE
+- PostgreSQL `tsvector` generated columns on `work_notes` and `meeting_minutes` for lexical search
+- Automatic synchronization via generated columns (always in sync)
 
 ### Indexes
 

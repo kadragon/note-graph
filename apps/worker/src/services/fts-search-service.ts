@@ -1,22 +1,18 @@
 // Trace: SPEC-search-1, TASK-009
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
-import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
+import { buildWorkNoteFtsCte } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
-import type { FtsDialect } from '../types/fts-dialect';
 import { buildWorkNoteTsQuery } from '../utils/work-notes-fts';
 
 /**
- * FTS (Full-Text Search) service for lexical search using D1 FTS5
+ * FTS (Full-Text Search) service for lexical search using PostgreSQL tsvector
  */
 export class FtsSearchService {
-  constructor(
-    private db: DatabaseClient,
-    private dialect: FtsDialect = new PostgresFtsDialect()
-  ) {}
+  constructor(private db: DatabaseClient) {}
 
   /**
-   * Search work notes using FTS5 with trigram tokenizer
+   * Search work notes using PostgreSQL tsvector full-text search
    * Supports Korean partial matching and filters
    *
    * @param query - Search query string
@@ -27,12 +23,15 @@ export class FtsSearchService {
     const limit = filters?.limit ?? 10;
 
     // Build FTS query
-    // unicode61 tokenizer handles Korean text well
-    const ftsQuery = this.buildFtsQuery(query);
+    const ftsQuery = buildWorkNoteTsQuery(query, 'OR');
+
+    if (!ftsQuery) {
+      return [];
+    }
 
     // Build SQL query with CTE to filter FTS results first
     // This optimizes join by limiting rows before full table scan
-    const cte = this.dialect.buildWorkNoteFtsCte();
+    const cte = buildWorkNoteFtsCte();
     let sql = `
       ${cte.sql}
       SELECT
@@ -114,36 +113,5 @@ export class FtsSearchService {
         source: 'LEXICAL' as const,
       };
     });
-  }
-
-  private buildFtsQuery(query: string): string {
-    if (this.dialect.isTsQuerySyntax()) {
-      return buildWorkNoteTsQuery(query, 'OR') || query.trim();
-    }
-    return query.trim();
-  }
-
-  /**
-   * Verify FTS synchronization by checking if triggers are working
-   * Useful for testing and debugging
-   *
-   * @returns True if FTS is synchronized with work_notes
-   */
-  async verifyFtsSync(): Promise<boolean> {
-    if (this.dialect.isAlwaysSynced()) {
-      return true;
-    }
-
-    const result = await this.db.queryOne<{ work_notes_count: number; fts_count: number }>(
-      `SELECT
-        (SELECT COUNT(*) FROM work_notes) as work_notes_count,
-        (SELECT COUNT(*) FROM notes_fts) as fts_count`
-    );
-
-    if (!result) {
-      return false;
-    }
-
-    return result.work_notes_count === result.fts_count;
   }
 }

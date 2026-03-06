@@ -1,25 +1,10 @@
 import {
-  buildMeetingMinutesFtsQuery,
   buildMeetingMinutesTsQuery,
   mapMeetingMinutesFtsScores,
 } from '@worker/utils/meeting-minutes-fts';
 import { describe, expect, it } from 'vitest';
 
 describe('meeting-minutes-fts utils', () => {
-  describe('buildMeetingMinutesFtsQuery()', () => {
-    it('extracts alphanumeric terms and removes punctuation-only fragments', () => {
-      const query = buildMeetingMinutesFtsQuery('  "roadmap!!"  (budget)   Q2@@  ');
-
-      expect(query).toBe('"roadmap" OR "budget" OR "Q2"');
-    });
-
-    it('returns empty query for punctuation-only input', () => {
-      const query = buildMeetingMinutesFtsQuery(' !!! ((( ))) ::: ');
-
-      expect(query).toBe('');
-    });
-  });
-
   describe('buildMeetingMinutesTsQuery()', () => {
     it('extracts terms and joins with | operator', () => {
       const query = buildMeetingMinutesTsQuery('  "roadmap!!"  (budget)   Q2@@  ');

@@ -1,10 +1,8 @@
 // Trace: SPEC-search-1, TASK-011, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
-import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
-import type { FtsDialect } from '../types/fts-dialect';
 import { pgPlaceholders, SQL_VAR_LIMIT } from '../utils/db-utils';
 import { FtsSearchService } from './fts-search-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
@@ -23,10 +21,9 @@ export class HybridSearchService {
   constructor(
     private db: DatabaseClient,
     env: Env,
-    ftsDialect: FtsDialect = new PostgresFtsDialect(),
     settingService?: SettingService
   ) {
-    this.ftsService = new FtsSearchService(db, ftsDialect);
+    this.ftsService = new FtsSearchService(db);
     this.embeddingService = new OpenAIEmbeddingService(env, settingService);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
   }
@@ -100,7 +97,7 @@ export class HybridSearchService {
         metadata: (match.metadata ?? {}) as Record<string, string>,
       }));
 
-      // Fetch work notes from D1 for matched IDs with person/dept filters applied
+      // Fetch work notes from DB for matched IDs with person/dept filters applied
       const workNotes = await this.fetchWorkNotesByIds(
         results.map((r) => r.id),
         filters
@@ -209,7 +206,7 @@ export class HybridSearchService {
   /**
    * Build Vectorize metadata filter from search filters
    * Note: Only category is used here. Person and department filters are applied
-   * via D1 query in fetchWorkNotesByIds() for accurate filtering.
+   * via DB query in fetchWorkNotesByIds() for accurate filtering.
    */
   private buildVectorizeFilter(filters?: SearchFilters): Record<string, string> | undefined {
     if (!filters) return undefined;
@@ -224,7 +221,7 @@ export class HybridSearchService {
   }
 
   /**
-   * Fetch work notes by IDs from D1 with optional filters
+   * Fetch work notes by IDs from DB with optional filters
    *
    * @param workIds - Work note IDs to fetch
    * @param filters - Optional filters to apply (personId, deptName)

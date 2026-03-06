@@ -36,7 +36,7 @@ export class TodoRepository {
   }
 
   /**
-   * Convert SQLite integer to boolean for skipWeekends field
+   * Ensure skipWeekends is a boolean after DB read
    */
   private convertTodoFromDb<T extends { skipWeekends: boolean }>(todo: T): T {
     return {

@@ -269,7 +269,7 @@ export const cfTokenRefresher = new CFAccessTokenRefresher();
 
 /**
  * Backend todo response format
- * Maps to D1 database schema
+ * Maps to database schema
  */
 export class APIClient {
   private baseURL = '/api';

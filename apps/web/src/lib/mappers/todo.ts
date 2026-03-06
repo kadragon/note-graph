@@ -11,7 +11,7 @@ import type {
 
 /**
  * Backend todo response format
- * Maps to D1 database schema
+ * Maps to database schema
  */
 export interface BackendTodo {
   todoId: string;

@@ -8,7 +8,10 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PostgresFtsDialect } from '../../apps/worker/src/adapters/postgres-fts-dialect';
+import {
+  buildMeetingMinuteFtsCte,
+  buildWorkNoteFtsCte,
+} from '../../apps/worker/src/adapters/postgres-fts-dialect';
 import { createSupabaseConnection } from '../../apps/worker/src/adapters/supabase-connection';
 import { SupabaseDatabaseClient } from '../../apps/worker/src/adapters/supabase-database-client';
 import { SettingRepository } from '../../apps/worker/src/repositories/setting-repository';
@@ -110,7 +113,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
     expect(row).toBeNull();
   });
 
-  it('FTS query works with PostgresFtsDialect on work_notes', async () => {
+  it('FTS query works with buildWorkNoteFtsCte on work_notes', async () => {
     const testWorkId = 'test-smoke-fts-' + Date.now();
 
     await db.execute(
@@ -125,8 +128,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
     );
 
     try {
-      const dialect = new PostgresFtsDialect();
-      const cte = dialect.buildWorkNoteFtsCte();
+      const cte = buildWorkNoteFtsCte();
 
       const { rows } = await db.query<{ id: string; rank: number }>(
         `${cte.sql} SELECT id, ${cte.rankColumn} FROM fts_matches`,
@@ -142,7 +144,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
     }
   });
 
-  it('FTS query works with PostgresFtsDialect on meeting_minutes', async () => {
+  it('FTS query works with buildMeetingMinuteFtsCte on meeting_minutes', async () => {
     const testMeetingId = 'test-smoke-fts-mm-' + Date.now();
 
     await db.execute(
@@ -157,8 +159,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
     );
 
     try {
-      const dialect = new PostgresFtsDialect();
-      const cte = dialect.buildMeetingMinuteFtsCte();
+      const cte = buildMeetingMinuteFtsCte();
 
       const { rows } = await db.query<{ id: string; rank: number }>(
         `${cte.sql} SELECT id, ${cte.rankColumn} FROM fts_matches`,
