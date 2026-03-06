@@ -6,8 +6,9 @@
 import { env } from 'cloudflare:test';
 import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { StatisticsRepository } from '@worker/repositories/statistics-repository';
+import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const testEnv = env as unknown as Env;
 const testDb = new D1DatabaseClient(testEnv.DB);
@@ -683,6 +684,114 @@ describe('StatisticsRepository', () => {
       expect(stats.workNotes[0]).toHaveProperty('totalTodoCount');
       expect(stats.workNotes[0]).toHaveProperty('assignedPersons');
       expect(stats.workNotes[0]).toHaveProperty('categoryName');
+    });
+  });
+
+  describe('postgres aggregate type normalization', () => {
+    it('returns numeric todo counts when aggregate fields arrive as strings', async () => {
+      const mockDb: DatabaseClient = {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce({
+            rows: [
+              {
+                workId: 'WORK-001',
+                title: 'First Work',
+                contentRaw: 'Content 1',
+                category: null,
+                createdAt: '2025-01-15T10:00:00Z',
+                updatedAt: '2025-01-15T10:00:00Z',
+                embeddedAt: null,
+                completedTodoCount: '12',
+                totalTodoCount: '14',
+                lastUpdated: '2025-01-15T10:00:00Z',
+              },
+              {
+                workId: 'WORK-002',
+                title: 'Second Work',
+                contentRaw: 'Content 2',
+                category: null,
+                createdAt: '2025-01-16T10:00:00Z',
+                updatedAt: '2025-01-16T10:00:00Z',
+                embeddedAt: null,
+                completedTodoCount: '3',
+                totalTodoCount: '5',
+                lastUpdated: '2025-01-16T10:00:00Z',
+              },
+            ],
+          })
+          .mockResolvedValueOnce({
+            rows: [],
+          }),
+        queryOne: vi.fn(),
+        execute: vi.fn(),
+        transaction: vi.fn(),
+        executeBatch: vi.fn(),
+      };
+      const postgresRepo = new StatisticsRepository(mockDb);
+
+      const results = await postgresRepo.findCompletedWorkNotes('2025-01-01', '2025-01-31');
+
+      expect(results).toHaveLength(2);
+      expect(results[0].completedTodoCount).toBe(12);
+      expect(typeof results[0].completedTodoCount).toBe('number');
+      expect(results[1].completedTodoCount).toBe(3);
+      expect(results[1].totalTodoCount).toBe(5);
+      expect(typeof results[1].totalTodoCount).toBe('number');
+    });
+
+    it('keeps summary totals numeric across multiple work notes', async () => {
+      const mockDb: DatabaseClient = {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce({
+            rows: [
+              {
+                workId: 'WORK-001',
+                title: 'First Work',
+                contentRaw: 'Content 1',
+                category: null,
+                createdAt: '2025-01-15T10:00:00Z',
+                updatedAt: '2025-01-15T10:00:00Z',
+                embeddedAt: null,
+                completedTodoCount: '12',
+                totalTodoCount: '14',
+                lastUpdated: '2025-01-15T10:00:00Z',
+              },
+              {
+                workId: 'WORK-002',
+                title: 'Second Work',
+                contentRaw: 'Content 2',
+                category: null,
+                createdAt: '2025-01-16T10:00:00Z',
+                updatedAt: '2025-01-16T10:00:00Z',
+                embeddedAt: null,
+                completedTodoCount: '3',
+                totalTodoCount: '5',
+                lastUpdated: '2025-01-16T10:00:00Z',
+              },
+            ],
+          })
+          .mockResolvedValueOnce({
+            rows: [],
+          })
+          .mockResolvedValueOnce({
+            rows: [],
+          }),
+        queryOne: vi.fn(),
+        execute: vi.fn(),
+        transaction: vi.fn(),
+        executeBatch: vi.fn(),
+      };
+      const postgresRepo = new StatisticsRepository(mockDb);
+
+      const stats = await postgresRepo.calculateStatistics('2025-01-01', '2025-01-31');
+
+      expect(stats.summary.totalCompletedTodos).toBe(15);
+      expect(typeof stats.summary.totalCompletedTodos).toBe('number');
+      expect(stats.summary.totalTodos).toBe(19);
+      expect(typeof stats.summary.totalTodos).toBe('number');
+      expect(stats.summary.completionRate).toBe(78.95);
     });
   });
 });
