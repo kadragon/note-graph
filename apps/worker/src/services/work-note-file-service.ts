@@ -458,7 +458,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       gdriveFolderId: string;
       gdriveFolderLink: string;
     }>(
-      `SELECT gdrive_folder_id as gdriveFolderId, gdrive_folder_link as gdriveFolderLink
+      `SELECT gdrive_folder_id as "gdriveFolderId", gdrive_folder_link as "gdriveFolderLink"
        FROM work_note_gdrive_folders WHERE work_id = $1`,
       [workId]
     );

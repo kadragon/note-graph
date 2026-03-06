@@ -21,13 +21,13 @@ export class EmbeddingRetryQueueRepository {
     const itemsQuery = `
       SELECT
         erq.id,
-        erq.work_id as workId,
-        wn.title as workTitle,
-        erq.operation_type as operationType,
-        erq.attempt_count as attemptCount,
-        erq.error_message as errorMessage,
-        erq.created_at as createdAt,
-        erq.dead_letter_at as deadLetterAt
+        erq.work_id as "workId",
+        wn.title as "workTitle",
+        erq.operation_type as "operationType",
+        erq.attempt_count as "attemptCount",
+        erq.error_message as "errorMessage",
+        erq.created_at as "createdAt",
+        erq.dead_letter_at as "deadLetterAt"
       FROM embedding_retry_queue erq
       LEFT JOIN work_notes wn ON erq.work_id = wn.work_id
       WHERE erq.status = 'dead_letter'
@@ -59,17 +59,17 @@ export class EmbeddingRetryQueueRepository {
     return this.db.queryOne<EmbeddingRetryQueueItem>(
       `SELECT
         id,
-        work_id as workId,
-        operation_type as operationType,
-        attempt_count as attemptCount,
-        max_attempts as maxAttempts,
-        next_retry_at as nextRetryAt,
+        work_id as "workId",
+        operation_type as "operationType",
+        attempt_count as "attemptCount",
+        max_attempts as "maxAttempts",
+        next_retry_at as "nextRetryAt",
         status,
-        error_message as errorMessage,
-        error_details as errorDetails,
-        created_at as createdAt,
-        updated_at as updatedAt,
-        dead_letter_at as deadLetterAt
+        error_message as "errorMessage",
+        error_details as "errorDetails",
+        created_at as "createdAt",
+        updated_at as "updatedAt",
+        dead_letter_at as "deadLetterAt"
       FROM embedding_retry_queue
       WHERE id = $1`,
       [id]

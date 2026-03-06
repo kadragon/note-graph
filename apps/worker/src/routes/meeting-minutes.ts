@@ -61,7 +61,7 @@ function isHighlySimilarTopic(left: string, right: string): boolean {
 
 async function getMeetingMinuteGroups(db: DatabaseClient, meetingId: string) {
   const { rows } = await db.query<{ groupId: string; name: string }>(
-    `SELECT wng.group_id as groupId, wng.name as name
+    `SELECT wng.group_id as "groupId", wng.name as name
      FROM meeting_minute_group mmg
      INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
      WHERE mmg.meeting_id = $1
@@ -134,13 +134,13 @@ meetingMinutes.get('/:meetingId', async (c) => {
     updatedAt: string;
   }>(
     `SELECT
-      meeting_id as meetingId,
-      meeting_date as meetingDate,
+      meeting_id as "meetingId",
+      meeting_date as "meetingDate",
       topic,
-      details_raw as detailsRaw,
-      keywords_json as keywordsJson,
-      created_at as createdAt,
-      updated_at as updatedAt
+      details_raw as "detailsRaw",
+      keywords_json as "keywordsJson",
+      created_at as "createdAt",
+      updated_at as "updatedAt"
      FROM meeting_minutes
      WHERE meeting_id = $1`,
     [meetingId]
@@ -152,7 +152,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
 
   const [attendeesResult, categoriesResult, groups, linkedWorkNoteCountRow] = await Promise.all([
     db.query<{ personId: string; name: string }>(
-      `SELECT p.person_id as personId, p.name as name
+      `SELECT p.person_id as "personId", p.name as name
          FROM meeting_minute_person mmp
          INNER JOIN persons p ON p.person_id = mmp.person_id
          WHERE mmp.meeting_id = $1
@@ -160,7 +160,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
       [meetingId]
     ),
     db.query<{ categoryId: string; name: string }>(
-      `SELECT tc.category_id as categoryId, tc.name as name
+      `SELECT tc.category_id as "categoryId", tc.name as name
          FROM meeting_minute_task_category mmtc
          INNER JOIN task_categories tc ON tc.category_id = mmtc.category_id
          WHERE mmtc.meeting_id = $1
@@ -169,7 +169,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
     ),
     getMeetingMinuteGroups(db, meetingId),
     db.queryOne<{ linkedWorkNoteCount: number }>(
-      `SELECT COUNT(*) as linkedWorkNoteCount
+      `SELECT COUNT(*) as "linkedWorkNoteCount"
          FROM work_note_meeting_minute
          WHERE meeting_id = $1`,
       [meetingId]
@@ -202,7 +202,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
     topic: string;
     detailsRaw: string;
   }>(
-    `SELECT meeting_id as meetingId, meeting_date as meetingDate, topic, details_raw as detailsRaw
+    `SELECT meeting_id as "meetingId", meeting_date as "meetingDate", topic, details_raw as "detailsRaw"
        FROM meeting_minutes
        WHERE meeting_id = $1`,
     [meetingId]
@@ -248,7 +248,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
 
   const [attendeesResult, categoriesResult, groups] = await Promise.all([
     db.query<{ personId: string; name: string }>(
-      `SELECT p.person_id as personId, p.name as name
+      `SELECT p.person_id as "personId", p.name as name
          FROM meeting_minute_person mmp
          INNER JOIN persons p ON p.person_id = mmp.person_id
          WHERE mmp.meeting_id = $1
@@ -256,7 +256,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
       [meetingId]
     ),
     db.query<{ categoryId: string; name: string }>(
-      `SELECT tc.category_id as categoryId, tc.name as name
+      `SELECT tc.category_id as "categoryId", tc.name as name
          FROM meeting_minute_task_category mmtc
          INNER JOIN task_categories tc ON tc.category_id = mmtc.category_id
          WHERE mmtc.meeting_id = $1

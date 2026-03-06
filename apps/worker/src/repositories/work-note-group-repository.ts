@@ -24,7 +24,7 @@ export class WorkNoteGroupRepository {
 
   async findById(groupId: string): Promise<WorkNoteGroup | null> {
     const result = await this.db.queryOne<WorkNoteGroupRow>(
-      `SELECT group_id as groupId, name, is_active as isActive, created_at as createdAt
+      `SELECT group_id as "groupId", name, is_active as "isActive", created_at as "createdAt"
        FROM work_note_groups
        WHERE group_id = $1`,
       [groupId]
@@ -35,7 +35,7 @@ export class WorkNoteGroupRepository {
 
   async findByName(name: string): Promise<WorkNoteGroup | null> {
     const result = await this.db.queryOne<WorkNoteGroupRow>(
-      `SELECT group_id as groupId, name, is_active as isActive, created_at as createdAt
+      `SELECT group_id as "groupId", name, is_active as "isActive", created_at as "createdAt"
        FROM work_note_groups
        WHERE name = $1`,
       [name]
@@ -49,7 +49,7 @@ export class WorkNoteGroupRepository {
     limit: number = 100,
     activeOnly?: boolean
   ): Promise<WorkNoteGroup[]> {
-    let sql = `SELECT group_id as groupId, name, is_active as isActive, created_at as createdAt
+    let sql = `SELECT group_id as "groupId", name, is_active as "isActive", created_at as "createdAt"
                FROM work_note_groups`;
     const params: (string | number)[] = [];
     const conditions: string[] = [];
@@ -198,7 +198,7 @@ export class WorkNoteGroupRepository {
     }
 
     const result = await this.db.query<WorkNoteGroupWorkNote>(
-      `SELECT wn.work_id as workId, wn.title, wn.created_at as createdAt, wn.updated_at as updatedAt
+      `SELECT wn.work_id as "workId", wn.title, wn.created_at as "createdAt", wn.updated_at as "updatedAt"
        FROM work_notes wn
        INNER JOIN work_note_group_items wngi ON wn.work_id = wngi.work_id
        WHERE wngi.group_id = $1
@@ -211,7 +211,7 @@ export class WorkNoteGroupRepository {
 
   async getByWorkNoteId(workId: string): Promise<WorkNoteGroup[]> {
     const result = await this.db.query<WorkNoteGroupRow>(
-      `SELECT g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
+      `SELECT g.group_id as "groupId", g.name, g.is_active as "isActive", g.created_at as "createdAt"
        FROM work_note_groups g
        INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
        WHERE wngi.work_id = $1

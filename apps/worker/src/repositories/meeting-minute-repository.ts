@@ -3,6 +3,7 @@ import { buildMeetingMinuteFilterCte } from '../adapters/postgres-fts-dialect';
 import type { CreateMeetingMinuteInput, UpdateMeetingMinuteInput } from '../schemas/meeting-minute';
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
+import { buildMultiRowInsert } from '../utils/db-utils';
 import { parseKeywordsJson } from '../utils/json-utils';
 import { buildMeetingMinutesTsQuery } from '../utils/meeting-minutes-fts';
 
@@ -73,29 +74,34 @@ export class MeetingMinuteRepository {
       },
     ];
 
-    for (const personId of data.attendeePersonIds) {
-      statements.push({
-        sql: `INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)`,
-        params: [meetingId, personId],
-      });
+    if (data.attendeePersonIds.length > 0) {
+      statements.push(
+        buildMultiRowInsert(
+          'meeting_minute_person',
+          ['meeting_id', 'person_id'],
+          data.attendeePersonIds.map((id) => [meetingId, id])
+        )
+      );
     }
 
     if (data.categoryIds && data.categoryIds.length > 0) {
-      for (const categoryId of data.categoryIds) {
-        statements.push({
-          sql: `INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)`,
-          params: [meetingId, categoryId],
-        });
-      }
+      statements.push(
+        buildMultiRowInsert(
+          'meeting_minute_task_category',
+          ['meeting_id', 'category_id'],
+          data.categoryIds.map((id) => [meetingId, id])
+        )
+      );
     }
 
     if (data.groupIds && data.groupIds.length > 0) {
-      for (const groupId of data.groupIds) {
-        statements.push({
-          sql: `INSERT INTO meeting_minute_group (meeting_id, group_id) VALUES ($1, $2)`,
-          params: [meetingId, groupId],
-        });
-      }
+      statements.push(
+        buildMultiRowInsert(
+          'meeting_minute_group',
+          ['meeting_id', 'group_id'],
+          data.groupIds.map((id) => [meetingId, id])
+        )
+      );
     }
 
     await this.db.executeBatch(statements);
@@ -126,8 +132,8 @@ export class MeetingMinuteRepository {
       createdAt: string;
       updatedAt: string;
     }>(
-      `SELECT meeting_id as meetingId, meeting_date as meetingDate, topic, details_raw as detailsRaw,
-              keywords_json as keywordsJson, created_at as createdAt, updated_at as updatedAt
+      `SELECT meeting_id as "meetingId", meeting_date as "meetingDate", topic, details_raw as "detailsRaw",
+              keywords_json as "keywordsJson", created_at as "createdAt", updated_at as "updatedAt"
        FROM meeting_minutes
        WHERE meeting_id = $1`,
       [meetingId]
@@ -179,44 +185,71 @@ export class MeetingMinuteRepository {
     const statements: Array<{ sql: string; params?: unknown[] }> = [];
 
     if (data.attendeePersonIds !== undefined) {
-      statements.push({
-        sql: `DELETE FROM meeting_minute_person WHERE meeting_id = $1`,
-        params: [meetingId],
-      });
-
-      for (const personId of data.attendeePersonIds) {
+      if (data.attendeePersonIds.length === 0) {
         statements.push({
-          sql: `INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)`,
-          params: [meetingId, personId],
+          sql: `DELETE FROM meeting_minute_person WHERE meeting_id = $1`,
+          params: [meetingId],
         });
+      } else {
+        const inPlaceholders = data.attendeePersonIds.map((_, i) => `$${i + 2}`).join(', ');
+        statements.push({
+          sql: `DELETE FROM meeting_minute_person WHERE meeting_id = $1 AND person_id NOT IN (${inPlaceholders})`,
+          params: [meetingId, ...data.attendeePersonIds],
+        });
+        statements.push(
+          buildMultiRowInsert(
+            'meeting_minute_person',
+            ['meeting_id', 'person_id'],
+            data.attendeePersonIds.map((id) => [meetingId, id]),
+            'ON CONFLICT DO NOTHING'
+          )
+        );
       }
     }
 
     if (data.categoryIds !== undefined) {
-      statements.push({
-        sql: `DELETE FROM meeting_minute_task_category WHERE meeting_id = $1`,
-        params: [meetingId],
-      });
-
-      for (const categoryId of data.categoryIds) {
+      if (data.categoryIds.length === 0) {
         statements.push({
-          sql: `INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)`,
-          params: [meetingId, categoryId],
+          sql: `DELETE FROM meeting_minute_task_category WHERE meeting_id = $1`,
+          params: [meetingId],
         });
+      } else {
+        const inPlaceholders = data.categoryIds.map((_, i) => `$${i + 2}`).join(', ');
+        statements.push({
+          sql: `DELETE FROM meeting_minute_task_category WHERE meeting_id = $1 AND category_id NOT IN (${inPlaceholders})`,
+          params: [meetingId, ...data.categoryIds],
+        });
+        statements.push(
+          buildMultiRowInsert(
+            'meeting_minute_task_category',
+            ['meeting_id', 'category_id'],
+            data.categoryIds.map((id) => [meetingId, id]),
+            'ON CONFLICT DO NOTHING'
+          )
+        );
       }
     }
 
     if (data.groupIds !== undefined) {
-      statements.push({
-        sql: `DELETE FROM meeting_minute_group WHERE meeting_id = $1`,
-        params: [meetingId],
-      });
-
-      for (const groupId of data.groupIds) {
+      if (data.groupIds.length === 0) {
         statements.push({
-          sql: `INSERT INTO meeting_minute_group (meeting_id, group_id) VALUES ($1, $2)`,
-          params: [meetingId, groupId],
+          sql: `DELETE FROM meeting_minute_group WHERE meeting_id = $1`,
+          params: [meetingId],
         });
+      } else {
+        const inPlaceholders = data.groupIds.map((_, i) => `$${i + 2}`).join(', ');
+        statements.push({
+          sql: `DELETE FROM meeting_minute_group WHERE meeting_id = $1 AND group_id NOT IN (${inPlaceholders})`,
+          params: [meetingId, ...data.groupIds],
+        });
+        statements.push(
+          buildMultiRowInsert(
+            'meeting_minute_group',
+            ['meeting_id', 'group_id'],
+            data.groupIds.map((id) => [meetingId, id]),
+            'ON CONFLICT DO NOTHING'
+          )
+        );
       }
     }
 
@@ -299,24 +332,17 @@ export class MeetingMinuteRepository {
     const joinClause = joins.length > 0 ? `\n${joins.join('\n')}` : '';
     const whereClause = conditions.length > 0 ? `\nWHERE ${conditions.join(' AND ')}` : '';
 
-    const totalSql = `
-      ${withClause}
-      SELECT COUNT(mm.meeting_id) as total
-      FROM meeting_minutes mm${joinClause}${whereClause}
-    `;
-
-    const totalRow = await this.db.queryOne<{ total: number }>(totalSql, params);
-
     let sql = `
       ${withClause}
       SELECT
-        mm.meeting_id as meetingId,
-        mm.meeting_date as meetingDate,
+        mm.meeting_id as "meetingId",
+        mm.meeting_date as "meetingDate",
         mm.topic,
-        mm.details_raw as detailsRaw,
-        mm.keywords_json as keywordsJson,
-        mm.created_at as createdAt,
-        mm.updated_at as updatedAt
+        mm.details_raw as "detailsRaw",
+        mm.keywords_json as "keywordsJson",
+        mm.created_at as "createdAt",
+        mm.updated_at as "updatedAt",
+        COUNT(*) OVER() as "totalCount"
       FROM meeting_minutes mm
     `;
     sql += joinClause;
@@ -332,8 +358,10 @@ export class MeetingMinuteRepository {
       keywordsJson: string;
       createdAt: string;
       updatedAt: string;
+      totalCount: number;
     }>(sql, [...params, pageSize, offset]);
 
+    const total = Number(result.rows[0]?.totalCount || 0);
     const items = result.rows.map((row) => ({
       meetingId: row.meetingId,
       meetingDate: row.meetingDate,
@@ -346,7 +374,7 @@ export class MeetingMinuteRepository {
 
     return {
       items,
-      total: Number(totalRow?.total || 0),
+      total,
       page,
       pageSize,
     };

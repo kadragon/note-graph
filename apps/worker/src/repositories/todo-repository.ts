@@ -121,12 +121,12 @@ export class TodoRepository {
    */
   async findById(todoId: string): Promise<Todo | null> {
     const result = await this.db.queryOne<Todo>(
-      `SELECT todo_id as todoId, work_id as workId,
-              title, description, created_at as createdAt, updated_at as updatedAt,
-              due_date as dueDate, wait_until as waitUntil, status,
-              repeat_rule as repeatRule, recurrence_type as recurrenceType,
-              custom_interval as customInterval, custom_unit as customUnit,
-              skip_weekends as skipWeekends
+      `SELECT todo_id as "todoId", work_id as "workId",
+              title, description, created_at as "createdAt", updated_at as "updatedAt",
+              due_date as "dueDate", wait_until as "waitUntil", status,
+              repeat_rule as "repeatRule", recurrence_type as "recurrenceType",
+              custom_interval as "customInterval", custom_unit as "customUnit",
+              skip_weekends as "skipWeekends"
        FROM todos
        WHERE todo_id = $1`,
       [todoId]
@@ -140,12 +140,12 @@ export class TodoRepository {
    */
   async findByWorkId(workId: string): Promise<Todo[]> {
     const result = await this.db.query<Todo>(
-      `SELECT todo_id as todoId, work_id as workId,
-              title, description, created_at as createdAt, updated_at as updatedAt,
-              due_date as dueDate, wait_until as waitUntil, status,
-              repeat_rule as repeatRule, recurrence_type as recurrenceType,
-              custom_interval as customInterval, custom_unit as customUnit,
-              skip_weekends as skipWeekends
+      `SELECT todo_id as "todoId", work_id as "workId",
+              title, description, created_at as "createdAt", updated_at as "updatedAt",
+              due_date as "dueDate", wait_until as "waitUntil", status,
+              repeat_rule as "repeatRule", recurrence_type as "recurrenceType",
+              custom_interval as "customInterval", custom_unit as "customUnit",
+              skip_weekends as "skipWeekends"
        FROM todos
        WHERE work_id = $1
        ORDER BY created_at DESC`,
@@ -203,13 +203,13 @@ export class TodoRepository {
     const startOfTomorrowUTC = this.getStartOfTomorrowUTC();
 
     let sql = `
-      SELECT t.todo_id as todoId, t.work_id as workId,
-             t.title, t.description, t.created_at as createdAt, t.updated_at as updatedAt,
-             t.due_date as dueDate, t.wait_until as waitUntil, t.status,
-             t.repeat_rule as repeatRule, t.recurrence_type as recurrenceType,
-             t.custom_interval as customInterval, t.custom_unit as customUnit,
-             t.skip_weekends as skipWeekends,
-             w.title as workTitle, w.category as workCategory
+      SELECT t.todo_id as "todoId", t.work_id as "workId",
+             t.title, t.description, t.created_at as "createdAt", t.updated_at as "updatedAt",
+             t.due_date as "dueDate", t.wait_until as "waitUntil", t.status,
+             t.repeat_rule as "repeatRule", t.recurrence_type as "recurrenceType",
+             t.custom_interval as "customInterval", t.custom_unit as "customUnit",
+             t.skip_weekends as "skipWeekends",
+             w.title as "workTitle", w.category as "workCategory"
       FROM todos t
       LEFT JOIN work_notes w ON t.work_id = w.work_id
     `;
@@ -300,20 +300,20 @@ export class TodoRepository {
 
     const [summaryResult, distributionResult] = await Promise.all([
       this.db.queryOne<{ totalOpenTodos: number; undatedOpenTodos: number | null }>(
-        `SELECT COUNT(*) as totalOpenTodos,
-                SUM(CASE WHEN due_date IS NULL THEN 1 ELSE 0 END) as undatedOpenTodos
+        `SELECT COUNT(*) as "totalOpenTodos",
+                SUM(CASE WHEN due_date IS NULL THEN 1 ELSE 0 END) as "undatedOpenTodos"
          FROM todos
          WHERE status IN ($1, $2, $3)`,
         [...openStatuses]
       ),
       this.db.query<{ dueDate: string; count: number }>(
-        `SELECT due_date::text as dueDate,
+        `SELECT due_date::text as "dueDate",
                 COUNT(*) as count
          FROM todos
          WHERE status IN ($1, $2, $3)
            AND due_date IS NOT NULL
          GROUP BY due_date
-         ORDER BY count DESC, dueDate ASC
+         ORDER BY count DESC, "dueDate" ASC
          LIMIT $4`,
         [...openStatuses, normalizedLimit]
       ),
@@ -568,7 +568,7 @@ export class TodoRepository {
 
     const todos = await queryInChunks(this.db, todoIds, async (db, chunk, placeholders) => {
       const r = await db.query<{ todoId: string; workId: string; dueDate: string | null }>(
-        `SELECT todo_id as todoId, work_id as workId, due_date as dueDate
+        `SELECT todo_id as "todoId", work_id as "workId", due_date as "dueDate"
          FROM todos
          WHERE todo_id IN (${placeholders})`,
         chunk

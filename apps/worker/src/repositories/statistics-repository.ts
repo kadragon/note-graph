@@ -11,7 +11,6 @@ import type {
   WorkNoteWithStats,
 } from '@shared/types/statistics';
 import type { DatabaseClient } from '../types/database';
-import { queryInChunks } from '../utils/db-utils';
 
 interface FindCompletedWorkNotesOptions {
   personId?: string;
@@ -73,7 +72,37 @@ export class StatisticsRepository {
     const endDateTime = `${endDate}T23:59:59.999Z`;
 
     let paramIndex = 1;
-    let query = `
+    let filterJoins = '';
+    const conditions: string[] = [];
+    const bindings: (string | number)[] = [];
+
+    bindings.push(startDateTime, endDateTime);
+    paramIndex = 3;
+
+    if (personId) {
+      filterJoins += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
+      conditions.push(`wnp.person_id = $${paramIndex++}`);
+      bindings.push(personId);
+    }
+
+    if (deptName) {
+      if (!personId) {
+        filterJoins += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
+      }
+      filterJoins += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
+      conditions.push(`p.current_dept = $${paramIndex++}`);
+      bindings.push(deptName);
+    }
+
+    if (categoryId) {
+      filterJoins += ` INNER JOIN work_note_task_category wntc ON wn.work_id = wntc.work_id`;
+      conditions.push(`wntc.category_id = $${paramIndex++}`);
+      bindings.push(categoryId);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const query = `
       WITH PeriodTodos AS (
         SELECT
           work_id,
@@ -81,114 +110,63 @@ export class StatisticsRepository {
           COUNT(*) as total_in_period,
           MAX(updated_at) as last_updated
         FROM todos
-        WHERE updated_at >= $${paramIndex++} AND updated_at <= $${paramIndex++}
+        WHERE updated_at >= $1 AND updated_at <= $2
         GROUP BY work_id
-        -- PostgreSQL does not allow SELECT alias references in HAVING; use the full expression.
         HAVING SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END) > 0
       )
       SELECT DISTINCT
-        wn.work_id as workId,
+        wn.work_id as "workId",
         wn.title,
-        wn.content_raw as contentRaw,
+        wn.content_raw as "contentRaw",
         wn.category,
-        wn.created_at as createdAt,
-        wn.updated_at as updatedAt,
-        wn.embedded_at as embeddedAt,
-        pt.completed_in_period as completedTodoCount,
-        pt.total_in_period as totalTodoCount,
-        pt.last_updated as lastUpdated
+        wn.created_at as "createdAt",
+        wn.updated_at as "updatedAt",
+        wn.embedded_at as "embeddedAt",
+        pt.completed_in_period as "completedTodoCount",
+        pt.total_in_period as "totalTodoCount",
+        pt.last_updated as "lastUpdated",
+        COALESCE(ap.data, '[]'::jsonb) as "assignedPersons",
+        COALESCE(cats.data, '[]'::jsonb) as "categories"
       FROM work_notes wn
       INNER JOIN PeriodTodos pt ON wn.work_id = pt.work_id
+      ${filterJoins}
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object(
+          'workId', wnp2.work_id, 'personId', wnp2.person_id,
+          'personName', p2.name, 'currentDept', p2.current_dept,
+          'role', wnp2.role
+        )) as data
+        FROM work_note_person wnp2
+        JOIN persons p2 ON wnp2.person_id = p2.person_id
+        WHERE wnp2.work_id = wn.work_id
+      ) ap ON true
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object(
+          'categoryId', tc.category_id,
+          'categoryName', tc.name
+        )) as data
+        FROM work_note_task_category wntc2
+        JOIN task_categories tc ON wntc2.category_id = tc.category_id
+        WHERE wntc2.work_id = wn.work_id
+      ) cats ON true
+      ${whereClause}
+      ORDER BY pt.last_updated DESC
     `;
 
-    const conditions: string[] = [];
-    const bindings: (string | number)[] = [];
-
-    // Bind date parameters for CTE
-    bindings.push(startDateTime, endDateTime);
-
-    if (personId) {
-      query += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
-      conditions.push(`wnp.person_id = $${paramIndex++}`);
-      bindings.push(personId);
-    }
-
-    if (deptName) {
-      if (!personId) {
-        query += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
+    const result = await this.db.query<
+      WorkNoteWithStats & {
+        assignedPersons: AssignedPersonDetail[] | null;
+        categories: Array<{ categoryId: string; categoryName: string }> | null;
       }
-      query += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
-      conditions.push(`p.current_dept = $${paramIndex++}`);
-      bindings.push(deptName);
-    }
+    >(query, bindings);
 
-    if (categoryId) {
-      query += ` INNER JOIN work_note_task_category wntc ON wn.work_id = wntc.work_id`;
-      conditions.push(`wntc.category_id = $${paramIndex++}`);
-      bindings.push(categoryId);
-    }
-
-    if (conditions.length > 0) {
-      query += ` WHERE ${conditions.join(' AND ')}`;
-    }
-
-    query += ` ORDER BY pt.last_updated DESC`;
-
-    const result = await this.db.query<WorkNoteWithStats>(query, bindings);
-    const workNotes = result.rows;
-
-    // PostgreSQL returns SUM/COUNT aggregates as strings (bigint); coerce to number.
-    // Safe: INNER JOIN + HAVING guarantees non-null integer values.
-    for (const workNote of workNotes) {
-      workNote.completedTodoCount = Number(workNote.completedTodoCount);
-      workNote.totalTodoCount = Number(workNote.totalTodoCount);
-    }
-
-    // Batch fetch assigned persons for all work notes
-    const workNoteIds = workNotes.map((wn) => wn.workId);
-    if (workNoteIds.length === 0) {
-      return workNotes;
-    }
-
-    const personsRows = await queryInChunks(
-      this.db,
-      workNoteIds,
-      async (db, chunk, placeholders) => {
-        const r = await db.query<AssignedPersonDetail>(
-          `SELECT
-          wnp.work_id as workId,
-          wnp.person_id as personId,
-          p.name as personName,
-          p.current_dept as currentDept,
-          wnp.role
-         FROM work_note_person wnp
-         INNER JOIN persons p ON wnp.person_id = p.person_id
-         WHERE wnp.work_id IN (${placeholders})`,
-          chunk
-        );
-        return r.rows;
-      }
-    );
-
-    // Map persons back to work notes
-    const personsByWorkId = new Map<string, AssignedPersonDetail[]>();
-    for (const person of personsRows) {
-      const persons = personsByWorkId.get(person.workId) || [];
-      persons.push({
-        workId: person.workId,
-        personId: person.personId,
-        personName: person.personName,
-        currentDept: person.currentDept,
-        role: person.role,
-      });
-      personsByWorkId.set(person.workId, persons);
-    }
-
-    for (const workNote of workNotes) {
-      workNote.assignedPersons = personsByWorkId.get(workNote.workId) || [];
-    }
-
-    return workNotes;
+    return result.rows.map((wn) => ({
+      ...wn,
+      completedTodoCount: Number(wn.completedTodoCount),
+      totalTodoCount: Number(wn.totalTodoCount),
+      assignedPersons: wn.assignedPersons || [],
+      categories: wn.categories || [],
+    }));
   }
 
   /**
@@ -201,10 +179,6 @@ export class StatisticsRepository {
   ): Promise<WorkNoteStatistics> {
     const workNotes = await this.findCompletedWorkNotes(startDate, endDate, options);
 
-    for (const workNote of workNotes) {
-      workNote.categoryName = null;
-    }
-
     const totalWorkNotes = workNotes.length;
     const totalCompletedTodos = workNotes.reduce((sum, wn) => sum + wn.completedTodoCount, 0);
     const totalTodos = workNotes.reduce((sum, wn) => sum + wn.totalTodoCount, 0);
@@ -212,51 +186,20 @@ export class StatisticsRepository {
 
     const categoryMap = new Map<string | null, number>();
     const categoryNameById = new Map<string | null, string | null>();
-    const workNoteIds = workNotes.map((wn) => wn.workId);
 
-    if (workNoteIds.length > 0) {
-      const categoriesRows = await queryInChunks(
-        this.db,
-        workNoteIds,
-        async (db, chunk, placeholders) => {
-          const r = await db.query<{
-            workId: string;
-            categoryId: string;
-            categoryName: string;
-          }>(
-            `SELECT
-            wntc.work_id as workId,
-            tc.category_id as categoryId,
-            tc.name as categoryName
-           FROM work_note_task_category wntc
-           INNER JOIN task_categories tc ON wntc.category_id = tc.category_id
-           WHERE wntc.work_id IN (${placeholders})`,
-            chunk
-          );
-          return r.rows;
-        }
-      );
+    for (const workNote of workNotes) {
+      const cats = (
+        workNote as unknown as { categories: Array<{ categoryId: string; categoryName: string }> }
+      ).categories;
+      const firstCat = cats?.[0] || null;
+      const categoryId = firstCat?.categoryId || null;
+      const categoryName = firstCat?.categoryName || null;
 
-      const categoryByWorkId = new Map<string, { categoryId: string; categoryName: string }>();
-      for (const row of categoriesRows) {
-        if (!categoryByWorkId.has(row.workId)) {
-          categoryByWorkId.set(row.workId, {
-            categoryId: row.categoryId,
-            categoryName: row.categoryName,
-          });
-        }
-        if (!categoryNameById.has(row.categoryId)) {
-          categoryNameById.set(row.categoryId, row.categoryName);
-        }
-      }
+      workNote.categoryName = categoryName;
+      categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
 
-      for (const workNote of workNotes) {
-        const categoryInfo = categoryByWorkId.get(workNote.workId);
-        const categoryId = categoryInfo?.categoryId || null;
-        const categoryName = categoryInfo?.categoryName || null;
-
-        workNote.categoryName = categoryName;
-        categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1);
+      if (firstCat && !categoryNameById.has(firstCat.categoryId)) {
+        categoryNameById.set(firstCat.categoryId, firstCat.categoryName);
       }
     }
 

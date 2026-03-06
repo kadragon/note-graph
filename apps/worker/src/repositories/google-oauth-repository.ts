@@ -24,14 +24,14 @@ export class GoogleOAuthRepository {
   async findByEmail(userEmail: string): Promise<GoogleOAuthToken | null> {
     return this.db.queryOne<GoogleOAuthToken>(
       `SELECT
-        user_email as userEmail,
-        access_token as accessToken,
-        refresh_token as refreshToken,
-        token_type as tokenType,
-        expires_at as expiresAt,
+        user_email as "userEmail",
+        access_token as "accessToken",
+        refresh_token as "refreshToken",
+        token_type as "tokenType",
+        expires_at as "expiresAt",
         scope,
-        created_at as createdAt,
-        updated_at as updatedAt
+        created_at as "createdAt",
+        updated_at as "updatedAt"
        FROM google_oauth_tokens
        WHERE user_email = $1`,
       [userEmail]
