@@ -82,7 +82,7 @@ export default function MeetingMinuteDetail() {
 
         <div className="grid gap-1">
           <p className="text-sm font-medium">회의일</p>
-          <p className="text-sm">{meeting.meetingDate}</p>
+          <p className="text-sm">{meeting.meetingDate.slice(0, 10)}</p>
         </div>
 
         <div className="grid gap-1">

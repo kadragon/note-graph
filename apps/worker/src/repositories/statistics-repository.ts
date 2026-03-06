@@ -94,7 +94,8 @@ export class StatisticsRepository {
         wn.updated_at as updatedAt,
         wn.embedded_at as embeddedAt,
         pt.completed_in_period as completedTodoCount,
-        pt.total_in_period as totalTodoCount
+        pt.total_in_period as totalTodoCount,
+        pt.last_updated as lastUpdated
       FROM work_notes wn
       INNER JOIN PeriodTodos pt ON wn.work_id = pt.work_id
     `;

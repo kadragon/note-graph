@@ -30,7 +30,7 @@ export function MeetingMinutesTable({ items, onView, onEdit }: MeetingMinutesTab
       <TableBody>
         {items.map((item) => (
           <TableRow key={item.meetingId}>
-            <TableCell>{item.meetingDate}</TableCell>
+            <TableCell>{item.meetingDate.slice(0, 10)}</TableCell>
             <TableCell>{item.topic}</TableCell>
             <TableCell className="text-right">
               <div className="flex items-center justify-end gap-1">
