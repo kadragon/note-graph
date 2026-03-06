@@ -21,7 +21,7 @@ import type {
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI, TodoDueDateCount } from '../types/todo-due-date-context';
-import { queryInChunks } from '../utils/db-utils';
+import { pgPlaceholders, queryInChunks } from '../utils/db-utils';
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -128,7 +128,7 @@ export class TodoRepository {
               custom_interval as customInterval, custom_unit as customUnit,
               skip_weekends as skipWeekends
        FROM todos
-       WHERE todo_id = ?`,
+       WHERE todo_id = $1`,
       [todoId]
     );
 
@@ -147,7 +147,7 @@ export class TodoRepository {
               custom_interval as customInterval, custom_unit as customUnit,
               skip_weekends as skipWeekends
        FROM todos
-       WHERE work_id = ?
+       WHERE work_id = $1
        ORDER BY created_at DESC`,
       [workId]
     );
@@ -216,12 +216,14 @@ export class TodoRepository {
 
     const conditions: string[] = [];
     const params: (string | number)[] = [];
+    let paramIndex = 1;
 
     const workIds = query.workIds ?? [];
     if (workIds.length > 0) {
-      const placeholders = workIds.map(() => '?').join(', ');
+      const placeholders = pgPlaceholders(workIds.length, paramIndex);
       conditions.push(`t.work_id IN (${placeholders})`);
       params.push(...workIds);
+      paramIndex += workIds.length;
     }
 
     switch (query.view) {
@@ -231,10 +233,10 @@ export class TodoRepository {
         const endExclusiveUTC = this.getPeriodEndExclusiveUTC(query.view);
 
         conditions.push(
-          `t.status = ?`,
+          `t.status = $${paramIndex++}`,
           `t.due_date IS NOT NULL`,
-          `t.due_date < ?`,
-          `(t.wait_until IS NULL OR t.wait_until < ?)`
+          `t.due_date < $${paramIndex++}`,
+          `(t.wait_until IS NULL OR t.wait_until < $${paramIndex++})`
         );
         params.push('진행중', endExclusiveUTC, endExclusiveUTC);
         break;
@@ -242,23 +244,26 @@ export class TodoRepository {
 
       case 'backlog': {
         conditions.push(
-          `t.status = ?`,
+          `t.status = $${paramIndex++}`,
           `t.due_date IS NOT NULL`,
-          `t.due_date < ?`,
-          `(t.wait_until IS NULL OR t.wait_until < ?)`
+          `t.due_date < $${paramIndex++}`,
+          `(t.wait_until IS NULL OR t.wait_until < $${paramIndex++})`
         );
         params.push('진행중', startOfTodayUTC, startOfTomorrowUTC);
         break;
       }
 
       case 'remaining': {
-        conditions.push(`t.status = ?`, `(t.wait_until IS NULL OR t.wait_until < ?)`);
+        conditions.push(
+          `t.status = $${paramIndex++}`,
+          `(t.wait_until IS NULL OR t.wait_until < $${paramIndex++})`
+        );
         params.push('진행중', startOfTomorrowUTC);
         break;
       }
 
       case 'completed': {
-        conditions.push(`t.status = ?`);
+        conditions.push(`t.status = $${paramIndex++}`);
         params.push('완료');
         break;
       }
@@ -272,7 +277,7 @@ export class TodoRepository {
     }
 
     if (query.status) {
-      conditions.push(`t.status = ?`);
+      conditions.push(`t.status = $${paramIndex++}`);
       params.push(query.status);
     }
 
@@ -298,18 +303,18 @@ export class TodoRepository {
         `SELECT COUNT(*) as totalOpenTodos,
                 SUM(CASE WHEN due_date IS NULL THEN 1 ELSE 0 END) as undatedOpenTodos
          FROM todos
-         WHERE status IN (?, ?, ?)`,
+         WHERE status IN ($1, $2, $3)`,
         [...openStatuses]
       ),
       this.db.query<{ dueDate: string; count: number }>(
         `SELECT date(due_date) as dueDate,
                 COUNT(*) as count
          FROM todos
-         WHERE status IN (?, ?, ?)
+         WHERE status IN ($1, $2, $3)
            AND date(due_date) IS NOT NULL
          GROUP BY date(due_date)
          ORDER BY count DESC, dueDate ASC
-         LIMIT ?`,
+         LIMIT $4`,
         [...openStatuses, normalizedLimit]
       ),
     ]);
@@ -338,7 +343,7 @@ export class TodoRepository {
 
     await this.db.execute(
       `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
         todoId,
         workId,
@@ -353,7 +358,7 @@ export class TodoRepository {
         data.recurrenceType || null,
         data.customInterval || null,
         data.customUnit || null,
-        data.skipWeekends ? 1 : 0,
+        data.skipWeekends || false,
       ]
     );
 
@@ -384,7 +389,7 @@ export class TodoRepository {
       throw new NotFoundError('Todo', todoId);
     }
 
-    await this.db.execute(`DELETE FROM todos WHERE todo_id = ?`, [todoId]);
+    await this.db.execute(`DELETE FROM todos WHERE todo_id = $1`, [todoId]);
 
     return existing.workId;
   }
@@ -406,18 +411,19 @@ export class TodoRepository {
 
     // Build update fields
     const updateFields: string[] = [];
-    const updateParams: (string | number | null)[] = [];
+    const updateParams: (string | number | boolean | null)[] = [];
+    let paramIndex = 1;
 
     if (data.title !== undefined) {
-      updateFields.push('title = ?');
+      updateFields.push(`title = $${paramIndex++}`);
       updateParams.push(data.title);
     }
     if (data.description !== undefined) {
-      updateFields.push('description = ?');
+      updateFields.push(`description = $${paramIndex++}`);
       updateParams.push(data.description || null);
     }
     if (data.status !== undefined) {
-      updateFields.push('status = ?');
+      updateFields.push(`status = $${paramIndex++}`);
       updateParams.push(data.status);
     }
     const nextWaitUntil =
@@ -435,44 +441,44 @@ export class TodoRepository {
       (!existing.dueDate || this.isEarlierDateValue(existing.dueDate, nextWaitUntil));
 
     if (data.dueDate !== undefined) {
-      updateFields.push('due_date = ?');
+      updateFields.push(`due_date = $${paramIndex++}`);
       updateParams.push(shouldClampDueDateToWaitUntil ? nextWaitUntil : nextDueDate);
     } else if (shouldAutoFillDueDate) {
-      updateFields.push('due_date = ?');
+      updateFields.push(`due_date = $${paramIndex++}`);
       updateParams.push(nextWaitUntil);
     }
 
     if (data.waitUntil !== undefined) {
-      updateFields.push('wait_until = ?');
+      updateFields.push(`wait_until = $${paramIndex++}`);
       updateParams.push(nextWaitUntil);
     }
     if (data.repeatRule !== undefined) {
-      updateFields.push('repeat_rule = ?');
+      updateFields.push(`repeat_rule = $${paramIndex++}`);
       updateParams.push(data.repeatRule);
     }
     if (data.recurrenceType !== undefined) {
-      updateFields.push('recurrence_type = ?');
+      updateFields.push(`recurrence_type = $${paramIndex++}`);
       updateParams.push(data.recurrenceType || null);
     }
     if (data.customInterval !== undefined) {
-      updateFields.push('custom_interval = ?');
+      updateFields.push(`custom_interval = $${paramIndex++}`);
       updateParams.push(data.customInterval || null);
     }
     if (data.customUnit !== undefined) {
-      updateFields.push('custom_unit = ?');
+      updateFields.push(`custom_unit = $${paramIndex++}`);
       updateParams.push(data.customUnit || null);
     }
     if (data.skipWeekends !== undefined) {
-      updateFields.push('skip_weekends = ?');
-      updateParams.push(data.skipWeekends ? 1 : 0);
+      updateFields.push(`skip_weekends = $${paramIndex++}`);
+      updateParams.push(data.skipWeekends);
     }
 
     if (updateFields.length > 0) {
-      updateFields.push('updated_at = ?');
+      updateFields.push(`updated_at = $${paramIndex++}`);
       updateParams.push(nowISO);
       updateParams.push(todoId);
       statements.push({
-        sql: `UPDATE todos SET ${updateFields.join(', ')} WHERE todo_id = ?`,
+        sql: `UPDATE todos SET ${updateFields.join(', ')} WHERE todo_id = $${paramIndex}`,
         params: updateParams,
       });
     }
@@ -495,7 +501,7 @@ export class TodoRepository {
 
         statements.push({
           sql: `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
           params: [
             newTodoId,
             existing.workId,
@@ -510,7 +516,7 @@ export class TodoRepository {
             existing.recurrenceType,
             existing.customInterval,
             existing.customUnit,
-            existing.skipWeekends ? 1 : 0,
+            existing.skipWeekends,
           ],
         });
       }
@@ -595,7 +601,7 @@ export class TodoRepository {
     const statements = withDueDate.map((todo) => {
       const newDueDate = addFn(new Date(todo.dueDate as string), amount).toISOString();
       return {
-        sql: `UPDATE todos SET due_date = ?, updated_at = ? WHERE todo_id = ?`,
+        sql: `UPDATE todos SET due_date = $1, updated_at = $2 WHERE todo_id = $3`,
         params: [newDueDate, nowISO, todo.todoId],
       };
     });

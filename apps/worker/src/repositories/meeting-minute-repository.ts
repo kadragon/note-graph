@@ -66,7 +66,7 @@ export class MeetingMinuteRepository {
       {
         sql: `INSERT INTO meeting_minutes (
                meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         params: [
           meetingId,
           data.meetingDate,
@@ -82,7 +82,7 @@ export class MeetingMinuteRepository {
 
     for (const personId of data.attendeePersonIds) {
       statements.push({
-        sql: `INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)`,
+        sql: `INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)`,
         params: [meetingId, personId],
       });
     }
@@ -90,7 +90,7 @@ export class MeetingMinuteRepository {
     if (data.categoryIds && data.categoryIds.length > 0) {
       for (const categoryId of data.categoryIds) {
         statements.push({
-          sql: `INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)`,
+          sql: `INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)`,
           params: [meetingId, categoryId],
         });
       }
@@ -99,7 +99,7 @@ export class MeetingMinuteRepository {
     if (data.groupIds && data.groupIds.length > 0) {
       for (const groupId of data.groupIds) {
         statements.push({
-          sql: `INSERT INTO meeting_minute_group (meeting_id, group_id) VALUES (?, ?)`,
+          sql: `INSERT INTO meeting_minute_group (meeting_id, group_id) VALUES ($1, $2)`,
           params: [meetingId, groupId],
         });
       }
@@ -136,7 +136,7 @@ export class MeetingMinuteRepository {
       `SELECT meeting_id as meetingId, meeting_date as meetingDate, topic, details_raw as detailsRaw,
               keywords_json as keywordsJson, created_at as createdAt, updated_at as updatedAt
        FROM meeting_minutes
-       WHERE meeting_id = ?`,
+       WHERE meeting_id = $1`,
       [meetingId]
     );
 
@@ -149,46 +149,51 @@ export class MeetingMinuteRepository {
     const nextKeywordsJson = JSON.stringify(nextKeywords);
     const nextKeywordsText = nextKeywords.join(' ');
 
-    const fields: string[] = ['updated_at = ?'];
-    const params: (string | null)[] = [now];
+    const fields: string[] = [];
+    const params: (string | null)[] = [];
+    let paramIndex = 1;
+
+    fields.push(`updated_at = $${paramIndex++}`);
+    params.push(now);
 
     if (data.meetingDate !== undefined) {
-      fields.push('meeting_date = ?');
+      fields.push(`meeting_date = $${paramIndex++}`);
       params.push(data.meetingDate);
     }
     if (data.topic !== undefined) {
-      fields.push('topic = ?');
+      fields.push(`topic = $${paramIndex++}`);
       params.push(data.topic);
     }
     if (data.detailsRaw !== undefined) {
-      fields.push('details_raw = ?');
+      fields.push(`details_raw = $${paramIndex++}`);
       params.push(data.detailsRaw);
     }
     if (data.keywords !== undefined) {
-      fields.push('keywords_json = ?');
+      fields.push(`keywords_json = $${paramIndex++}`);
       params.push(nextKeywordsJson);
-      fields.push('keywords_text = ?');
+      fields.push(`keywords_text = $${paramIndex++}`);
       params.push(nextKeywordsText);
     }
 
+    params.push(meetingId);
     await this.db.execute(
       `UPDATE meeting_minutes
        SET ${fields.join(', ')}
-       WHERE meeting_id = ?`,
-      [...params, meetingId]
+       WHERE meeting_id = $${paramIndex}`,
+      params
     );
 
     const statements: Array<{ sql: string; params?: unknown[] }> = [];
 
     if (data.attendeePersonIds !== undefined) {
       statements.push({
-        sql: `DELETE FROM meeting_minute_person WHERE meeting_id = ?`,
+        sql: `DELETE FROM meeting_minute_person WHERE meeting_id = $1`,
         params: [meetingId],
       });
 
       for (const personId of data.attendeePersonIds) {
         statements.push({
-          sql: `INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)`,
+          sql: `INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)`,
           params: [meetingId, personId],
         });
       }
@@ -196,13 +201,13 @@ export class MeetingMinuteRepository {
 
     if (data.categoryIds !== undefined) {
       statements.push({
-        sql: `DELETE FROM meeting_minute_task_category WHERE meeting_id = ?`,
+        sql: `DELETE FROM meeting_minute_task_category WHERE meeting_id = $1`,
         params: [meetingId],
       });
 
       for (const categoryId of data.categoryIds) {
         statements.push({
-          sql: `INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)`,
+          sql: `INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)`,
           params: [meetingId, categoryId],
         });
       }
@@ -210,13 +215,13 @@ export class MeetingMinuteRepository {
 
     if (data.groupIds !== undefined) {
       statements.push({
-        sql: `DELETE FROM meeting_minute_group WHERE meeting_id = ?`,
+        sql: `DELETE FROM meeting_minute_group WHERE meeting_id = $1`,
         params: [meetingId],
       });
 
       for (const groupId of data.groupIds) {
         statements.push({
-          sql: `INSERT INTO meeting_minute_group (meeting_id, group_id) VALUES (?, ?)`,
+          sql: `INSERT INTO meeting_minute_group (meeting_id, group_id) VALUES ($1, $2)`,
           params: [meetingId, groupId],
         });
       }
@@ -246,6 +251,7 @@ export class MeetingMinuteRepository {
     const joins: string[] = [];
     const conditions: string[] = [];
     const params: (string | number)[] = [];
+    let paramIndex = 1;
 
     if (query.q && query.q.trim().length > 0) {
       const ftsQuery = this.dialect.isTsQuerySyntax()
@@ -259,6 +265,7 @@ export class MeetingMinuteRepository {
       withClause = cte.sql;
       joins.push(`INNER JOIN fts_matches fts ON ${cte.joinCondition}`);
       params.push(ftsQuery);
+      paramIndex++;
     }
 
     if (query.categoryId) {
@@ -266,7 +273,7 @@ export class MeetingMinuteRepository {
         `INNER JOIN meeting_minute_task_category mmtc
           ON mm.meeting_id = mmtc.meeting_id`
       );
-      conditions.push('mmtc.category_id = ?');
+      conditions.push(`mmtc.category_id = $${paramIndex++}`);
       params.push(query.categoryId);
     }
 
@@ -275,7 +282,7 @@ export class MeetingMinuteRepository {
         `INNER JOIN meeting_minute_group mmg
           ON mm.meeting_id = mmg.meeting_id`
       );
-      conditions.push('mmg.group_id = ?');
+      conditions.push(`mmg.group_id = $${paramIndex++}`);
       params.push(query.groupId);
     }
 
@@ -284,17 +291,17 @@ export class MeetingMinuteRepository {
         `INNER JOIN meeting_minute_person mmp
           ON mm.meeting_id = mmp.meeting_id`
       );
-      conditions.push('mmp.person_id = ?');
+      conditions.push(`mmp.person_id = $${paramIndex++}`);
       params.push(query.attendeePersonId);
     }
 
     if (query.meetingDateFrom) {
-      conditions.push('mm.meeting_date >= ?');
+      conditions.push(`mm.meeting_date >= $${paramIndex++}`);
       params.push(query.meetingDateFrom);
     }
 
     if (query.meetingDateTo) {
-      conditions.push('mm.meeting_date <= ?');
+      conditions.push(`mm.meeting_date <= $${paramIndex++}`);
       params.push(query.meetingDateTo);
     }
 
@@ -324,7 +331,7 @@ export class MeetingMinuteRepository {
     sql += joinClause;
     sql += whereClause;
     sql += ` ORDER BY mm.meeting_date DESC, mm.updated_at DESC, mm.meeting_id DESC`;
-    sql += ` LIMIT ? OFFSET ?`;
+    sql += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
 
     const result = await this.db.query<{
       meetingId: string;
@@ -365,7 +372,7 @@ export class MeetingMinuteRepository {
 
   async delete(meetingId: string): Promise<void> {
     const existing = await this.db.queryOne<{ meeting_id: string }>(
-      'SELECT meeting_id FROM meeting_minutes WHERE meeting_id = ?',
+      'SELECT meeting_id FROM meeting_minutes WHERE meeting_id = $1',
       [meetingId]
     );
 
@@ -373,6 +380,6 @@ export class MeetingMinuteRepository {
       throw new NotFoundError('Meeting minute', meetingId);
     }
 
-    await this.db.execute('DELETE FROM meeting_minutes WHERE meeting_id = ?', [meetingId]);
+    await this.db.execute('DELETE FROM meeting_minutes WHERE meeting_id = $1', [meetingId]);
   }
 }

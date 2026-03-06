@@ -18,7 +18,7 @@ export class DepartmentRepository {
     return this.db.queryOne<Department>(
       `SELECT dept_name as deptName, description, is_active as isActive, created_at as createdAt
        FROM departments
-       WHERE dept_name = ?`,
+       WHERE dept_name = $1`,
       [deptName]
     );
   }
@@ -30,13 +30,14 @@ export class DepartmentRepository {
     let sql = `SELECT dept_name as deptName, description, is_active as isActive, created_at as createdAt
                FROM departments`;
     const params: (string | number)[] = [];
+    let paramIndex = 1;
 
     if (searchQuery) {
-      sql += ` WHERE dept_name LIKE ?`;
+      sql += ` WHERE dept_name LIKE $${paramIndex++}`;
       params.push(`%${searchQuery}%`);
     }
 
-    sql += ` ORDER BY is_active DESC, dept_name ASC LIMIT ?`;
+    sql += ` ORDER BY is_active DESC, dept_name ASC LIMIT $${paramIndex++}`;
     params.push(limit);
 
     const result = await this.db.query<Department>(sql, params);
@@ -57,7 +58,7 @@ export class DepartmentRepository {
 
     await this.db.execute(
       `INSERT INTO departments (dept_name, description, is_active, created_at)
-       VALUES (?, ?, 1, ?)`,
+       VALUES ($1, $2, true, $3)`,
       [data.deptName, data.description || null, now]
     );
 
@@ -81,16 +82,17 @@ export class DepartmentRepository {
 
     // Build update query dynamically based on provided fields
     const updates: string[] = [];
-    const params: (string | number | null)[] = [];
+    const params: (string | number | boolean | null)[] = [];
+    let paramIndex = 1;
 
     if (data.description !== undefined) {
-      updates.push('description = ?');
+      updates.push(`description = $${paramIndex++}`);
       params.push(data.description || null);
     }
 
     if (data.isActive !== undefined) {
-      updates.push('is_active = ?');
-      params.push(data.isActive ? 1 : 0);
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(data.isActive);
     }
 
     // Only run update if there are fields to update
@@ -99,7 +101,7 @@ export class DepartmentRepository {
       await this.db.execute(
         `UPDATE departments
          SET ${updates.join(', ')}
-         WHERE dept_name = ?`,
+         WHERE dept_name = $${paramIndex}`,
         params
       );
     }
@@ -132,7 +134,7 @@ export class DepartmentRepository {
         pdh.is_active as isActive
       FROM person_dept_history pdh
       INNER JOIN persons p ON pdh.person_id = p.person_id
-      WHERE pdh.dept_name = ?
+      WHERE pdh.dept_name = $1
     `;
 
     if (onlyActive) {
@@ -168,7 +170,7 @@ export class DepartmentRepository {
        INNER JOIN person_dept_history pdh ON wnp.person_id = pdh.person_id
        LEFT JOIN work_note_person owner ON wn.work_id = owner.work_id AND owner.role = 'OWNER'
        LEFT JOIN persons owner_person ON owner.person_id = owner_person.person_id
-       WHERE pdh.dept_name = ?
+       WHERE pdh.dept_name = $1
        ORDER BY wn.created_at DESC`,
       [deptName]
     );

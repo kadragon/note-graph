@@ -46,7 +46,7 @@ export class SettingRepository {
     const params: string[] = [];
 
     if (category) {
-      sql += ` WHERE category = ?`;
+      sql += ` WHERE category = $1`;
       params.push(category);
     }
 
@@ -61,7 +61,7 @@ export class SettingRepository {
     const result = await this.db.queryOne<AppSettingRow>(
       `SELECT key, value, category, label, description,
        default_value as defaultValue, updated_at as updatedAt
-       FROM app_settings WHERE key = ?`,
+       FROM app_settings WHERE key = $1`,
       [key]
     );
 
@@ -74,7 +74,7 @@ export class SettingRepository {
       throw new NotFoundError('AppSetting', key);
     }
 
-    await this.db.execute(`UPDATE app_settings SET value = ?, updated_at = ? WHERE key = ?`, [
+    await this.db.execute(`UPDATE app_settings SET value = $1, updated_at = $2 WHERE key = $3`, [
       value,
       new Date().toISOString(),
       key,
@@ -91,7 +91,7 @@ export class SettingRepository {
     }
 
     await this.db.execute(
-      `UPDATE app_settings SET value = default_value, updated_at = ? WHERE key = ?`,
+      `UPDATE app_settings SET value = default_value, updated_at = $1 WHERE key = $2`,
       [new Date().toISOString(), key]
     );
 
@@ -105,7 +105,7 @@ export class SettingRepository {
     await this.db.executeBatch(
       defaults.map((d) => ({
         sql: `INSERT INTO app_settings (key, value, category, label, description, default_value)
-              VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`,
         params: [d.key, d.value, d.category, d.label, d.description, d.value],
       }))
     );
