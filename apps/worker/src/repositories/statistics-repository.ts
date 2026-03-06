@@ -136,6 +136,11 @@ export class StatisticsRepository {
     const result = await this.db.query<WorkNoteWithStats>(query, bindings);
     const workNotes = result.rows;
 
+    for (const workNote of workNotes) {
+      workNote.completedTodoCount = Number(workNote.completedTodoCount);
+      workNote.totalTodoCount = Number(workNote.totalTodoCount);
+    }
+
     // Batch fetch assigned persons for all work notes
     const workNoteIds = workNotes.map((wn) => wn.workId);
     if (workNoteIds.length === 0) {
