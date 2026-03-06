@@ -279,5 +279,26 @@ describe('TodoRepository - Recurrence Logic', () => {
       expect(newTodo?.repeatRule).toBe('WEEKLY');
       expect(newTodo?.recurrenceType).toBe('COMPLETION_DATE');
     });
+
+    it('should include recurring instance in today view when next due date is today', async () => {
+      const dueDate = new Date(BASE_NOW.getTime());
+      dueDate.setDate(dueDate.getDate() - 1);
+
+      const input: CreateTodoInput = {
+        title: 'Daily Task Due Today',
+        dueDate: dueDate.toISOString(),
+        repeatRule: 'DAILY',
+        recurrenceType: 'DUE_DATE',
+      };
+
+      const created = await repository.create(testWorkId, input);
+
+      await repository.update(created.todoId, { status: '완료' });
+
+      const todayTodos = await repository.findAll({ view: 'today' });
+
+      expect(todayTodos.some((todo) => todo.title === 'Daily Task Due Today')).toBe(true);
+      expect(todayTodos.some((todo) => todo.todoId === created.todoId)).toBe(false);
+    });
   });
 });
