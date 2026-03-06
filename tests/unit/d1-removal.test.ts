@@ -6,12 +6,21 @@ function repoRoot(): string {
   return process.cwd();
 }
 
-function rg(...args: string[]): string {
+function grepR(pattern: string, ...paths: string[]): string {
   try {
-    return execFileSync('rg', args, {
-      cwd: repoRoot(),
-      encoding: 'utf8',
-    });
+    return execFileSync(
+      'grep',
+      [
+        '-rnE',
+        '--include=*.ts',
+        '--include=*.json',
+        '--include=*.toml',
+        '--include=*.md',
+        pattern,
+        ...paths,
+      ],
+      { cwd: repoRoot(), encoding: 'utf8' }
+    );
   } catch (error) {
     const failed = error as { status?: number; stdout?: string };
     if (failed.status === 1) {
@@ -21,19 +30,24 @@ function rg(...args: string[]): string {
   }
 }
 
+function filterLines(output: string, excludePattern: RegExp): string {
+  return output
+    .split('\n')
+    .filter((line) => line && !excludePattern.test(line))
+    .join('\n');
+}
+
+const SELF_EXCLUDE = /tests\/unit\/d1-removal\.test\.ts|\/dist\//;
+
 describe('D1 removal cleanup', () => {
   it('removes D1-only adapters and legacy test setup references', () => {
-    const references = rg(
-      '-n',
+    const raw = grepR(
       'd1-database-client|d1-fts-dialect|tests/setup\\.ts|tests/test-setup\\.ts|D1DatabaseClient|D1FtsDialect',
       'apps',
       'tests',
-      'scripts',
-      '-g',
-      '!**/dist/**',
-      '-g',
-      '!tests/unit/d1-removal.test.ts'
-    ).trim();
+      'scripts'
+    );
+    const references = filterLines(raw, SELF_EXCLUDE).trim();
 
     expect(references).toBe('');
     expect(existsSync('apps/worker/src/adapters/d1-database-client.ts')).toBe(false);
@@ -43,19 +57,15 @@ describe('D1 removal cleanup', () => {
   });
 
   it('removes D1-specific scripts and runtime configuration', () => {
-    const references = rg(
-      '-n',
+    const raw = grepR(
       '\\[\\[d1_databases\\]\\]|wrangler d1 migrations|D1Database|d1Databases|getD1Database|d1Persist|createD1Connection|export-d1-for-supabase|migrate-d1-to-supabase|export-d1-chunked',
       'apps',
       'tests',
       'scripts',
       'package.json',
-      'wrangler.toml',
-      '-g',
-      '!**/dist/**',
-      '-g',
-      '!tests/unit/d1-removal.test.ts'
-    ).trim();
+      'wrangler.toml'
+    );
+    const references = filterLines(raw, SELF_EXCLUDE).trim();
 
     expect(references).toBe('');
     expect(existsSync('scripts/export-d1-for-supabase.ts')).toBe(false);
@@ -64,16 +74,14 @@ describe('D1 removal cleanup', () => {
   });
 
   it('removes stale D1 and Miniflare documentation from repo docs', () => {
-    const references = rg(
-      '-n',
+    const raw = grepR(
       '\\bD1\\b|wrangler d1|miniflare|Miniflare|SQLite|sqlite_master|d1_databases',
       'README.md',
       'tests/README.md',
       'migrations/README.md',
-      'TEST_STRUCTURE.md',
-      '-g',
-      '!tests/unit/d1-removal.test.ts'
-    ).trim();
+      'TEST_STRUCTURE.md'
+    );
+    const references = filterLines(raw, SELF_EXCLUDE).trim();
 
     expect(references).toBe('');
   });
