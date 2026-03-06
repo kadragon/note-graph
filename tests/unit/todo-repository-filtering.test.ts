@@ -282,6 +282,106 @@ describe('TodoRepository - Filtering and Views', () => {
       expect(result.some((t) => t.todoId === 'TODO-NEAR-FUTURE')).toBe(true);
     });
 
+    it('should exclude todo from today view when due date is after today even if wait_until is today', async () => {
+      const now = new Date(BASE_NOW.getTime());
+      const nextWeek = new Date(now);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(
+          'TODO-TODAY-WAIT-FUTURE-DUE',
+          testWorkId,
+          'Today Wait Future Due',
+          now.toISOString(),
+          nextWeek.toISOString(),
+          now.toISOString(),
+          '진행중',
+          'NONE'
+        )
+        .run();
+
+      const result = await repository.findAll({ view: 'today' });
+
+      expect(result.some((t) => t.todoId === 'TODO-TODAY-WAIT-FUTURE-DUE')).toBe(false);
+    });
+
+    it('should include todo in remaining view when wait_until is today and due date is in the future', async () => {
+      const now = new Date(BASE_NOW.getTime());
+      const nextWeek = new Date(now);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(
+          'TODO-REMAINING-WAIT-TODAY',
+          testWorkId,
+          'Remaining Wait Today',
+          now.toISOString(),
+          nextWeek.toISOString(),
+          now.toISOString(),
+          '진행중',
+          'NONE'
+        )
+        .run();
+
+      const result = await repository.findAll({ view: 'remaining' });
+
+      expect(result.some((t) => t.todoId === 'TODO-REMAINING-WAIT-TODAY')).toBe(true);
+    });
+
+    it('should exclude todo from week view when due date is after this week even if wait_until is today', async () => {
+      const now = new Date(BASE_NOW.getTime());
+      const nextWeek = new Date(now);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(
+          'TODO-WEEK-WAIT-TODAY',
+          testWorkId,
+          'Week Wait Today',
+          now.toISOString(),
+          nextWeek.toISOString(),
+          now.toISOString(),
+          '진행중',
+          'NONE'
+        )
+        .run();
+
+      const result = await repository.findAll({ view: 'week' });
+
+      expect(result.some((t) => t.todoId === 'TODO-WEEK-WAIT-TODAY')).toBe(false);
+    });
+
+    it('should exclude todo from month view when due date is next month even if wait_until is today', async () => {
+      const now = new Date(BASE_NOW.getTime());
+      const nextMonth = new Date(now);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(
+          'TODO-MONTH-WAIT-TODAY',
+          testWorkId,
+          'Month Wait Today',
+          now.toISOString(),
+          nextMonth.toISOString(),
+          now.toISOString(),
+          '진행중',
+          'NONE'
+        )
+        .run();
+
+      const result = await repository.findAll({ view: 'month' });
+
+      expect(result.some((t) => t.todoId === 'TODO-MONTH-WAIT-TODAY')).toBe(false);
+    });
+
     it('should include wait_until date when KST date has advanced ahead of UTC', async () => {
       const earlyKstNow = new REAL_DATE('2025-01-09T23:00:00.000Z'); // 2025-01-10 08:00 KST
       useFixedDate(earlyKstNow);
@@ -304,6 +404,77 @@ describe('TodoRepository - Filtering and Views', () => {
       const result = await repository.findAll({ view: 'remaining' });
 
       expect(result.some((t) => t.todoId === 'TODO-WAIT-TODAY')).toBe(true);
+    });
+
+    it('should exclude wait_until-only todo from today view', async () => {
+      const now = new Date(BASE_NOW.getTime());
+
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(
+          'TODO-WAIT-ONLY-TODAY',
+          testWorkId,
+          'Wait Only Today',
+          now.toISOString(),
+          null,
+          now.toISOString(),
+          '진행중',
+          'NONE'
+        )
+        .run();
+
+      const result = await repository.findAll({ view: 'today' });
+
+      expect(result.some((t) => t.todoId === 'TODO-WAIT-ONLY-TODAY')).toBe(false);
+    });
+
+    it('should exclude wait_until-only todo from week and month views', async () => {
+      const now = new Date(BASE_NOW.getTime());
+
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(
+          'TODO-WAIT-ONLY-PERIOD',
+          testWorkId,
+          'Wait Only Period',
+          now.toISOString(),
+          null,
+          now.toISOString(),
+          '진행중',
+          'NONE'
+        )
+        .run();
+
+      const weekResult = await repository.findAll({ view: 'week' });
+      const monthResult = await repository.findAll({ view: 'month' });
+
+      expect(weekResult.some((t) => t.todoId === 'TODO-WAIT-ONLY-PERIOD')).toBe(false);
+      expect(monthResult.some((t) => t.todoId === 'TODO-WAIT-ONLY-PERIOD')).toBe(false);
+    });
+
+    it('should include wait_until-only todo in remaining view once wait_until is today', async () => {
+      const now = new Date(BASE_NOW.getTime());
+
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(
+          'TODO-WAIT-ONLY-REMAINING',
+          testWorkId,
+          'Wait Only Remaining',
+          now.toISOString(),
+          null,
+          now.toISOString(),
+          '진행중',
+          'NONE'
+        )
+        .run();
+
+      const result = await repository.findAll({ view: 'remaining' });
+
+      expect(result.some((t) => t.todoId === 'TODO-WAIT-ONLY-REMAINING')).toBe(true);
     });
 
     it('should exclude 보류 and 중단 status todos from today view', async () => {

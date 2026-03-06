@@ -232,8 +232,8 @@ export class TodoRepository {
 
         conditions.push(
           `t.status = ?`,
-          `COALESCE(t.due_date, t.wait_until) IS NOT NULL`,
-          `COALESCE(t.due_date, t.wait_until) < ?`,
+          `t.due_date IS NOT NULL`,
+          `t.due_date < ?`,
           `(t.wait_until IS NULL OR t.wait_until < ?)`
         );
         params.push('진행중', endExclusiveUTC, endExclusiveUTC);
