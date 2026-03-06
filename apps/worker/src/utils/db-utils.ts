@@ -5,13 +5,20 @@
 import type { DatabaseClient } from '../types/database';
 
 /**
- * SQLite has a limit of 999 binding variables per query.
- * Use 900 to leave room for additional query parameters.
+ * PostgreSQL supports up to 32,767 binding variables per query.
+ * Use 32,000 to leave room for additional query parameters.
  */
-export const SQL_VAR_LIMIT = 900;
+export const SQL_VAR_LIMIT = 32000;
 
 /**
- * Execute a query function in chunks to avoid SQLite's 999 variable limit.
+ * Generate PostgreSQL-style numbered placeholders: $1, $2, ..., $N
+ */
+export function pgPlaceholders(count: number, startIndex: number = 1): string {
+  return Array.from({ length: count }, (_, i) => `$${startIndex + i}`).join(', ');
+}
+
+/**
+ * Execute a query function in chunks to avoid PostgreSQL's variable limit.
  * Collects results from all chunks into a single array.
  *
  * @param db - Database client instance
@@ -29,7 +36,7 @@ export async function queryInChunks<T, R>(
   const results: R[] = [];
   for (let i = 0; i < items.length; i += SQL_VAR_LIMIT) {
     const chunk = items.slice(i, i + SQL_VAR_LIMIT);
-    const placeholders = chunk.map(() => '?').join(',');
+    const placeholders = pgPlaceholders(chunk.length);
     results.push(...(await queryFn(db, chunk, placeholders)));
   }
   return results;

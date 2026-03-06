@@ -1,37 +1,25 @@
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
-import { D1FtsDialect } from '@worker/adapters/d1-fts-dialect';
+import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { MeetingMinuteReferenceService } from '@worker/services/meeting-minute-reference-service';
-import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('MeetingMinuteReferenceService', () => {
   let service: MeetingMinuteReferenceService;
 
   beforeEach(async () => {
-    service = new MeetingMinuteReferenceService(
-      new D1DatabaseClient(testEnv.DB),
-      new D1FtsDialect()
-    );
+    service = new MeetingMinuteReferenceService(testPgDb, new PostgresFtsDialect());
 
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM work_note_meeting_minute'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_task_category'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_group'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_person'),
-      testEnv.DB.prepare('DELETE FROM meeting_minutes'),
-    ]);
+    await pglite.query(
+      'TRUNCATE work_note_meeting_minute, meeting_minute_task_category, meeting_minute_group, meeting_minute_person, meeting_minutes CASCADE'
+    );
   });
 
   it('returns scored references ordered by relevance', async () => {
-    await testEnv.DB.batch([
-      testEnv.DB.prepare(
-        `INSERT INTO meeting_minutes (
+    await pglite.query(
+      `INSERT INTO meeting_minutes (
           meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'MEET-REF-1',
         '2026-02-15',
         'Q2 Roadmap Budget Sync',
@@ -39,13 +27,14 @@ describe('MeetingMinuteReferenceService', () => {
         JSON.stringify(['roadmap', 'budget']),
         'roadmap budget',
         '2026-02-15T09:00:00.000Z',
-        '2026-02-15T09:00:00.000Z'
-      ),
-      testEnv.DB.prepare(
-        `INSERT INTO meeting_minutes (
+        '2026-02-15T09:00:00.000Z',
+      ]
+    );
+    await pglite.query(
+      `INSERT INTO meeting_minutes (
           meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'MEET-REF-2',
         '2026-02-14',
         'Roadmap Hiring Plan',
@@ -53,13 +42,14 @@ describe('MeetingMinuteReferenceService', () => {
         JSON.stringify(['roadmap', 'hiring']),
         'roadmap hiring',
         '2026-02-14T09:00:00.000Z',
-        '2026-02-14T09:00:00.000Z'
-      ),
-      testEnv.DB.prepare(
-        `INSERT INTO meeting_minutes (
+        '2026-02-14T09:00:00.000Z',
+      ]
+    );
+    await pglite.query(
+      `INSERT INTO meeting_minutes (
           meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'MEET-REF-3',
         '2026-02-13',
         'Operations Review',
@@ -67,9 +57,9 @@ describe('MeetingMinuteReferenceService', () => {
         JSON.stringify(['ops']),
         'ops',
         '2026-02-13T09:00:00.000Z',
-        '2026-02-13T09:00:00.000Z'
-      ),
-    ]);
+        '2026-02-13T09:00:00.000Z',
+      ]
+    );
 
     const references = await service.search('roadmap budget', 2);
 
@@ -90,12 +80,11 @@ describe('MeetingMinuteReferenceService', () => {
   });
 
   it('filters out results below minScore threshold', async () => {
-    await testEnv.DB.batch([
-      testEnv.DB.prepare(
-        `INSERT INTO meeting_minutes (
+    await pglite.query(
+      `INSERT INTO meeting_minutes (
           meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'MEET-SCORE-1',
         '2026-03-01',
         'Budget Planning Session',
@@ -103,13 +92,14 @@ describe('MeetingMinuteReferenceService', () => {
         JSON.stringify(['budget', 'planning']),
         'budget planning',
         '2026-03-01T09:00:00.000Z',
-        '2026-03-01T09:00:00.000Z'
-      ),
-      testEnv.DB.prepare(
-        `INSERT INTO meeting_minutes (
+        '2026-03-01T09:00:00.000Z',
+      ]
+    );
+    await pglite.query(
+      `INSERT INTO meeting_minutes (
           meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'MEET-SCORE-2',
         '2026-03-02',
         'Team Standup',
@@ -117,9 +107,9 @@ describe('MeetingMinuteReferenceService', () => {
         JSON.stringify(['standup']),
         'standup',
         '2026-03-02T09:00:00.000Z',
-        '2026-03-02T09:00:00.000Z'
-      ),
-    ]);
+        '2026-03-02T09:00:00.000Z',
+      ]
+    );
 
     // With high minScore, only the top-scored result passes (normalized score=1.0)
     const strict = await service.search('budget planning', 10, 0.9);

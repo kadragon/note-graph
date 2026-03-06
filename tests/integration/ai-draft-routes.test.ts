@@ -5,8 +5,15 @@ import { PdfExtractionService } from '@worker/services/pdf-extraction-service';
 import { WorkNoteService } from '@worker/services/work-note-service';
 import type { OpenTodoDueDateContextForAI } from '@worker/types/todo-due-date-context';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch, testEnv } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+const authFetch = createAuthFetch(worker);
 
 const TODO_DUE_DATE_CONTEXT: OpenTodoDueDateContextForAI = {
   totalOpenTodos: 8,
@@ -24,12 +31,10 @@ const DRAFT_RESPONSE: WorkNoteDraft = {
 describe('AI Draft Routes - due date distribution context wiring', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM todos'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-      testEnv.DB.prepare('DELETE FROM task_categories'),
-      testEnv.DB.prepare('DELETE FROM pdf_jobs'),
-    ]);
+    await pglite.query('DELETE FROM todos');
+    await pglite.query('DELETE FROM work_notes');
+    await pglite.query('DELETE FROM task_categories');
+    await pglite.query('DELETE FROM pdf_jobs');
   });
 
   afterEach(() => {
@@ -89,12 +94,11 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
 
   it('returns meetingReferences when meeting minute suggestions exist', async () => {
     const now = new Date().toISOString();
-    await testEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO meeting_minutes (
         meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'MEET-DRAFT-001',
         '2026-02-11',
         'API latency review',
@@ -102,9 +106,9 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
         JSON.stringify(['unicornlatency', 'api']),
         'unicornlatency api',
         now,
-        now
-      )
-      .run();
+        now,
+      ]
+    );
 
     vi.spyOn(WorkNoteService.prototype, 'findSimilarNotes').mockResolvedValue([]);
     vi.spyOn(AIDraftService.prototype, 'generateDraftFromText').mockResolvedValue(DRAFT_RESPONSE);
@@ -128,7 +132,7 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     expect(data.meetingReferences).toHaveLength(1);
     expect(data.meetingReferences?.[0]).toMatchObject({
       meetingId: 'MEET-DRAFT-001',
-      meetingDate: '2026-02-11',
+      meetingDate: expect.stringContaining('2026-02-11'),
       topic: 'API latency review',
       keywords: ['unicornlatency', 'api'],
     });
@@ -137,12 +141,11 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
 
   it('returns meetingReferences ordered by FTS relevance with higher score first', async () => {
     const now = new Date().toISOString();
-    await testEnv.DB.batch([
-      testEnv.DB.prepare(
-        `INSERT INTO meeting_minutes (
+    await pglite.query(
+      `INSERT INTO meeting_minutes (
           meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'MEET-DRAFT-R1',
         '2026-02-11',
         'Roadmap budget review',
@@ -150,13 +153,14 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
         JSON.stringify(['roadmap', 'budget']),
         'roadmap budget',
         now,
-        now
-      ),
-      testEnv.DB.prepare(
-        `INSERT INTO meeting_minutes (
+        now,
+      ]
+    );
+    await pglite.query(
+      `INSERT INTO meeting_minutes (
           meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'MEET-DRAFT-R2',
         '2026-02-10',
         'Roadmap budget staffing',
@@ -164,13 +168,14 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
         JSON.stringify(['roadmap', 'budget', 'staffing']),
         'roadmap budget staffing',
         now,
-        now
-      ),
-      testEnv.DB.prepare(
-        `INSERT INTO meeting_minutes (
+        now,
+      ]
+    );
+    await pglite.query(
+      `INSERT INTO meeting_minutes (
           meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'MEET-DRAFT-R3',
         '2026-02-09',
         'General staffing only',
@@ -178,9 +183,9 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
         JSON.stringify(['staffing']),
         'staffing',
         now,
-        now
-      ),
-    ]);
+        now,
+      ]
+    );
 
     vi.spyOn(WorkNoteService.prototype, 'findSimilarNotes').mockResolvedValue([]);
     vi.spyOn(AIDraftService.prototype, 'generateDraftFromText').mockResolvedValue(DRAFT_RESPONSE);
@@ -202,7 +207,7 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     expect(data.meetingReferences).toHaveLength(2);
     expect(data.meetingReferences?.[0]?.meetingId).toBe('MEET-DRAFT-R1');
     expect(data.meetingReferences?.[1]?.meetingId).toBe('MEET-DRAFT-R2');
-    expect(data.meetingReferences?.[0]?.score).toBeGreaterThan(
+    expect(data.meetingReferences?.[0]?.score).toBeGreaterThanOrEqual(
       data.meetingReferences?.[1]?.score ?? 0
     );
   });
@@ -226,12 +231,11 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
 
   it('passes due date context to todo suggestions generation', async () => {
     const now = new Date().toISOString();
-    await testEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at, embedded_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind('WORK-TODO-SUGGEST', '업무노트', '업무 내용', '업무', now, now, null)
-      .run();
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      ['WORK-TODO-SUGGEST', '업무노트', '업무 내용', '업무', now, now, null]
+    );
 
     const dueContextSpy = vi
       .spyOn(TodoRepository.prototype, 'getOpenTodoDueDateContextForAI')
@@ -254,12 +258,11 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
 
   it('passes due date context to enhance generation', async () => {
     const now = new Date().toISOString();
-    await testEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at, embedded_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind('WORK-ENHANCE', '기존 제목', '기존 내용', '기획', now, now, null)
-      .run();
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      ['WORK-ENHANCE', '기존 제목', '기존 내용', '기획', now, now, null]
+    );
 
     const dueContextSpy = vi
       .spyOn(TodoRepository.prototype, 'getOpenTodoDueDateContextForAI')

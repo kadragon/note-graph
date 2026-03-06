@@ -1,19 +1,20 @@
-import { env } from 'cloudflare:test';
 import type { WorkNoteGroup, WorkNoteGroupWorkNote } from '@shared/types/work-note-group';
-import type { Env } from '@worker/types/env';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
-const testEnv = env as unknown as Env;
+import worker from '@worker/index';
+import { createAuthFetch } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+const authFetch = createAuthFetch(worker);
 
 describe('Work Note Groups API', () => {
   beforeEach(async () => {
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM work_note_group_items'),
-      testEnv.DB.prepare('DELETE FROM work_note_groups'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
+    await pglite.query('DELETE FROM work_note_group_items');
+    await pglite.query('DELETE FROM work_note_groups');
+    await pglite.query('DELETE FROM work_notes');
   });
 
   describe('POST /api/work-note-groups', () => {
@@ -175,11 +176,10 @@ describe('Work Note Groups API', () => {
 
     beforeEach(async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind(workId, '통합테스트노트', 'Content', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        [workId, '통합테스트노트', 'Content', now, now]
+      );
 
       const createRes = await authFetch('/api/work-note-groups', {
         method: 'POST',

@@ -7,6 +7,7 @@ import type { Person, PersonDeptHistory, PersonWorkNote } from '@shared/types/pe
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/person';
 import type { DatabaseClient } from '../types/database';
 import { ConflictError, NotFoundError, ValidationError } from '../types/errors';
+import { pgPlaceholders } from '../utils/db-utils';
 
 export interface PersonRepositoryOptions {
   autoCreateDepartment?: boolean;
@@ -23,7 +24,7 @@ export class PersonRepository {
    */
   private async departmentExists(deptName: string): Promise<boolean> {
     const exists = await this.db.queryOne<{ present: number }>(
-      'SELECT 1 as present FROM departments WHERE dept_name = ?',
+      'SELECT 1 as present FROM departments WHERE dept_name = $1',
       [deptName]
     );
 
@@ -43,7 +44,7 @@ export class PersonRepository {
         const now = new Date().toISOString();
         statements.push({
           sql: `INSERT INTO departments (dept_name, description, is_active, created_at)
-                VALUES (?, NULL, TRUE, ?)`,
+                VALUES ($1, NULL, TRUE, $2)`,
           params: [deptName, now],
         });
       } else {
@@ -65,7 +66,7 @@ export class PersonRepository {
               employment_status as employmentStatus,
               created_at as createdAt, updated_at as updatedAt
        FROM persons
-       WHERE person_id = ?`,
+       WHERE person_id = $1`,
       [personId]
     );
   }
@@ -79,7 +80,7 @@ export class PersonRepository {
     }
 
     const uniquePersonIds = [...new Set(personIds)];
-    const placeholders = uniquePersonIds.map(() => '?').join(', ');
+    const placeholders = pgPlaceholders(uniquePersonIds.length);
 
     const result = await this.db.query<Person>(
       `SELECT person_id as personId, name, phone_ext as phoneExt,
@@ -111,7 +112,7 @@ export class PersonRepository {
     const params: string[] = [];
 
     if (searchQuery) {
-      query += ` WHERE name LIKE ? OR person_id LIKE ?`;
+      query += ` WHERE name LIKE $1 OR person_id LIKE $2`;
       params.push(`%${searchQuery}%`, `%${searchQuery}%`);
     }
 
@@ -143,7 +144,7 @@ export class PersonRepository {
     // Insert person
     statements.push({
       sql: `INSERT INTO persons (person_id, name, phone_ext, current_dept, current_position, current_role_desc, employment_status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       params: [
         data.personId,
         data.name,
@@ -161,7 +162,7 @@ export class PersonRepository {
     if (data.currentDept) {
       statements.push({
         sql: `INSERT INTO person_dept_history (person_id, dept_name, position, role_desc, start_date, is_active)
-              VALUES (?, ?, ?, ?, ?, TRUE)`,
+              VALUES ($1, $2, $3, $4, $5, TRUE)`,
         params: [
           data.personId,
           data.currentDept,
@@ -213,8 +214,8 @@ export class PersonRepository {
       // Deactivate current department history entry
       statements.push({
         sql: `UPDATE person_dept_history
-              SET is_active = FALSE, end_date = ?
-              WHERE person_id = ? AND is_active`,
+              SET is_active = FALSE, end_date = $1
+              WHERE person_id = $2 AND is_active`,
         params: [now, personId],
       });
 
@@ -222,7 +223,7 @@ export class PersonRepository {
       if (data.currentDept) {
         statements.push({
           sql: `INSERT INTO person_dept_history (person_id, dept_name, position, role_desc, start_date, is_active)
-                VALUES (?, ?, ?, ?, ?, TRUE)`,
+                VALUES ($1, $2, $3, $4, $5, TRUE)`,
           params: [
             personId,
             data.currentDept,
@@ -237,39 +238,40 @@ export class PersonRepository {
     // Update person record
     const updateFields: string[] = [];
     const updateParams: (string | null)[] = [];
+    let paramIndex = 1;
 
     if (data.name !== undefined) {
-      updateFields.push('name = ?');
+      updateFields.push(`name = $${paramIndex++}`);
       updateParams.push(data.name);
     }
     if (data.phoneExt !== undefined) {
-      updateFields.push('phone_ext = ?');
+      updateFields.push(`phone_ext = $${paramIndex++}`);
       updateParams.push(data.phoneExt || null);
     }
     if (data.currentDept !== undefined) {
-      updateFields.push('current_dept = ?');
+      updateFields.push(`current_dept = $${paramIndex++}`);
       updateParams.push(data.currentDept || null);
     }
     if (data.currentPosition !== undefined) {
-      updateFields.push('current_position = ?');
+      updateFields.push(`current_position = $${paramIndex++}`);
       updateParams.push(data.currentPosition || null);
     }
     if (data.currentRoleDesc !== undefined) {
-      updateFields.push('current_role_desc = ?');
+      updateFields.push(`current_role_desc = $${paramIndex++}`);
       updateParams.push(data.currentRoleDesc || null);
     }
     if (data.employmentStatus !== undefined) {
-      updateFields.push('employment_status = ?');
+      updateFields.push(`employment_status = $${paramIndex++}`);
       updateParams.push(data.employmentStatus);
     }
 
     if (updateFields.length > 0) {
-      updateFields.push('updated_at = ?');
+      updateFields.push(`updated_at = $${paramIndex++}`);
       updateParams.push(now);
       updateParams.push(personId);
 
       statements.push({
-        sql: `UPDATE persons SET ${updateFields.join(', ')} WHERE person_id = ?`,
+        sql: `UPDATE persons SET ${updateFields.join(', ')} WHERE person_id = $${paramIndex}`,
         params: updateParams,
       });
     }
@@ -312,7 +314,7 @@ export class PersonRepository {
               position, role_desc as roleDesc, start_date as startDate,
               end_date as endDate, is_active as isActive
        FROM person_dept_history
-       WHERE person_id = ?
+       WHERE person_id = $1
        ORDER BY start_date DESC, id DESC`,
       [personId]
     );
@@ -339,7 +341,7 @@ export class PersonRepository {
         wn.updated_at as updatedAt
        FROM work_notes wn
        INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id
-       WHERE wnp.person_id = ?
+       WHERE wnp.person_id = $1
        ORDER BY wn.created_at DESC`,
       [personId]
     );

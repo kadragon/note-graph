@@ -1,11 +1,22 @@
 // Trace: SPEC-performance - Embedding processor batch fetch optimization
 // Tests that reindexAll uses batch fetching instead of N+1 queries
 
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { EmbeddingProcessor } from '@worker/services/embedding-processor';
 import type { Env } from '@worker/types/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { testPgDb } from '../pg-setup';
+
+const mockEnv = {
+  OPENAI_API_KEY: 'test-key',
+  OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
+  OPENAI_MODEL_CHAT: 'gpt-4.5-turbo',
+  OPENAI_MODEL_LIGHTWEIGHT: 'gpt-5-mini',
+  CLOUDFLARE_ACCOUNT_ID: 'test-account',
+  AI_GATEWAY_ID: 'test-gateway',
+  AI_GATEWAY_BASE_URL: 'https://gateway.ai.cloudflare.com',
+  ENVIRONMENT: 'test',
+  VECTORIZE: { upsert: vi.fn(), query: vi.fn(), deleteByIds: vi.fn() },
+} as unknown as Env;
 
 interface TestEmbeddingProcessor extends EmbeddingProcessor {
   repository: {
@@ -22,14 +33,10 @@ interface TestEmbeddingProcessor extends EmbeddingProcessor {
 }
 
 describe('EmbeddingProcessor - batch fetch optimization', () => {
-  const baseEnv = env as unknown as Env;
   let processor: EmbeddingProcessor;
-  // Save original DB reference to restore after tests that mock it
-  let originalDB: typeof baseEnv.DB;
 
   beforeEach(() => {
-    originalDB = baseEnv.DB;
-    processor = new EmbeddingProcessor(new D1DatabaseClient(baseEnv.DB), baseEnv);
+    processor = new EmbeddingProcessor(testPgDb, mockEnv);
 
     // Mock repository methods
     (processor as TestEmbeddingProcessor).repository = {
@@ -48,10 +55,7 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
   });
 
   afterEach(() => {
-    // Restore original DB to prevent test pollution
-    if (originalDB) {
-      (baseEnv as { DB: typeof originalDB }).DB = originalDB;
-    }
+    vi.restoreAllMocks();
   });
 
   it('reindexAll uses batch fetch instead of N+1 individual fetches', async () => {

@@ -1,36 +1,27 @@
 // Trace: Test coverage improvement
 // Unit tests for TodoRepository query methods
 
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { TodoRepository } from '@worker/repositories/todo-repository';
-import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('TodoRepository - Query Methods', () => {
   let repository: TodoRepository;
   let testWorkId: string;
 
   beforeEach(async () => {
-    repository = new TodoRepository(testDb);
+    repository = new TodoRepository(testPgDb);
 
     // Clean up test data
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM todos'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
+    await pglite.query('TRUNCATE todos, work_notes CASCADE');
 
     // Create a test work note
     testWorkId = 'WORK-TEST-001';
     const now = new Date().toISOString();
-    await testEnv.DB.prepare(
-      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-    )
-      .bind(testWorkId, 'Test Work Note', 'Content', now, now)
-      .run();
+    await pglite.query(
+      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+      [testWorkId, 'Test Work Note', 'Content', now, now]
+    );
   });
 
   describe('findById()', () => {
@@ -38,11 +29,10 @@ describe('TodoRepository - Query Methods', () => {
       // Arrange
       const todoId = 'TODO-TEST-001';
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-        .bind(todoId, testWorkId, 'Test Todo', now, '진행중', 'NONE')
-        .run();
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        [todoId, testWorkId, 'Test Todo', now, '진행중', 'NONE']
+      );
 
       // Act
       const result = await repository.findById(todoId);
@@ -71,10 +61,9 @@ describe('TodoRepository - Query Methods', () => {
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 7);
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, description, created_at, due_date, wait_until, status, repeat_rule, recurrence_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, description, created_at, due_date, wait_until, status, repeat_rule, recurrence_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+        [
           todoId,
           testWorkId,
           'Todo with details',
@@ -84,9 +73,9 @@ describe('TodoRepository - Query Methods', () => {
           now,
           '진행중',
           'DAILY',
-          'DUE_DATE'
-        )
-        .run();
+          'DUE_DATE',
+        ]
+      );
 
       // Act
       const result = await repository.findById(todoId);
@@ -104,14 +93,14 @@ describe('TodoRepository - Query Methods', () => {
     it('should find all todos for a work note', async () => {
       // Arrange
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-001', testWorkId, 'Todo 1', now, '진행중', 'NONE'),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-002', testWorkId, 'Todo 2', now, '진행중', 'NONE'),
-      ]);
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-001', testWorkId, 'Todo 1', now, '진행중', 'NONE']
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-002', testWorkId, 'Todo 2', now, '진행중', 'NONE']
+      );
 
       // Act
       const result = await repository.findByWorkId(testWorkId);
@@ -135,14 +124,14 @@ describe('TodoRepository - Query Methods', () => {
       const now = new Date();
       const earlier = new Date(now.getTime() - 3600000); // 1 hour earlier
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-001', testWorkId, 'Earlier', earlier.toISOString(), '진행중', 'NONE'),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-002', testWorkId, 'Later', now.toISOString(), '진행중', 'NONE'),
-      ]);
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-001', testWorkId, 'Earlier', earlier.toISOString(), '진행중', 'NONE']
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-002', testWorkId, 'Later', now.toISOString(), '진행중', 'NONE']
+      );
 
       // Act
       const result = await repository.findByWorkId(testWorkId);
@@ -156,17 +145,18 @@ describe('TodoRepository - Query Methods', () => {
       // Arrange
       const otherWorkId = 'WORK-TEST-002';
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind(otherWorkId, 'Other Work', 'Content', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-001', testWorkId, 'My Todo', now, '진행중', 'NONE'),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-002', otherWorkId, 'Other Todo', now, '진행중', 'NONE'),
-      ]);
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        [otherWorkId, 'Other Work', 'Content', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-001', testWorkId, 'My Todo', now, '진행중', 'NONE']
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-002', otherWorkId, 'Other Todo', now, '진행중', 'NONE']
+      );
 
       // Act
       const result = await repository.findByWorkId(testWorkId);

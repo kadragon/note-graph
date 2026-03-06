@@ -1,13 +1,21 @@
 // Unit tests for OpenAIEmbeddingService and VectorizeService
 
-import { env } from 'cloudflare:test';
 import type { ChunkMetadata } from '@shared/types/search';
 import { OpenAIEmbeddingService } from '@worker/services/openai-embedding-service';
 import { VectorizeService } from '@worker/services/vectorize-service';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const testEnv = env as unknown as Env;
+const mockEnv = {
+  OPENAI_API_KEY: 'test-key',
+  OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
+  OPENAI_MODEL_CHAT: 'gpt-4.5-turbo',
+  OPENAI_MODEL_LIGHTWEIGHT: 'gpt-5-mini',
+  CLOUDFLARE_ACCOUNT_ID: 'test-account',
+  AI_GATEWAY_ID: 'test-gateway',
+  AI_GATEWAY_BASE_URL: 'https://gateway.ai.cloudflare.com',
+  ENVIRONMENT: 'test',
+} as unknown as Env;
 
 describe('OpenAIEmbeddingService', () => {
   let service: OpenAIEmbeddingService;
@@ -16,7 +24,7 @@ describe('OpenAIEmbeddingService', () => {
   beforeEach(() => {
     mockFetch = vi.fn();
     global.fetch = mockFetch;
-    service = new OpenAIEmbeddingService(testEnv);
+    service = new OpenAIEmbeddingService(mockEnv);
   });
 
   describe('embed()', () => {

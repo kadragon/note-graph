@@ -1,18 +1,13 @@
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { SettingRepository } from '@worker/repositories/setting-repository';
-import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('SettingRepository', () => {
   let repository: SettingRepository;
 
   beforeEach(async () => {
-    repository = new SettingRepository(testDb);
-    await testEnv.DB.prepare('DELETE FROM app_settings').run();
+    repository = new SettingRepository(testPgDb);
+    await pglite.query('DELETE FROM app_settings');
   });
 
   describe('ensureDefaults()', () => {
@@ -54,9 +49,7 @@ describe('SettingRepository', () => {
       ]);
 
       // Manually update value
-      await testEnv.DB.prepare(`UPDATE app_settings SET value = 'custom' WHERE key = ?`)
-        .bind('test.key1')
-        .run();
+      await pglite.query(`UPDATE app_settings SET value = 'custom' WHERE key = $1`, ['test.key1']);
 
       // Run ensureDefaults again
       await repository.ensureDefaults([

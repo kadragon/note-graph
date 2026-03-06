@@ -1,14 +1,18 @@
-import { env } from 'cloudflare:test';
 import type { AppSetting } from '@shared/types/setting';
-import type { Env } from '@worker/types/env';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { authFetch } from '../test-setup';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-const testEnv = env as unknown as Env;
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+const authFetch = createAuthFetch(worker);
 
 describe('Settings Routes', () => {
   beforeEach(async () => {
-    await testEnv.DB.prepare('DELETE FROM app_settings').run();
+    await pglite.query('DELETE FROM app_settings');
   });
 
   describe('GET /api/settings', () => {

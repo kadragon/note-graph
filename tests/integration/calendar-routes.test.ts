@@ -2,17 +2,24 @@
  * Integration tests for calendar API routes
  */
 
-import { SELF } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch, testEnv } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch, createTestRequest } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+const authFetch = createAuthFetch(worker);
+const request = createTestRequest(worker);
 
 describe('Calendar API Routes', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
 
     // Clean up test data
-    await testEnv.DB.prepare('DELETE FROM google_oauth_tokens').run();
+    await pglite.query('DELETE FROM google_oauth_tokens');
   });
 
   afterEach(() => {
@@ -21,8 +28,8 @@ describe('Calendar API Routes', () => {
 
   describe('GET /api/calendar/events', () => {
     it('should require authentication', async () => {
-      const response = await SELF.fetch(
-        'http://localhost/api/calendar/events?startDate=2026-01-19&endDate=2026-02-01'
+      const response = await request(
+        '/api/calendar/events?startDate=2026-01-19&endDate=2026-02-01'
       );
 
       expect(response.status).toBe(401);
@@ -56,20 +63,19 @@ describe('Calendar API Routes', () => {
 
     it('should return 400 when stored token lacks calendar scope', async () => {
       // Setup: Add OAuth token with only Drive scope (no calendar)
-      await testEnv.DB.prepare(`
-        INSERT INTO google_oauth_tokens (
+      await pglite.query(
+        `INSERT INTO google_oauth_tokens (
           user_email, access_token, refresh_token, token_type, expires_at, scope
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `)
-        .bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
           'test@example.com',
           'test-access-token',
           'test-refresh-token',
           'Bearer',
           new Date(Date.now() + 3600000).toISOString(),
-          'https://www.googleapis.com/auth/drive' // No calendar scope
-        )
-        .run();
+          'https://www.googleapis.com/auth/drive', // No calendar scope
+        ]
+      );
 
       const response = await authFetch(
         '/api/calendar/events?startDate=2026-01-19&endDate=2026-02-01'
@@ -83,20 +89,19 @@ describe('Calendar API Routes', () => {
 
     it('should return 401 with GOOGLE_TOKEN_EXPIRED when refresh token is invalid', async () => {
       // Setup: Add OAuth token with expired access token (to trigger refresh)
-      await testEnv.DB.prepare(`
-        INSERT INTO google_oauth_tokens (
+      await pglite.query(
+        `INSERT INTO google_oauth_tokens (
           user_email, access_token, refresh_token, token_type, expires_at, scope
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `)
-        .bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
           'test@example.com',
           'expired-access-token',
           'invalid-refresh-token',
           'Bearer',
           new Date(Date.now() - 3600000).toISOString(), // Expired 1 hour ago
-          'https://www.googleapis.com/auth/calendar.readonly'
-        )
-        .run();
+          'https://www.googleapis.com/auth/calendar.readonly',
+        ]
+      );
 
       // Mock fetch to return invalid_grant error from Google OAuth token endpoint
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -124,20 +129,19 @@ describe('Calendar API Routes', () => {
 
     it('should return 400 with GOOGLE_NOT_CONNECTED when Calendar API returns 403', async () => {
       // Setup: Add OAuth token with calendar scope
-      await testEnv.DB.prepare(`
-        INSERT INTO google_oauth_tokens (
+      await pglite.query(
+        `INSERT INTO google_oauth_tokens (
           user_email, access_token, refresh_token, token_type, expires_at, scope
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `)
-        .bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
           'test@example.com',
           'test-access-token',
           'test-refresh-token',
           'Bearer',
           new Date(Date.now() + 3600000).toISOString(),
-          'https://www.googleapis.com/auth/calendar.readonly'
-        )
-        .run();
+          'https://www.googleapis.com/auth/calendar.readonly',
+        ]
+      );
 
       // Mock fetch to return 403 from Google Calendar API
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -168,20 +172,19 @@ describe('Calendar API Routes', () => {
 
     it('should return calendar events when Google account is connected', async () => {
       // Setup: Add OAuth token
-      await testEnv.DB.prepare(`
-        INSERT INTO google_oauth_tokens (
+      await pglite.query(
+        `INSERT INTO google_oauth_tokens (
           user_email, access_token, refresh_token, token_type, expires_at, scope
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `)
-        .bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
           'test@example.com',
           'test-access-token',
           'test-refresh-token',
           'Bearer',
           new Date(Date.now() + 3600000).toISOString(),
-          'https://www.googleapis.com/auth/calendar.readonly'
-        )
-        .run();
+          'https://www.googleapis.com/auth/calendar.readonly',
+        ]
+      );
 
       // Mock fetch for Google Calendar API
       const mockEvents = {
@@ -217,20 +220,19 @@ describe('Calendar API Routes', () => {
 
     it('should return 400 when timezoneOffset is invalid', async () => {
       // Setup: Add OAuth token with calendar scope
-      await testEnv.DB.prepare(`
-        INSERT INTO google_oauth_tokens (
+      await pglite.query(
+        `INSERT INTO google_oauth_tokens (
           user_email, access_token, refresh_token, token_type, expires_at, scope
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `)
-        .bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
           'test@example.com',
           'test-access-token',
           'test-refresh-token',
           'Bearer',
           new Date(Date.now() + 3600000).toISOString(),
-          'https://www.googleapis.com/auth/calendar.readonly'
-        )
-        .run();
+          'https://www.googleapis.com/auth/calendar.readonly',
+        ]
+      );
 
       const response = await authFetch(
         '/api/calendar/events?startDate=2026-01-19&endDate=2026-02-01&timezoneOffset=abc'
@@ -243,20 +245,19 @@ describe('Calendar API Routes', () => {
 
     it('should use timezone offset for correct local time bounds', async () => {
       // Setup: Add OAuth token with calendar scope
-      await testEnv.DB.prepare(`
-        INSERT INTO google_oauth_tokens (
+      await pglite.query(
+        `INSERT INTO google_oauth_tokens (
           user_email, access_token, refresh_token, token_type, expires_at, scope
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `)
-        .bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
           'test@example.com',
           'test-access-token',
           'test-refresh-token',
           'Bearer',
           new Date(Date.now() + 3600000).toISOString(),
-          'https://www.googleapis.com/auth/calendar.readonly'
-        )
-        .run();
+          'https://www.googleapis.com/auth/calendar.readonly',
+        ]
+      );
 
       let capturedUrl = '';
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {

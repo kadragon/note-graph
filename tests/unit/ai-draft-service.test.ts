@@ -1,6 +1,5 @@
 // Unit tests for AIDraftService
 
-import { env } from 'cloudflare:test';
 import type { WorkNote } from '@shared/types/work-note';
 import { AIDraftService } from '@worker/services/ai-draft-service';
 import type { Env } from '@worker/types/env';
@@ -8,7 +7,16 @@ import { RateLimitError } from '@worker/types/errors';
 import type { OpenTodoDueDateContextForAI } from '@worker/types/todo-due-date-context';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const testEnv = env as unknown as Env;
+const testEnv = {
+  OPENAI_API_KEY: 'test-key',
+  OPENAI_MODEL_CHAT: 'gpt-4.5-turbo',
+  OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
+  OPENAI_MODEL_LIGHTWEIGHT: 'gpt-5-mini',
+  CLOUDFLARE_ACCOUNT_ID: 'test-account',
+  AI_GATEWAY_ID: 'test-gateway',
+  AI_GATEWAY_BASE_URL: 'https://gateway.ai.cloudflare.com',
+  ENVIRONMENT: 'test',
+} as unknown as Env;
 
 // Fixed date for deterministic testing (2025-01-10 12:00:00 UTC)
 const FIXED_DATE = new Date('2025-01-10T12:00:00.000Z');

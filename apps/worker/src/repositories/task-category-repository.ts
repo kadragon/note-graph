@@ -8,6 +8,7 @@ import { nanoid } from 'nanoid';
 import type { CreateTaskCategoryInput, UpdateTaskCategoryInput } from '../schemas/task-category';
 import type { DatabaseClient } from '../types/database';
 import { ConflictError, NotFoundError } from '../types/errors';
+import { pgPlaceholders } from '../utils/db-utils';
 
 /**
  * Database row type for task category
@@ -15,7 +16,7 @@ import { ConflictError, NotFoundError } from '../types/errors';
 interface TaskCategoryRow {
   categoryId: string;
   name: string;
-  isActive: number;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -41,7 +42,7 @@ export class TaskCategoryRepository {
     const result = await this.db.queryOne<TaskCategoryRow>(
       `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
        FROM task_categories
-       WHERE category_id = ?`,
+       WHERE category_id = $1`,
       [categoryId]
     );
 
@@ -57,7 +58,7 @@ export class TaskCategoryRepository {
     }
 
     const uniqueCategoryIds = [...new Set(categoryIds)];
-    const placeholders = uniqueCategoryIds.map(() => '?').join(', ');
+    const placeholders = pgPlaceholders(uniqueCategoryIds.length);
 
     const result = await this.db.query<TaskCategoryRow>(
       `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
@@ -81,7 +82,7 @@ export class TaskCategoryRepository {
     const result = await this.db.queryOne<TaskCategoryRow>(
       `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
        FROM task_categories
-       WHERE name = ?`,
+       WHERE name = $1`,
       [name]
     );
 
@@ -100,9 +101,10 @@ export class TaskCategoryRepository {
                FROM task_categories`;
     const params: (string | number)[] = [];
     const conditions: string[] = [];
+    let paramIndex = 1;
 
     if (searchQuery) {
-      conditions.push(`name LIKE ?`);
+      conditions.push(`name LIKE $${paramIndex++}`);
       params.push(`%${searchQuery}%`);
     }
 
@@ -114,7 +116,7 @@ export class TaskCategoryRepository {
       sql += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    sql += ` ORDER BY name ASC LIMIT ?`;
+    sql += ` ORDER BY name ASC LIMIT $${paramIndex++}`;
     params.push(limit);
 
     const result = await this.db.query<TaskCategoryRow>(sql, params);
@@ -131,7 +133,7 @@ export class TaskCategoryRepository {
     try {
       await this.db.execute(
         `INSERT INTO task_categories (category_id, name, is_active, created_at)
-         VALUES (?, ?, 1, ?)`,
+         VALUES ($1, $2, true, $3)`,
         [categoryId, data.name, now]
       );
 
@@ -161,16 +163,17 @@ export class TaskCategoryRepository {
     }
 
     const updates: string[] = [];
-    const params: (string | number)[] = [];
+    const params: (string | number | boolean)[] = [];
+    let paramIndex = 1;
 
     if (data.name !== undefined) {
-      updates.push('name = ?');
+      updates.push(`name = $${paramIndex++}`);
       params.push(data.name);
     }
 
     if (data.isActive !== undefined) {
-      updates.push('is_active = ?');
-      params.push(data.isActive ? 1 : 0);
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(data.isActive);
     }
 
     if (updates.length > 0) {
@@ -179,7 +182,7 @@ export class TaskCategoryRepository {
         await this.db.execute(
           `UPDATE task_categories
            SET ${updates.join(', ')}
-           WHERE category_id = ?`,
+           WHERE category_id = $${paramIndex}`,
           params
         );
       } catch (error) {
@@ -209,7 +212,7 @@ export class TaskCategoryRepository {
     }
 
     // Delete will cascade to work_note_task_category due to ON DELETE CASCADE
-    await this.db.execute(`DELETE FROM task_categories WHERE category_id = ?`, [categoryId]);
+    await this.db.execute(`DELETE FROM task_categories WHERE category_id = $1`, [categoryId]);
   }
 
   /**
@@ -229,7 +232,7 @@ export class TaskCategoryRepository {
         wn.updated_at as updatedAt
        FROM work_notes wn
        INNER JOIN work_note_task_category wntc ON wn.work_id = wntc.work_id
-       WHERE wntc.category_id = ?
+       WHERE wntc.category_id = $1
        ORDER BY wn.created_at DESC`,
       [categoryId]
     );
@@ -249,7 +252,7 @@ export class TaskCategoryRepository {
     // Insert if not already associated
     await this.db.execute(
       `INSERT INTO work_note_task_category (work_id, category_id)
-       VALUES (?, ?) ON CONFLICT DO NOTHING`,
+       VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [workId, categoryId]
     );
   }
@@ -260,7 +263,7 @@ export class TaskCategoryRepository {
   async removeFromWorkNote(workId: string, categoryId: string): Promise<void> {
     await this.db.execute(
       `DELETE FROM work_note_task_category
-       WHERE work_id = ? AND category_id = ?`,
+       WHERE work_id = $1 AND category_id = $2`,
       [workId, categoryId]
     );
   }
@@ -277,7 +280,7 @@ export class TaskCategoryRepository {
         tc.created_at as createdAt
        FROM task_categories tc
        INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
-       WHERE wntc.work_id = ?
+       WHERE wntc.work_id = $1
        ORDER BY tc.name ASC`,
       [workId]
     );

@@ -1,34 +1,38 @@
 import { KeywordSearchService } from '@worker/services/keyword-search-service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch, testEnv } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+const authFetch = createAuthFetch(worker);
 
 describe('Search API Routes', () => {
   beforeEach(async () => {
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM work_note_meeting_minute'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_task_category'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_group'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_person'),
-      testEnv.DB.prepare('DELETE FROM meeting_minutes'),
-      testEnv.DB.prepare('DELETE FROM work_note_relation'),
-      testEnv.DB.prepare('DELETE FROM work_note_person'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-      testEnv.DB.prepare('DELETE FROM person_dept_history'),
-      testEnv.DB.prepare('DELETE FROM persons'),
-      testEnv.DB.prepare('DELETE FROM departments'),
-    ]);
+    await pglite.query('DELETE FROM work_note_meeting_minute');
+    await pglite.query('DELETE FROM meeting_minute_task_category');
+    await pglite.query('DELETE FROM meeting_minute_group');
+    await pglite.query('DELETE FROM meeting_minute_person');
+    await pglite.query('DELETE FROM meeting_minutes');
+    await pglite.query('DELETE FROM work_note_relation');
+    await pglite.query('DELETE FROM work_note_person');
+    await pglite.query('DELETE FROM work_notes');
+    await pglite.query('DELETE FROM person_dept_history');
+    await pglite.query('DELETE FROM persons');
+    await pglite.query('DELETE FROM departments');
   });
 
   describe('POST /api/search/unified', () => {
     it('uses lexical work-note search path without embedding fetch calls', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
+      await pglite.query(
         `INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      )
-        .bind('WORK-SEARCH-001', '검색 성능 개선', '벡터 호출 없이 키워드 검색', '운영', now, now)
-        .run();
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['WORK-SEARCH-001', '검색 성능 개선', '벡터 호출 없이 키워드 검색', '운영', now, now]
+      );
 
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -55,12 +59,11 @@ describe('Search API Routes', () => {
 
     it('includes meeting minute result group with source-specific payload shape', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-SEARCH-001',
           '2026-02-11',
           'API latency review',
@@ -68,13 +71,14 @@ describe('Search API Routes', () => {
           JSON.stringify(['latency', 'api']),
           'latency api',
           now,
-          now
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+          now,
+        ]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-SEARCH-002',
           '2026-02-10',
           'Latency and caching follow-up',
@@ -82,9 +86,9 @@ describe('Search API Routes', () => {
           JSON.stringify(['latency', 'cache']),
           'latency cache',
           now,
-          now
-        ),
-      ]);
+          now,
+        ]
+      );
 
       const response = await authFetch('/api/search/unified', {
         method: 'POST',
@@ -114,7 +118,7 @@ describe('Search API Routes', () => {
       expect(data.meetingMinutes).toHaveLength(2);
       expect(data.meetingMinutes?.[0]).toMatchObject({
         meetingId: 'MEET-SEARCH-001',
-        meetingDate: '2026-02-11',
+        meetingDate: expect.stringContaining('2026-02-11'),
         topic: 'API latency review',
         keywords: ['latency', 'api'],
         source: 'MEETING_FTS',

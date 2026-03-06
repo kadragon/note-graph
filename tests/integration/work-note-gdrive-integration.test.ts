@@ -1,13 +1,15 @@
 // Trace: TASK-066, Phase-6.5
 // Integration test for Google Drive attachment lifecycle in work notes
 
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { WorkNoteFileService } from '@worker/services/work-note-file-service';
 import { WorkNoteService } from '@worker/services/work-note-service';
 import type { Env } from '@worker/types/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildMockEnv, MockR2, mockDatabaseFactory } from '../helpers/test-app';
 
-import { MockR2, setTestR2Bucket, testEnv } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import { pglite, testPgDb } from '../pg-setup';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
@@ -20,53 +22,39 @@ describe('Work Note Google Drive Integration', () => {
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
   let originalFetch: typeof global.fetch;
-  let originalGoogleClientId: string | undefined;
-  let originalGoogleClientSecret: string | undefined;
-  let originalGoogleRedirectUri: string | undefined;
-  let originalGdriveRootFolderId: string | undefined;
-  let originalVectorize: unknown;
   let fetchMock: ReturnType<typeof vi.fn>;
+  let mockR2: MockR2;
+  let mockEnv: Env;
 
   beforeEach(async () => {
     originalFetch = global.fetch;
-    originalGoogleClientId = testEnv.GOOGLE_CLIENT_ID;
-    originalGoogleClientSecret = testEnv.GOOGLE_CLIENT_SECRET;
-    originalGoogleRedirectUri = testEnv.GOOGLE_REDIRECT_URI;
-    originalGdriveRootFolderId = testEnv.GDRIVE_ROOT_FOLDER_ID;
-    originalVectorize = testEnv.VECTORIZE;
+    mockR2 = new MockR2();
 
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM google_oauth_tokens'),
-      testEnv.DB.prepare('DELETE FROM work_note_gdrive_folders'),
-      testEnv.DB.prepare('DELETE FROM work_note_files'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
+    mockEnv = buildMockEnv({
+      R2_BUCKET: mockR2 as unknown as R2Bucket,
+      VECTORIZE: {
+        query: vi.fn().mockResolvedValue({ matches: [] }),
+        upsert: vi.fn(),
+        deleteByIds: vi.fn(),
+      } as unknown as VectorizeIndex,
+    });
 
-    setTestR2Bucket(new MockR2() as unknown as typeof testEnv.R2_BUCKET);
-    testEnv.VECTORIZE = {
-      query: vi.fn().mockResolvedValue({ matches: [] }),
-      upsert: vi.fn(),
-      deleteByIds: vi.fn(),
-    } as unknown;
+    await pglite.query('DELETE FROM google_oauth_tokens');
+    await pglite.query('DELETE FROM work_note_gdrive_folders');
+    await pglite.query('DELETE FROM work_note_files');
+    await pglite.query('DELETE FROM work_notes');
 
-    testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
-    testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
-    testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
-    testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
-
-    await testEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?)`
-    )
-      .bind(workId, 'Drive Test Note', '내용', '2023-05-01T00:00:00.000Z', now)
-      .run();
+       VALUES ($1, $2, $3, $4, $5)`,
+      [workId, 'Drive Test Note', '내용', '2023-05-01T00:00:00.000Z', now]
+    );
 
-    await testEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO google_oauth_tokens
         (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         userEmail,
         'access-token',
         'refresh-token',
@@ -74,9 +62,9 @@ describe('Work Note Google Drive Integration', () => {
         expiresAt,
         'https://www.googleapis.com/auth/drive',
         now,
-        now
-      )
-      .run();
+        now,
+      ]
+    );
 
     let folderCreateCount = 0;
     fetchMock = vi.fn().mockImplementation(async (input, init = {}) => {
@@ -146,19 +134,10 @@ describe('Work Note Google Drive Integration', () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
-    testEnv.GOOGLE_CLIENT_ID = originalGoogleClientId as string;
-    testEnv.GOOGLE_CLIENT_SECRET = originalGoogleClientSecret as string;
-    testEnv.GOOGLE_REDIRECT_URI = originalGoogleRedirectUri as string;
-    testEnv.GDRIVE_ROOT_FOLDER_ID = originalGdriveRootFolderId as string;
-    testEnv.VECTORIZE = originalVectorize as typeof testEnv.VECTORIZE;
   });
 
   it('uploads, downloads, and cleans up Google Drive attachments on delete', async () => {
-    const fileService = new WorkNoteFileService(
-      testEnv.R2_BUCKET,
-      new D1DatabaseClient(testEnv.DB),
-      testEnv as unknown as Env
-    );
+    const fileService = new WorkNoteFileService(mockR2 as unknown as R2Bucket, testPgDb, mockEnv);
     const uploaded = await fileService.uploadFile({
       workId,
       file: new Blob(['drive data'], { type: 'application/pdf' }),
@@ -172,10 +151,7 @@ describe('Work Note Google Drive Integration', () => {
     const stored = await fileService.getFileById(uploaded.fileId);
     expect(stored?.storageType).toBe('GDRIVE');
     expect(stored?.gdriveWebViewLink).toBe('https://drive.example/file');
-    const workNoteService = new WorkNoteService(
-      new D1DatabaseClient((testEnv as unknown as Env).DB),
-      testEnv as unknown as Env
-    );
+    const workNoteService = new WorkNoteService(testPgDb, mockEnv);
     const { cleanupPromise } = await workNoteService.delete(workId, userEmail);
     await cleanupPromise;
 
@@ -194,42 +170,36 @@ describe('Work Note Google Drive Integration', () => {
     const fileId = 'FILE-R2-1';
     const r2Key = `work-notes/${workId}/files/${fileId}`;
 
-    await testEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_note_files
         (file_id, work_id, r2_key, original_name, file_type, file_size, uploaded_by, uploaded_at, deleted_at, storage_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(fileId, workId, r2Key, 'legacy.pdf', 'application/pdf', 9, userEmail, now, null, 'R2')
-      .run();
-
-    await testEnv.R2_BUCKET.put(r2Key, new Blob(['r2 data'], { type: 'application/pdf' }));
-
-    const fileService = new WorkNoteFileService(
-      testEnv.R2_BUCKET,
-      new D1DatabaseClient(testEnv.DB),
-      testEnv as unknown as Env
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [fileId, workId, r2Key, 'legacy.pdf', 'application/pdf', 9, userEmail, now, null, 'R2']
     );
+
+    await mockR2.put(r2Key, new Blob(['r2 data'], { type: 'application/pdf' }));
+
+    const fileService = new WorkNoteFileService(mockR2 as unknown as R2Bucket, testPgDb, mockEnv);
 
     const result = await fileService.migrateR2FilesToDrive(workId, userEmail);
 
     expect(result.migrated).toBe(1);
     expect(result.failed).toBe(0);
 
-    const updated = await testEnv.DB.prepare(
-      `SELECT storage_type, gdrive_file_id, gdrive_web_view_link FROM work_note_files WHERE file_id = ?`
-    )
-      .bind(fileId)
-      .first<{
-        storage_type: string;
-        gdrive_file_id: string | null;
-        gdrive_web_view_link: string | null;
-      }>();
+    const updated = await pglite.query<{
+      storage_type: string;
+      gdrive_file_id: string | null;
+      gdrive_web_view_link: string | null;
+    }>(
+      `SELECT storage_type, gdrive_file_id, gdrive_web_view_link FROM work_note_files WHERE file_id = $1`,
+      [fileId]
+    );
 
-    expect(updated?.storage_type).toBe('GDRIVE');
-    expect(updated?.gdrive_file_id).toBe('GFILE-1');
-    expect(updated?.gdrive_web_view_link).toBe('https://drive.example/file');
+    expect(updated.rows[0]?.storage_type).toBe('GDRIVE');
+    expect(updated.rows[0]?.gdrive_file_id).toBe('GFILE-1');
+    expect(updated.rows[0]?.gdrive_web_view_link).toBe('https://drive.example/file');
 
-    const r2Object = await testEnv.R2_BUCKET.get(r2Key);
+    const r2Object = await mockR2.get(r2Key);
     expect(r2Object).toBeNull();
   });
 });

@@ -1,16 +1,22 @@
 // Trace: TASK-016
 // Basic API integration tests for core system routes.
 
-import { env, SELF } from 'cloudflare:test';
-import type { Env } from '@worker/types/env';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch, createTestRequest } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+const authFetch = createAuthFetch(worker);
+const request = createTestRequest(worker);
 
 describe('System API Routes', () => {
   describe('Health Check', () => {
     it('should return 200 for /health endpoint', async () => {
-      const response = await SELF.fetch('http://localhost/health');
+      const response = await request('/health');
       expect(response.status).toBe(200);
 
       const data = await response.json<{ status: string; service: string }>();
@@ -21,7 +27,7 @@ describe('System API Routes', () => {
 
   describe('API Info Endpoint', () => {
     it('should return API information', async () => {
-      const response = await SELF.fetch('http://localhost/api');
+      const response = await request('/api');
       expect(response.status).toBe(200);
 
       const data = await response.json<{ name: string; version: string }>();
@@ -32,18 +38,11 @@ describe('System API Routes', () => {
 
   describe('Authentication', () => {
     it('should require authentication for /api/me endpoint', async () => {
-      const originalEnv = env.ENVIRONMENT;
-      (env as unknown as Env).ENVIRONMENT = 'production';
+      const response = await request('/api/me');
+      expect(response.status).toBe(401);
 
-      try {
-        const response = await SELF.fetch('http://localhost/api/me');
-        expect(response.status).toBe(401);
-
-        const data = await response.json<{ code: string; message: string }>();
-        expect(data.code).toBe('UNAUTHORIZED');
-      } finally {
-        (env as unknown as Env).ENVIRONMENT = originalEnv;
-      }
+      const data = await response.json<{ code: string; message: string }>();
+      expect(data.code).toBe('UNAUTHORIZED');
     });
 
     it('should accept authenticated requests with Cloudflare Access headers', async () => {
@@ -56,86 +55,54 @@ describe('System API Routes', () => {
     });
 
     it('should require authentication for /api/rag/query endpoint', async () => {
-      const originalEnv = env.ENVIRONMENT;
-      (env as unknown as Env).ENVIRONMENT = 'production';
+      const response = await request('/api/rag/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: 'test query',
+          scope: 'all',
+        }),
+      });
+      expect(response.status).toBe(401);
 
-      try {
-        const response = await SELF.fetch('http://localhost/api/rag/query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: 'test query',
-            scope: 'all',
-          }),
-        });
-        expect(response.status).toBe(401);
-
-        const data = await response.json<{ code: string; message: string }>();
-        expect(data.code).toBe('UNAUTHORIZED');
-      } finally {
-        (env as unknown as Env).ENVIRONMENT = originalEnv;
-      }
+      const data = await response.json<{ code: string; message: string }>();
+      expect(data.code).toBe('UNAUTHORIZED');
     });
 
     it('should require authentication for /api/pdf-jobs endpoint', async () => {
-      const originalEnv = env.ENVIRONMENT;
-      (env as unknown as Env).ENVIRONMENT = 'production';
+      const response = await request('/api/pdf-jobs', {
+        method: 'POST',
+      });
+      expect(response.status).toBe(401);
 
-      try {
-        const response = await SELF.fetch('http://localhost/api/pdf-jobs', {
-          method: 'POST',
-        });
-        expect(response.status).toBe(401);
-
-        const data = await response.json<{ code: string; message: string }>();
-        expect(data.code).toBe('UNAUTHORIZED');
-      } finally {
-        (env as unknown as Env).ENVIRONMENT = originalEnv;
-      }
+      const data = await response.json<{ code: string; message: string }>();
+      expect(data.code).toBe('UNAUTHORIZED');
     });
   });
 
   describe('Google Drive Status', () => {
     it('should include configuration header on status endpoint', async () => {
-      const testEnv = env as unknown as Env;
-      const originalClientId = testEnv.GOOGLE_CLIENT_ID;
-      const originalSecret = testEnv.GOOGLE_CLIENT_SECRET;
-      const originalRootFolderId = testEnv.GDRIVE_ROOT_FOLDER_ID;
+      const response = await authFetch('/api/auth/google/status');
 
-      testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
-      testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
-      testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-root-folder';
+      expect(response.status).toBe(200);
+      expect(response.headers.get('X-Google-Drive-Configured')).toBe('true');
 
-      try {
-        const response = await authFetch('/api/auth/google/status');
-
-        expect(response.status).toBe(200);
-        expect(response.headers.get('X-Google-Drive-Configured')).toBe('true');
-
-        const data = await response.json<{ connected: boolean; needsReauth: boolean }>();
-        expect(data.connected).toBe(false);
-        expect(data.needsReauth).toBe(false);
-      } finally {
-        testEnv.GOOGLE_CLIENT_ID = originalClientId;
-        testEnv.GOOGLE_CLIENT_SECRET = originalSecret;
-        testEnv.GDRIVE_ROOT_FOLDER_ID = originalRootFolderId;
-      }
+      const data = await response.json<{ connected: boolean; needsReauth: boolean }>();
+      expect(data.connected).toBe(false);
+      expect(data.needsReauth).toBe(false);
     });
 
     it('should return needsReauth=true for legacy drive.file scope', async () => {
-      const testEnv = env as unknown as Env;
       const now = new Date().toISOString();
       const expiresAt = new Date(Date.now() + 3600000).toISOString();
 
-      // Insert OAuth token with legacy drive.file scope
-      await testEnv.DB.prepare(
+      await pglite.query(
         `INSERT INTO google_oauth_tokens
           (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-        .bind(
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'test@example.com',
           'access-token',
           'refresh-token',
@@ -143,9 +110,9 @@ describe('System API Routes', () => {
           expiresAt,
           'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.readonly',
           now,
-          now
-        )
-        .run();
+          now,
+        ]
+      );
 
       try {
         const response = await authFetch('/api/auth/google/status');
@@ -160,24 +127,21 @@ describe('System API Routes', () => {
         expect(data.needsReauth).toBe(true);
         expect(data.scope).toContain('drive.file');
       } finally {
-        await testEnv.DB.prepare(`DELETE FROM google_oauth_tokens WHERE user_email = ?`)
-          .bind('test@example.com')
-          .run();
+        await pglite.query(`DELETE FROM google_oauth_tokens WHERE user_email = $1`, [
+          'test@example.com',
+        ]);
       }
     });
 
     it('should return needsReauth=false for full drive scope', async () => {
-      const testEnv = env as unknown as Env;
       const now = new Date().toISOString();
       const expiresAt = new Date(Date.now() + 3600000).toISOString();
 
-      // Insert OAuth token with full drive scope
-      await testEnv.DB.prepare(
+      await pglite.query(
         `INSERT INTO google_oauth_tokens
           (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-        .bind(
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'test@example.com',
           'access-token',
           'refresh-token',
@@ -185,9 +149,9 @@ describe('System API Routes', () => {
           expiresAt,
           'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.readonly',
           now,
-          now
-        )
-        .run();
+          now,
+        ]
+      );
 
       try {
         const response = await authFetch('/api/auth/google/status');
@@ -201,16 +165,16 @@ describe('System API Routes', () => {
         expect(data.connected).toBe(true);
         expect(data.needsReauth).toBe(false);
       } finally {
-        await testEnv.DB.prepare(`DELETE FROM google_oauth_tokens WHERE user_email = ?`)
-          .bind('test@example.com')
-          .run();
+        await pglite.query(`DELETE FROM google_oauth_tokens WHERE user_email = $1`, [
+          'test@example.com',
+        ]);
       }
     });
   });
 
   describe('404 Handler', () => {
     it('should return 404 for non-existent routes', async () => {
-      const response = await SELF.fetch('http://localhost/non-existent');
+      const response = await request('/non-existent');
       expect(response.status).toBe(404);
 
       const data = await response.json<{ error: string; message: string }>();

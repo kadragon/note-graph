@@ -32,7 +32,7 @@ export class EmbeddingRetryQueueRepository {
       LEFT JOIN work_notes wn ON erq.work_id = wn.work_id
       WHERE erq.status = 'dead_letter'
       ORDER BY erq.dead_letter_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT $1 OFFSET $2
     `;
 
     const countQuery = `
@@ -71,7 +71,7 @@ export class EmbeddingRetryQueueRepository {
         updated_at as updatedAt,
         dead_letter_at as deadLetterAt
       FROM embedding_retry_queue
-      WHERE id = ?`,
+      WHERE id = $1`,
       [id]
     );
   }
@@ -86,10 +86,10 @@ export class EmbeddingRetryQueueRepository {
       `UPDATE embedding_retry_queue
        SET
          status = 'pending',
-         next_retry_at = ?,
-         updated_at = ?,
+         next_retry_at = $1,
+         updated_at = $2,
          dead_letter_at = NULL
-       WHERE id = ? AND status = 'dead_letter'`,
+       WHERE id = $3 AND status = 'dead_letter'`,
       [now, now, id]
     );
 
@@ -104,8 +104,8 @@ export class EmbeddingRetryQueueRepository {
 
     await this.db.execute(
       `UPDATE embedding_retry_queue
-       SET status = ?, updated_at = ?
-       WHERE id = ?`,
+       SET status = $1, updated_at = $2
+       WHERE id = $3`,
       [status, now, id]
     );
   }
@@ -114,6 +114,6 @@ export class EmbeddingRetryQueueRepository {
    * Delete a retry queue item
    */
   async delete(id: string): Promise<void> {
-    await this.db.execute(`DELETE FROM embedding_retry_queue WHERE id = ?`, [id]);
+    await this.db.execute(`DELETE FROM embedding_retry_queue WHERE id = $1`, [id]);
   }
 }

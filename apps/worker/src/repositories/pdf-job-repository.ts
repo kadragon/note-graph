@@ -53,7 +53,7 @@ export class PdfJobRepository {
 
     await this.db.execute(
       `INSERT INTO pdf_jobs (job_id, status, r2_key, metadata_json, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [jobId, 'PENDING', r2Key, metadataJson, now, now]
     );
 
@@ -68,7 +68,7 @@ export class PdfJobRepository {
    * Get PDF job by ID
    */
   async getById(jobId: string): Promise<PdfJob | null> {
-    const result = await this.db.queryOne<PdfJobRow>('SELECT * FROM pdf_jobs WHERE job_id = ?', [
+    const result = await this.db.queryOne<PdfJobRow>('SELECT * FROM pdf_jobs WHERE job_id = $1', [
       jobId,
     ]);
 
@@ -85,7 +85,7 @@ export class PdfJobRepository {
   async updateStatusToProcessing(jobId: string): Promise<void> {
     const now = new Date().toISOString();
     const result = await this.db.execute(
-      'UPDATE pdf_jobs SET status = ?, updated_at = ? WHERE job_id = ?',
+      'UPDATE pdf_jobs SET status = $1, updated_at = $2 WHERE job_id = $3',
       ['PROCESSING', now, jobId]
     );
 
@@ -106,8 +106,8 @@ export class PdfJobRepository {
 
     const result = await this.db.execute(
       `UPDATE pdf_jobs
-       SET status = ?, draft_json = ?, r2_key = NULL, updated_at = ?
-       WHERE job_id = ?`,
+       SET status = $1, draft_json = $2, r2_key = NULL, updated_at = $3
+       WHERE job_id = $4`,
       ['READY', draftJson, now, jobId]
     );
 
@@ -124,8 +124,8 @@ export class PdfJobRepository {
 
     const result = await this.db.execute(
       `UPDATE pdf_jobs
-       SET status = ?, error_message = ?, r2_key = NULL, updated_at = ?
-       WHERE job_id = ?`,
+       SET status = $1, error_message = $2, r2_key = NULL, updated_at = $3
+       WHERE job_id = $4`,
       ['ERROR', errorMessage, now, jobId]
     );
 
@@ -138,7 +138,7 @@ export class PdfJobRepository {
    * Delete PDF job
    */
   async delete(jobId: string): Promise<void> {
-    const result = await this.db.execute('DELETE FROM pdf_jobs WHERE job_id = ?', [jobId]);
+    const result = await this.db.execute('DELETE FROM pdf_jobs WHERE job_id = $1', [jobId]);
 
     if (result.rowCount === 0) {
       throw new NotFoundError('PDF job', jobId);
@@ -154,7 +154,7 @@ export class PdfJobRepository {
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
     const cutoffIso = cutoffDate.toISOString();
 
-    const result = await this.db.execute('DELETE FROM pdf_jobs WHERE created_at < ?', [cutoffIso]);
+    const result = await this.db.execute('DELETE FROM pdf_jobs WHERE created_at < $1', [cutoffIso]);
 
     return result.rowCount;
   }

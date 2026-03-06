@@ -1,34 +1,22 @@
 // Unit tests for WorkNoteRepository
 // Consolidated from crud, read, associations, and versions test files
 
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { WorkNoteRepository } from '@worker/repositories/work-note-repository';
 import type { CreateWorkNoteInput, UpdateWorkNoteInput } from '@worker/schemas/work-note';
-import type { Env } from '@worker/types/env';
 import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('WorkNoteRepository', () => {
   let repository: WorkNoteRepository;
 
   beforeEach(async () => {
-    repository = new WorkNoteRepository(testDb);
+    repository = new WorkNoteRepository(testPgDb);
 
     // Clean up test data
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM work_note_relation'),
-      testEnv.DB.prepare('DELETE FROM work_note_person'),
-      testEnv.DB.prepare('DELETE FROM work_note_versions'),
-      testEnv.DB.prepare('DELETE FROM todos'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-      testEnv.DB.prepare('DELETE FROM person_dept_history'),
-      testEnv.DB.prepare('DELETE FROM persons'),
-      testEnv.DB.prepare('DELETE FROM departments'),
-    ]);
+    await pglite.query(
+      'TRUNCATE work_note_relation, work_note_person, work_note_versions, todos, work_note_meeting_minute, work_notes, person_dept_history, persons, departments CASCADE'
+    );
   });
 
   // --- CRUD operations ---
@@ -69,9 +57,10 @@ describe('WorkNoteRepository', () => {
 
     it('should create work note with person associations', async () => {
       const personId = '123456';
-      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)')
-        .bind(personId, '홍길동')
-        .run();
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        personId,
+        '홍길동',
+      ]);
 
       const input: CreateWorkNoteInput = {
         title: 'New Note',
@@ -88,15 +77,13 @@ describe('WorkNoteRepository', () => {
     });
 
     it('should create work note with multiple person associations', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          'P-001',
-          'Person 1'
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          'P-002',
-          'Person 2'
-        ),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        'P-001',
+        'Person 1',
+      ]);
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        'P-002',
+        'Person 2',
       ]);
 
       const input: CreateWorkNoteInput = {
@@ -117,11 +104,10 @@ describe('WorkNoteRepository', () => {
     it('should create work note with related work notes', async () => {
       const relatedWorkId = 'WORK-RELATED';
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind(relatedWorkId, 'Related', 'Content', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        [relatedWorkId, 'Related', 'Content', now, now]
+      );
 
       const input: CreateWorkNoteInput = {
         title: 'New Note',
@@ -137,12 +123,11 @@ describe('WorkNoteRepository', () => {
     });
 
     it('should create work note with related meeting references', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-REL-001',
           '2026-02-11',
           '주간 동기화',
@@ -150,13 +135,14 @@ describe('WorkNoteRepository', () => {
           JSON.stringify(['동기화']),
           '동기화',
           '2026-02-11T09:00:00.000Z',
-          '2026-02-11T09:00:00.000Z'
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+          '2026-02-11T09:00:00.000Z',
+        ]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-REL-002',
           '2026-02-12',
           '이슈 점검',
@@ -164,9 +150,9 @@ describe('WorkNoteRepository', () => {
           JSON.stringify(['이슈']),
           '이슈',
           '2026-02-12T09:00:00.000Z',
-          '2026-02-12T09:00:00.000Z'
-        ),
-      ]);
+          '2026-02-12T09:00:00.000Z',
+        ]
+      );
 
       const input: CreateWorkNoteInput = {
         title: 'Meeting linked note',
@@ -176,19 +162,15 @@ describe('WorkNoteRepository', () => {
 
       const result = await repository.create(input);
 
-      const rows = await testEnv.DB.prepare(
-        `SELECT meeting_id as meetingId
+      const rows = await pglite.query(
+        `SELECT meeting_id as "meetingId"
            FROM work_note_meeting_minute
-           WHERE work_id = ?
-           ORDER BY meeting_id ASC`
-      )
-        .bind(result.workId)
-        .all<{ meetingId: string }>();
+           WHERE work_id = $1
+           ORDER BY meeting_id ASC`,
+        [result.workId]
+      );
 
-      expect((rows.results || []).map((row) => row.meetingId)).toEqual([
-        'MEET-REL-001',
-        'MEET-REL-002',
-      ]);
+      expect(rows.rows.map((row: any) => row.meetingId)).toEqual(['MEET-REL-001', 'MEET-REL-002']);
     });
 
     it('should create first version when creating work note', async () => {
@@ -297,9 +279,10 @@ describe('WorkNoteRepository', () => {
 
     it('should update person associations', async () => {
       const personId = '123456';
-      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)')
-        .bind(personId, '홍길동')
-        .run();
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        personId,
+        '홍길동',
+      ]);
 
       const update: UpdateWorkNoteInput = {
         persons: [{ personId, role: 'OWNER' }],
@@ -313,19 +296,18 @@ describe('WorkNoteRepository', () => {
     });
 
     it('should replace existing person associations', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          'P-001',
-          'Person 1'
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          'P-002',
-          'Person 2'
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
-        ).bind(existingWorkId, 'P-001', 'OWNER'),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        'P-001',
+        'Person 1',
       ]);
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        'P-002',
+        'Person 2',
+      ]);
+      await pglite.query(
+        'INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)',
+        [existingWorkId, 'P-001', 'OWNER']
+      );
 
       const update: UpdateWorkNoteInput = {
         persons: [{ personId: 'P-002', role: 'PARTICIPANT' }],
@@ -341,11 +323,10 @@ describe('WorkNoteRepository', () => {
     it('should update related work notes', async () => {
       const relatedWorkId = 'WORK-RELATED';
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind(relatedWorkId, 'Related', 'Content', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        [relatedWorkId, 'Related', 'Content', now, now]
+      );
 
       const update: UpdateWorkNoteInput = {
         relatedWorkIds: [relatedWorkId],
@@ -359,12 +340,11 @@ describe('WorkNoteRepository', () => {
     });
 
     it('should replace meeting links when relatedMeetingIds is provided', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-OLD-001',
           '2026-02-11',
           '기존 회의',
@@ -372,13 +352,14 @@ describe('WorkNoteRepository', () => {
           JSON.stringify(['기존']),
           '기존',
           '2026-02-11T09:00:00.000Z',
-          '2026-02-11T09:00:00.000Z'
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+          '2026-02-11T09:00:00.000Z',
+        ]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-NEW-001',
           '2026-02-12',
           '신규 회의',
@@ -386,12 +367,13 @@ describe('WorkNoteRepository', () => {
           JSON.stringify(['신규']),
           '신규',
           '2026-02-12T09:00:00.000Z',
-          '2026-02-12T09:00:00.000Z'
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES (?, ?)'
-        ).bind(existingWorkId, 'MEET-OLD-001'),
-      ]);
+          '2026-02-12T09:00:00.000Z',
+        ]
+      );
+      await pglite.query(
+        'INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES ($1, $2)',
+        [existingWorkId, 'MEET-OLD-001']
+      );
 
       const update: UpdateWorkNoteInput = {
         relatedMeetingIds: ['MEET-NEW-001'],
@@ -399,16 +381,15 @@ describe('WorkNoteRepository', () => {
 
       await repository.update(existingWorkId, update);
 
-      const rows = await testEnv.DB.prepare(
-        `SELECT meeting_id as meetingId
+      const rows = await pglite.query(
+        `SELECT meeting_id as "meetingId"
            FROM work_note_meeting_minute
-           WHERE work_id = ?
-           ORDER BY meeting_id ASC`
-      )
-        .bind(existingWorkId)
-        .all<{ meetingId: string }>();
+           WHERE work_id = $1
+           ORDER BY meeting_id ASC`,
+        [existingWorkId]
+      );
 
-      expect((rows.results || []).map((row) => row.meetingId)).toEqual(['MEET-NEW-001']);
+      expect(rows.rows.map((row: any) => row.meetingId)).toEqual(['MEET-NEW-001']);
     });
 
     it('should prune old versions after 5 versions', async () => {
@@ -422,9 +403,10 @@ describe('WorkNoteRepository', () => {
 
     it('should update updatedAt timestamp', async () => {
       const forcedUpdatedAt = '2000-01-01T00:00:00.000Z';
-      await testEnv.DB.prepare('UPDATE work_notes SET updated_at = ? WHERE work_id = ?')
-        .bind(forcedUpdatedAt, existingWorkId)
-        .run();
+      await pglite.query('UPDATE work_notes SET updated_at = $1 WHERE work_id = $2', [
+        forcedUpdatedAt,
+        existingWorkId,
+      ]);
 
       await repository.update(existingWorkId, { title: 'New Title' });
 
@@ -433,15 +415,14 @@ describe('WorkNoteRepository', () => {
     });
 
     it('should handle empty persons array', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          'P-001',
-          'Person 1'
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
-        ).bind(existingWorkId, 'P-001', 'OWNER'),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        'P-001',
+        'Person 1',
       ]);
+      await pglite.query(
+        'INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)',
+        [existingWorkId, 'P-001', 'OWNER']
+      );
 
       const update: UpdateWorkNoteInput = {
         persons: [],
@@ -474,9 +455,10 @@ describe('WorkNoteRepository', () => {
 
     it('should cascade delete person associations', async () => {
       const personId = '123456';
-      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)')
-        .bind(personId, '홍길동')
-        .run();
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        personId,
+        '홍길동',
+      ]);
 
       const input: CreateWorkNoteInput = {
         title: 'To Delete',
@@ -487,12 +469,10 @@ describe('WorkNoteRepository', () => {
 
       await repository.delete(created.workId);
 
-      const associations = await testEnv.DB.prepare(
-        'SELECT * FROM work_note_person WHERE work_id = ?'
-      )
-        .bind(created.workId)
-        .all();
-      expect(associations.results.length).toBe(0);
+      const associations = await pglite.query('SELECT * FROM work_note_person WHERE work_id = $1', [
+        created.workId,
+      ]);
+      expect(associations.rows.length).toBe(0);
     });
   });
 
@@ -536,11 +516,10 @@ describe('WorkNoteRepository', () => {
     it('should find work note by ID', async () => {
       const workId = 'WORK-TEST-001';
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-        .bind(workId, 'Test Title', 'Test Content', '업무', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        [workId, 'Test Title', 'Test Content', '업무', now, now]
+      );
 
       const result = await repository.findById(workId);
 
@@ -560,11 +539,10 @@ describe('WorkNoteRepository', () => {
     it('should handle Korean text in title and content', async () => {
       const workId = 'WORK-TEST-002';
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-        .bind(workId, '한글 제목', '한글 내용입니다', '회의', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        [workId, '한글 제목', '한글 내용입니다', '회의', now, now]
+      );
 
       const result = await repository.findById(workId);
 
@@ -585,18 +563,18 @@ describe('WorkNoteRepository', () => {
       const personId = '123456';
       const now = new Date().toISOString();
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          personId,
-          '홍길동'
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind(workId, 'Test', 'Content', '업무', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
-        ).bind(workId, personId, 'OWNER'),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        personId,
+        '홍길동',
       ]);
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        [workId, 'Test', 'Content', '업무', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)',
+        [workId, personId, 'OWNER']
+      );
 
       const result = await repository.findByIdWithDetails(workId);
 
@@ -613,17 +591,18 @@ describe('WorkNoteRepository', () => {
       const relatedWorkId = 'WORK-TEST-005';
       const now = new Date().toISOString();
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind(workId, 'Main Work', 'Content', '업무', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind(relatedWorkId, 'Related Work', 'Related Content', '회의', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_relation (work_id, related_work_id) VALUES (?, ?)'
-        ).bind(workId, relatedWorkId),
-      ]);
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        [workId, 'Main Work', 'Content', '업무', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        [relatedWorkId, 'Related Work', 'Related Content', '회의', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_note_relation (work_id, related_work_id) VALUES ($1, $2)',
+        [workId, relatedWorkId]
+      );
 
       const result = await repository.findByIdWithDetails(workId);
 
@@ -637,11 +616,10 @@ describe('WorkNoteRepository', () => {
     it('should return empty arrays when no associations exist', async () => {
       const workId = 'WORK-TEST-006';
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-        .bind(workId, 'Test', 'Content', '업무', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        [workId, 'Test', 'Content', '업무', now, now]
+      );
 
       const result = await repository.findByIdWithDetails(workId);
 
@@ -653,17 +631,18 @@ describe('WorkNoteRepository', () => {
   describe('findAll()', () => {
     beforeEach(async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('WORK-001', 'First Note', 'Content 1', '업무', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('WORK-002', 'Second Note', 'Content 2', '회의', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('WORK-003', 'Third Note', 'Content 3', '업무', now, now),
-      ]);
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['WORK-001', 'First Note', 'Content 1', '업무', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['WORK-002', 'Second Note', 'Content 2', '회의', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['WORK-003', 'Third Note', 'Content 3', '업무', now, now]
+      );
     });
 
     it('should return all work notes when no filters applied', async () => {
@@ -695,15 +674,14 @@ describe('WorkNoteRepository', () => {
 
     it('should filter by person ID', async () => {
       const personId = '123456';
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          personId,
-          '홍길동'
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
-        ).bind('WORK-001', personId, 'OWNER'),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        personId,
+        '홍길동',
       ]);
+      await pglite.query(
+        'INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)',
+        ['WORK-001', personId, 'OWNER']
+      );
 
       const result = await repository.findAll({ personId });
 
@@ -714,18 +692,19 @@ describe('WorkNoteRepository', () => {
     it('should filter by department name', async () => {
       const personId = '123456';
       const deptName = '개발팀';
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind(deptName),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)'
-        ).bind(personId, '홍길동', deptName),
-        testEnv.DB.prepare(
-          'INSERT INTO person_dept_history (person_id, dept_name, start_date, is_active) VALUES (?, ?, ?, ?)'
-        ).bind(personId, deptName, new Date().toISOString(), 1),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
-        ).bind('WORK-001', personId, 'OWNER'),
-      ]);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', [deptName]);
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, current_dept) VALUES ($1, $2, $3)',
+        [personId, '홍길동', deptName]
+      );
+      await pglite.query(
+        'INSERT INTO person_dept_history (person_id, dept_name, start_date, is_active) VALUES ($1, $2, $3, $4)',
+        [personId, deptName, new Date().toISOString(), true]
+      );
+      await pglite.query(
+        'INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)',
+        ['WORK-001', personId, 'OWNER']
+      );
 
       const result = await repository.findAll({ deptName });
 
@@ -766,12 +745,11 @@ describe('WorkNoteRepository', () => {
     it('should return department name for person', async () => {
       const personId = '123456';
       const deptName = '개발팀';
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind(deptName),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)'
-        ).bind(personId, '홍길동', deptName),
-      ]);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', [deptName]);
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, current_dept) VALUES ($1, $2, $3)',
+        [personId, '홍길동', deptName]
+      );
 
       const result = await repository.getDeptNameForPerson(personId);
 
@@ -780,9 +758,10 @@ describe('WorkNoteRepository', () => {
 
     it('should return null for person without department', async () => {
       const personId = '123456';
-      await testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)')
-        .bind(personId, '홍길동')
-        .run();
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        personId,
+        '홍길동',
+      ]);
 
       const result = await repository.getDeptNameForPerson(personId);
 
@@ -806,23 +785,26 @@ describe('WorkNoteRepository', () => {
     it('should return todos grouped by work ID', async () => {
       const now = new Date().toISOString();
       const dueDate = '2025-12-01';
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind('WORK-001', 'Note 1', 'Content 1', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind('WORK-002', 'Note 2', 'Content 2', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, description, status, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-001', 'WORK-001', '할 일 1', '설명 1', '진행중', dueDate, now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, description, status, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-002', 'WORK-001', '할 일 2', null, '완료', null, now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, description, status, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-003', 'WORK-002', '할 일 3', '설명 3', '보류', dueDate, now, now),
-      ]);
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Note 1', 'Content 1', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-002', 'Note 2', 'Content 2', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, description, status, due_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        ['TODO-001', 'WORK-001', '할 일 1', '설명 1', '진행중', dueDate, now, now]
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, description, status, due_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        ['TODO-002', 'WORK-001', '할 일 2', null, '완료', null, now, now]
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, description, status, due_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        ['TODO-003', 'WORK-002', '할 일 3', '설명 3', '보류', dueDate, now, now]
+      );
 
       const result = await repository.findTodosByWorkIds(['WORK-001', 'WORK-002']);
 
@@ -834,7 +816,11 @@ describe('WorkNoteRepository', () => {
       expect(work1Todos?.[0].title).toBe('할 일 1');
       expect(work1Todos?.[0].description).toBe('설명 1');
       expect(work1Todos?.[0].status).toBe('진행중');
-      expect(work1Todos?.[0].dueDate).toBe(dueDate);
+      // PGlite returns DATE columns as Date objects
+      const dueDateValue = work1Todos?.[0].dueDate;
+      const dueDateStr =
+        dueDateValue instanceof Date ? dueDateValue.toISOString().slice(0, 10) : dueDateValue;
+      expect(dueDateStr).toBe(dueDate);
       expect(work1Todos?.[1].title).toBe('할 일 2');
       expect(work1Todos?.[1].description).toBeNull();
       expect(work1Todos?.[1].status).toBe('완료');
@@ -847,11 +833,10 @@ describe('WorkNoteRepository', () => {
 
     it('should return empty map when no todos exist for work IDs', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind('WORK-001', 'Note 1', 'Content 1', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Note 1', 'Content 1', now, now]
+      );
 
       const result = await repository.findTodosByWorkIds(['WORK-001']);
 
@@ -860,20 +845,22 @@ describe('WorkNoteRepository', () => {
 
     it('should order todos by due date ascending, then created_at', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind('WORK-001', 'Note 1', 'Content 1', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, status, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-001', 'WORK-001', '나중 할 일', '진행중', '2025-12-31', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, status, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-002', 'WORK-001', '먼저 할 일', '진행중', '2025-12-01', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, status, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-003', 'WORK-001', '기한 없음', '진행중', null, now, now),
-      ]);
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Note 1', 'Content 1', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, status, due_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        ['TODO-001', 'WORK-001', '나중 할 일', '진행중', '2025-12-31', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, status, due_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        ['TODO-002', 'WORK-001', '먼저 할 일', '진행중', '2025-12-01', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, status, due_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        ['TODO-003', 'WORK-001', '기한 없음', '진행중', null, now, now]
+      );
 
       const result = await repository.findTodosByWorkIds(['WORK-001']);
 

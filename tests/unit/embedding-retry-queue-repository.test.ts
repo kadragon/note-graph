@@ -1,25 +1,20 @@
 // Trace: SPEC-rag-2, TASK-069
 // Unit tests for EmbeddingRetryQueueRepository
 
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { EmbeddingRetryQueueRepository } from '@worker/repositories/embedding-retry-queue-repository';
-import type { Env } from '@worker/types/env';
 import { nanoid } from 'nanoid';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('EmbeddingRetryQueueRepository', () => {
   let repository: EmbeddingRetryQueueRepository;
 
   beforeEach(async () => {
-    repository = new EmbeddingRetryQueueRepository(testDb);
+    repository = new EmbeddingRetryQueueRepository(testPgDb);
 
     // Clean up test data
-    await testEnv.DB.prepare('DELETE FROM embedding_retry_queue').run();
-    await testEnv.DB.prepare('DELETE FROM work_notes').run();
+    await pglite.query('DELETE FROM embedding_retry_queue');
+    await pglite.query('DELETE FROM work_notes');
   });
 
   describe('findDeadLetterItems()', () => {
@@ -35,24 +30,21 @@ describe('EmbeddingRetryQueueRepository', () => {
     it('should list dead-letter items with work note titles', async () => {
       // Arrange - Create a test work note
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work Note', 'Test content')
-        .run();
+      const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at) VALUES ($1, $2, $3, $4)`,
+        [workId, 'Test Work Note', 'Test content', now]
+      );
 
       // Create dead-letter retry item
       const retryId = nanoid();
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, max_attempts,
           status, error_message, created_at, updated_at, dead_letter_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(retryId, workId, 'create', 3, 3, 'dead_letter', 'Max retries exceeded', now, now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [retryId, workId, 'create', 3, 3, 'dead_letter', 'Max retries exceeded', now, now, now]
+      );
 
       // Act
       const result = await repository.findDeadLetterItems(50, 0);
@@ -66,38 +58,33 @@ describe('EmbeddingRetryQueueRepository', () => {
       expect(result.items[0].operationType).toBe('create');
       expect(result.items[0].attemptCount).toBe(3);
       expect(result.items[0].errorMessage).toBe('Max retries exceeded');
-      expect(result.items[0].deadLetterAt).toBe(now);
+      expect(new Date(result.items[0].deadLetterAt).toISOString()).toBe(now);
     });
 
     it('should not include pending or retrying items', async () => {
       // Arrange
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
-
       const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at) VALUES ($1, $2, $3, $4)`,
+        [workId, 'Test Work', 'Content', now]
+      );
 
       // Create pending item
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(nanoid(), workId, 'create', 1, 'pending', now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [nanoid(), workId, 'create', 1, 'pending', now, now]
+      );
 
       // Create retrying item
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(nanoid(), workId, 'create', 2, 'retrying', now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [nanoid(), workId, 'create', 2, 'retrying', now, now]
+      );
 
       // Act
       const result = await repository.findDeadLetterItems(50, 0);
@@ -110,23 +97,20 @@ describe('EmbeddingRetryQueueRepository', () => {
     it('should respect limit and offset parameters', async () => {
       // Arrange - Create 5 dead-letter items
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
-
       const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at) VALUES ($1, $2, $3, $4)`,
+        [workId, 'Test Work', 'Content', now]
+      );
+
       for (let i = 0; i < 5; i++) {
-        await testEnv.DB.prepare(`
-          INSERT INTO embedding_retry_queue (
+        await pglite.query(
+          `INSERT INTO embedding_retry_queue (
             id, work_id, operation_type, attempt_count, status,
             created_at, updated_at, dead_letter_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `)
-          .bind(nanoid(), workId, 'create', 3, 'dead_letter', now, now, now)
-          .run();
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [nanoid(), workId, 'create', 3, 'dead_letter', now, now, now]
+        );
       }
 
       // Act
@@ -154,23 +138,20 @@ describe('EmbeddingRetryQueueRepository', () => {
     it('should retrieve retry item by ID', async () => {
       // Arrange
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
+      const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at) VALUES ($1, $2, $3, $4)`,
+        [workId, 'Test Work', 'Content', now]
+      );
 
       const retryId = nanoid();
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, max_attempts,
           next_retry_at, status, error_message, error_details,
           created_at, updated_at, dead_letter_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [
           retryId,
           workId,
           'update',
@@ -182,9 +163,9 @@ describe('EmbeddingRetryQueueRepository', () => {
           '{"code":"ECONNRESET"}',
           now,
           now,
-          null
-        )
-        .run();
+          null,
+        ]
+      );
 
       // Act
       const result = await repository.findById(retryId);
@@ -206,23 +187,20 @@ describe('EmbeddingRetryQueueRepository', () => {
     it('should reset dead-letter item to pending status', async () => {
       // Arrange
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
+      const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at) VALUES ($1, $2, $3, $4)`,
+        [workId, 'Test Work', 'Content', now]
+      );
 
       const retryId = nanoid();
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status,
           created_at, updated_at, dead_letter_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(retryId, workId, 'create', 3, 'dead_letter', now, now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [retryId, workId, 'create', 3, 'dead_letter', now, now, now]
+      );
 
       // Act
       const success = await repository.resetToPending(retryId);
@@ -247,23 +225,20 @@ describe('EmbeddingRetryQueueRepository', () => {
     it('should return false when item is not in dead_letter status', async () => {
       // Arrange
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
+      const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at) VALUES ($1, $2, $3, $4)`,
+        [workId, 'Test Work', 'Content', now]
+      );
 
       const retryId = nanoid();
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(retryId, workId, 'create', 1, 'pending', now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [retryId, workId, 'create', 1, 'pending', now, now]
+      );
 
       // Act
       const success = await repository.resetToPending(retryId);
@@ -277,23 +252,20 @@ describe('EmbeddingRetryQueueRepository', () => {
     it('should update retry item status', async () => {
       // Arrange
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
+      const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at) VALUES ($1, $2, $3, $4)`,
+        [workId, 'Test Work', 'Content', now]
+      );
 
       const retryId = nanoid();
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(retryId, workId, 'create', 1, 'pending', now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [retryId, workId, 'create', 1, 'pending', now, now]
+      );
 
       // Act
       await repository.updateStatus(retryId, 'retrying');
@@ -308,23 +280,20 @@ describe('EmbeddingRetryQueueRepository', () => {
     it('should delete retry item', async () => {
       // Arrange
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
+      const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at) VALUES ($1, $2, $3, $4)`,
+        [workId, 'Test Work', 'Content', now]
+      );
 
       const retryId = nanoid();
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(retryId, workId, 'create', 1, 'pending', now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [retryId, workId, 'create', 1, 'pending', now, now]
+      );
 
       // Act
       await repository.delete(retryId);

@@ -33,7 +33,7 @@ export class GoogleOAuthRepository {
         created_at as createdAt,
         updated_at as updatedAt
        FROM google_oauth_tokens
-       WHERE user_email = ?`,
+       WHERE user_email = $1`,
       [userEmail]
     );
   }
@@ -54,7 +54,7 @@ export class GoogleOAuthRepository {
     await this.db.execute(
       `INSERT INTO google_oauth_tokens
         (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT(user_email) DO UPDATE SET
         access_token = excluded.access_token,
         refresh_token = excluded.refresh_token,
@@ -93,8 +93,8 @@ export class GoogleOAuthRepository {
 
     await this.db.execute(
       `UPDATE google_oauth_tokens
-       SET access_token = ?, expires_at = ?, updated_at = ?
-       WHERE user_email = ?`,
+       SET access_token = $1, expires_at = $2, updated_at = $3
+       WHERE user_email = $4`,
       [accessToken, expiresAt, now, userEmail]
     );
   }
@@ -103,6 +103,6 @@ export class GoogleOAuthRepository {
    * Delete OAuth tokens (disconnect)
    */
   async delete(userEmail: string): Promise<void> {
-    await this.db.execute(`DELETE FROM google_oauth_tokens WHERE user_email = ?`, [userEmail]);
+    await this.db.execute(`DELETE FROM google_oauth_tokens WHERE user_email = $1`, [userEmail]);
   }
 }

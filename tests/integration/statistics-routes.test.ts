@@ -3,23 +3,28 @@
  * Integration tests for statistics API routes
  */
 
-import { SELF } from 'cloudflare:test';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch, testEnv } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch, createTestRequest } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+const authFetch = createAuthFetch(worker);
+const request = createTestRequest(worker);
 
 describe('Statistics API Routes', () => {
   beforeEach(async () => {
     // Clean up test data
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM work_note_person'),
-      testEnv.DB.prepare('DELETE FROM work_note_task_category'),
-      testEnv.DB.prepare('DELETE FROM todos'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-      testEnv.DB.prepare('DELETE FROM persons'),
-      testEnv.DB.prepare('DELETE FROM departments'),
-      testEnv.DB.prepare('DELETE FROM task_categories'),
-    ]);
+    await pglite.query('DELETE FROM work_note_person');
+    await pglite.query('DELETE FROM work_note_task_category');
+    await pglite.query('DELETE FROM todos');
+    await pglite.query('DELETE FROM work_notes');
+    await pglite.query('DELETE FROM persons');
+    await pglite.query('DELETE FROM departments');
+    await pglite.query('DELETE FROM task_categories');
   });
 
   describe('GET /api/statistics', () => {
@@ -28,44 +33,35 @@ describe('Statistics API Routes', () => {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
-        ).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO task_categories (category_id, name, created_at) VALUES (?, ?, ?)`
-        ).bind('CAT-001', '버그수정', `${today}T00:00:00Z`),
-        testEnv.DB.prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-        ).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
-        ).bind('WORK-001', 'P001', 'OWNER'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_task_category (work_id, category_id) VALUES (?, ?)`
-        ).bind('WORK-001', 'CAT-001'),
-        testEnv.DB.prepare(
-          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'TODO-001',
-          'WORK-001',
-          'Task 1',
-          '완료',
-          `${today}T10:00:00Z`,
-          `${today}T10:00:00Z`
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'TODO-002',
-          'WORK-001',
-          'Task 2',
-          '진행중',
-          `${today}T10:00:00Z`,
-          `${today}T10:00:00Z`
-        ),
-      ]);
+      await pglite.query(`INSERT INTO departments (dept_name) VALUES ($1)`, ['개발팀']);
+      await pglite.query(
+        `INSERT INTO persons (person_id, name, current_dept) VALUES ($1, $2, $3)`,
+        ['P001', '홍길동', '개발팀']
+      );
+      await pglite.query(
+        `INSERT INTO task_categories (category_id, name, created_at) VALUES ($1, $2, $3)`,
+        ['CAT-001', '버그수정', `${today}T00:00:00Z`]
+      );
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+        ['WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`]
+      );
+      await pglite.query(
+        `INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)`,
+        ['WORK-001', 'P001', 'OWNER']
+      );
+      await pglite.query(
+        `INSERT INTO work_note_task_category (work_id, category_id) VALUES ($1, $2)`,
+        ['WORK-001', 'CAT-001']
+      );
+      await pglite.query(
+        `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['TODO-001', 'WORK-001', 'Task 1', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`]
+      );
+      await pglite.query(
+        `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['TODO-002', 'WORK-001', 'Task 2', '진행중', `${today}T10:00:00Z`, `${today}T10:00:00Z`]
+      );
 
       // Act
       const response = await authFetch('/api/statistics?period=this-week');
@@ -87,28 +83,23 @@ describe('Statistics API Routes', () => {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
-        ).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-        ).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
-        ).bind('WORK-001', 'P001', 'OWNER'),
-        testEnv.DB.prepare(
-          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'TODO-001',
-          'WORK-001',
-          'Task 1',
-          '진행중',
-          `${today}T10:00:00Z`,
-          `${today}T10:00:00Z`
-        ),
-      ]);
+      await pglite.query(`INSERT INTO departments (dept_name) VALUES ($1)`, ['개발팀']);
+      await pglite.query(
+        `INSERT INTO persons (person_id, name, current_dept) VALUES ($1, $2, $3)`,
+        ['P001', '홍길동', '개발팀']
+      );
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+        ['WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`]
+      );
+      await pglite.query(
+        `INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)`,
+        ['WORK-001', 'P001', 'OWNER']
+      );
+      await pglite.query(
+        `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['TODO-001', 'WORK-001', 'Task 1', '진행중', `${today}T10:00:00Z`, `${today}T10:00:00Z`]
+      );
 
       // Act
       const response = await authFetch('/api/statistics?period=this-week');
@@ -125,33 +116,39 @@ describe('Statistics API Routes', () => {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
-        ).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
-        ).bind('P002', '김철수', '개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-        ).bind('WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-        ).bind('WORK-002', 'Work 2', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
-        ).bind('WORK-001', 'P001', 'OWNER'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
-        ).bind('WORK-002', 'P002', 'OWNER'),
-        testEnv.DB.prepare(
-          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind('TODO-001', 'WORK-001', 'Task', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-        testEnv.DB.prepare(
-          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind('TODO-002', 'WORK-002', 'Task', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`),
-      ]);
+      await pglite.query(`INSERT INTO departments (dept_name) VALUES ($1)`, ['개발팀']);
+      await pglite.query(
+        `INSERT INTO persons (person_id, name, current_dept) VALUES ($1, $2, $3)`,
+        ['P001', '홍길동', '개발팀']
+      );
+      await pglite.query(
+        `INSERT INTO persons (person_id, name, current_dept) VALUES ($1, $2, $3)`,
+        ['P002', '김철수', '개발팀']
+      );
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+        ['WORK-001', 'Work 1', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`]
+      );
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+        ['WORK-002', 'Work 2', 'Content', `${today}T10:00:00Z`, `${today}T10:00:00Z`]
+      );
+      await pglite.query(
+        `INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)`,
+        ['WORK-001', 'P001', 'OWNER']
+      );
+      await pglite.query(
+        `INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)`,
+        ['WORK-002', 'P002', 'OWNER']
+      );
+      await pglite.query(
+        `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['TODO-001', 'WORK-001', 'Task', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`]
+      );
+      await pglite.query(
+        `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['TODO-002', 'WORK-002', 'Task', '완료', `${today}T10:00:00Z`, `${today}T10:00:00Z`]
+      );
 
       // Act: Filter by P001
       const response = await authFetch('/api/statistics?period=this-week&personId=P001');
@@ -187,66 +184,47 @@ describe('Statistics API Routes', () => {
       year,
       expectedWorkId,
     }) => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
-        ).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-        ).bind(
-          'WORK-JAN',
-          'January Work',
-          'Content',
-          '2025-01-15T10:00:00Z',
-          '2025-01-15T10:00:00Z'
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-        ).bind('WORK-JUL', 'July Work', 'Content', '2025-07-15T10:00:00Z', '2025-07-15T10:00:00Z'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-        ).bind('WORK-2024', 'Work 2024', 'Content', '2024-05-10T10:00:00Z', '2024-05-10T10:00:00Z'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
-        ).bind('WORK-JAN', 'P001', 'OWNER'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
-        ).bind('WORK-JUL', 'P001', 'OWNER'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
-        ).bind('WORK-2024', 'P001', 'OWNER'),
-        testEnv.DB.prepare(
-          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'TODO-JAN',
-          'WORK-JAN',
-          'Task',
-          '완료',
-          '2025-01-20T10:00:00Z',
-          '2025-01-20T10:00:00Z'
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'TODO-JUL',
-          'WORK-JUL',
-          'Task',
-          '완료',
-          '2025-07-20T10:00:00Z',
-          '2025-07-20T10:00:00Z'
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'TODO-2024',
-          'WORK-2024',
-          'Task',
-          '완료',
-          '2024-05-11T10:00:00Z',
-          '2024-06-01T10:00:00Z'
-        ),
-      ]);
+      await pglite.query(`INSERT INTO departments (dept_name) VALUES ($1)`, ['개발팀']);
+      await pglite.query(
+        `INSERT INTO persons (person_id, name, current_dept) VALUES ($1, $2, $3)`,
+        ['P001', '홍길동', '개발팀']
+      );
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+        ['WORK-JAN', 'January Work', 'Content', '2025-01-15T10:00:00Z', '2025-01-15T10:00:00Z']
+      );
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+        ['WORK-JUL', 'July Work', 'Content', '2025-07-15T10:00:00Z', '2025-07-15T10:00:00Z']
+      );
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+        ['WORK-2024', 'Work 2024', 'Content', '2024-05-10T10:00:00Z', '2024-05-10T10:00:00Z']
+      );
+      await pglite.query(
+        `INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)`,
+        ['WORK-JAN', 'P001', 'OWNER']
+      );
+      await pglite.query(
+        `INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)`,
+        ['WORK-JUL', 'P001', 'OWNER']
+      );
+      await pglite.query(
+        `INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)`,
+        ['WORK-2024', 'P001', 'OWNER']
+      );
+      await pglite.query(
+        `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['TODO-JAN', 'WORK-JAN', 'Task', '완료', '2025-01-20T10:00:00Z', '2025-01-20T10:00:00Z']
+      );
+      await pglite.query(
+        `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['TODO-JUL', 'WORK-JUL', 'Task', '완료', '2025-07-20T10:00:00Z', '2025-07-20T10:00:00Z']
+      );
+      await pglite.query(
+        `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['TODO-2024', 'WORK-2024', 'Task', '완료', '2024-05-11T10:00:00Z', '2024-06-01T10:00:00Z']
+      );
 
       const response = await authFetch(`/api/statistics?period=${period}&year=${year}`);
 
@@ -258,28 +236,23 @@ describe('Statistics API Routes', () => {
 
     it('should support custom period with startDate and endDate', async () => {
       // Arrange: Create work notes
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(`INSERT INTO departments (dept_name) VALUES (?)`).bind('개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO persons (person_id, name, current_dept) VALUES (?, ?, ?)`
-        ).bind('P001', '홍길동', '개발팀'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-        ).bind('WORK-MAR', 'March Work', 'Content', '2025-03-15T10:00:00Z', '2025-03-15T10:00:00Z'),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)`
-        ).bind('WORK-MAR', 'P001', 'OWNER'),
-        testEnv.DB.prepare(
-          `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(
-          'TODO-MAR',
-          'WORK-MAR',
-          'Task',
-          '완료',
-          '2025-03-20T10:00:00Z',
-          '2025-03-20T10:00:00Z'
-        ),
-      ]);
+      await pglite.query(`INSERT INTO departments (dept_name) VALUES ($1)`, ['개발팀']);
+      await pglite.query(
+        `INSERT INTO persons (person_id, name, current_dept) VALUES ($1, $2, $3)`,
+        ['P001', '홍길동', '개발팀']
+      );
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+        ['WORK-MAR', 'March Work', 'Content', '2025-03-15T10:00:00Z', '2025-03-15T10:00:00Z']
+      );
+      await pglite.query(
+        `INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)`,
+        ['WORK-MAR', 'P001', 'OWNER']
+      );
+      await pglite.query(
+        `INSERT INTO todos (todo_id, work_id, title, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['TODO-MAR', 'WORK-MAR', 'Task', '완료', '2025-03-20T10:00:00Z', '2025-03-20T10:00:00Z']
+      );
 
       // Act: Query custom range (March 2025)
       const response = await authFetch(
@@ -305,7 +278,7 @@ describe('Statistics API Routes', () => {
 
     it('should require authentication', async () => {
       // Act: Request without auth header
-      const response = await SELF.fetch('http://localhost/api/statistics?period=this-week');
+      const response = await request('/api/statistics?period=this-week');
 
       // Assert
       expect(response.status).toBe(401);

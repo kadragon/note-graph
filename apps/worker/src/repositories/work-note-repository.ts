@@ -45,7 +45,7 @@ export class WorkNoteRepository {
               category, created_at as createdAt,
               updated_at as updatedAt, embedded_at as embeddedAt
        FROM work_notes
-       WHERE work_id = ?`,
+       WHERE work_id = $1`,
       [workId]
     );
   }
@@ -67,7 +67,7 @@ export class WorkNoteRepository {
                 p.current_position as currentPosition, p.phone_ext as phoneExt
          FROM work_note_person wnp
          INNER JOIN persons p ON wnp.person_id = p.person_id
-         WHERE wnp.work_id = ?`,
+         WHERE wnp.work_id = $1`,
           [workId]
         ),
         this.db.query<WorkNoteRelation>(
@@ -75,21 +75,21 @@ export class WorkNoteRepository {
                 wn.title as relatedWorkTitle
          FROM work_note_relation wnr
          LEFT JOIN work_notes wn ON wnr.related_work_id = wn.work_id
-         WHERE wnr.work_id = ?`,
+         WHERE wnr.work_id = $1`,
           [workId]
         ),
         this.db.query<TaskCategory>(
           `SELECT tc.category_id as categoryId, tc.name, tc.created_at as createdAt
          FROM task_categories tc
          INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
-         WHERE wntc.work_id = ?`,
+         WHERE wntc.work_id = $1`,
           [workId]
         ),
-        this.db.query<{ groupId: string; name: string; isActive: number; createdAt: string }>(
+        this.db.query<{ groupId: string; name: string; isActive: boolean; createdAt: string }>(
           `SELECT g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
          FROM work_note_groups g
          INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
-         WHERE wngi.work_id = ?
+         WHERE wngi.work_id = $1
          ORDER BY g.name ASC`,
           [workId]
         ),
@@ -103,7 +103,7 @@ export class WorkNoteRepository {
                 mm.keywords_json as keywordsJson
          FROM work_note_meeting_minute wnmm
          INNER JOIN meeting_minutes mm ON mm.meeting_id = wnmm.meeting_id
-         WHERE wnmm.work_id = ?
+         WHERE wnmm.work_id = $1
          ORDER BY mm.meeting_date DESC, mm.updated_at DESC, mm.meeting_id DESC`,
           [workId]
         ),
@@ -257,10 +257,11 @@ export class WorkNoteRepository {
 
     const conditions: string[] = [];
     const params: (string | null)[] = [];
+    let paramIndex = 1;
 
     if (query.personId) {
       sql += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
-      conditions.push(`wnp.person_id = ?`);
+      conditions.push(`wnp.person_id = $${paramIndex++}`);
       params.push(query.personId);
     }
 
@@ -269,27 +270,27 @@ export class WorkNoteRepository {
         INNER JOIN work_note_person wnp2 ON wn.work_id = wnp2.work_id
         INNER JOIN person_dept_history pdh ON wnp2.person_id = pdh.person_id
       `;
-      conditions.push(`pdh.dept_name = ?`);
+      conditions.push(`pdh.dept_name = $${paramIndex++}`);
       params.push(query.deptName);
     }
 
     if (query.category) {
-      conditions.push(`wn.category = ?`);
+      conditions.push(`wn.category = $${paramIndex++}`);
       params.push(query.category);
     }
 
     if (query.q) {
-      conditions.push(`(wn.title LIKE ? OR wn.content_raw LIKE ?)`);
+      conditions.push(`(wn.title LIKE $${paramIndex++} OR wn.content_raw LIKE $${paramIndex++})`);
       params.push(`%${query.q}%`, `%${query.q}%`);
     }
 
     if (query.from) {
-      conditions.push(`wn.created_at >= ?`);
+      conditions.push(`wn.created_at >= $${paramIndex++}`);
       params.push(query.from);
     }
 
     if (query.to) {
-      conditions.push(`wn.created_at <= ?`);
+      conditions.push(`wn.created_at <= $${paramIndex++}`);
       params.push(query.to);
     }
 
@@ -314,7 +315,7 @@ export class WorkNoteRepository {
           workId: string;
           categoryId: string;
           name: string;
-          isActive: number;
+          isActive: boolean;
           createdAt: string;
         }>(
           `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
@@ -342,7 +343,7 @@ export class WorkNoteRepository {
           workId: string;
           groupId: string;
           name: string;
-          isActive: number;
+          isActive: boolean;
           createdAt: string;
         }>(
           `SELECT wngi.work_id as workId, g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
@@ -418,12 +419,12 @@ export class WorkNoteRepository {
     const statements: Array<{ sql: string; params?: unknown[] }> = [
       {
         sql: `INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?)`,
+              VALUES ($1, $2, $3, $4, $5, $6)`,
         params: [workId, data.title, data.contentRaw, data.category || null, now, now],
       },
       {
         sql: `INSERT INTO work_note_versions (work_id, version_no, title, content_raw, category, created_at)
-              VALUES (?, 1, ?, ?, ?, ?)`,
+              VALUES ($1, 1, $2, $3, $4, $5)`,
         params: [workId, data.title, data.contentRaw, data.category || null, now],
       },
     ];
@@ -462,7 +463,7 @@ export class WorkNoteRepository {
         const info = personInfoMap.get(person.personId);
         statements.push({
           sql: `INSERT INTO work_note_person (work_id, person_id, role, dept_at_time, position_at_time)
-                VALUES (?, ?, ?, ?, ?)`,
+                VALUES ($1, $2, $3, $4, $5)`,
           params: [
             workId,
             person.personId,
@@ -477,7 +478,7 @@ export class WorkNoteRepository {
     if (data.relatedWorkIds && data.relatedWorkIds.length > 0) {
       for (const relatedWorkId of data.relatedWorkIds) {
         statements.push({
-          sql: `INSERT INTO work_note_relation (work_id, related_work_id) VALUES (?, ?)`,
+          sql: `INSERT INTO work_note_relation (work_id, related_work_id) VALUES ($1, $2)`,
           params: [workId, relatedWorkId],
         });
       }
@@ -486,7 +487,7 @@ export class WorkNoteRepository {
     if (data.relatedMeetingIds && data.relatedMeetingIds.length > 0) {
       for (const meetingId of data.relatedMeetingIds) {
         statements.push({
-          sql: `INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES (?, ?)`,
+          sql: `INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES ($1, $2)`,
           params: [workId, meetingId],
         });
       }
@@ -495,7 +496,7 @@ export class WorkNoteRepository {
     if (data.categoryIds && data.categoryIds.length > 0) {
       for (const categoryId of data.categoryIds) {
         statements.push({
-          sql: `INSERT INTO work_note_task_category (work_id, category_id) VALUES (?, ?)`,
+          sql: `INSERT INTO work_note_task_category (work_id, category_id) VALUES ($1, $2)`,
           params: [workId, categoryId],
         });
       }
@@ -504,7 +505,7 @@ export class WorkNoteRepository {
     if (data.groupIds && data.groupIds.length > 0) {
       for (const groupId of data.groupIds) {
         statements.push({
-          sql: `INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?) ON CONFLICT DO NOTHING`,
+          sql: `INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
           params: [workId, groupId],
         });
       }
@@ -538,33 +539,34 @@ export class WorkNoteRepository {
     // Build update fields for work note
     const updateFields: string[] = [];
     const updateParams: (string | null)[] = [];
+    let paramIndex = 1;
 
     if (data.title !== undefined) {
-      updateFields.push('title = ?');
+      updateFields.push(`title = $${paramIndex++}`);
       updateParams.push(data.title);
     }
     if (data.contentRaw !== undefined) {
-      updateFields.push('content_raw = ?');
+      updateFields.push(`content_raw = $${paramIndex++}`);
       updateParams.push(data.contentRaw);
     }
     if (data.category !== undefined) {
-      updateFields.push('category = ?');
+      updateFields.push(`category = $${paramIndex++}`);
       updateParams.push(data.category || null);
     }
     if (updateFields.length > 0) {
-      updateFields.push('updated_at = ?');
+      updateFields.push(`updated_at = $${paramIndex++}`);
       updateFields.push('embedded_at = NULL');
       updateParams.push(now);
       updateParams.push(workId);
 
       statements.push({
-        sql: `UPDATE work_notes SET ${updateFields.join(', ')} WHERE work_id = ?`,
+        sql: `UPDATE work_notes SET ${updateFields.join(', ')} WHERE work_id = $${paramIndex}`,
         params: updateParams,
       });
 
       // Get next version number
       const versionCountResult = await this.db.queryOne<{ nextVersion: number }>(
-        `SELECT COALESCE(MAX(version_no), 0) + 1 as nextVersion FROM work_note_versions WHERE work_id = ?`,
+        `SELECT COALESCE(MAX(version_no), 0) + 1 as nextVersion FROM work_note_versions WHERE work_id = $1`,
         [workId]
       );
 
@@ -572,7 +574,7 @@ export class WorkNoteRepository {
 
       statements.push({
         sql: `INSERT INTO work_note_versions (work_id, version_no, title, content_raw, category, created_at)
-              VALUES (?, ?, ?, ?, ?, ?)`,
+              VALUES ($1, $2, $3, $4, $5, $6)`,
         params: [
           workId,
           nextVersionNo,
@@ -586,12 +588,12 @@ export class WorkNoteRepository {
       // Prune old versions (keep max 5)
       statements.push({
         sql: `DELETE FROM work_note_versions
-              WHERE work_id = ?
+              WHERE work_id = $1
                 AND id NOT IN (
                   SELECT id FROM work_note_versions
-                  WHERE work_id = ?
+                  WHERE work_id = $2
                   ORDER BY version_no DESC
-                  LIMIT ?
+                  LIMIT $3
                 )`,
         params: [workId, workId, MAX_VERSIONS],
       });
@@ -600,7 +602,7 @@ export class WorkNoteRepository {
     // Update person associations if provided
     if (data.persons !== undefined) {
       statements.push({
-        sql: `DELETE FROM work_note_person WHERE work_id = ?`,
+        sql: `DELETE FROM work_note_person WHERE work_id = $1`,
         params: [workId],
       });
 
@@ -637,7 +639,7 @@ export class WorkNoteRepository {
           const info = personInfoMap.get(person.personId);
           statements.push({
             sql: `INSERT INTO work_note_person (work_id, person_id, role, dept_at_time, position_at_time)
-                  VALUES (?, ?, ?, ?, ?)`,
+                  VALUES ($1, $2, $3, $4, $5)`,
             params: [
               workId,
               person.personId,
@@ -652,12 +654,12 @@ export class WorkNoteRepository {
 
     if (data.relatedWorkIds !== undefined) {
       statements.push({
-        sql: `DELETE FROM work_note_relation WHERE work_id = ?`,
+        sql: `DELETE FROM work_note_relation WHERE work_id = $1`,
         params: [workId],
       });
       for (const relatedWorkId of data.relatedWorkIds) {
         statements.push({
-          sql: `INSERT INTO work_note_relation (work_id, related_work_id) VALUES (?, ?)`,
+          sql: `INSERT INTO work_note_relation (work_id, related_work_id) VALUES ($1, $2)`,
           params: [workId, relatedWorkId],
         });
       }
@@ -665,12 +667,12 @@ export class WorkNoteRepository {
 
     if (data.relatedMeetingIds !== undefined) {
       statements.push({
-        sql: `DELETE FROM work_note_meeting_minute WHERE work_id = ?`,
+        sql: `DELETE FROM work_note_meeting_minute WHERE work_id = $1`,
         params: [workId],
       });
       for (const meetingId of data.relatedMeetingIds) {
         statements.push({
-          sql: `INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES (?, ?)`,
+          sql: `INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES ($1, $2)`,
           params: [workId, meetingId],
         });
       }
@@ -678,12 +680,12 @@ export class WorkNoteRepository {
 
     if (data.categoryIds !== undefined) {
       statements.push({
-        sql: `DELETE FROM work_note_task_category WHERE work_id = ?`,
+        sql: `DELETE FROM work_note_task_category WHERE work_id = $1`,
         params: [workId],
       });
       for (const categoryId of data.categoryIds) {
         statements.push({
-          sql: `INSERT INTO work_note_task_category (work_id, category_id) VALUES (?, ?)`,
+          sql: `INSERT INTO work_note_task_category (work_id, category_id) VALUES ($1, $2)`,
           params: [workId, categoryId],
         });
       }
@@ -691,12 +693,12 @@ export class WorkNoteRepository {
 
     if (data.groupIds !== undefined) {
       statements.push({
-        sql: `DELETE FROM work_note_group_items WHERE work_id = ?`,
+        sql: `DELETE FROM work_note_group_items WHERE work_id = $1`,
         params: [workId],
       });
       for (const groupId of data.groupIds) {
         statements.push({
-          sql: `INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?) ON CONFLICT DO NOTHING`,
+          sql: `INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
           params: [workId, groupId],
         });
       }
@@ -723,7 +725,7 @@ export class WorkNoteRepository {
       throw new NotFoundError('Work note', workId);
     }
 
-    await this.db.execute(`DELETE FROM work_notes WHERE work_id = ?`, [workId]);
+    await this.db.execute(`DELETE FROM work_notes WHERE work_id = $1`, [workId]);
   }
 
   /**
@@ -739,7 +741,7 @@ export class WorkNoteRepository {
       `SELECT id, work_id as workId, version_no as versionNo,
               title, content_raw as contentRaw, category, created_at as createdAt
        FROM work_note_versions
-       WHERE work_id = ?
+       WHERE work_id = $1
        ORDER BY version_no DESC`,
       [workId]
     );
@@ -752,7 +754,7 @@ export class WorkNoteRepository {
    */
   async getDeptNameForPerson(personId: string): Promise<string | null> {
     const result = await this.db.queryOne<{ current_dept: string | null }>(
-      'SELECT current_dept FROM persons WHERE person_id = ?',
+      'SELECT current_dept FROM persons WHERE person_id = $1',
       [personId]
     );
 
@@ -764,7 +766,10 @@ export class WorkNoteRepository {
    */
   async updateEmbeddedAt(workId: string): Promise<void> {
     const now = new Date().toISOString();
-    await this.db.execute('UPDATE work_notes SET embedded_at = ? WHERE work_id = ?', [now, workId]);
+    await this.db.execute('UPDATE work_notes SET embedded_at = $1 WHERE work_id = $2', [
+      now,
+      workId,
+    ]);
   }
 
   /**
@@ -777,8 +782,8 @@ export class WorkNoteRepository {
     const now = new Date().toISOString();
     const result = await this.db.execute(
       `UPDATE work_notes
-       SET embedded_at = ?
-       WHERE work_id = ? AND updated_at = ?`,
+       SET embedded_at = $1
+       WHERE work_id = $2 AND updated_at = $3`,
       [now, workId, expectedUpdatedAt]
     );
 
@@ -815,7 +820,7 @@ export class WorkNoteRepository {
        FROM work_notes
        WHERE embedded_at IS NULL
        ORDER BY created_at ASC
-       LIMIT ? OFFSET ?`,
+       LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
 

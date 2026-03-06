@@ -6,7 +6,7 @@ import { ConflictError, NotFoundError } from '../types/errors';
 interface WorkNoteGroupRow {
   groupId: string;
   name: string;
-  isActive: number;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -26,7 +26,7 @@ export class WorkNoteGroupRepository {
     const result = await this.db.queryOne<WorkNoteGroupRow>(
       `SELECT group_id as groupId, name, is_active as isActive, created_at as createdAt
        FROM work_note_groups
-       WHERE group_id = ?`,
+       WHERE group_id = $1`,
       [groupId]
     );
 
@@ -37,7 +37,7 @@ export class WorkNoteGroupRepository {
     const result = await this.db.queryOne<WorkNoteGroupRow>(
       `SELECT group_id as groupId, name, is_active as isActive, created_at as createdAt
        FROM work_note_groups
-       WHERE name = ?`,
+       WHERE name = $1`,
       [name]
     );
 
@@ -53,9 +53,10 @@ export class WorkNoteGroupRepository {
                FROM work_note_groups`;
     const params: (string | number)[] = [];
     const conditions: string[] = [];
+    let paramIndex = 1;
 
     if (searchQuery) {
-      conditions.push('name LIKE ?');
+      conditions.push(`name LIKE $${paramIndex++}`);
       params.push(`%${searchQuery}%`);
     }
 
@@ -67,7 +68,7 @@ export class WorkNoteGroupRepository {
       sql += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    sql += ' ORDER BY name ASC LIMIT ?';
+    sql += ` ORDER BY name ASC LIMIT $${paramIndex++}`;
     params.push(limit);
 
     const result = await this.db.query<WorkNoteGroupRow>(sql, params);
@@ -81,11 +82,15 @@ export class WorkNoteGroupRepository {
     try {
       await this.db.execute(
         `INSERT INTO work_note_groups (group_id, name, is_active, created_at)
-         VALUES (?, ?, 1, ?)`,
+         VALUES ($1, $2, true, $3)`,
         [groupId, data.name, now]
       );
     } catch (error) {
-      if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('UNIQUE constraint failed') ||
+          error.message.includes('duplicate key value violates unique constraint'))
+      ) {
         throw new ConflictError(`Work note group already exists: ${data.name}`);
       }
       throw error;
@@ -109,27 +114,32 @@ export class WorkNoteGroupRepository {
     }
 
     const updates: string[] = [];
-    const params: (string | number)[] = [];
+    const params: (string | number | boolean)[] = [];
+    let paramIndex = 1;
 
     if (data.name !== undefined) {
-      updates.push('name = ?');
+      updates.push(`name = $${paramIndex++}`);
       params.push(data.name);
     }
 
     if (data.isActive !== undefined) {
-      updates.push('is_active = ?');
-      params.push(data.isActive ? 1 : 0);
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(data.isActive);
     }
 
     if (updates.length > 0) {
       params.push(groupId);
       try {
         await this.db.execute(
-          `UPDATE work_note_groups SET ${updates.join(', ')} WHERE group_id = ?`,
+          `UPDATE work_note_groups SET ${updates.join(', ')} WHERE group_id = $${paramIndex}`,
           params
         );
       } catch (error) {
-        if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+        if (
+          error instanceof Error &&
+          (error.message.includes('UNIQUE constraint failed') ||
+            error.message.includes('duplicate key value violates unique constraint'))
+        ) {
           throw new ConflictError(`Work note group already exists: ${data.name}`);
         }
         throw error;
@@ -150,8 +160,8 @@ export class WorkNoteGroupRepository {
     }
 
     const newIsActive = !existing.isActive;
-    await this.db.execute('UPDATE work_note_groups SET is_active = ? WHERE group_id = ?', [
-      newIsActive ? 1 : 0,
+    await this.db.execute('UPDATE work_note_groups SET is_active = $1 WHERE group_id = $2', [
+      newIsActive,
       groupId,
     ]);
 
@@ -164,21 +174,21 @@ export class WorkNoteGroupRepository {
       throw new NotFoundError('WorkNoteGroup', groupId);
     }
 
-    await this.db.execute('DELETE FROM work_note_groups WHERE group_id = ?', [groupId]);
+    await this.db.execute('DELETE FROM work_note_groups WHERE group_id = $1', [groupId]);
   }
 
   async addWorkNote(groupId: string, workId: string): Promise<void> {
     await this.db.execute(
-      'INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?) ON CONFLICT DO NOTHING',
+      'INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
       [workId, groupId]
     );
   }
 
   async removeWorkNote(groupId: string, workId: string): Promise<void> {
-    await this.db.execute('DELETE FROM work_note_group_items WHERE work_id = ? AND group_id = ?', [
-      workId,
-      groupId,
-    ]);
+    await this.db.execute(
+      'DELETE FROM work_note_group_items WHERE work_id = $1 AND group_id = $2',
+      [workId, groupId]
+    );
   }
 
   async getWorkNotes(groupId: string): Promise<WorkNoteGroupWorkNote[]> {
@@ -191,7 +201,7 @@ export class WorkNoteGroupRepository {
       `SELECT wn.work_id as workId, wn.title, wn.created_at as createdAt, wn.updated_at as updatedAt
        FROM work_notes wn
        INNER JOIN work_note_group_items wngi ON wn.work_id = wngi.work_id
-       WHERE wngi.group_id = ?
+       WHERE wngi.group_id = $1
        ORDER BY wn.created_at DESC`,
       [groupId]
     );
@@ -204,7 +214,7 @@ export class WorkNoteGroupRepository {
       `SELECT g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
        FROM work_note_groups g
        INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
-       WHERE wngi.work_id = ?
+       WHERE wngi.work_id = $1
        ORDER BY g.name ASC`,
       [workId]
     );

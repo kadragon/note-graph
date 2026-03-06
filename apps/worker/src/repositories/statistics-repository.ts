@@ -72,6 +72,7 @@ export class StatisticsRepository {
     const startDateTime = `${startDate}T00:00:00.000Z`;
     const endDateTime = `${endDate}T23:59:59.999Z`;
 
+    let paramIndex = 1;
     let query = `
       WITH PeriodTodos AS (
         SELECT
@@ -80,7 +81,7 @@ export class StatisticsRepository {
           COUNT(*) as total_in_period,
           MAX(updated_at) as last_updated
         FROM todos
-        WHERE updated_at >= ? AND updated_at <= ?
+        WHERE updated_at >= $${paramIndex++} AND updated_at <= $${paramIndex++}
         GROUP BY work_id
         -- PostgreSQL does not allow SELECT alias references in HAVING; use the full expression.
         HAVING SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END) > 0
@@ -108,7 +109,7 @@ export class StatisticsRepository {
 
     if (personId) {
       query += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
-      conditions.push(`wnp.person_id = ?`);
+      conditions.push(`wnp.person_id = $${paramIndex++}`);
       bindings.push(personId);
     }
 
@@ -117,13 +118,13 @@ export class StatisticsRepository {
         query += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
       }
       query += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
-      conditions.push(`p.current_dept = ?`);
+      conditions.push(`p.current_dept = $${paramIndex++}`);
       bindings.push(deptName);
     }
 
     if (categoryId) {
       query += ` INNER JOIN work_note_task_category wntc ON wn.work_id = wntc.work_id`;
-      conditions.push(`wntc.category_id = ?`);
+      conditions.push(`wntc.category_id = $${paramIndex++}`);
       bindings.push(categoryId);
     }
 
