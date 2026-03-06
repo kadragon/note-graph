@@ -1,28 +1,23 @@
 // Unit tests for PdfJobRepository
 
-import { env } from 'cloudflare:test';
 import type {
   PdfUploadMetadata,
   WorkNoteDraft,
   WorkNoteDraftWithReferences,
 } from '@shared/types/pdf';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { PdfJobRepository } from '@worker/repositories/pdf-job-repository';
-import type { Env } from '@worker/types/env';
 import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('PdfJobRepository', () => {
   let repository: PdfJobRepository;
 
   beforeEach(async () => {
-    repository = new PdfJobRepository(testDb);
+    repository = new PdfJobRepository(testPgDb);
 
     // Clean up test data
-    await testEnv.DB.prepare('DELETE FROM pdf_jobs').run();
+    await pglite.query('DELETE FROM pdf_jobs');
   });
 
   describe('create()', () => {
@@ -44,7 +39,7 @@ describe('PdfJobRepository', () => {
       expect(job.jobId).toBe(jobId);
       expect(job.status).toBe('PENDING');
       expect(job.r2Key).toBe(r2Key);
-      expect(job.metadataJson).toBe(JSON.stringify(metadata));
+      expect(job.metadataJson).toEqual(metadata);
       expect(job.createdAt).toBeDefined();
       expect(job.updatedAt).toBeDefined();
     });
@@ -63,10 +58,11 @@ describe('PdfJobRepository', () => {
       const job = await repository.create(jobId, r2Key, metadata);
 
       // Assert
-      const parsedMetadata = JSON.parse(job.metadataJson || '{}');
-      expect(parsedMetadata.fileName).toBe('test2.pdf');
-      expect(parsedMetadata.fileSize).toBe(2048);
-      expect(parsedMetadata.mimeType).toBe('application/pdf');
+      const metadataObj =
+        typeof job.metadataJson === 'string' ? JSON.parse(job.metadataJson) : job.metadataJson;
+      expect(metadataObj.fileName).toBe('test2.pdf');
+      expect(metadataObj.fileSize).toBe(2048);
+      expect(metadataObj.mimeType).toBe('application/pdf');
     });
 
     it('should throw error if job creation fails', async () => {
@@ -231,7 +227,7 @@ describe('PdfJobRepository', () => {
       // Assert
       const job = await repository.getById(jobId);
       expect(job?.status).toBe('READY');
-      expect(job?.draftJson).toBe(JSON.stringify(draft));
+      expect(job?.draftJson).toEqual(draft);
       expect(job?.r2Key).toBeNull(); // r2Key should be cleared
     });
 
@@ -296,7 +292,7 @@ describe('PdfJobRepository', () => {
 
       const job = await repository.getById(jobId);
       expect(job?.status).toBe('READY');
-      expect(job?.draftJson).toBe(JSON.stringify(draftWithRefs));
+      expect(job?.draftJson).toEqual(draftWithRefs);
     });
   });
 
@@ -371,18 +367,16 @@ describe('PdfJobRepository', () => {
       const recentDateIso = recentDate.toISOString();
 
       // Insert old job directly with custom date
-      await testEnv.DB.prepare(
-        'INSERT INTO pdf_jobs (job_id, status, r2_key, metadata_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-        .bind('old-job', 'PENDING', 'uploads/old.pdf', '{}', oldDateIso, oldDateIso)
-        .run();
+      await pglite.query(
+        'INSERT INTO pdf_jobs (job_id, status, r2_key, metadata_json, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['old-job', 'PENDING', 'uploads/old.pdf', '{}', oldDateIso, oldDateIso]
+      );
 
       // Insert recent job
-      await testEnv.DB.prepare(
-        'INSERT INTO pdf_jobs (job_id, status, r2_key, metadata_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-        .bind('recent-job', 'PENDING', 'uploads/recent.pdf', '{}', recentDateIso, recentDateIso)
-        .run();
+      await pglite.query(
+        'INSERT INTO pdf_jobs (job_id, status, r2_key, metadata_json, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['recent-job', 'PENDING', 'uploads/recent.pdf', '{}', recentDateIso, recentDateIso]
+      );
 
       // Act - Delete jobs older than 7 days
       const deletedCount = await repository.deleteOldJobs(7);
@@ -424,11 +418,10 @@ describe('PdfJobRepository', () => {
       oldDate.setDate(oldDate.getDate() - 8);
       const oldDateIso = oldDate.toISOString();
 
-      await testEnv.DB.prepare(
-        'INSERT INTO pdf_jobs (job_id, status, r2_key, metadata_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-        .bind('old-job-2', 'PENDING', 'uploads/old2.pdf', '{}', oldDateIso, oldDateIso)
-        .run();
+      await pglite.query(
+        'INSERT INTO pdf_jobs (job_id, status, r2_key, metadata_json, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['old-job-2', 'PENDING', 'uploads/old2.pdf', '{}', oldDateIso, oldDateIso]
+      );
 
       // Act - Use default (7 days)
       const deletedCount = await repository.deleteOldJobs();
@@ -469,7 +462,7 @@ describe('PdfJobRepository', () => {
       await repository.updateStatusToReady(jobId, draft);
       const job3 = await repository.getById(jobId);
       expect(job3?.status).toBe('READY');
-      expect(job3?.draftJson).toBe(JSON.stringify(draft));
+      expect(job3?.draftJson).toEqual(draft);
       expect(job3?.r2Key).toBeNull();
     });
 

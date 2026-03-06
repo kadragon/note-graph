@@ -1,15 +1,11 @@
 // Trace: Test coverage improvement
 // Unit tests for TodoRepository recurrence logic
 
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { CreateTodoInput } from '@worker/schemas/todo';
-import type { Env } from '@worker/types/env';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { pglite, testPgDb } from '../pg-setup';
 
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
 const REAL_DATE = Date;
 const BASE_NOW = new REAL_DATE('2025-01-10T12:00:00.000Z');
 
@@ -50,22 +46,18 @@ describe('TodoRepository - Recurrence Logic', () => {
   let testWorkId: string;
 
   beforeEach(async () => {
-    repository = new TodoRepository(testDb);
+    repository = new TodoRepository(testPgDb);
 
     // Clean up test data
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM todos'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
+    await pglite.query('TRUNCATE todos, work_notes CASCADE');
 
     // Create a test work note
     testWorkId = 'WORK-TEST-001';
     const now = BASE_NOW.toISOString();
-    await testEnv.DB.prepare(
-      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-    )
-      .bind(testWorkId, 'Test Work Note', 'Content', now, now)
-      .run();
+    await pglite.query(
+      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+      [testWorkId, 'Test Work Note', 'Content', now, now]
+    );
   });
 
   describe('update() - Recurrence Logic', () => {
@@ -255,7 +247,7 @@ describe('TodoRepository - Recurrence Logic', () => {
       const newTodo = allTodos.find((t) => t.status === '진행중');
 
       expect(newTodo?.dueDate).toBeDefined();
-      expect(newTodo?.waitUntil).toBe(newTodo?.dueDate);
+      expect(newTodo?.waitUntil).toStrictEqual(newTodo?.dueDate);
     });
 
     it('should preserve repeat_rule and recurrence_type in new instance', async () => {

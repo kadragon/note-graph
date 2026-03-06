@@ -1,31 +1,22 @@
 // Trace: SPEC-person-1, SPEC-person-3, TASK-027
 // Unit tests for PersonRepository
 
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { PersonRepository } from '@worker/repositories/person-repository';
 import type { CreatePersonInput, UpdatePersonInput } from '@worker/schemas/person';
-import type { Env } from '@worker/types/env';
 import { ConflictError, NotFoundError, ValidationError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('PersonRepository', () => {
   let repository: PersonRepository;
 
   beforeEach(async () => {
-    repository = new PersonRepository(testDb);
+    repository = new PersonRepository(testPgDb);
 
     // Clean up test data
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM work_note_person'),
-      testEnv.DB.prepare('DELETE FROM person_dept_history'),
-      testEnv.DB.prepare('DELETE FROM persons'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-      testEnv.DB.prepare('DELETE FROM departments'),
-    ]);
+    await pglite.query(
+      'TRUNCATE work_note_person, person_dept_history, persons, work_notes, departments CASCADE'
+    );
   });
 
   describe('findById()', () => {
@@ -33,11 +24,10 @@ describe('PersonRepository', () => {
       // Arrange
       const personId = '123456';
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-      )
-        .bind(personId, '홍길동', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        [personId, '홍길동', now, now]
+      );
 
       // Act
       const result = await repository.findById(personId);
@@ -60,12 +50,11 @@ describe('PersonRepository', () => {
       // Arrange
       const personId = '123456';
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, current_dept, current_position, current_role_desc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(personId, '홍길동', '개발팀', '선임', '백엔드 개발', now, now),
-      ]);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, current_dept, current_position, current_role_desc, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [personId, '홍길동', '개발팀', '선임', '백엔드 개발', now, now]
+      );
 
       // Act
       const result = await repository.findById(personId);
@@ -82,25 +71,28 @@ describe('PersonRepository', () => {
   describe('findAll()', () => {
     beforeEach(async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('기획팀'),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind('100010', '강나', '개발팀', '사원', '2222', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind('100001', '김가', '개발팀', '과장', '1234', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind('100002', '김가', '개발팀', '부장', '5678', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, current_dept, current_position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('100003', '박나', '기획팀', '대리', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('100004', '최다', now, now),
-      ]);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['기획팀']);
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        ['100010', '강나', '개발팀', '사원', '2222', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        ['100001', '김가', '개발팀', '과장', '1234', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, current_dept, current_position, phone_ext, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        ['100002', '김가', '개발팀', '부장', '5678', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, current_dept, current_position, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['100003', '박나', '기획팀', '대리', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['100004', '최다', now, now]
+      );
     });
 
     it('should return all persons when no search query', async () => {
@@ -171,14 +163,14 @@ describe('PersonRepository', () => {
   describe('findByIds()', () => {
     it('should return persons in input ID order and ignore missing IDs', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('100001', '김가', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('100002', '박나', now, now),
-      ]);
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['100001', '김가', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['100002', '박나', now, now]
+      );
 
       const result = await repository.findByIds(['100002', 'MISSING', '100001']);
 
@@ -226,9 +218,7 @@ describe('PersonRepository', () => {
 
     it('should create person with department', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
-        .bind('개발팀')
-        .run();
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
 
       const input: CreatePersonInput = {
         personId: '123456',
@@ -258,9 +248,7 @@ describe('PersonRepository', () => {
 
     it('should create person with full details', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
-        .bind('개발팀')
-        .run();
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
 
       const input: CreatePersonInput = {
         personId: '123456',
@@ -300,9 +288,7 @@ describe('PersonRepository', () => {
 
     it('should create department history entry when department is provided', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
-        .bind('개발팀')
-        .run();
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
 
       const input: CreatePersonInput = {
         personId: '123456',
@@ -319,7 +305,7 @@ describe('PersonRepository', () => {
       expect(history.length).toBe(1);
       expect(history[0].deptName).toBe('개발팀');
       expect(history[0].position).toBe('선임');
-      expect(history[0].isActive).toBe(1);
+      expect(history[0].isActive).toBe(true);
     });
 
     it('should not create department history when no department provided', async () => {
@@ -339,7 +325,7 @@ describe('PersonRepository', () => {
 
     it('should auto-create department when importing person', async () => {
       // Arrange
-      const importRepository = new PersonRepository(testDb, {
+      const importRepository = new PersonRepository(testPgDb, {
         autoCreateDepartment: true,
       });
       const deptName = '신규부서';
@@ -354,14 +340,14 @@ describe('PersonRepository', () => {
       // Assert
       expect(result.currentDept).toBe(deptName);
 
-      const department = await testEnv.DB.prepare(
-        'SELECT dept_name as deptName, is_active as isActive FROM departments WHERE dept_name = ?'
-      )
-        .bind(deptName)
-        .first<{ deptName: string; isActive: number }>();
-      expect(department).not.toBeNull();
+      const deptResult = await pglite.query(
+        'SELECT dept_name AS "deptName", is_active AS "isActive" FROM departments WHERE dept_name = $1',
+        [deptName]
+      );
+      const department = deptResult.rows[0] as { deptName: string; isActive: boolean } | undefined;
+      expect(department).not.toBeUndefined();
       expect(department?.deptName).toBe(deptName);
-      expect(department?.isActive).toBe(1);
+      expect(department?.isActive).toBe(true);
     });
   });
 
@@ -399,9 +385,7 @@ describe('PersonRepository', () => {
 
     it('should update department', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
-        .bind('개발팀')
-        .run();
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
 
       const update: UpdatePersonInput = {
         currentDept: '개발팀',
@@ -448,10 +432,8 @@ describe('PersonRepository', () => {
 
     it('should create new department history entry when department changes', async () => {
       // Arrange
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('기획팀'),
-      ]);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['기획팀']);
 
       // First, set a department
       await repository.update(existingPersonId, { currentDept: '개발팀' });
@@ -463,18 +445,16 @@ describe('PersonRepository', () => {
       const history = await repository.getDepartmentHistory(existingPersonId);
       expect(history.length).toBe(2);
       expect(history[0].deptName).toBe('기획팀');
-      expect(history[0].isActive).toBe(1);
+      expect(history[0].isActive).toBe(true);
       expect(history[1].deptName).toBe('개발팀');
-      expect(history[1].isActive).toBe(0);
+      expect(history[1].isActive).toBe(false);
       expect(history[1].endDate).toBeDefined();
     });
 
     it('should deactivate previous department history when changing department', async () => {
       // Arrange
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('디자인팀'),
-      ]);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['디자인팀']);
 
       await repository.update(existingPersonId, { currentDept: '개발팀' });
 
@@ -484,7 +464,7 @@ describe('PersonRepository', () => {
       // Assert
       const history = await repository.getDepartmentHistory(existingPersonId);
       const oldHistory = history.find((h) => h.deptName === '개발팀');
-      expect(oldHistory?.isActive).toBe(0);
+      expect(oldHistory?.isActive).toBe(false);
       expect(oldHistory?.endDate).toBeDefined();
     });
 
@@ -497,9 +477,7 @@ describe('PersonRepository', () => {
 
     it('should not create history entry when department is not changing', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
-        .bind('개발팀')
-        .run();
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
       await repository.update(existingPersonId, { currentDept: '개발팀' });
 
       // Act - Update name but not department
@@ -513,9 +491,10 @@ describe('PersonRepository', () => {
     it('should update updatedAt timestamp', async () => {
       // Arrange
       const forcedUpdatedAt = '2000-01-01T00:00:00.000Z';
-      await testEnv.DB.prepare('UPDATE persons SET updated_at = ? WHERE person_id = ?')
-        .bind(forcedUpdatedAt, existingPersonId)
-        .run();
+      await pglite.query('UPDATE persons SET updated_at = $1 WHERE person_id = $2', [
+        forcedUpdatedAt,
+        existingPersonId,
+      ]);
 
       // Act
       await repository.update(existingPersonId, { name: 'New Name' });
@@ -549,11 +528,9 @@ describe('PersonRepository', () => {
 
     it('should return department history in descending order by start date', async () => {
       // Arrange
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('개발팀'),
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('기획팀'),
-        testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)').bind('디자인팀'),
-      ]);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['기획팀']);
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['디자인팀']);
 
       const input: CreatePersonInput = {
         personId: '123456',
@@ -576,9 +553,7 @@ describe('PersonRepository', () => {
 
     it('should include all history fields', async () => {
       // Arrange
-      await testEnv.DB.prepare('INSERT INTO departments (dept_name) VALUES (?)')
-        .bind('개발팀')
-        .run();
+      await pglite.query('INSERT INTO departments (dept_name) VALUES ($1)', ['개발팀']);
 
       const input: CreatePersonInput = {
         personId: '123456',
@@ -630,17 +605,18 @@ describe('PersonRepository', () => {
       const workId = 'WORK-001';
       const now = new Date().toISOString();
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind(personId, '홍길동', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind(workId, 'Test Work', 'Content', '업무', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
-        ).bind(workId, personId, 'OWNER'),
-      ]);
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        [personId, '홍길동', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, category, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
+        [workId, 'Test Work', 'Content', '업무', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)',
+        [workId, personId, 'OWNER']
+      );
 
       // Act
       const result = await repository.getWorkNotes(personId);
@@ -659,23 +635,26 @@ describe('PersonRepository', () => {
       const now = new Date();
       const earlier = new Date(now.getTime() - 3600000);
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind(personId, '홍길동', now.toISOString(), now.toISOString()),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind('WORK-001', 'Earlier Work', 'Content', earlier.toISOString(), earlier.toISOString()),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind('WORK-002', 'Later Work', 'Content', now.toISOString(), now.toISOString()),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
-        ).bind('WORK-001', personId, 'OWNER'),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_person (work_id, person_id, role) VALUES (?, ?, ?)'
-        ).bind('WORK-002', personId, 'PARTICIPANT'),
-      ]);
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        [personId, '홍길동', now.toISOString(), now.toISOString()]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Earlier Work', 'Content', earlier.toISOString(), earlier.toISOString()]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-002', 'Later Work', 'Content', now.toISOString(), now.toISOString()]
+      );
+      await pglite.query(
+        'INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)',
+        ['WORK-001', personId, 'OWNER']
+      );
+      await pglite.query(
+        'INSERT INTO work_note_person (work_id, person_id, role) VALUES ($1, $2, $3)',
+        ['WORK-002', personId, 'PARTICIPANT']
+      );
 
       // Act
       const result = await repository.getWorkNotes(personId);

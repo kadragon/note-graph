@@ -1,12 +1,15 @@
 /**
  * PGlite-based test setup for PostgreSQL-native testing.
  * Creates an in-process PGlite instance and applies the Supabase migration schema.
+ *
+ * This is the primary test setup file - used by all worker tests.
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { createPgliteConnection } from '@worker/adapters/pglite-connection';
+import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { SupabaseDatabaseClient } from '@worker/adapters/supabase-database-client';
 import { afterAll, beforeAll } from 'vitest';
 
@@ -37,6 +40,10 @@ beforeAll(async () => {
   await pglite.exec(migrationSql);
   const conn = createPgliteConnection(pglite);
   testPgDb = new SupabaseDatabaseClient(conn);
+
+  // Expose on globalThis for vi.mock factories (which can't use module imports)
+  (globalThis as Record<string, unknown>).__testPgDb = testPgDb;
+  (globalThis as Record<string, unknown>).__testFtsDialect = new PostgresFtsDialect();
 });
 
 afterAll(async () => {

@@ -1,38 +1,29 @@
 // Trace: Test coverage improvement
 // Unit tests for TodoRepository CRUD operations
 
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { CreateTodoInput, UpdateTodoInput } from '@worker/schemas/todo';
-import type { Env } from '@worker/types/env';
 import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('TodoRepository - CRUD Operations', () => {
   let repository: TodoRepository;
   let testWorkId: string;
 
   beforeEach(async () => {
-    repository = new TodoRepository(testDb);
+    repository = new TodoRepository(testPgDb);
 
     // Clean up test data
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM todos'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
+    await pglite.query('TRUNCATE todos, work_notes CASCADE');
 
     // Create a test work note
     testWorkId = 'WORK-TEST-001';
     const now = new Date().toISOString();
-    await testEnv.DB.prepare(
-      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-    )
-      .bind(testWorkId, 'Test Work Note', 'Content', now, now)
-      .run();
+    await pglite.query(
+      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+      [testWorkId, 'Test Work Note', 'Content', now, now]
+    );
   });
 
   describe('create()', () => {
@@ -101,11 +92,11 @@ describe('TodoRepository - CRUD Operations', () => {
       const result = await repository.create(testWorkId, input);
 
       // Assert
-      expect(result.waitUntil).toBe(waitUntil);
-      expect(result.dueDate).toBe(waitUntil);
+      expect(new Date(result.waitUntil as string).toISOString()).toBe(waitUntil);
+      expect(new Date(result.dueDate as string).toISOString()).toBe(waitUntil);
 
       const stored = await repository.findById(result.todoId);
-      expect(stored?.dueDate).toBe(waitUntil);
+      expect(new Date(stored?.dueDate as string).toISOString()).toBe(waitUntil);
     });
 
     it('should create todo with Korean text', async () => {
@@ -209,8 +200,8 @@ describe('TodoRepository - CRUD Operations', () => {
       const result = await repository.update(existingTodoId, { waitUntil });
 
       // Assert
-      expect(result.waitUntil).toBe(waitUntil);
-      expect(result.dueDate).toBe(waitUntil);
+      expect(new Date(result.waitUntil as string).toISOString()).toBe(waitUntil);
+      expect(new Date(result.dueDate as string).toISOString()).toBe(waitUntil);
     });
 
     it('should keep dueDate when updating waitUntil if dueDate is after waitUntil', async () => {
@@ -223,8 +214,8 @@ describe('TodoRepository - CRUD Operations', () => {
       const result = await repository.update(existingTodoId, { waitUntil: newWaitUntil });
 
       // Assert - dueDate should remain unchanged since it's after waitUntil
-      expect(result.waitUntil).toBe(newWaitUntil);
-      expect(result.dueDate).toBe(existingDueDate);
+      expect(new Date(result.waitUntil as string).toISOString()).toBe(newWaitUntil);
+      expect(new Date(result.dueDate as string).toISOString()).toBe(existingDueDate);
     });
 
     it('should update dueDate to waitUntil when existing dueDate is before waitUntil', async () => {
@@ -237,8 +228,8 @@ describe('TodoRepository - CRUD Operations', () => {
       const result = await repository.update(existingTodoId, { waitUntil: newWaitUntil });
 
       // Assert - dueDate should be updated to match waitUntil
-      expect(result.waitUntil).toBe(newWaitUntil);
-      expect(result.dueDate).toBe(newWaitUntil);
+      expect(new Date(result.waitUntil as string).toISOString()).toBe(newWaitUntil);
+      expect(new Date(result.dueDate as string).toISOString()).toBe(newWaitUntil);
     });
 
     it('should clamp dueDate to waitUntil when both fields are provided and dueDate is earlier', async () => {
@@ -253,8 +244,8 @@ describe('TodoRepository - CRUD Operations', () => {
       });
 
       // Assert
-      expect(result.waitUntil).toBe(laterWaitUntil);
-      expect(result.dueDate).toBe(laterWaitUntil);
+      expect(new Date(result.waitUntil as string).toISOString()).toBe(laterWaitUntil);
+      expect(new Date(result.dueDate as string).toISOString()).toBe(laterWaitUntil);
     });
 
     it('should update status', async () => {

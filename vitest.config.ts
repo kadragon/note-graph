@@ -1,7 +1,7 @@
-import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
 import path from "path";
+import { defineConfig } from "vitest/config";
 
-export default defineWorkersConfig({
+export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./apps/worker/src"),
@@ -11,35 +11,8 @@ export default defineWorkersConfig({
     },
   },
   test: {
-    exclude: ["**/node_modules/**", "**/dist/**", "apps/web/**", "**/pglite-*.test.ts"],
-    poolOptions: {
-      workers: {
-        singleWorker: true,
-        main: "./apps/worker/src/index.ts",
-        miniflare: {
-          // Miniflare options for local testing
-          compatibilityDate: "2025-01-01",
-          compatibilityFlags: [
-            "nodejs_compat",
-            "enable_nodejs_tty_module",
-            "enable_nodejs_fs_module",
-            "enable_nodejs_http_modules",
-            "enable_nodejs_perf_hooks_module",
-          ],
-          d1Databases: { DB: "worknote-db" },
-          d1Persist: false,
-          bindings: {
-            ENVIRONMENT: "production",
-            GOOGLE_CLIENT_ID: "test-client-id",
-            GOOGLE_CLIENT_SECRET: "test-client-secret",
-            GOOGLE_REDIRECT_URI: "https://example.test/oauth/callback",
-            GDRIVE_ROOT_FOLDER_ID: "test-gdrive-root-folder-id",
-            CLOUDFLARE_API_TOKEN: "test-cloudflare-api-token",
-          },
-        },
-      },
-    },
-    setupFiles: ["./tests/setup.ts"],
+    exclude: ["**/node_modules/**", "**/dist/**", "apps/web/**"],
+    setupFiles: ["./tests/pg-setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

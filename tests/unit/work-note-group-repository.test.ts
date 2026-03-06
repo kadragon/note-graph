@@ -1,28 +1,24 @@
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { WorkNoteGroupRepository } from '@worker/repositories/work-note-group-repository';
-import type { Env } from '@worker/types/env';
 import { ConflictError, NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('WorkNoteGroupRepository', () => {
   let repository: WorkNoteGroupRepository;
 
   beforeEach(async () => {
-    repository = new WorkNoteGroupRepository(testDb);
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM work_note_group_items'),
-      testEnv.DB.prepare('DELETE FROM work_note_groups'),
-    ]);
+    repository = new WorkNoteGroupRepository(testPgDb);
+    await pglite.query('DELETE FROM work_note_group_items');
+    await pglite.query('DELETE FROM work_note_groups');
+    await pglite.query('DELETE FROM work_notes');
   });
 
   describe('migration: tables exist', () => {
     it('should have work_note_groups table with expected columns', async () => {
-      const result = await testEnv.DB.prepare("PRAGMA table_info('work_note_groups')").all();
-      const columns = result.results.map((r: Record<string, unknown>) => r.name);
+      const result = await pglite.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'work_note_groups'`
+      );
+      const columns = result.rows.map((r: Record<string, unknown>) => r.column_name);
 
       expect(columns).toContain('group_id');
       expect(columns).toContain('name');
@@ -31,8 +27,10 @@ describe('WorkNoteGroupRepository', () => {
     });
 
     it('should have work_note_group_items junction table with expected columns', async () => {
-      const result = await testEnv.DB.prepare("PRAGMA table_info('work_note_group_items')").all();
-      const columns = result.results.map((r: Record<string, unknown>) => r.name);
+      const result = await pglite.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'work_note_group_items'`
+      );
+      const columns = result.rows.map((r: Record<string, unknown>) => r.column_name);
 
       expect(columns).toContain('id');
       expect(columns).toContain('work_id');
@@ -41,111 +39,98 @@ describe('WorkNoteGroupRepository', () => {
 
     it('should enforce unique name constraint on work_note_groups', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_note_groups (group_id, name, created_at) VALUES (?, ?, ?)'
-      )
-        .bind('g1', '그룹A', now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_note_groups (group_id, name, created_at) VALUES ($1, $2, $3)',
+        ['g1', '그룹A', now]
+      );
 
       await expect(
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_groups (group_id, name, created_at) VALUES (?, ?, ?)'
+        pglite.query(
+          'INSERT INTO work_note_groups (group_id, name, created_at) VALUES ($1, $2, $3)',
+          ['g2', '그룹A', now]
         )
-          .bind('g2', '그룹A', now)
-          .run()
       ).rejects.toThrow();
     });
 
     it('should enforce unique (work_id, group_id) constraint on junction', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_note_groups (group_id, name, created_at) VALUES (?, ?, ?)'
-      )
-        .bind('g1', '그룹A', now)
-        .run();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind('WORK-001', 'Test', 'Content', now, now)
-        .run();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?)'
-      )
-        .bind('WORK-001', 'g1')
-        .run();
+      await pglite.query(
+        'INSERT INTO work_note_groups (group_id, name, created_at) VALUES ($1, $2, $3)',
+        ['g1', '그룹A', now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Test', 'Content', now, now]
+      );
+      await pglite.query('INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2)', [
+        'WORK-001',
+        'g1',
+      ]);
 
       await expect(
-        testEnv.DB.prepare('INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?)')
-          .bind('WORK-001', 'g1')
-          .run()
+        pglite.query('INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2)', [
+          'WORK-001',
+          'g1',
+        ])
       ).rejects.toThrow();
     });
 
     it('should cascade delete junction rows when group is deleted', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_note_groups (group_id, name, created_at) VALUES (?, ?, ?)'
-      )
-        .bind('g1', '그룹A', now)
-        .run();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind('WORK-001', 'Test', 'Content', now, now)
-        .run();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?)'
-      )
-        .bind('WORK-001', 'g1')
-        .run();
+      await pglite.query(
+        'INSERT INTO work_note_groups (group_id, name, created_at) VALUES ($1, $2, $3)',
+        ['g1', '그룹A', now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Test', 'Content', now, now]
+      );
+      await pglite.query('INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2)', [
+        'WORK-001',
+        'g1',
+      ]);
 
-      await testEnv.DB.prepare('DELETE FROM work_note_groups WHERE group_id = ?').bind('g1').run();
+      await pglite.query('DELETE FROM work_note_groups WHERE group_id = $1', ['g1']);
 
-      const remaining = await testEnv.DB.prepare(
-        'SELECT * FROM work_note_group_items WHERE group_id = ?'
-      )
-        .bind('g1')
-        .all();
-      expect(remaining.results).toHaveLength(0);
+      const remaining = await pglite.query(
+        'SELECT * FROM work_note_group_items WHERE group_id = $1',
+        ['g1']
+      );
+      expect(remaining.rows).toHaveLength(0);
     });
 
     it('should cascade delete junction rows when work note is deleted', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_note_groups (group_id, name, created_at) VALUES (?, ?, ?)'
-      )
-        .bind('g1', '그룹A', now)
-        .run();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind('WORK-001', 'Test', 'Content', now, now)
-        .run();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?)'
-      )
-        .bind('WORK-001', 'g1')
-        .run();
+      await pglite.query(
+        'INSERT INTO work_note_groups (group_id, name, created_at) VALUES ($1, $2, $3)',
+        ['g1', '그룹A', now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Test', 'Content', now, now]
+      );
+      await pglite.query('INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2)', [
+        'WORK-001',
+        'g1',
+      ]);
 
-      await testEnv.DB.prepare('DELETE FROM work_notes WHERE work_id = ?').bind('WORK-001').run();
+      await pglite.query('DELETE FROM work_notes WHERE work_id = $1', ['WORK-001']);
 
-      const remaining = await testEnv.DB.prepare(
-        'SELECT * FROM work_note_group_items WHERE work_id = ?'
-      )
-        .bind('WORK-001')
-        .all();
-      expect(remaining.results).toHaveLength(0);
+      const remaining = await pglite.query(
+        'SELECT * FROM work_note_group_items WHERE work_id = $1',
+        ['WORK-001']
+      );
+      expect(remaining.rows).toHaveLength(0);
     });
   });
 
   describe('findById()', () => {
     it('should return group by ID', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_note_groups (group_id, name, is_active, created_at) VALUES (?, ?, ?, ?)'
-      )
-        .bind('g1', '프로젝트A', 1, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_note_groups (group_id, name, is_active, created_at) VALUES ($1, $2, $3, $4)',
+        ['g1', '프로젝트A', true, now]
+      );
 
       const result = await repository.findById('g1');
 
@@ -153,7 +138,7 @@ describe('WorkNoteGroupRepository', () => {
       expect(result?.groupId).toBe('g1');
       expect(result?.name).toBe('프로젝트A');
       expect(result?.isActive).toBe(true);
-      expect(result?.createdAt).toBe(now);
+      expect(new Date(result!.createdAt).toISOString()).toBe(now);
     });
 
     it('should return null for non-existent group', async () => {
@@ -237,9 +222,9 @@ describe('WorkNoteGroupRepository', () => {
       await repository.create({ name: '활성그룹' });
       const inactive = await repository.create({ name: '비활성그룹' });
       // Deactivate directly via DB
-      await testEnv.DB.prepare('UPDATE work_note_groups SET is_active = 0 WHERE group_id = ?')
-        .bind(inactive.groupId)
-        .run();
+      await pglite.query('UPDATE work_note_groups SET is_active = false WHERE group_id = $1', [
+        inactive.groupId,
+      ]);
 
       const result = await repository.findAll(undefined, 100, true);
 
@@ -322,25 +307,22 @@ describe('WorkNoteGroupRepository', () => {
     it('should cascade delete junction rows', async () => {
       const group = await repository.create({ name: '연결그룹' });
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind('WORK-001', 'Test', 'Content', now, now)
-        .run();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_note_group_items (work_id, group_id) VALUES (?, ?)'
-      )
-        .bind('WORK-001', group.groupId)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Test', 'Content', now, now]
+      );
+      await pglite.query('INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2)', [
+        'WORK-001',
+        group.groupId,
+      ]);
 
       await repository.delete(group.groupId);
 
-      const remaining = await testEnv.DB.prepare(
-        'SELECT * FROM work_note_group_items WHERE group_id = ?'
-      )
-        .bind(group.groupId)
-        .all();
-      expect(remaining.results).toHaveLength(0);
+      const remaining = await pglite.query(
+        'SELECT * FROM work_note_group_items WHERE group_id = $1',
+        [group.groupId]
+      );
+      expect(remaining.rows).toHaveLength(0);
     });
   });
 
@@ -348,40 +330,36 @@ describe('WorkNoteGroupRepository', () => {
     it('should create junction record', async () => {
       const group = await repository.create({ name: '연결그룹' });
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind('WORK-001', 'Test', 'Content', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Test', 'Content', now, now]
+      );
 
       await repository.addWorkNote(group.groupId, 'WORK-001');
 
-      const rows = await testEnv.DB.prepare(
-        'SELECT * FROM work_note_group_items WHERE group_id = ? AND work_id = ?'
-      )
-        .bind(group.groupId, 'WORK-001')
-        .all();
-      expect(rows.results).toHaveLength(1);
+      const rows = await pglite.query(
+        'SELECT * FROM work_note_group_items WHERE group_id = $1 AND work_id = $2',
+        [group.groupId, 'WORK-001']
+      );
+      expect(rows.rows).toHaveLength(1);
     });
 
     it('should be idempotent (no error on duplicate)', async () => {
       const group = await repository.create({ name: '연결그룹' });
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind('WORK-001', 'Test', 'Content', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Test', 'Content', now, now]
+      );
 
       await repository.addWorkNote(group.groupId, 'WORK-001');
       await repository.addWorkNote(group.groupId, 'WORK-001');
 
-      const rows = await testEnv.DB.prepare(
-        'SELECT * FROM work_note_group_items WHERE group_id = ? AND work_id = ?'
-      )
-        .bind(group.groupId, 'WORK-001')
-        .all();
-      expect(rows.results).toHaveLength(1);
+      const rows = await pglite.query(
+        'SELECT * FROM work_note_group_items WHERE group_id = $1 AND work_id = $2',
+        [group.groupId, 'WORK-001']
+      );
+      expect(rows.rows).toHaveLength(1);
     });
   });
 
@@ -389,21 +367,19 @@ describe('WorkNoteGroupRepository', () => {
     it('should delete junction record', async () => {
       const group = await repository.create({ name: '연결그룹' });
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind('WORK-001', 'Test', 'Content', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Test', 'Content', now, now]
+      );
       await repository.addWorkNote(group.groupId, 'WORK-001');
 
       await repository.removeWorkNote(group.groupId, 'WORK-001');
 
-      const rows = await testEnv.DB.prepare(
-        'SELECT * FROM work_note_group_items WHERE group_id = ? AND work_id = ?'
-      )
-        .bind(group.groupId, 'WORK-001')
-        .all();
-      expect(rows.results).toHaveLength(0);
+      const rows = await pglite.query(
+        'SELECT * FROM work_note_group_items WHERE group_id = $1 AND work_id = $2',
+        [group.groupId, 'WORK-001']
+      );
+      expect(rows.rows).toHaveLength(0);
     });
   });
 
@@ -411,14 +387,14 @@ describe('WorkNoteGroupRepository', () => {
     it('should return work notes for group', async () => {
       const group = await repository.create({ name: '조회그룹' });
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind('WORK-001', '노트1', 'Content1', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind('WORK-002', '노트2', 'Content2', now, now),
-      ]);
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', '노트1', 'Content1', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-002', '노트2', 'Content2', now, now]
+      );
       await repository.addWorkNote(group.groupId, 'WORK-001');
       await repository.addWorkNote(group.groupId, 'WORK-002');
 
@@ -446,11 +422,10 @@ describe('WorkNoteGroupRepository', () => {
       const group1 = await repository.create({ name: '그룹A' });
       const group2 = await repository.create({ name: '그룹B' });
       const now = new Date().toISOString();
-      await testEnv.DB.prepare(
-        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      )
-        .bind('WORK-001', 'Test', 'Content', now, now)
-        .run();
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-001', 'Test', 'Content', now, now]
+      );
       await repository.addWorkNote(group1.groupId, 'WORK-001');
       await repository.addWorkNote(group2.groupId, 'WORK-001');
 

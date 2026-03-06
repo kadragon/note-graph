@@ -1,14 +1,10 @@
 // Trace: Test coverage improvement
 // Unit tests for TodoRepository filtering and views
 
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { TodoRepository } from '@worker/repositories/todo-repository';
-import type { Env } from '@worker/types/env';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { pglite, testPgDb } from '../pg-setup';
 
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
 const REAL_DATE = Date;
 const BASE_NOW = new REAL_DATE('2025-01-10T12:00:00.000Z');
 
@@ -49,22 +45,18 @@ describe('TodoRepository - Filtering and Views', () => {
   let testWorkId: string;
 
   beforeEach(async () => {
-    repository = new TodoRepository(testDb);
+    repository = new TodoRepository(testPgDb);
 
     // Clean up test data
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM todos'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
+    await pglite.query('TRUNCATE todos, work_notes CASCADE');
 
     // Create a test work note
     testWorkId = 'WORK-TEST-001';
     const now = BASE_NOW.toISOString();
-    await testEnv.DB.prepare(
-      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-    )
-      .bind(testWorkId, 'Test Work Note', 'Content', now, now)
-      .run();
+    await pglite.query(
+      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+      [testWorkId, 'Test Work Note', 'Content', now, now]
+    );
   });
 
   afterEach(() => {
@@ -89,11 +81,10 @@ describe('TodoRepository - Filtering and Views', () => {
       status?: '진행중' | '완료' | '보류' | '중단';
       repeatRule?: 'NONE';
     }) => {
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(todoId, testWorkId, title, createdAt, dueDate, waitUntil, status, repeatRule)
-        .run();
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [todoId, testWorkId, title, createdAt, dueDate, waitUntil, status, repeatRule]
+      );
     };
 
     beforeEach(async () => {
@@ -407,41 +398,34 @@ describe('TodoRepository - Filtering and Views', () => {
       // Arrange
       const now = new Date(BASE_NOW.getTime());
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(
-          'TODO-HOLD',
-          testWorkId,
-          'On Hold',
-          now.toISOString(),
-          now.toISOString(),
-          '보류',
-          'NONE'
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        ['TODO-HOLD', testWorkId, 'On Hold', now.toISOString(), now.toISOString(), '보류', 'NONE']
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [
           'TODO-STOPPED',
           testWorkId,
           'Stopped',
           now.toISOString(),
           now.toISOString(),
           '중단',
-          'NONE'
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(
+          'NONE',
+        ]
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [
           'TODO-ACTIVE',
           testWorkId,
           'Active',
           now.toISOString(),
           now.toISOString(),
           '진행중',
-          'NONE'
-        ),
-      ]);
+          'NONE',
+        ]
+      );
 
       // Act
       const result = await repository.findAll({ view: 'today' });
@@ -456,17 +440,18 @@ describe('TodoRepository - Filtering and Views', () => {
       // Arrange
       const now = new Date(BASE_NOW.getTime());
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-REMAIN-HOLD', testWorkId, 'On Hold', now.toISOString(), '보류', 'NONE'),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-REMAIN-STOPPED', testWorkId, 'Stopped', now.toISOString(), '중단', 'NONE'),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-REMAIN-ACTIVE', testWorkId, 'Active', now.toISOString(), '진행중', 'NONE'),
-      ]);
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-REMAIN-HOLD', testWorkId, 'On Hold', now.toISOString(), '보류', 'NONE']
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-REMAIN-STOPPED', testWorkId, 'Stopped', now.toISOString(), '중단', 'NONE']
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-REMAIN-ACTIVE', testWorkId, 'Active', now.toISOString(), '진행중', 'NONE']
+      );
 
       // Act
       const result = await repository.findAll({ view: 'remaining' });
@@ -481,14 +466,14 @@ describe('TodoRepository - Filtering and Views', () => {
       // Arrange
       const now = new Date(BASE_NOW.getTime());
 
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-ALL-HOLD', testWorkId, 'On Hold', now.toISOString(), '보류', 'NONE'),
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-ALL-STOPPED', testWorkId, 'Stopped', now.toISOString(), '중단', 'NONE'),
-      ]);
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-ALL-HOLD', testWorkId, 'On Hold', now.toISOString(), '보류', 'NONE']
+      );
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['TODO-ALL-STOPPED', testWorkId, 'Stopped', now.toISOString(), '중단', 'NONE']
+      );
 
       // Act
       const result = await repository.findAll({ view: 'all' });

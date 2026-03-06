@@ -1,27 +1,75 @@
-import { env } from 'cloudflare:test';
-import type { R2Bucket } from '@cloudflare/workers-types';
+import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrateR2WorkNoteFiles, runMigrationCli } from '../../scripts/migrate-r2-to-gdrive';
-import { MockR2 } from '../test-setup';
+import { MockR2 } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+/**
+ * Thin D1-compatible shim over PGlite for the migration script,
+ * which uses the D1 API (prepare/bind/all/first/run) directly.
+ */
+function createD1Shim(): D1Database {
+  function convertPlaceholders(sql: string): string {
+    let idx = 0;
+    return sql.replace(/\?/g, () => {
+      idx += 1;
+      return `$${idx}`;
+    });
+  }
+
+  const db = {
+    prepare(sql: string) {
+      let boundParams: unknown[] = [];
+      const stmt = {
+        bind(...args: unknown[]) {
+          boundParams = args;
+          return stmt;
+        },
+        async all<T>() {
+          const pgSql = convertPlaceholders(sql);
+          const result = await pglite.query<T>(pgSql, boundParams);
+          return { results: result.rows };
+        },
+        async first<T>(): Promise<T | null> {
+          const pgSql = convertPlaceholders(sql);
+          const result = await pglite.query<T>(pgSql, boundParams);
+          return (result.rows[0] as T) ?? null;
+        },
+        async run() {
+          const pgSql = convertPlaceholders(sql);
+          await pglite.query(pgSql, boundParams);
+          return { success: true };
+        },
+      };
+      return stmt;
+    },
+    async batch(statements: { run: () => Promise<unknown> }[]) {
+      const results = [];
+      for (const stmt of statements) {
+        results.push(await stmt.run());
+      }
+      return results;
+    },
+  } as unknown as D1Database;
+
+  return db;
+}
 
 describe('migrateR2WorkNoteFiles', () => {
-  const baseEnv = env as unknown as Env;
+  const d1Shim = createD1Shim();
 
   const insertWorkNote = async (workId: string, createdAt = new Date().toISOString()) => {
-    await baseEnv.DB.prepare(
-      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-    )
-      .bind(workId, 'Test Work Note', 'Content', createdAt, createdAt)
-      .run();
+    await pglite.query(
+      'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+      [workId, 'Test Work Note', 'Content', createdAt, createdAt]
+    );
   };
 
   beforeEach(async () => {
-    await baseEnv.DB.batch([
-      baseEnv.DB.prepare('DELETE FROM work_note_gdrive_folders'),
-      baseEnv.DB.prepare('DELETE FROM work_note_files'),
-      baseEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
+    await pglite.query('DELETE FROM work_note_gdrive_folders');
+    await pglite.query('DELETE FROM work_note_files');
+    await pglite.query('DELETE FROM work_notes');
   });
 
   it('migrates a single R2 work note file to Google Drive and updates DB', async () => {
@@ -33,14 +81,13 @@ describe('migrateR2WorkNoteFiles', () => {
 
     await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
 
-    await baseEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_note_files (
         file_id, work_id, r2_key, original_name, file_type, file_size,
         uploaded_by, uploaded_at, storage_type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(fileId, workId, r2Key, 'report.pdf', 'application/pdf', 8, uploadedBy, now, 'R2')
-      .run();
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [fileId, workId, r2Key, 'report.pdf', 'application/pdf', 8, uploadedBy, now, 'R2']
+    );
 
     const r2 = new MockR2();
     await r2.put(r2Key, new Blob(['PDF DATA'], { type: 'application/pdf' }), {
@@ -49,12 +96,11 @@ describe('migrateR2WorkNoteFiles', () => {
 
     const drive = {
       getOrCreateWorkNoteFolder: vi.fn(async (_email: string, targetWorkId: string) => {
-        await baseEnv.DB.prepare(
+        await pglite.query(
           `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
-           VALUES (?, ?, ?, ?)`
-        )
-          .bind(targetWorkId, 'FOLDER-1', 'https://drive.example/folder', now)
-          .run();
+           VALUES ($1, $2, $3, $4)`,
+          [targetWorkId, 'FOLDER-1', 'https://drive.example/folder', now]
+        );
 
         return {
           workId: targetWorkId,
@@ -73,7 +119,7 @@ describe('migrateR2WorkNoteFiles', () => {
     };
 
     const migrated = await migrateR2WorkNoteFiles({
-      db: baseEnv.DB,
+      db: d1Shim,
       r2: r2 as unknown as R2Bucket,
       drive,
       userEmail: uploadedBy,
@@ -83,11 +129,13 @@ describe('migrateR2WorkNoteFiles', () => {
     expect(drive.getOrCreateWorkNoteFolder).toHaveBeenCalledWith(uploadedBy, workId);
     expect(drive.uploadFile).toHaveBeenCalledTimes(1);
 
-    const fileRow = await baseEnv.DB.prepare(
-      'SELECT storage_type, gdrive_file_id, gdrive_folder_id, gdrive_web_view_link FROM work_note_files WHERE file_id = ?'
-    )
-      .bind(fileId)
-      .first<Record<string, unknown>>();
+    const fileRow =
+      (
+        await pglite.query<Record<string, unknown>>(
+          'SELECT storage_type, gdrive_file_id, gdrive_folder_id, gdrive_web_view_link FROM work_note_files WHERE file_id = $1',
+          [fileId]
+        )
+      ).rows[0] ?? null;
 
     expect(fileRow).toEqual({
       storage_type: 'GDRIVE',
@@ -96,11 +144,13 @@ describe('migrateR2WorkNoteFiles', () => {
       gdrive_web_view_link: 'https://drive.example/file',
     });
 
-    const folderRow = await baseEnv.DB.prepare(
-      'SELECT gdrive_folder_id, gdrive_folder_link FROM work_note_gdrive_folders WHERE work_id = ?'
-    )
-      .bind(workId)
-      .first<Record<string, unknown>>();
+    const folderRow =
+      (
+        await pglite.query<Record<string, unknown>>(
+          'SELECT gdrive_folder_id, gdrive_folder_link FROM work_note_gdrive_folders WHERE work_id = $1',
+          [workId]
+        )
+      ).rows[0] ?? null;
 
     expect(folderRow).toEqual({
       gdrive_folder_id: 'FOLDER-1',
@@ -116,21 +166,19 @@ describe('migrateR2WorkNoteFiles', () => {
     const now = new Date().toISOString();
 
     await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
-    await baseEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
-       VALUES (?, ?, ?, ?)`
-    )
-      .bind(workId, 'FOLDER-EXISTING', 'https://drive.example/existing', now)
-      .run();
+       VALUES ($1, $2, $3, $4)`,
+      [workId, 'FOLDER-EXISTING', 'https://drive.example/existing', now]
+    );
 
-    await baseEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_note_files (
         file_id, work_id, r2_key, original_name, file_type, file_size,
         uploaded_by, uploaded_at, storage_type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(fileId, workId, r2Key, 'notes.pdf', 'application/pdf', 4, uploadedBy, now, 'R2')
-      .run();
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [fileId, workId, r2Key, 'notes.pdf', 'application/pdf', 4, uploadedBy, now, 'R2']
+    );
 
     const r2 = new MockR2();
     await r2.put(r2Key, new Blob(['DATA'], { type: 'application/pdf' }), {
@@ -139,11 +187,13 @@ describe('migrateR2WorkNoteFiles', () => {
 
     const drive = {
       getOrCreateWorkNoteFolder: vi.fn(async (_email: string, targetWorkId: string) => {
-        const existing = await baseEnv.DB.prepare(
-          'SELECT gdrive_folder_id, gdrive_folder_link FROM work_note_gdrive_folders WHERE work_id = ?'
-        )
-          .bind(targetWorkId)
-          .first<Record<string, string>>();
+        const existing =
+          (
+            await pglite.query<Record<string, string>>(
+              'SELECT gdrive_folder_id, gdrive_folder_link FROM work_note_gdrive_folders WHERE work_id = $1',
+              [targetWorkId]
+            )
+          ).rows[0] ?? null;
 
         if (existing) {
           return {
@@ -171,7 +221,7 @@ describe('migrateR2WorkNoteFiles', () => {
     };
 
     const migrated = await migrateR2WorkNoteFiles({
-      db: baseEnv.DB,
+      db: d1Shim,
       r2: r2 as unknown as R2Bucket,
       drive,
       userEmail: uploadedBy,
@@ -187,11 +237,13 @@ describe('migrateR2WorkNoteFiles', () => {
       'application/pdf'
     );
 
-    const fileRow = await baseEnv.DB.prepare(
-      'SELECT storage_type, gdrive_folder_id FROM work_note_files WHERE file_id = ?'
-    )
-      .bind(fileId)
-      .first<Record<string, unknown>>();
+    const fileRow =
+      (
+        await pglite.query<Record<string, unknown>>(
+          'SELECT storage_type, gdrive_folder_id FROM work_note_files WHERE file_id = $1',
+          [fileId]
+        )
+      ).rows[0] ?? null;
 
     expect(fileRow).toEqual({
       storage_type: 'GDRIVE',
@@ -207,14 +259,13 @@ describe('migrateR2WorkNoteFiles', () => {
     const now = new Date().toISOString();
 
     await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
-    await baseEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_note_files (
         file_id, work_id, r2_key, original_name, file_type, file_size,
         uploaded_by, uploaded_at, storage_type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(fileId, workId, r2Key, 'missing.pdf', 'application/pdf', 0, uploadedBy, now, 'R2')
-      .run();
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [fileId, workId, r2Key, 'missing.pdf', 'application/pdf', 0, uploadedBy, now, 'R2']
+    );
 
     const r2 = new MockR2();
 
@@ -229,7 +280,7 @@ describe('migrateR2WorkNoteFiles', () => {
     };
 
     const migrated = await migrateR2WorkNoteFiles({
-      db: baseEnv.DB,
+      db: d1Shim,
       r2: r2 as unknown as R2Bucket,
       drive,
       userEmail: uploadedBy,
@@ -238,11 +289,13 @@ describe('migrateR2WorkNoteFiles', () => {
     expect(migrated).toBe(0);
     expect(drive.uploadFile).not.toHaveBeenCalled();
 
-    const fileRow = await baseEnv.DB.prepare(
-      'SELECT storage_type, gdrive_file_id FROM work_note_files WHERE file_id = ?'
-    )
-      .bind(fileId)
-      .first<Record<string, unknown>>();
+    const fileRow =
+      (
+        await pglite.query<Record<string, unknown>>(
+          'SELECT storage_type, gdrive_file_id FROM work_note_files WHERE file_id = $1',
+          [fileId]
+        )
+      ).rows[0] ?? null;
 
     expect(fileRow).toEqual({
       storage_type: 'R2',
@@ -258,14 +311,13 @@ describe('migrateR2WorkNoteFiles', () => {
     const now = new Date().toISOString();
 
     await insertWorkNote(workId, '2023-05-01T00:00:00.000Z');
-    await baseEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_note_files (
         file_id, work_id, r2_key, original_name, file_type, file_size,
         uploaded_by, uploaded_at, storage_type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(fileId, workId, r2Key, 'missing.pdf', 'application/pdf', 0, uploadedBy, now, 'R2')
-      .run();
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [fileId, workId, r2Key, 'missing.pdf', 'application/pdf', 0, uploadedBy, now, 'R2']
+    );
 
     const r2 = new MockR2();
     const drive = {
@@ -274,7 +326,7 @@ describe('migrateR2WorkNoteFiles', () => {
     };
 
     const migrated = await migrateR2WorkNoteFiles({
-      db: baseEnv.DB,
+      db: d1Shim,
       r2: r2 as unknown as R2Bucket,
       drive,
       userEmail: uploadedBy,
@@ -287,8 +339,7 @@ describe('migrateR2WorkNoteFiles', () => {
 
 describe('runMigrationCli', () => {
   it('wires CLI flags into migration options', async () => {
-    const baseEnv = env as unknown as Env;
-    const db = baseEnv.DB;
+    const db = createD1Shim();
     const r2 = new MockR2() as unknown as R2Bucket;
     const envBindings = {
       GOOGLE_CLIENT_ID: 'id',

@@ -1,49 +1,42 @@
 // Trace: SPEC-worknote-attachments-1, TASK-057, TASK-058, TASK-066
 
 import type { R2Bucket } from '@cloudflare/workers-types';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { WorkNoteFileService } from '@worker/services/work-note-file-service';
 import type { Env } from '@worker/types/env';
 import { BadRequestError, NotFoundError } from '@worker/types/errors';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { MockR2, setTestR2Bucket, testEnv } from '../test-setup';
+import { MockR2 } from '../helpers/test-app';
+import { pglite, testPgDb } from '../pg-setup';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
 describe('WorkNoteFileService', () => {
-  const baseEnv = testEnv as unknown as Env;
-  const testDb = new D1DatabaseClient(baseEnv.DB);
+  let mockEnv: Env;
   let r2: MockR2;
   let service: WorkNoteFileService;
   let fetchMock: ReturnType<typeof vi.fn>;
   let defaultFetchMockImplementation: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
   let originalFetch: typeof global.fetch;
-  let originalGoogleClientId: string | undefined;
-  let originalGoogleClientSecret: string | undefined;
-  let originalGoogleRedirectUri: string | undefined;
-  let originalGdriveRootFolderId: string | undefined;
   const userEmail = 'tester@example.com';
 
   const insertWorkNote = async (workId: string, createdAt = new Date().toISOString()) => {
-    await baseEnv.DB.prepare(
-      `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-    )
-      .bind(workId, '테스트 업무노트', '내용', createdAt, createdAt)
-      .run();
+    await pglite.query(
+      `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+      [workId, '테스트 업무노트', '내용', createdAt, createdAt]
+    );
   };
 
   const insertOAuthToken = async () => {
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
-    await baseEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO google_oauth_tokens
         (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         userEmail,
         'access-token',
         'refresh-token',
@@ -51,9 +44,9 @@ describe('WorkNoteFileService', () => {
         expiresAt,
         'https://www.googleapis.com/auth/drive',
         now,
-        now
-      )
-      .run();
+        now,
+      ]
+    );
   };
 
   const insertLegacyR2File = async (params: {
@@ -65,13 +58,12 @@ describe('WorkNoteFileService', () => {
     fileSize: number;
   }) => {
     const now = new Date().toISOString();
-    await baseEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO work_note_files (
         file_id, work_id, r2_key, original_name, file_type, file_size,
         uploaded_by, uploaded_at, storage_type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
         params.fileId,
         params.workId,
         params.r2Key,
@@ -80,32 +72,28 @@ describe('WorkNoteFileService', () => {
         params.fileSize,
         userEmail,
         now,
-        'R2'
-      )
-      .run();
+        'R2',
+      ]
+    );
   };
 
   beforeEach(async () => {
     originalFetch = global.fetch;
-    originalGoogleClientId = testEnv.GOOGLE_CLIENT_ID;
-    originalGoogleClientSecret = testEnv.GOOGLE_CLIENT_SECRET;
-    originalGoogleRedirectUri = testEnv.GOOGLE_REDIRECT_URI;
-    originalGdriveRootFolderId = testEnv.GDRIVE_ROOT_FOLDER_ID;
 
     // Clean DB tables
-    await baseEnv.DB.batch([
-      baseEnv.DB.prepare('DELETE FROM google_oauth_tokens'),
-      baseEnv.DB.prepare('DELETE FROM work_note_gdrive_folders'),
-      baseEnv.DB.prepare('DELETE FROM work_note_files'),
-      baseEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
+    await pglite.query('DELETE FROM google_oauth_tokens');
+    await pglite.query('DELETE FROM work_note_gdrive_folders');
+    await pglite.query('DELETE FROM work_note_files');
+    await pglite.query('DELETE FROM work_notes');
 
     r2 = new MockR2();
-    setTestR2Bucket(r2 as unknown as R2Bucket);
-    testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
-    testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
-    testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
-    testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
+
+    mockEnv = {
+      GOOGLE_CLIENT_ID: 'test-client-id',
+      GOOGLE_CLIENT_SECRET: 'test-client-secret',
+      GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
+      GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
+    } as Env;
 
     await insertOAuthToken();
 
@@ -197,15 +185,11 @@ describe('WorkNoteFileService', () => {
 
     global.fetch = fetchMock as typeof fetch;
 
-    service = new WorkNoteFileService(r2 as unknown as R2Bucket, testDb, baseEnv);
+    service = new WorkNoteFileService(r2 as unknown as R2Bucket, testPgDb, mockEnv);
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
-    testEnv.GOOGLE_CLIENT_ID = originalGoogleClientId as string;
-    testEnv.GOOGLE_CLIENT_SECRET = originalGoogleClientSecret as string;
-    testEnv.GOOGLE_REDIRECT_URI = originalGoogleRedirectUri as string;
-    testEnv.GDRIVE_ROOT_FOLDER_ID = originalGdriveRootFolderId as string;
   });
 
   it('lists legacy R2 files even when Google Drive config is missing', async () => {
@@ -223,7 +207,7 @@ describe('WorkNoteFileService', () => {
     });
 
     const envWithoutGoogle = {
-      ...baseEnv,
+      ...mockEnv,
       GOOGLE_CLIENT_ID: '',
       GOOGLE_CLIENT_SECRET: '',
       GDRIVE_ROOT_FOLDER_ID: '',
@@ -231,7 +215,7 @@ describe('WorkNoteFileService', () => {
 
     const legacyService = new WorkNoteFileService(
       r2 as unknown as R2Bucket,
-      testDb,
+      testPgDb,
       envWithoutGoogle
     );
 
@@ -265,9 +249,13 @@ describe('WorkNoteFileService', () => {
     expect(result.gdriveWebViewLink).toBe('https://drive.example/file');
 
     // Assert - DB record exists
-    const row = await baseEnv.DB.prepare('SELECT * FROM work_note_files WHERE file_id = ?')
-      .bind(result.fileId)
-      .first<Record<string, unknown>>();
+    const row =
+      (
+        await pglite.query<Record<string, unknown>>(
+          'SELECT * FROM work_note_files WHERE file_id = $1',
+          [result.fileId]
+        )
+      ).rows[0] ?? null;
     expect(row).toBeTruthy();
     expect(row?.work_id).toBe('WORK-123');
     expect(row?.storage_type).toBe('GDRIVE');
@@ -586,11 +574,13 @@ describe('WorkNoteFileService', () => {
       })
     ).toHaveLength(0);
 
-    const row = await baseEnv.DB.prepare(
-      'SELECT storage_type, gdrive_file_id, gdrive_web_view_link FROM work_note_files WHERE file_id = ?'
-    )
-      .bind(fileId)
-      .first<Record<string, unknown>>();
+    const row =
+      (
+        await pglite.query<Record<string, unknown>>(
+          'SELECT storage_type, gdrive_file_id, gdrive_web_view_link FROM work_note_files WHERE file_id = $1',
+          [fileId]
+        )
+      ).rows[0] ?? null;
 
     expect(row).toEqual({
       storage_type: 'GDRIVE',
@@ -618,7 +608,7 @@ describe('WorkNoteFileService', () => {
 
     await r2.put(r2Key, new Blob(['rollback'], { type: 'application/pdf' }));
 
-    const failingDb = new Proxy(testDb, {
+    const failingDb = new Proxy(testPgDb, {
       get(target, prop, receiver) {
         if (prop === 'execute') {
           return (sql: string, params?: unknown[]) => {
@@ -633,7 +623,7 @@ describe('WorkNoteFileService', () => {
       },
     });
 
-    const failingService = new WorkNoteFileService(r2 as unknown as R2Bucket, failingDb, baseEnv);
+    const failingService = new WorkNoteFileService(r2 as unknown as R2Bucket, failingDb, mockEnv);
 
     const result = await failingService.migrateR2FilesToDrive(workId, userEmail);
 
@@ -657,9 +647,13 @@ describe('WorkNoteFileService', () => {
     await service.deleteFile(uploaded.fileId, userEmail);
 
     // Assert - DB record soft deleted
-    const row = await baseEnv.DB.prepare('SELECT deleted_at FROM work_note_files WHERE file_id = ?')
-      .bind(uploaded.fileId)
-      .first<Record<string, unknown>>();
+    const row =
+      (
+        await pglite.query<Record<string, unknown>>(
+          'SELECT deleted_at FROM work_note_files WHERE file_id = $1',
+          [uploaded.fileId]
+        )
+      ).rows[0] ?? null;
     expect(row?.deleted_at).not.toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       `${DRIVE_API_BASE}/files/GFILE-1`,
@@ -698,21 +692,21 @@ describe('WorkNoteFileService', () => {
     );
 
     // Assert - DB records still exist (will be cleaned up by CASCADE when work note is deleted)
-    const rows = await baseEnv.DB.prepare('SELECT file_id FROM work_note_files WHERE work_id = ?')
-      .bind('WORK-123')
-      .all<Record<string, unknown>>();
-    expect(rows.results).toHaveLength(2);
+    const rows = await pglite.query<Record<string, unknown>>(
+      'SELECT file_id FROM work_note_files WHERE work_id = $1',
+      ['WORK-123']
+    );
+    expect(rows.rows).toHaveLength(2);
 
     // Simulate work note deletion (CASCADE deletes file records)
-    await baseEnv.DB.prepare('DELETE FROM work_notes WHERE work_id = ?').bind('WORK-123').run();
+    await pglite.query('DELETE FROM work_notes WHERE work_id = $1', ['WORK-123']);
 
     // Assert - DB records cleaned up by CASCADE
-    const rowsAfterCascade = await baseEnv.DB.prepare(
-      'SELECT file_id FROM work_note_files WHERE work_id = ?'
-    )
-      .bind('WORK-123')
-      .all<Record<string, unknown>>();
-    expect(rowsAfterCascade.results).toHaveLength(0);
+    const rowsAfterCascade = await pglite.query<Record<string, unknown>>(
+      'SELECT file_id FROM work_note_files WHERE work_id = $1',
+      ['WORK-123']
+    );
+    expect(rowsAfterCascade.rows).toHaveLength(0);
   });
 
   describe('uploadFileToDrive', () => {
@@ -736,17 +730,20 @@ describe('WorkNoteFileService', () => {
       expect(result.modifiedTime).toBeDefined();
 
       // Assert - No DB record created
-      const rows = await baseEnv.DB.prepare('SELECT file_id FROM work_note_files WHERE work_id = ?')
-        .bind('WORK-UPLOAD')
-        .all<Record<string, unknown>>();
-      expect(rows.results).toHaveLength(0);
+      const rows = await pglite.query<Record<string, unknown>>(
+        'SELECT file_id FROM work_note_files WHERE work_id = $1',
+        ['WORK-UPLOAD']
+      );
+      expect(rows.rows).toHaveLength(0);
 
       // Assert - Drive folder record created
-      const folder = await baseEnv.DB.prepare(
-        'SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?'
-      )
-        .bind('WORK-UPLOAD')
-        .first<Record<string, unknown>>();
+      const folder =
+        (
+          await pglite.query<Record<string, unknown>>(
+            'SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = $1',
+            ['WORK-UPLOAD']
+          )
+        ).rows[0] ?? null;
       expect(folder?.gdrive_folder_id).toBe('FOLDER-1');
     });
   });
@@ -767,12 +764,11 @@ describe('WorkNoteFileService', () => {
       await insertWorkNote('WORK-123', '2023-05-01T00:00:00.000Z');
 
       // Create Drive folder record
-      await baseEnv.DB.prepare(
+      await pglite.query(
         `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
-         VALUES (?, ?, ?, ?)`
-      )
-        .bind('WORK-123', 'FOLDER-123', 'https://drive.google.com/folder', new Date().toISOString())
-        .run();
+         VALUES ($1, $2, $3, $4)`,
+        ['WORK-123', 'FOLDER-123', 'https://drive.google.com/folder', new Date().toISOString()]
+      );
 
       const mockDriveFiles = [
         {
@@ -841,12 +837,11 @@ describe('WorkNoteFileService', () => {
     it('returns empty files when Drive folder id is missing', async () => {
       await insertWorkNote('WORK-EMPTY', '2023-05-01T00:00:00.000Z');
 
-      await baseEnv.DB.prepare(
+      await pglite.query(
         `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
-         VALUES (?, ?, ?, ?)`
-      )
-        .bind('WORK-EMPTY', '', '', new Date().toISOString())
-        .run();
+         VALUES ($1, $2, $3, $4)`,
+        ['WORK-EMPTY', '', '', new Date().toISOString()]
+      );
 
       const result = await service.listFilesFromDrive('WORK-EMPTY', userEmail);
 
@@ -881,7 +876,7 @@ describe('WorkNoteFileService', () => {
 
     it('returns unconfigured when Google Drive env vars missing', async () => {
       const envWithoutGoogle = {
-        ...baseEnv,
+        ...mockEnv,
         GOOGLE_CLIENT_ID: '',
         GOOGLE_CLIENT_SECRET: '',
         GDRIVE_ROOT_FOLDER_ID: '',
@@ -889,7 +884,7 @@ describe('WorkNoteFileService', () => {
 
       const noGoogleService = new WorkNoteFileService(
         r2 as unknown as R2Bucket,
-        testDb,
+        testPgDb,
         envWithoutGoogle
       );
 

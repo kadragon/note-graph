@@ -1,18 +1,22 @@
-import { env } from 'cloudflare:test';
 import { MeetingMinuteKeywordService } from '@worker/services/meeting-minute-keyword-service';
 import type { Env } from '@worker/types/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const testEnv = env as unknown as Env;
 
 describe('MeetingMinuteKeywordService', () => {
   let service: MeetingMinuteKeywordService;
   let mockFetch: ReturnType<typeof vi.fn>;
 
+  const mockEnv = {
+    OPENAI_API_KEY: 'test-key',
+    OPENAI_MODEL_LIGHTWEIGHT: 'gpt-4o-mini',
+    CLOUDFLARE_ACCOUNT_ID: 'test-account',
+    AI_GATEWAY_ID: 'test-gateway',
+  } as unknown as Env;
+
   beforeEach(() => {
     mockFetch = vi.fn();
     global.fetch = mockFetch;
-    service = new MeetingMinuteKeywordService(testEnv);
+    service = new MeetingMinuteKeywordService(mockEnv);
   });
 
   afterEach(() => {

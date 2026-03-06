@@ -2,10 +2,16 @@
  * Integration tests for admin AI Gateway logs route
  */
 
-import { SELF } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch, testEnv } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch, createTestRequest } from '../helpers/test-app';
+
+const authFetch = createAuthFetch(worker);
+const request = createTestRequest(worker);
 
 describe('Admin AI Gateway Logs Route', () => {
   let originalFetch: typeof global.fetch;
@@ -13,7 +19,7 @@ describe('Admin AI Gateway Logs Route', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     originalFetch = global.fetch;
-    testEnv.CLOUDFLARE_API_TOKEN = 'test-cloudflare-api-token';
+    request.env.CLOUDFLARE_API_TOKEN = 'test-cloudflare-api-token';
   });
 
   afterEach(() => {
@@ -22,7 +28,7 @@ describe('Admin AI Gateway Logs Route', () => {
   });
 
   it('returns 401 without authentication', async () => {
-    const response = await SELF.fetch('http://localhost/api/admin/ai-gateway/logs');
+    const response = await request('/api/admin/ai-gateway/logs');
     expect(response.status).toBe(401);
   });
 

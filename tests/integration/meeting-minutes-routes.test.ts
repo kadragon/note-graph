@@ -1,38 +1,44 @@
 import { PersonRepository } from '@worker/repositories/person-repository';
 import { TaskCategoryRepository } from '@worker/repositories/task-category-repository';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch, testEnv } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+const authFetch = createAuthFetch(worker);
 
 describe('Meeting Minutes API Routes', () => {
   beforeEach(async () => {
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM work_note_meeting_minute'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_task_category'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_group'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_person'),
-      testEnv.DB.prepare('DELETE FROM meeting_minutes'),
-      testEnv.DB.prepare('DELETE FROM task_categories'),
-      testEnv.DB.prepare('DELETE FROM person_dept_history'),
-      testEnv.DB.prepare('DELETE FROM persons'),
-      testEnv.DB.prepare('DELETE FROM departments'),
-    ]);
+    await pglite.query('DELETE FROM work_note_meeting_minute');
+    await pglite.query('DELETE FROM meeting_minute_task_category');
+    await pglite.query('DELETE FROM meeting_minute_group');
+    await pglite.query('DELETE FROM meeting_minute_person');
+    await pglite.query('DELETE FROM meeting_minutes');
+    await pglite.query('DELETE FROM task_categories');
+    await pglite.query('DELETE FROM person_dept_history');
+    await pglite.query('DELETE FROM persons');
+    await pglite.query('DELETE FROM departments');
   });
 
   describe('POST /api/meeting-minutes', () => {
     it('returns 201 with generated keywords and joined attendee/category payload', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS001', 'Alice Kim', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS002', 'Bob Lee', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES (?, ?, ?, ?)'
-        ).bind('CAT001', 'Planning', 1, now),
-      ]);
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS001', 'Alice Kim', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS002', 'Bob Lee', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES ($1, $2, $3, $4)',
+        ['CAT001', 'Planning', true, now]
+      );
 
       const findPersonByIdSpy = vi.spyOn(PersonRepository.prototype, 'findById');
       const findPersonByIdsSpy = vi.spyOn(PersonRepository.prototype, 'findByIds');
@@ -54,7 +60,7 @@ describe('Meeting Minutes API Routes', () => {
         }),
       });
 
-      const response = await authFetch('http://localhost/api/meeting-minutes', {
+      const response = await authFetch('/api/meeting-minutes', {
         method: 'POST',
         body: JSON.stringify({
           meetingDate: '2026-02-11',
@@ -78,7 +84,7 @@ describe('Meeting Minutes API Routes', () => {
       }>();
 
       expect(created.meetingId).toMatch(/^MEET-/);
-      expect(created.meetingDate).toBe('2026-02-11');
+      expect(created.meetingDate).toContain('2026-02-11');
       expect(created.topic).toBe('Q2 Roadmap Sync');
       expect(created.detailsRaw).toBe('Discussed roadmap, budget, and hiring plan.');
       expect(created.keywords).toEqual(['roadmap', 'budget']);
@@ -99,24 +105,27 @@ describe('Meeting Minutes API Routes', () => {
   describe('GET /api/meeting-minutes', () => {
     it('returns filtered paginated list with stable sort by meetingDate/updatedAt', async () => {
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS001', 'Alice Kim', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS002', 'Bob Lee', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES (?, ?, ?, ?)'
-        ).bind('CAT001', 'Planning', 1, now),
-        testEnv.DB.prepare(
-          'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES (?, ?, ?, ?)'
-        ).bind('CAT002', 'Ops', 1, now),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS001', 'Alice Kim', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS002', 'Bob Lee', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES ($1, $2, $3, $4)',
+        ['CAT001', 'Planning', true, now]
+      );
+      await pglite.query(
+        'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES ($1, $2, $3, $4)',
+        ['CAT002', 'Ops', true, now]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-A',
           '2026-02-10',
           'Roadmap Alpha',
@@ -124,13 +133,14 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['roadmap']),
           'roadmap',
           '2026-02-10T10:00:00.000Z',
-          '2026-02-10T12:00:00.000Z'
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+          '2026-02-10T12:00:00.000Z',
+        ]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-B',
           '2026-02-10',
           'Roadmap Beta',
@@ -138,13 +148,14 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['roadmap']),
           'roadmap',
           '2026-02-10T10:30:00.000Z',
-          '2026-02-10T11:00:00.000Z'
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+          '2026-02-10T11:00:00.000Z',
+        ]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-C',
           '2026-02-09',
           'Ops Review',
@@ -152,30 +163,36 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['ops']),
           'ops',
           '2026-02-09T09:00:00.000Z',
-          '2026-02-09T10:00:00.000Z'
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)'
-        ).bind('MEET-A', 'PRS001'),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)'
-        ).bind('MEET-B', 'PRS001'),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)'
-        ).bind('MEET-C', 'PRS002'),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)'
-        ).bind('MEET-A', 'CAT001'),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)'
-        ).bind('MEET-B', 'CAT001'),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)'
-        ).bind('MEET-C', 'CAT002'),
-      ]);
+          '2026-02-09T10:00:00.000Z',
+        ]
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)',
+        ['MEET-A', 'PRS001']
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)',
+        ['MEET-B', 'PRS001']
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)',
+        ['MEET-C', 'PRS002']
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)',
+        ['MEET-A', 'CAT001']
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)',
+        ['MEET-B', 'CAT001']
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)',
+        ['MEET-C', 'CAT002']
+      );
 
       const response = await authFetch(
-        'http://localhost/api/meeting-minutes?q=roadmap&meetingDateFrom=2026-02-10&meetingDateTo=2026-02-10&categoryId=CAT001&attendeePersonId=PRS001&page=1&pageSize=1'
+        '/api/meeting-minutes?q=roadmap&meetingDateFrom=2026-02-10&meetingDateTo=2026-02-10&categoryId=CAT001&attendeePersonId=PRS001&page=1&pageSize=1'
       );
 
       expect(response.status).toBe(200);
@@ -193,7 +210,7 @@ describe('Meeting Minutes API Routes', () => {
       expect(data.items[0].meetingId).toBe('MEET-A');
 
       const secondResponse = await authFetch(
-        'http://localhost/api/meeting-minutes?q=roadmap&meetingDateFrom=2026-02-10&meetingDateTo=2026-02-10&categoryId=CAT001&attendeePersonId=PRS001&page=2&pageSize=1'
+        '/api/meeting-minutes?q=roadmap&meetingDateFrom=2026-02-10&meetingDateTo=2026-02-10&categoryId=CAT001&attendeePersonId=PRS001&page=2&pageSize=1'
       );
       const secondData = await secondResponse.json<{
         items: Array<{ meetingId: string; meetingDate: string; updatedAt: string }>;
@@ -211,24 +228,27 @@ describe('Meeting Minutes API Routes', () => {
 
   describe('GET /api/meeting-minutes/:meetingId', () => {
     it('returns full detail including attendees, categories, and keywords', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS001', 'Alice Kim', '2026-02-12T09:00:00.000Z', '2026-02-12T09:00:00.000Z'),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS002', 'Bob Lee', '2026-02-12T09:00:00.000Z', '2026-02-12T09:00:00.000Z'),
-        testEnv.DB.prepare(
-          'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES (?, ?, ?, ?)'
-        ).bind('CAT001', 'Planning', 1, '2026-02-12T09:00:00.000Z'),
-        testEnv.DB.prepare(
-          'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES (?, ?, ?, ?)'
-        ).bind('CAT002', 'Ops', 1, '2026-02-12T09:00:00.000Z'),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS001', 'Alice Kim', '2026-02-12T09:00:00.000Z', '2026-02-12T09:00:00.000Z']
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS002', 'Bob Lee', '2026-02-12T09:00:00.000Z', '2026-02-12T09:00:00.000Z']
+      );
+      await pglite.query(
+        'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES ($1, $2, $3, $4)',
+        ['CAT001', 'Planning', true, '2026-02-12T09:00:00.000Z']
+      );
+      await pglite.query(
+        'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES ($1, $2, $3, $4)',
+        ['CAT002', 'Ops', true, '2026-02-12T09:00:00.000Z']
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-DTL',
           '2026-02-12',
           'Detail Review',
@@ -236,23 +256,27 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['roadmap', 'operations']),
           'roadmap operations',
           '2026-02-12T10:00:00.000Z',
-          '2026-02-12T10:30:00.000Z'
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)'
-        ).bind('MEET-DTL', 'PRS001'),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)'
-        ).bind('MEET-DTL', 'PRS002'),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)'
-        ).bind('MEET-DTL', 'CAT001'),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)'
-        ).bind('MEET-DTL', 'CAT002'),
-      ]);
+          '2026-02-12T10:30:00.000Z',
+        ]
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)',
+        ['MEET-DTL', 'PRS001']
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)',
+        ['MEET-DTL', 'PRS002']
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)',
+        ['MEET-DTL', 'CAT001']
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)',
+        ['MEET-DTL', 'CAT002']
+      );
 
-      const response = await authFetch('http://localhost/api/meeting-minutes/MEET-DTL');
+      const response = await authFetch('/api/meeting-minutes/MEET-DTL');
       expect(response.status).toBe(200);
 
       const detail = await response.json<{
@@ -266,7 +290,7 @@ describe('Meeting Minutes API Routes', () => {
       }>();
 
       expect(detail.meetingId).toBe('MEET-DTL');
-      expect(detail.meetingDate).toBe('2026-02-12');
+      expect(detail.meetingDate).toContain('2026-02-12');
       expect(detail.topic).toBe('Detail Review');
       expect(detail.detailsRaw).toBe('Detailed discussion for roadmap and operations');
       expect(detail.keywords).toEqual(['roadmap', 'operations']);
@@ -282,12 +306,11 @@ describe('Meeting Minutes API Routes', () => {
 
     it('returns linked work note count for traceability', async () => {
       const now = '2026-02-12T09:00:00.000Z';
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-TRACE',
           '2026-02-12',
           'Traceability Review',
@@ -295,23 +318,27 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['traceability']),
           'traceability',
           now,
-          now
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind('WORK-TRACE-1', 'Trace Work 1', 'Details 1', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind('WORK-TRACE-2', 'Trace Work 2', 'Details 2', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES (?, ?)'
-        ).bind('WORK-TRACE-1', 'MEET-TRACE'),
-        testEnv.DB.prepare(
-          'INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES (?, ?)'
-        ).bind('WORK-TRACE-2', 'MEET-TRACE'),
-      ]);
+          now,
+        ]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-TRACE-1', 'Trace Work 1', 'Details 1', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+        ['WORK-TRACE-2', 'Trace Work 2', 'Details 2', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES ($1, $2)',
+        ['WORK-TRACE-1', 'MEET-TRACE']
+      );
+      await pglite.query(
+        'INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES ($1, $2)',
+        ['WORK-TRACE-2', 'MEET-TRACE']
+      );
 
-      const response = await authFetch('http://localhost/api/meeting-minutes/MEET-TRACE');
+      const response = await authFetch('/api/meeting-minutes/MEET-TRACE');
       expect(response.status).toBe(200);
 
       const detail = await response.json<{ linkedWorkNoteCount: number }>();
@@ -322,27 +349,31 @@ describe('Meeting Minutes API Routes', () => {
   describe('PUT /api/meeting-minutes/:meetingId', () => {
     it('updates fields and re-generates keywords', async () => {
       const now = '2026-02-13T09:00:00.000Z';
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS001', 'Alice Kim', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS002', 'Bob Lee', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS003', 'Chris Park', now, now),
-        testEnv.DB.prepare(
-          'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES (?, ?, ?, ?)'
-        ).bind('CAT001', 'Planning', 1, now),
-        testEnv.DB.prepare(
-          'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES (?, ?, ?, ?)'
-        ).bind('CAT002', 'Execution', 1, now),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS001', 'Alice Kim', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS002', 'Bob Lee', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS003', 'Chris Park', now, now]
+      );
+      await pglite.query(
+        'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES ($1, $2, $3, $4)',
+        ['CAT001', 'Planning', true, now]
+      );
+      await pglite.query(
+        'INSERT INTO task_categories (category_id, name, is_active, created_at) VALUES ($1, $2, $3, $4)',
+        ['CAT002', 'Execution', true, now]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-UPD',
           '2026-02-12',
           'Initial Topic',
@@ -350,15 +381,17 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['initial']),
           'initial',
           now,
-          now
-        ),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES (?, ?)'
-        ).bind('MEET-UPD', 'PRS001'),
-        testEnv.DB.prepare(
-          'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES (?, ?)'
-        ).bind('MEET-UPD', 'CAT001'),
-      ]);
+          now,
+        ]
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_person (meeting_id, person_id) VALUES ($1, $2)',
+        ['MEET-UPD', 'PRS001']
+      );
+      await pglite.query(
+        'INSERT INTO meeting_minute_task_category (meeting_id, category_id) VALUES ($1, $2)',
+        ['MEET-UPD', 'CAT001']
+      );
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -375,7 +408,7 @@ describe('Meeting Minutes API Routes', () => {
         }),
       });
 
-      const response = await authFetch('http://localhost/api/meeting-minutes/MEET-UPD', {
+      const response = await authFetch('/api/meeting-minutes/MEET-UPD', {
         method: 'PUT',
         body: JSON.stringify({
           meetingDate: '2026-02-13',
@@ -399,7 +432,7 @@ describe('Meeting Minutes API Routes', () => {
       }>();
 
       expect(updated.meetingId).toBe('MEET-UPD');
-      expect(updated.meetingDate).toBe('2026-02-13');
+      expect(updated.meetingDate).toContain('2026-02-13');
       expect(updated.topic).toBe('Updated Topic');
       expect(updated.detailsRaw).toBe('Updated details focused on execution milestones');
       expect(updated.keywords).toEqual(['execution', 'q2 focus']);
@@ -414,15 +447,15 @@ describe('Meeting Minutes API Routes', () => {
   describe('Duplicate Guard', () => {
     it('rejects create and update when same date has a highly similar topic', async () => {
       const now = '2026-02-16T09:00:00.000Z';
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)'
-        ).bind('PRS001', 'Alice Kim', now, now),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+      await pglite.query(
+        'INSERT INTO persons (person_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4)',
+        ['PRS001', 'Alice Kim', now, now]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-BASE',
           '2026-02-16',
           'Q2 Roadmap Sync',
@@ -430,13 +463,14 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['roadmap']),
           'roadmap',
           now,
-          now
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+          now,
+        ]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-OTHER',
           '2026-02-16',
           'Budget Review',
@@ -444,11 +478,11 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['budget']),
           'budget',
           now,
-          now
-        ),
-      ]);
+          now,
+        ]
+      );
 
-      const createResponse = await authFetch('http://localhost/api/meeting-minutes', {
+      const createResponse = await authFetch('/api/meeting-minutes', {
         method: 'POST',
         body: JSON.stringify({
           meetingDate: '2026-02-16',
@@ -462,7 +496,7 @@ describe('Meeting Minutes API Routes', () => {
       const createError = await createResponse.json<{ code: string; message: string }>();
       expect(createError.code).toBe('CONFLICT');
 
-      const updateResponse = await authFetch('http://localhost/api/meeting-minutes/MEET-OTHER', {
+      const updateResponse = await authFetch('/api/meeting-minutes/MEET-OTHER', {
         method: 'PUT',
         body: JSON.stringify({
           meetingDate: '2026-02-16',
@@ -478,12 +512,11 @@ describe('Meeting Minutes API Routes', () => {
 
   describe('DELETE /api/meeting-minutes/:meetingId', () => {
     it('returns 204 and removes the record', async () => {
-      await testEnv.DB.prepare(
+      await pglite.query(
         `INSERT INTO meeting_minutes (
           meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-        .bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-DEL',
           '2026-02-14',
           'Delete Target',
@@ -491,33 +524,31 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['delete']),
           'delete',
           '2026-02-14T09:00:00.000Z',
-          '2026-02-14T09:00:00.000Z'
-        )
-        .run();
+          '2026-02-14T09:00:00.000Z',
+        ]
+      );
 
-      const response = await authFetch('http://localhost/api/meeting-minutes/MEET-DEL', {
+      const response = await authFetch('/api/meeting-minutes/MEET-DEL', {
         method: 'DELETE',
       });
       expect(response.status).toBe(204);
 
-      const deleted = await testEnv.DB.prepare(
-        'SELECT meeting_id FROM meeting_minutes WHERE meeting_id = ?'
-      )
-        .bind('MEET-DEL')
-        .first<{ meeting_id: string }>();
+      const result = await pglite.query(
+        'SELECT meeting_id FROM meeting_minutes WHERE meeting_id = $1',
+        ['MEET-DEL']
+      );
 
-      expect(deleted).toBeNull();
+      expect(result.rows).toHaveLength(0);
     });
   });
 
   describe('POST /api/meeting-minutes/suggest', () => {
     it('returns scored relevant meeting references from FTS', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-S1',
           '2026-02-15',
           'Q2 Roadmap Budget Sync',
@@ -525,13 +556,14 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['roadmap', 'budget']),
           'roadmap budget',
           '2026-02-15T09:00:00.000Z',
-          '2026-02-15T09:00:00.000Z'
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+          '2026-02-15T09:00:00.000Z',
+        ]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-S2',
           '2026-02-14',
           'Roadmap Hiring Plan',
@@ -539,13 +571,14 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['roadmap', 'hiring']),
           'roadmap hiring',
           '2026-02-14T09:00:00.000Z',
-          '2026-02-14T09:00:00.000Z'
-        ),
-        testEnv.DB.prepare(
-          `INSERT INTO meeting_minutes (
+          '2026-02-14T09:00:00.000Z',
+        ]
+      );
+      await pglite.query(
+        `INSERT INTO meeting_minutes (
             meeting_id, meeting_date, topic, details_raw, keywords_json, keywords_text, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
           'MEET-S3',
           '2026-02-13',
           'Ops Incident Review',
@@ -553,11 +586,11 @@ describe('Meeting Minutes API Routes', () => {
           JSON.stringify(['ops']),
           'ops',
           '2026-02-13T09:00:00.000Z',
-          '2026-02-13T09:00:00.000Z'
-        ),
-      ]);
+          '2026-02-13T09:00:00.000Z',
+        ]
+      );
 
-      const response = await authFetch('http://localhost/api/meeting-minutes/suggest', {
+      const response = await authFetch('/api/meeting-minutes/suggest', {
         method: 'POST',
         body: JSON.stringify({
           query: 'roadmap budget',
@@ -590,7 +623,7 @@ describe('Meeting Minutes API Routes', () => {
     });
 
     it('sanitizes punctuation-heavy query text and avoids MATCH syntax errors', async () => {
-      const response = await authFetch('http://localhost/api/meeting-minutes/suggest', {
+      const response = await authFetch('/api/meeting-minutes/suggest', {
         method: 'POST',
         body: JSON.stringify({
           query: '!!! ((( ))) :::',

@@ -1,50 +1,37 @@
-import { env } from 'cloudflare:test';
-import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
-import { D1FtsDialect } from '@worker/adapters/d1-fts-dialect';
+import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { MeetingMinuteRepository } from '@worker/repositories/meeting-minute-repository';
 import type { CreateMeetingMinuteInput } from '@worker/schemas/meeting-minute';
-import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-const testEnv = env as unknown as Env;
-const testDb = new D1DatabaseClient(testEnv.DB);
+import { pglite, testPgDb } from '../pg-setup';
 
 describe('MeetingMinuteRepository', () => {
   let repository: MeetingMinuteRepository;
 
   beforeEach(async () => {
-    repository = new MeetingMinuteRepository(testDb, new D1FtsDialect());
+    repository = new MeetingMinuteRepository(testPgDb, new PostgresFtsDialect());
 
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM work_note_meeting_minute'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_task_category'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_group'),
-      testEnv.DB.prepare('DELETE FROM meeting_minute_person'),
-      testEnv.DB.prepare('DELETE FROM meeting_minutes'),
-      testEnv.DB.prepare('DELETE FROM task_categories'),
-      testEnv.DB.prepare('DELETE FROM persons'),
-    ]);
+    await pglite.query(
+      'TRUNCATE work_note_meeting_minute, meeting_minute_task_category, meeting_minute_group, meeting_minute_person, meeting_minutes, task_categories, persons CASCADE'
+    );
   });
 
   describe('create()', () => {
     it('persists base fields plus attendee/category associations', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '123456',
-          '홍길동'
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '654321',
-          '김철수'
-        ),
-        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
-          'CAT-001',
-          '회의'
-        ),
-        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
-          'CAT-002',
-          '계획'
-        ),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '123456',
+        '홍길동',
+      ]);
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '654321',
+        '김철수',
+      ]);
+      await pglite.query('INSERT INTO task_categories (category_id, name) VALUES ($1, $2)', [
+        'CAT-001',
+        '회의',
+      ]);
+      await pglite.query('INSERT INTO task_categories (category_id, name) VALUES ($1, $2)', [
+        'CAT-002',
+        '계획',
       ]);
 
       const input: CreateMeetingMinuteInput = {
@@ -57,74 +44,70 @@ describe('MeetingMinuteRepository', () => {
 
       const created = await repository.create(input);
 
-      const meetingRow = await testEnv.DB.prepare(
-        `SELECT meeting_id as meetingId, meeting_date as meetingDate, topic, details_raw as detailsRaw
+      const meetingResult = await pglite.query(
+        `SELECT meeting_id as "meetingId", meeting_date::text as "meetingDate", topic, details_raw as "detailsRaw"
            FROM meeting_minutes
-           WHERE meeting_id = ?`
-      )
-        .bind(created.meetingId)
-        .first<{
-          meetingId: string;
-          meetingDate: string;
-          topic: string;
-          detailsRaw: string;
-        }>();
+           WHERE meeting_id = $1`,
+        [created.meetingId]
+      );
 
-      expect(meetingRow).not.toBeNull();
+      const meetingRow = meetingResult.rows[0] as
+        | {
+            meetingId: string;
+            meetingDate: string;
+            topic: string;
+            detailsRaw: string;
+          }
+        | undefined;
+
+      expect(meetingRow).not.toBeUndefined();
       expect(meetingRow?.meetingDate).toBe(input.meetingDate);
       expect(meetingRow?.topic).toBe(input.topic);
       expect(meetingRow?.detailsRaw).toBe(input.detailsRaw);
 
-      const attendeeRows = await testEnv.DB.prepare(
-        `SELECT person_id as personId
+      const attendeeResult = await pglite.query(
+        `SELECT person_id as "personId"
            FROM meeting_minute_person
-           WHERE meeting_id = ?
-           ORDER BY person_id ASC`
-      )
-        .bind(created.meetingId)
-        .all<{ personId: string }>();
+           WHERE meeting_id = $1
+           ORDER BY person_id ASC`,
+        [created.meetingId]
+      );
 
-      expect((attendeeRows.results || []).map((row) => row.personId)).toEqual(['123456', '654321']);
+      expect(attendeeResult.rows.map((row: any) => row.personId)).toEqual(['123456', '654321']);
 
-      const categoryRows = await testEnv.DB.prepare(
-        `SELECT category_id as categoryId
+      const categoryResult = await pglite.query(
+        `SELECT category_id as "categoryId"
            FROM meeting_minute_task_category
-           WHERE meeting_id = ?
-           ORDER BY category_id ASC`
-      )
-        .bind(created.meetingId)
-        .all<{ categoryId: string }>();
+           WHERE meeting_id = $1
+           ORDER BY category_id ASC`,
+        [created.meetingId]
+      );
 
-      expect((categoryRows.results || []).map((row) => row.categoryId)).toEqual([
-        'CAT-001',
-        'CAT-002',
-      ]);
+      expect(categoryResult.rows.map((row: any) => row.categoryId)).toEqual(['CAT-001', 'CAT-002']);
     });
   });
 
   describe('update()', () => {
     it('replaces attendee/category associations idempotently', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '111111',
-          '참석자1'
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '222222',
-          '참석자2'
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '333333',
-          '참석자3'
-        ),
-        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
-          'CAT-OLD',
-          '기존'
-        ),
-        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
-          'CAT-NEW',
-          '신규'
-        ),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '111111',
+        '참석자1',
+      ]);
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '222222',
+        '참석자2',
+      ]);
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '333333',
+        '참석자3',
+      ]);
+      await pglite.query('INSERT INTO task_categories (category_id, name) VALUES ($1, $2)', [
+        'CAT-OLD',
+        '기존',
+      ]);
+      await pglite.query('INSERT INTO task_categories (category_id, name) VALUES ($1, $2)', [
+        'CAT-NEW',
+        '신규',
       ]);
 
       const created = await repository.create({
@@ -143,57 +126,53 @@ describe('MeetingMinuteRepository', () => {
       await repository.update(created.meetingId, updatePayload);
       await repository.update(created.meetingId, updatePayload);
 
-      const attendeeRows = await testEnv.DB.prepare(
-        `SELECT person_id as personId
+      const attendeeResult = await pglite.query(
+        `SELECT person_id as "personId"
            FROM meeting_minute_person
-           WHERE meeting_id = ?
-           ORDER BY person_id ASC`
-      )
-        .bind(created.meetingId)
-        .all<{ personId: string }>();
+           WHERE meeting_id = $1
+           ORDER BY person_id ASC`,
+        [created.meetingId]
+      );
 
-      expect((attendeeRows.results || []).map((row) => row.personId)).toEqual(['222222', '333333']);
+      expect(attendeeResult.rows.map((row: any) => row.personId)).toEqual(['222222', '333333']);
 
-      const categoryRows = await testEnv.DB.prepare(
-        `SELECT category_id as categoryId
+      const categoryResult = await pglite.query(
+        `SELECT category_id as "categoryId"
            FROM meeting_minute_task_category
-           WHERE meeting_id = ?
-           ORDER BY category_id ASC`
-      )
-        .bind(created.meetingId)
-        .all<{ categoryId: string }>();
+           WHERE meeting_id = $1
+           ORDER BY category_id ASC`,
+        [created.meetingId]
+      );
 
-      expect((categoryRows.results || []).map((row) => row.categoryId)).toEqual(['CAT-NEW']);
+      expect(categoryResult.rows.map((row: any) => row.categoryId)).toEqual(['CAT-NEW']);
     });
   });
 
   describe('findAll()', () => {
     it('supports q, date range, category, and attendee filters', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '111111',
-          '참석자1'
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '222222',
-          '참석자2'
-        ),
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '333333',
-          '참석자3'
-        ),
-        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
-          'CAT-FIN',
-          '재무'
-        ),
-        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
-          'CAT-HR',
-          '인사'
-        ),
-        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
-          'CAT-ENG',
-          '개발'
-        ),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '111111',
+        '참석자1',
+      ]);
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '222222',
+        '참석자2',
+      ]);
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '333333',
+        '참석자3',
+      ]);
+      await pglite.query('INSERT INTO task_categories (category_id, name) VALUES ($1, $2)', [
+        'CAT-FIN',
+        '재무',
+      ]);
+      await pglite.query('INSERT INTO task_categories (category_id, name) VALUES ($1, $2)', [
+        'CAT-HR',
+        '인사',
+      ]);
+      await pglite.query('INSERT INTO task_categories (category_id, name) VALUES ($1, $2)', [
+        'CAT-ENG',
+        '개발',
       ]);
 
       const meeting1 = await repository.create({
@@ -250,15 +229,13 @@ describe('MeetingMinuteRepository', () => {
 
   describe('findPaginated()', () => {
     it('returns paginated items and total count from database filtering', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '111111',
-          '참석자1'
-        ),
-        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
-          'CAT-FIN',
-          '재무'
-        ),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '111111',
+        '참석자1',
+      ]);
+      await pglite.query('INSERT INTO task_categories (category_id, name) VALUES ($1, $2)', [
+        'CAT-FIN',
+        '재무',
       ]);
 
       const newer = await repository.create({
@@ -310,15 +287,13 @@ describe('MeetingMinuteRepository', () => {
 
   describe('delete()', () => {
     it('cascades join rows and removes linked work-note references', async () => {
-      await testEnv.DB.batch([
-        testEnv.DB.prepare('INSERT INTO persons (person_id, name) VALUES (?, ?)').bind(
-          '111111',
-          '참석자1'
-        ),
-        testEnv.DB.prepare('INSERT INTO task_categories (category_id, name) VALUES (?, ?)').bind(
-          'CAT-DEL',
-          '삭제테스트'
-        ),
+      await pglite.query('INSERT INTO persons (person_id, name) VALUES ($1, $2)', [
+        '111111',
+        '참석자1',
+      ]);
+      await pglite.query('INSERT INTO task_categories (category_id, name) VALUES ($1, $2)', [
+        'CAT-DEL',
+        '삭제테스트',
       ]);
 
       const created = await repository.create({
@@ -330,46 +305,42 @@ describe('MeetingMinuteRepository', () => {
       });
 
       const now = new Date().toISOString();
-      await testEnv.DB.batch([
-        testEnv.DB.prepare(
-          `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?)`
-        ).bind('WORK-DEL-001', '회의참조 노트', '내용', now, now),
-        testEnv.DB.prepare(
-          `INSERT INTO work_note_meeting_minute (work_id, meeting_id)
-           VALUES (?, ?)`
-        ).bind('WORK-DEL-001', created.meetingId),
-      ]);
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5)`,
+        ['WORK-DEL-001', '회의참조 노트', '내용', now, now]
+      );
+      await pglite.query(
+        `INSERT INTO work_note_meeting_minute (work_id, meeting_id)
+           VALUES ($1, $2)`,
+        ['WORK-DEL-001', created.meetingId]
+      );
 
       await repository.delete(created.meetingId);
 
-      const meetingRow = await testEnv.DB.prepare(
-        'SELECT 1 FROM meeting_minutes WHERE meeting_id = ?'
-      )
-        .bind(created.meetingId)
-        .first();
-      expect(meetingRow).toBeNull();
+      const meetingResult = await pglite.query(
+        'SELECT 1 FROM meeting_minutes WHERE meeting_id = $1',
+        [created.meetingId]
+      );
+      expect(meetingResult.rows.length).toBe(0);
 
-      const attendeeRows = await testEnv.DB.prepare(
-        'SELECT 1 FROM meeting_minute_person WHERE meeting_id = ?'
-      )
-        .bind(created.meetingId)
-        .all();
-      expect((attendeeRows.results || []).length).toBe(0);
+      const attendeeResult = await pglite.query(
+        'SELECT 1 FROM meeting_minute_person WHERE meeting_id = $1',
+        [created.meetingId]
+      );
+      expect(attendeeResult.rows.length).toBe(0);
 
-      const categoryRows = await testEnv.DB.prepare(
-        'SELECT 1 FROM meeting_minute_task_category WHERE meeting_id = ?'
-      )
-        .bind(created.meetingId)
-        .all();
-      expect((categoryRows.results || []).length).toBe(0);
+      const categoryResult = await pglite.query(
+        'SELECT 1 FROM meeting_minute_task_category WHERE meeting_id = $1',
+        [created.meetingId]
+      );
+      expect(categoryResult.rows.length).toBe(0);
 
-      const linkRows = await testEnv.DB.prepare(
-        'SELECT 1 FROM work_note_meeting_minute WHERE meeting_id = ?'
-      )
-        .bind(created.meetingId)
-        .all();
-      expect((linkRows.results || []).length).toBe(0);
+      const linkResult = await pglite.query(
+        'SELECT 1 FROM work_note_meeting_minute WHERE meeting_id = $1',
+        [created.meetingId]
+      );
+      expect(linkResult.rows.length).toBe(0);
     });
   });
 });

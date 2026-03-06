@@ -86,7 +86,11 @@ export class WorkNoteGroupRepository {
         [groupId, data.name, now]
       );
     } catch (error) {
-      if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('UNIQUE constraint failed') ||
+          error.message.includes('duplicate key value violates unique constraint'))
+      ) {
         throw new ConflictError(`Work note group already exists: ${data.name}`);
       }
       throw error;
@@ -131,7 +135,11 @@ export class WorkNoteGroupRepository {
           params
         );
       } catch (error) {
-        if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+        if (
+          error instanceof Error &&
+          (error.message.includes('UNIQUE constraint failed') ||
+            error.message.includes('duplicate key value violates unique constraint'))
+        ) {
           throw new ConflictError(`Work note group already exists: ${data.name}`);
         }
         throw error;

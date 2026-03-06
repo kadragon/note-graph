@@ -1,6 +1,5 @@
 // Unit tests for authentication middleware and handlers
 
-import { env } from 'cloudflare:test';
 import type { AuthUser } from '@shared/types/auth';
 import { AuthenticationError } from '@shared/types/auth';
 import { getMeHandler } from '@worker/handlers/auth';
@@ -9,7 +8,9 @@ import type { Env } from '@worker/types/env';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-const testEnv = env as unknown as Env;
+const mockEnv = {
+  ENVIRONMENT: 'test',
+} as unknown as Env;
 
 describe('Authentication Middleware', () => {
   describe('authMiddleware()', () => {
@@ -45,7 +46,7 @@ describe('Authentication Middleware', () => {
             'cf-access-authenticated-user-email': email,
           },
         },
-        testEnv
+        mockEnv
       );
 
       // Assert
@@ -66,7 +67,7 @@ describe('Authentication Middleware', () => {
             'cf-access-authenticated-user-email': email,
           },
         },
-        testEnv
+        mockEnv
       );
 
       // Assert
@@ -78,7 +79,7 @@ describe('Authentication Middleware', () => {
     it('should authenticate with test header in development mode', async () => {
       // Arrange
       const email = 'dev@example.com';
-      const devEnv = { ...testEnv, ENVIRONMENT: 'development' };
+      const devEnv = { ...mockEnv, ENVIRONMENT: 'development' };
 
       // Act
       const response = await app.request(
@@ -99,7 +100,7 @@ describe('Authentication Middleware', () => {
 
     it('should use default test user when no headers are provided in development mode', async () => {
       // Arrange
-      const devEnv = { ...testEnv, ENVIRONMENT: 'development' };
+      const devEnv = { ...mockEnv, ENVIRONMENT: 'development' };
 
       // Act
       const response = await app.request('/test', {}, devEnv);
@@ -112,7 +113,7 @@ describe('Authentication Middleware', () => {
 
     it('should reject when no authentication header is provided (production)', async () => {
       // Act
-      const prodEnv = { ...testEnv, ENVIRONMENT: 'production' };
+      const prodEnv = { ...mockEnv, ENVIRONMENT: 'production' };
       const response = await app.request('/test', {}, prodEnv);
 
       // Assert
@@ -121,7 +122,7 @@ describe('Authentication Middleware', () => {
 
     it('should reject test header in production mode', async () => {
       // Arrange
-      const prodEnv = { ...testEnv, ENVIRONMENT: 'production' };
+      const prodEnv = { ...mockEnv, ENVIRONMENT: 'production' };
 
       // Act
       const response = await app.request(
@@ -142,7 +143,7 @@ describe('Authentication Middleware', () => {
       // Arrange
       const cfEmail = 'cf@example.com';
       const testEmail = 'test@example.com';
-      const devEnv = { ...testEnv, ENVIRONMENT: 'development' };
+      const devEnv = { ...mockEnv, ENVIRONMENT: 'development' };
 
       // Act
       const response = await app.request(
@@ -174,7 +175,7 @@ describe('Authentication Middleware', () => {
       });
 
       // Act
-      const response = await app.request('/test', {}, testEnv);
+      const response = await app.request('/test', {}, mockEnv);
 
       // Assert
       expect(response.status).toBe(200);
@@ -193,7 +194,7 @@ describe('Authentication Middleware', () => {
       });
 
       // Act
-      await app.request('/test', {}, testEnv);
+      await app.request('/test', {}, mockEnv);
     });
   });
 });
@@ -229,7 +230,7 @@ describe('Authentication Handlers', () => {
             'cf-access-authenticated-user-email': email,
           },
         },
-        testEnv
+        mockEnv
       );
 
       // Assert
@@ -241,7 +242,7 @@ describe('Authentication Handlers', () => {
 
     it('should require authentication (production)', async () => {
       // Act
-      const prodEnv = { ...testEnv, ENVIRONMENT: 'production' };
+      const prodEnv = { ...mockEnv, ENVIRONMENT: 'production' };
       const response = await app.request('/me', {}, prodEnv);
 
       // Assert
@@ -258,7 +259,7 @@ describe('Authentication Handlers', () => {
       });
 
       // Act
-      const response = await app2.request('/me', {}, testEnv);
+      const response = await app2.request('/me', {}, mockEnv);
 
       // Assert
       expect(response.status).toBe(200);

@@ -235,8 +235,8 @@ export class TodoRepository {
         conditions.push(
           `t.status = $${paramIndex++}`,
           `t.due_date IS NOT NULL`,
-          `t.due_date < $${paramIndex++}`,
-          `(t.wait_until IS NULL OR t.wait_until < $${paramIndex++})`
+          `t.due_date < $${paramIndex++}::timestamptz`,
+          `(t.wait_until IS NULL OR t.wait_until < $${paramIndex++}::timestamptz)`
         );
         params.push('진행중', endExclusiveUTC, endExclusiveUTC);
         break;
@@ -246,8 +246,8 @@ export class TodoRepository {
         conditions.push(
           `t.status = $${paramIndex++}`,
           `t.due_date IS NOT NULL`,
-          `t.due_date < $${paramIndex++}`,
-          `(t.wait_until IS NULL OR t.wait_until < $${paramIndex++})`
+          `t.due_date < $${paramIndex++}::timestamptz`,
+          `(t.wait_until IS NULL OR t.wait_until < $${paramIndex++}::timestamptz)`
         );
         params.push('진행중', startOfTodayUTC, startOfTomorrowUTC);
         break;
@@ -256,7 +256,7 @@ export class TodoRepository {
       case 'remaining': {
         conditions.push(
           `t.status = $${paramIndex++}`,
-          `(t.wait_until IS NULL OR t.wait_until < $${paramIndex++})`
+          `(t.wait_until IS NULL OR t.wait_until < $${paramIndex++}::timestamptz)`
         );
         params.push('진행중', startOfTomorrowUTC);
         break;
@@ -307,12 +307,12 @@ export class TodoRepository {
         [...openStatuses]
       ),
       this.db.query<{ dueDate: string; count: number }>(
-        `SELECT date(due_date) as dueDate,
+        `SELECT due_date::text as dueDate,
                 COUNT(*) as count
          FROM todos
          WHERE status IN ($1, $2, $3)
-           AND date(due_date) IS NOT NULL
-         GROUP BY date(due_date)
+           AND due_date IS NOT NULL
+         GROUP BY due_date
          ORDER BY count DESC, dueDate ASC
          LIMIT $4`,
         [...openStatuses, normalizedLimit]

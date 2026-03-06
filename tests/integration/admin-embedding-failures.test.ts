@@ -4,12 +4,19 @@
  */
 
 import { nanoid } from 'nanoid';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch, testEnv } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
+
+const baseAuthFetch = createAuthFetch(worker);
 
 const adminFetch = (path: string, options?: RequestInit) =>
-  authFetch(path, {
+  baseAuthFetch(path, {
     ...options,
     headers: {
       'Cf-Access-Authenticated-User-Email': 'admin@example.com',
@@ -20,10 +27,8 @@ const adminFetch = (path: string, options?: RequestInit) =>
 describe('Admin Embedding Failure Routes', () => {
   beforeEach(async () => {
     // Clean up test data
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM embedding_retry_queue'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
+    await pglite.query('DELETE FROM embedding_retry_queue');
+    await pglite.query('DELETE FROM work_notes');
   });
 
   describe('GET /api/admin/embedding-failures', () => {
@@ -41,23 +46,21 @@ describe('Admin Embedding Failure Routes', () => {
     it('should list dead-letter embedding failures with work note titles', async () => {
       // Arrange - Create test work note
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
-        VALUES (?, ?, ?, datetime('now'), datetime('now'))
-      `)
-        .bind(workId, 'Failed Embedding Test', 'Test content')
-        .run();
+      const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [workId, 'Failed Embedding Test', 'Test content', now, now]
+      );
 
       // Create dead-letter retry item
       const retryId = nanoid();
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, max_attempts,
           status, error_message, created_at, updated_at, dead_letter_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
           retryId,
           workId,
           'create',
@@ -67,9 +70,9 @@ describe('Admin Embedding Failure Routes', () => {
           'Vectorize service unavailable',
           now,
           now,
-          now
-        )
-        .run();
+          now,
+        ]
+      );
 
       // Act
       const response = await adminFetch('/api/admin/embedding-failures');
@@ -90,32 +93,28 @@ describe('Admin Embedding Failure Routes', () => {
     it('should not include pending or retrying items in dead-letter list', async () => {
       // Arrange - Create work note
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
-
       const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [workId, 'Test Work', 'Content', now, now]
+      );
 
       // Create pending item
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(nanoid(), workId, 'create', 1, 'pending', now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [nanoid(), workId, 'create', 1, 'pending', now, now]
+      );
 
       // Create retrying item
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(nanoid(), workId, 'update', 2, 'retrying', now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [nanoid(), workId, 'update', 2, 'retrying', now, now]
+      );
 
       // Act
       const response = await adminFetch('/api/admin/embedding-failures');
@@ -130,23 +129,21 @@ describe('Admin Embedding Failure Routes', () => {
     it('should respect limit and offset query parameters', async () => {
       // Arrange - Create 5 dead-letter items
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
-
       const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [workId, 'Test Work', 'Content', now, now]
+      );
+
       for (let i = 0; i < 5; i++) {
-        await testEnv.DB.prepare(`
-          INSERT INTO embedding_retry_queue (
+        await pglite.query(
+          `INSERT INTO embedding_retry_queue (
             id, work_id, operation_type, attempt_count, status,
             created_at, updated_at, dead_letter_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `)
-          .bind(nanoid(), workId, 'create', 3, 'dead_letter', now, now, now)
-          .run();
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [nanoid(), workId, 'create', 3, 'dead_letter', now, now, now]
+        );
       }
 
       // Act
@@ -172,23 +169,21 @@ describe('Admin Embedding Failure Routes', () => {
     it('should reset dead-letter item to pending status', async () => {
       // Arrange - Create work note and dead-letter item
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
+      const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [workId, 'Test Work', 'Content', now, now]
+      );
 
       const retryId = nanoid();
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status,
           created_at, updated_at, dead_letter_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(retryId, workId, 'create', 3, 'dead_letter', now, now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [retryId, workId, 'create', 3, 'dead_letter', now, now, now]
+      );
 
       // Act
       const response = await adminFetch(`/api/admin/embedding-failures/${retryId}/retry`, {
@@ -203,14 +198,13 @@ describe('Admin Embedding Failure Routes', () => {
       expect(data.status).toBe('pending');
 
       // Verify database state changed
-      const result = await testEnv.DB.prepare(`
-        SELECT status, dead_letter_at FROM embedding_retry_queue WHERE id = ?
-      `)
-        .bind(retryId)
-        .first<{ status: string; dead_letter_at: string | null }>();
+      const result = await pglite.query<{ status: string; dead_letter_at: string | null }>(
+        `SELECT status, dead_letter_at FROM embedding_retry_queue WHERE id = $1`,
+        [retryId]
+      );
 
-      expect(result?.status).toBe('pending');
-      expect(result?.dead_letter_at).toBeNull();
+      expect(result.rows[0]?.status).toBe('pending');
+      expect(result.rows[0]?.dead_letter_at).toBeNull();
     });
 
     it('should return 404 when retry item does not exist', async () => {
@@ -228,22 +222,20 @@ describe('Admin Embedding Failure Routes', () => {
     it('should return 400 when item is not in dead_letter status', async () => {
       // Arrange - Create pending retry item
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
+      const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [workId, 'Test Work', 'Content', now, now]
+      );
 
       const retryId = nanoid();
-      const now = new Date().toISOString();
-      await testEnv.DB.prepare(`
-        INSERT INTO embedding_retry_queue (
+      await pglite.query(
+        `INSERT INTO embedding_retry_queue (
           id, work_id, operation_type, attempt_count, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-        .bind(retryId, workId, 'create', 1, 'pending', now, now)
-        .run();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [retryId, workId, 'create', 1, 'pending', now, now]
+      );
 
       // Act
       const response = await adminFetch(`/api/admin/embedding-failures/${retryId}/retry`, {
@@ -261,25 +253,23 @@ describe('Admin Embedding Failure Routes', () => {
     it('should handle multiple dead-letter items independently', async () => {
       // Arrange - Create 3 dead-letter items
       const workId = nanoid();
-      await testEnv.DB.prepare(`
-        INSERT INTO work_notes (work_id, title, content_raw, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `)
-        .bind(workId, 'Test Work', 'Content')
-        .run();
-
       const now = new Date().toISOString();
+      await pglite.query(
+        `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [workId, 'Test Work', 'Content', now, now]
+      );
+
       const retryIds = [nanoid(), nanoid(), nanoid()];
 
       for (const id of retryIds) {
-        await testEnv.DB.prepare(`
-          INSERT INTO embedding_retry_queue (
+        await pglite.query(
+          `INSERT INTO embedding_retry_queue (
             id, work_id, operation_type, attempt_count, status,
             created_at, updated_at, dead_letter_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `)
-          .bind(id, workId, 'create', 3, 'dead_letter', now, now, now)
-          .run();
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [id, workId, 'create', 3, 'dead_letter', now, now, now]
+        );
       }
 
       // Act - Retry only the second item
@@ -291,14 +281,13 @@ describe('Admin Embedding Failure Routes', () => {
       expect(response.status).toBe(200);
 
       // Verify only second item was reset
-      const results = await testEnv.DB.prepare(`
-        SELECT id, status FROM embedding_retry_queue WHERE id IN (?, ?, ?)
-        ORDER BY id
-      `)
-        .bind(retryIds[0], retryIds[1], retryIds[2])
-        .all<{ id: string; status: string }>();
+      const results = await pglite.query<{ id: string; status: string }>(
+        `SELECT id, status FROM embedding_retry_queue WHERE id IN ($1, $2, $3)
+        ORDER BY id`,
+        [retryIds[0], retryIds[1], retryIds[2]]
+      );
 
-      const statusMap = new Map(results.results.map((r) => [r.id, r.status]));
+      const statusMap = new Map(results.rows.map((r) => [r.id, r.status]));
       expect(statusMap.get(retryIds[0])).toBe('dead_letter');
       expect(statusMap.get(retryIds[1])).toBe('pending');
       expect(statusMap.get(retryIds[2])).toBe('dead_letter');

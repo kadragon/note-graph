@@ -2,55 +2,48 @@
 // Integration tests for work note file upload route (Google Drive)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MockR2, mockDatabaseFactory } from '../helpers/test-app';
 
-import { authFetch, MockR2, setTestR2Bucket, testEnv } from '../test-setup';
+vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
+
+import worker from '@worker/index';
+import { createAuthFetch } from '../helpers/test-app';
+import { pglite } from '../pg-setup';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
 describe('Work Note File Upload Route', () => {
   let originalFetch: typeof global.fetch;
-  let originalGoogleClientId: string | undefined;
-  let originalGoogleClientSecret: string | undefined;
-  let originalGoogleRedirectUri: string | undefined;
-  let originalGdriveRootFolderId: string | undefined;
   let fetchMock: ReturnType<typeof vi.fn>;
+
+  const mockR2 = new MockR2();
+  const authFetch = createAuthFetch(worker, {
+    R2_BUCKET: mockR2 as unknown as R2Bucket,
+  });
 
   beforeEach(async () => {
     originalFetch = global.fetch;
-    originalGoogleClientId = testEnv.GOOGLE_CLIENT_ID;
-    originalGoogleClientSecret = testEnv.GOOGLE_CLIENT_SECRET;
-    originalGoogleRedirectUri = testEnv.GOOGLE_REDIRECT_URI;
-    originalGdriveRootFolderId = testEnv.GDRIVE_ROOT_FOLDER_ID;
 
-    await testEnv.DB.batch([
-      testEnv.DB.prepare('DELETE FROM google_oauth_tokens'),
-      testEnv.DB.prepare('DELETE FROM work_note_files'),
-      testEnv.DB.prepare('DELETE FROM work_notes'),
-    ]);
-
-    testEnv.GOOGLE_CLIENT_ID = 'test-client-id';
-    testEnv.GOOGLE_CLIENT_SECRET = 'test-client-secret';
-    testEnv.GOOGLE_REDIRECT_URI = 'https://example.test/oauth/callback';
-    testEnv.GDRIVE_ROOT_FOLDER_ID = 'test-gdrive-root-folder-id';
+    await pglite.query('DELETE FROM google_oauth_tokens');
+    await pglite.query('DELETE FROM work_note_files');
+    await pglite.query('DELETE FROM work_notes');
 
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const createdAt = '2023-05-01T00:00:00.000Z';
 
     // Seed minimal work note
-    await testEnv.DB.prepare(
-      `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-    )
-      .bind('WORK-123', '테스트 업무노트', '내용', createdAt, now)
-      .run();
+    await pglite.query(
+      `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+      ['WORK-123', '테스트 업무노트', '내용', createdAt, now]
+    );
 
-    await testEnv.DB.prepare(
+    await pglite.query(
       `INSERT INTO google_oauth_tokens
         (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         'test@example.com',
         'access-token',
         'refresh-token',
@@ -58,9 +51,9 @@ describe('Work Note File Upload Route', () => {
         expiresAt,
         'https://www.googleapis.com/auth/drive',
         now,
-        now
-      )
-      .run();
+        now,
+      ]
+    );
 
     fetchMock = vi.fn().mockImplementation(async (input, init = {}) => {
       const url = typeof input === 'string' ? input : input.toString();
@@ -112,17 +105,10 @@ describe('Work Note File Upload Route', () => {
     });
 
     global.fetch = fetchMock as typeof fetch;
-
-    // Provide mock R2 binding for legacy streaming routes
-    setTestR2Bucket(new MockR2() as unknown as typeof testEnv.R2_BUCKET);
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
-    testEnv.GOOGLE_CLIENT_ID = originalGoogleClientId as string;
-    testEnv.GOOGLE_CLIENT_SECRET = originalGoogleClientSecret as string;
-    testEnv.GOOGLE_REDIRECT_URI = originalGoogleRedirectUri as string;
-    testEnv.GDRIVE_ROOT_FOLDER_ID = originalGdriveRootFolderId as string;
   });
 
   it('uploads file to Google Drive and returns DriveFileListItem', async () => {
@@ -130,7 +116,7 @@ describe('Work Note File Upload Route', () => {
     const form = new FormData();
     form.append('file', new Blob(['hello pdf'], { type: 'application/pdf' }), 'hello.pdf');
 
-    const uploadRes = await authFetch('http://localhost/api/work-notes/WORK-123/files', {
+    const uploadRes = await authFetch('/api/work-notes/WORK-123/files', {
       method: 'POST',
       body: form,
     });
@@ -154,17 +140,16 @@ describe('Work Note File Upload Route', () => {
     expect(fetchMock).toHaveBeenCalled();
 
     // Verify no DB record was created (Drive folder is source of truth)
-    const dbFiles = await testEnv.DB.prepare('SELECT * FROM work_note_files WHERE work_id = ?')
-      .bind('WORK-123')
-      .all();
-    expect(dbFiles.results).toHaveLength(0);
+    const dbFiles = await pglite.query('SELECT * FROM work_note_files WHERE work_id = $1', [
+      'WORK-123',
+    ]);
+    expect(dbFiles.rows).toHaveLength(0);
 
     // Verify Drive folder record was created
-    const folderRecord = await testEnv.DB.prepare(
-      'SELECT * FROM work_note_gdrive_folders WHERE work_id = ?'
-    )
-      .bind('WORK-123')
-      .first();
-    expect(folderRecord).toBeTruthy();
+    const folderRecord = await pglite.query(
+      'SELECT * FROM work_note_gdrive_folders WHERE work_id = $1',
+      ['WORK-123']
+    );
+    expect(folderRecord.rows.length).toBeGreaterThan(0);
   });
 });
