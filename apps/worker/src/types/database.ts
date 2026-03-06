@@ -1,6 +1,6 @@
 /**
- * Database abstraction layer for D1/PostgreSQL migration.
- * All repositories depend on this interface, not on D1Database directly.
+ * Database abstraction layer for PostgreSQL via Hyperdrive.
+ * All repositories depend on this interface for database access.
  */
 
 export interface DatabaseClient {
@@ -16,10 +16,7 @@ export interface DatabaseClient {
   /** Execute multiple statements atomically */
   transaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T>;
 
-  /**
-   * Execute multiple statements atomically as a batch.
-   * D1: uses native batch API. PostgreSQL: wraps in BEGIN/COMMIT.
-   */
+  /** Execute multiple statements atomically as a batch (wraps in BEGIN/COMMIT). */
   executeBatch(statements: Array<{ sql: string; params?: unknown[] }>): Promise<void>;
 
   /** Close the underlying connection. No-op for adapters that don't need cleanup. */

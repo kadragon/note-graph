@@ -46,9 +46,11 @@ describe('D1 removal cleanup', () => {
     const references = rg(
       '-n',
       '\\[\\[d1_databases\\]\\]|wrangler d1 migrations|D1Database|d1Databases|getD1Database|d1Persist|createD1Connection|export-d1-for-supabase|migrate-d1-to-supabase|export-d1-chunked',
+      'apps',
+      'tests',
+      'scripts',
       'package.json',
       'wrangler.toml',
-      'scripts',
       '-g',
       '!**/dist/**',
       '-g',

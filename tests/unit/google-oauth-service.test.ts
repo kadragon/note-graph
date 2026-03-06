@@ -1,5 +1,5 @@
-import type { D1Database } from '@cloudflare/workers-types';
 import { GoogleOAuthService, hasSufficientDriveScope } from '@worker/services/google-oauth-service';
+import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
 import { DomainError } from '@worker/types/errors';
 import { describe, expect, it, vi } from 'vitest';
@@ -15,7 +15,7 @@ describe('GoogleOAuthService', () => {
   describe('getAuthorizationUrl', () => {
     it('includes calendar.readonly scope', () => {
       const env = createEnv();
-      const service = new GoogleOAuthService(env, {} as D1Database);
+      const service = new GoogleOAuthService(env, {} as DatabaseClient);
 
       const url = service.getAuthorizationUrl();
       const params = new URL(url).searchParams;
@@ -26,7 +26,7 @@ describe('GoogleOAuthService', () => {
 
     it('includes drive scope for full Drive access', () => {
       const env = createEnv();
-      const service = new GoogleOAuthService(env, {} as D1Database);
+      const service = new GoogleOAuthService(env, {} as DatabaseClient);
 
       const url = service.getAuthorizationUrl();
       const params = new URL(url).searchParams;
@@ -37,7 +37,7 @@ describe('GoogleOAuthService', () => {
 
     it('includes both drive and calendar.readonly scopes', () => {
       const env = createEnv();
-      const service = new GoogleOAuthService(env, {} as D1Database);
+      const service = new GoogleOAuthService(env, {} as DatabaseClient);
 
       const url = service.getAuthorizationUrl();
       const params = new URL(url).searchParams;
@@ -94,7 +94,7 @@ describe('GoogleOAuthService', () => {
   describe('refreshAccessToken', () => {
     it('does not treat invalid_grant in description when error code differs', async () => {
       const env = createEnv();
-      const service = new GoogleOAuthService(env, {} as D1Database);
+      const service = new GoogleOAuthService(env, {} as DatabaseClient);
 
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(

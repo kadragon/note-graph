@@ -6,12 +6,12 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Follow TDD (red -> green -> refactor) and Tidy First; do not mix structural and behavioral changes.
 - Record strategic insights and governance updates here during commits.
 - No SDD. Use tests to drive changes, not spec docs.
-- Primary test stack: Vitest + Miniflare (Workers). Jest migration history exists but is not the current default.
+- Primary test stack: Vitest + PGlite. Jest migration history exists but is not the current default.
 
 ## Quick Start
 - Install: `bun install`
 - Local env: `cp .dev.vars.example .dev.vars`
-- D1 migrations (local): `bun run db:migrate:local`
+- Local DB reset: `bun run db:migrate:local`
 - Dev (web + worker): `bun run dev`
 - Tests (preferred): `bun run test` (Vitest).
 
@@ -22,14 +22,14 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Typecheck: `bun run typecheck`
 - Lint: `bun run lint`
 - Format: `bun run format`
-- Create D1 migration: `bun run db:create-migration`
-- Apply D1 migrations (remote): `bun run db:migrate`
+- Create migration: `bun run db:create-migration`
+- Apply migrations (remote): `bun run db:migrate`
 - Build (web + worker): `bun run build`
 - Deploy (build + deploy): `bun run deploy`
 - Deploy with migrations: `bun run deploy:with-migrations`
 
 ## First-Time Infra Setup
-- Create D1 database: `wrangler d1 create worknote-db`
+- Start local Supabase: `bunx supabase start`
 - Create Vectorize index: `wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine`
 - Create R2 bucket: `wrangler r2 bucket create worknote-pdf-temp`
 - Create queue: `wrangler queues create pdf-processing-queue`
@@ -37,13 +37,13 @@ This file consolidates governance, specs, and task tracking previously kept unde
 ## Project Overview
 - Product: Worknote Management System (single-user knowledge base).
 - Platform: Cloudflare Workers.
-- Data: D1 (SQLite), Vectorize for embeddings, R2 for files, Google Drive for work note attachments.
+- Data: PostgreSQL via Hyperdrive, Vectorize for embeddings, R2 for files, Google Drive for work note attachments.
 - Async: Cloudflare Queues.
 - Auth: Cloudflare Access (Google OAuth).
 - AI: OpenAI via AI Gateway (chat: gpt-4.5-turbo, embedding: text-embedding-3-small).
 
 ## Core Architecture Decisions
-- Hybrid search: FTS5 (trigram tokenizer for Korean) + Vectorize; merge via RRF (k=60).
+- Hybrid search: PostgreSQL tsvector + Vectorize; merge via RRF (k=60).
 - RAG chunking: 512 tokens with 20% overlap; metadata limited to filter keys (Vectorize 64-byte field cap).
 - PDF pipeline: upload -> queue -> R2 (temporary) -> extraction -> AI draft -> cleanup; delete temp files after processing.
 - Google Drive integration: OAuth 2.0 with refresh token handling; work note files stored in Drive folders (WORK-xxx); R2 fallback when OAuth not configured; view/download redirects to Drive web viewer.
@@ -62,16 +62,16 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - React Query mutations: Use `createStandardMutation` factory from `@web/lib/hooks/create-standard-mutation` for standard CRUD mutations with toast feedback. Supports static or dynamic (function-based) invalidateKeys. Keep manual implementations only for: optimistic updates, conditional success messages, or complex mutationFn logic.
 
 ## Testing
-- Default: Vitest + @cloudflare/vitest-pool-workers.
-- Local Workers emulation uses Miniflare; D1 migrations apply in setup with fallback schema.
+- Default: Vitest + PGlite (PostgreSQL in-process).
+- Tests run against PGlite for full PostgreSQL compatibility without external dependencies.
 - Known limitation: coverage in Workers is blocked by node:inspector requirements.
 - Jest + Miniflare migration phases 1-3 completed historically, but Vitest remains primary.
 - Builds run locally/CI with Bun; Cloudflare Workers runtime cannot execute Bun.
 
 ## Design Patterns
-- Repository pattern for D1 access.
-- D1 batch for atomic multi-ops.
-- Trigger-based FTS index sync.
+- Repository pattern for database access.
+- Transaction-based batch for atomic multi-ops.
+- PostgreSQL tsvector for FTS index sync.
 - Queue-based async processing for heavy workloads.
 - DomainError subclasses for consistent error mapping; global error middleware.
 - Centralized resource access helpers (e.g., R2 bucket) to avoid duplication.
