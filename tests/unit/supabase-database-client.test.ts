@@ -1,6 +1,6 @@
 import type { SupabaseConnection } from '@worker/adapters/supabase-database-client';
 import {
-  quoteCamelCaseAliases,
+  buildAliasMap,
   SupabaseDatabaseClient,
   translatePlaceholders,
 } from '@worker/adapters/supabase-database-client';
@@ -39,36 +39,39 @@ describe('SupabaseDatabaseClient', () => {
     });
   });
 
-  describe('quoteCamelCaseAliases', () => {
-    it('quotes camelCase aliases', () => {
-      expect(quoteCamelCaseAliases('SELECT t.work_id as workId FROM todos t')).toBe(
-        'SELECT t.work_id as "workId" FROM todos t'
-      );
+  describe('buildAliasMap', () => {
+    it('builds map for camelCase aliases', () => {
+      const map = buildAliasMap('SELECT t.work_id as workId FROM todos t');
+      expect(map).not.toBeNull();
+      expect(map?.get('workid')).toBe('workId');
     });
 
-    it('quotes multiple camelCase aliases', () => {
+    it('builds map for multiple camelCase aliases', () => {
       const sql =
         'SELECT t.todo_id as todoId, t.work_id as workId, w.title as workTitle FROM todos t';
-      expect(quoteCamelCaseAliases(sql)).toBe(
-        'SELECT t.todo_id as "todoId", t.work_id as "workId", w.title as "workTitle" FROM todos t'
-      );
+      const map = buildAliasMap(sql);
+      expect(map?.get('todoid')).toBe('todoId');
+      expect(map?.get('workid')).toBe('workId');
+      expect(map?.get('worktitle')).toBe('workTitle');
     });
 
-    it('does not quote lowercase-only aliases', () => {
-      expect(quoteCamelCaseAliases('SELECT t.title as title FROM todos t')).toBe(
-        'SELECT t.title as title FROM todos t'
-      );
+    it('returns null for lowercase-only aliases', () => {
+      expect(buildAliasMap('SELECT t.title as title FROM todos t')).toBeNull();
     });
 
-    it('does not double-quote already quoted aliases', () => {
-      expect(quoteCamelCaseAliases('SELECT t.work_id as "workId" FROM todos t')).toBe(
-        'SELECT t.work_id as "workId" FROM todos t'
-      );
+    it('skips already-quoted aliases', () => {
+      const map = buildAliasMap('SELECT t.work_id as "workId" FROM todos t');
+      expect(map).toBeNull();
     });
 
     it('handles AS keyword in any case', () => {
-      const result = quoteCamelCaseAliases('SELECT t.work_id AS workId FROM todos t');
-      expect(result).toContain('"workId"');
+      const map = buildAliasMap('SELECT t.work_id AS workId FROM todos t');
+      expect(map?.get('workid')).toBe('workId');
+    });
+
+    it('handles aliases with numbers like bm25Score', () => {
+      const map = buildAliasMap('SELECT score as bm25Score FROM fts');
+      expect(map?.get('bm25score')).toBe('bm25Score');
     });
   });
 
@@ -88,6 +91,21 @@ describe('SupabaseDatabaseClient', () => {
         'y',
       ]);
     });
+
+    it('remaps lowercased PostgreSQL keys back to camelCase aliases', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [{ workid: 'W-001', createdat: '2026-01-01' }] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      const result = await client.query<{ workId: string; createdAt: string }>(
+        'SELECT work_id as workId, created_at as createdAt FROM work_notes WHERE id = ?',
+        [1]
+      );
+
+      expect(result.rows).toEqual([{ workId: 'W-001', createdAt: '2026-01-01' }]);
+    });
   });
 
   describe('queryOne', () => {
@@ -102,6 +120,21 @@ describe('SupabaseDatabaseClient', () => {
 
       expect(result).toEqual({ id: 1 });
       expect(mockConn.query).toHaveBeenCalledWith('SELECT * FROM t WHERE id = $1', [1]);
+    });
+
+    it('remaps lowercased keys for queryOne result', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [{ workid: 'W-001', dudate: '2026-03-01' }] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      const result = await client.queryOne<{ workId: string }>(
+        'SELECT work_id as workId FROM t WHERE id = ?',
+        [1]
+      );
+
+      expect(result).toEqual({ workId: 'W-001', dudate: '2026-03-01' });
     });
 
     it('returns null when no rows', async () => {

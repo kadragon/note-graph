@@ -44,37 +44,57 @@ export function translatePlaceholders(sql: string): string {
 }
 
 /**
- * Quote camelCase column aliases with double quotes so PostgreSQL preserves casing.
- * Matches `AS identifier` where the identifier contains at least one uppercase letter
- * (i.e. camelCase aliases like `workId`, `createdAt`). Already-quoted aliases are skipped.
+ * Extract camelCase aliases from SQL and build a lowercase → original mapping.
+ * PostgreSQL folds unquoted identifiers to lowercase, so `AS workId` returns
+ * a column named `workid`. This map allows restoring the original casing on
+ * result rows without modifying the SQL (which would break ORDER BY / HAVING /
+ * CTE references to those aliases).
  */
-export function quoteCamelCaseAliases(sql: string): string {
-  return sql.replace(/\bas\s+(?!")([a-z]\w*[A-Z]\w*)\b/gi, (match, alias: string) => {
-    if (/[A-Z]/.test(alias)) {
-      return `as "${alias}"`;
+export function buildAliasMap(sql: string): Map<string, string> | null {
+  const map = new Map<string, string>();
+  for (const match of sql.matchAll(/\b[Aa][Ss]\s+(?!")([a-z]\w*[A-Z]\w*)\b/g)) {
+    const alias = match[1] as string;
+    map.set(alias.toLowerCase(), alias);
+  }
+  return map.size > 0 ? map : null;
+}
+
+/** Remap lowercased PostgreSQL column names back to original camelCase aliases. */
+function remapRowKeys<T>(rows: T[], aliasMap: Map<string, string>): T[] {
+  return rows.map((row) => {
+    const remapped: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
+      remapped[aliasMap.get(key) ?? key] = value;
     }
-    return match;
+    return remapped as T;
   });
 }
 
 export class SupabaseDatabaseClient implements DatabaseClient {
   constructor(private conn: SupabaseConnection) {}
 
-  private translateSql(sql: string): string {
-    return quoteCamelCaseAliases(translatePlaceholders(sql));
-  }
-
   async query<T>(sql: string, params?: unknown[]): Promise<{ rows: T[] }> {
-    return this.conn.query<T>(this.translateSql(sql), params);
+    const translated = translatePlaceholders(sql);
+    const aliasMap = buildAliasMap(sql);
+    const result = await this.conn.query<T>(translated, params);
+    if (aliasMap) {
+      return { rows: remapRowKeys(result.rows, aliasMap) };
+    }
+    return result;
   }
 
   async queryOne<T>(sql: string, params?: unknown[]): Promise<T | null> {
-    const { rows } = await this.conn.query<T>(this.translateSql(sql), params);
+    const translated = translatePlaceholders(sql);
+    const aliasMap = buildAliasMap(sql);
+    const { rows } = await this.conn.query<T>(translated, params);
+    if (aliasMap && rows[0]) {
+      return remapRowKeys(rows, aliasMap)[0] ?? null;
+    }
     return rows[0] ?? null;
   }
 
   async execute(sql: string, params?: unknown[]): Promise<{ rowCount: number }> {
-    return this.conn.execute(this.translateSql(sql), params);
+    return this.conn.execute(translatePlaceholders(sql), params);
   }
 
   async transaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
@@ -99,7 +119,7 @@ export class SupabaseDatabaseClient implements DatabaseClient {
     await this.conn.execute('BEGIN');
     try {
       for (const stmt of statements) {
-        await this.conn.execute(this.translateSql(stmt.sql), stmt.params);
+        await this.conn.execute(translatePlaceholders(stmt.sql), stmt.params);
       }
       await this.conn.execute('COMMIT');
     } catch (error) {
