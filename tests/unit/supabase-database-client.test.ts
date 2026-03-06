@@ -56,16 +56,16 @@ describe('SupabaseDatabaseClient', () => {
   });
 
   describe('translateSqliteFunctions', () => {
-    it('translates json_each to json_array_elements_text', () => {
+    it('translates json_each to jsonb_array_elements_text', () => {
       const sql = 't.work_id IN (SELECT value FROM json_each(?))';
       expect(translateSqliteFunctions(sql)).toBe(
-        't.work_id IN (SELECT json_array_elements_text(?::jsonb))'
+        't.work_id IN (SELECT jsonb_array_elements_text(?::jsonb))'
       );
     });
 
     it('handles case-insensitive json_each', () => {
       const sql = 'SELECT value FROM JSON_EACH(?)';
-      expect(translateSqliteFunctions(sql)).toBe('SELECT json_array_elements_text(?::jsonb)');
+      expect(translateSqliteFunctions(sql)).toBe('SELECT jsonb_array_elements_text(?::jsonb)');
     });
 
     it('preserves sql without json_each', () => {
@@ -88,7 +88,7 @@ describe('SupabaseDatabaseClient', () => {
       WHERE t.work_id IN (SELECT value FROM json_each(?))
       ORDER BY t.due_date ASC`;
       const result = translateSqliteFunctions(sql);
-      expect(result).toContain('json_array_elements_text(?::jsonb)');
+      expect(result).toContain('jsonb_array_elements_text(?::jsonb)');
       expect(result).not.toContain('json_each');
     });
   });
@@ -182,7 +182,7 @@ describe('SupabaseDatabaseClient', () => {
       ]);
     });
 
-    it('translates json_each to json_array_elements_text in query', async () => {
+    it('translates json_each to jsonb_array_elements_text in query', async () => {
       const mockConn: SupabaseConnection = {
         query: vi.fn().mockResolvedValue({ rows: [{ todoid: 'T-1', workid: 'W-1' }] }),
         execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
@@ -195,7 +195,7 @@ describe('SupabaseDatabaseClient', () => {
       );
 
       expect(mockConn.query).toHaveBeenCalledWith(
-        'SELECT t.todo_id as todoId, t.work_id as workId FROM todos t WHERE t.work_id IN (SELECT json_array_elements_text($1::jsonb))',
+        'SELECT t.todo_id as todoId, t.work_id as workId FROM todos t WHERE t.work_id IN (SELECT jsonb_array_elements_text($1::jsonb))',
         [JSON.stringify(['W-1', 'W-2'])]
       );
     });

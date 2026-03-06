@@ -47,4 +47,18 @@ describe('parseKeywordsJson', () => {
   it('returns empty array for JSON string (not array)', () => {
     expect(parseKeywordsJson('"hello"')).toEqual([]);
   });
+
+  it('handles pre-parsed array from JSONB driver', () => {
+    expect(parseKeywordsJson(['a', 'b', 'c'])).toEqual(['a', 'b', 'c']);
+  });
+
+  it('filters non-string elements from pre-parsed array', () => {
+    expect(parseKeywordsJson([1, 'a', null, true, 'b'] as unknown)).toEqual(['a', 'b']);
+  });
+
+  it('returns empty array for non-string truthy input', () => {
+    expect(parseKeywordsJson(42 as unknown)).toEqual([]);
+    expect(parseKeywordsJson(true as unknown)).toEqual([]);
+    expect(parseKeywordsJson({} as unknown)).toEqual([]);
+  });
 });
