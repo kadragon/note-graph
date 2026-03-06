@@ -11,6 +11,12 @@
 
 - [ ] Mock/stub external font fetch in generate-work-note-pdf test so it passes without internet access
 
+## Persons Import - PostgreSQL boolean writes
+
+> Keep person import working against PostgreSQL by writing boolean literals for `is_active` columns.
+
+- [x] Import repository writes PostgreSQL-safe boolean values when auto-creating departments and department history
+
 ## D1 Removal - PR 2: Repository SQL to native PostgreSQL
 
 > Convert all repository SQL from D1 style (?) to PostgreSQL native ($1, $2, ...).
