@@ -21,10 +21,16 @@ export interface SupabaseConnection {
  *   - `SELECT value FROM json_each(?)` → `SELECT json_array_elements_text(?::jsonb)`
  */
 export function translateSqliteFunctions(sql: string): string {
-  return sql.replace(
+  const translated = sql.replace(
     /SELECT\s+value\s+FROM\s+json_each\(\s*\?\s*\)/gi,
     'SELECT json_array_elements_text(?::jsonb)'
   );
+  if (/json_each\s*\(/i.test(translated)) {
+    console.error(
+      `translateSqliteFunctions: untranslated json_each() detected. SQL preview: ${translated.slice(0, 200)}`
+    );
+  }
+  return translated;
 }
 
 /**

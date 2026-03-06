@@ -4,23 +4,11 @@ import type { CreateMeetingMinuteInput, UpdateMeetingMinuteInput } from '../sche
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { FtsDialect } from '../types/fts-dialect';
+import { parseKeywordsJson } from '../utils/json-utils';
 import {
   buildMeetingMinutesFtsQuery,
   buildMeetingMinutesTsQuery,
 } from '../utils/meeting-minutes-fts';
-
-export function parseKeywordsJson(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === 'string') : [];
-  } catch {
-    return raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-}
 
 export interface MeetingMinute {
   meetingId: string;

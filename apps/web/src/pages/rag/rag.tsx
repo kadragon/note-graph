@@ -7,6 +7,7 @@ import { useDepartments } from '@web/hooks/use-departments';
 import { usePersons } from '@web/hooks/use-persons';
 import { useRAGQuery } from '@web/hooks/use-rag';
 import { useWorkNotes } from '@web/hooks/use-work-notes';
+import { SEARCH_CONFIG } from '@web/lib/config';
 import type { RAGResponse, RAGScope } from '@web/types/api';
 import { Send } from 'lucide-react';
 import { nanoid } from 'nanoid';
@@ -43,7 +44,7 @@ export default function RAG() {
   const ragMutation = useRAGQuery();
   const { data: persons = [], isLoading: isLoadingPersons } = usePersons();
   const { data: departments = [], isLoading: isLoadingDepartments } = useDepartments({
-    limit: 100,
+    limit: SEARCH_CONFIG.DEPARTMENT_LIST_LIMIT,
   });
   const { data: workNotes = [], isLoading: isLoadingWorkNotes } = useWorkNotes();
 

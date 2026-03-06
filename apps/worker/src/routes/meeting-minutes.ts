@@ -5,10 +5,7 @@ import {
   getValidatedQuery,
   queryValidator,
 } from '../middleware/validation-middleware';
-import {
-  MeetingMinuteRepository,
-  parseKeywordsJson,
-} from '../repositories/meeting-minute-repository';
+import { MeetingMinuteRepository } from '../repositories/meeting-minute-repository';
 import { PersonRepository } from '../repositories/person-repository';
 import { TaskCategoryRepository } from '../repositories/task-category-repository';
 import {
@@ -20,6 +17,7 @@ import { MeetingMinuteKeywordService } from '../services/meeting-minute-keyword-
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import type { AppContext, AppVariables } from '../types/context';
 import type { DatabaseClient } from '../types/database';
+import { parseKeywordsJson } from '../utils/json-utils';
 import { notFoundJson } from './_shared/route-responses';
 import { createProtectedRouter } from './_shared/router-factory';
 

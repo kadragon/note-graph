@@ -73,6 +73,14 @@ describe('SupabaseDatabaseClient', () => {
       expect(translateSqliteFunctions(sql)).toBe(sql);
     });
 
+    it('logs error for untranslated json_each patterns', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const sql = 'SELECT 1 FROM json_each(some_column)';
+      translateSqliteFunctions(sql);
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('untranslated json_each()'));
+      consoleSpy.mockRestore();
+    });
+
     it('works with TodoRepository findAll workIds pattern', () => {
       const sql = `
       SELECT t.todo_id as todoId, t.work_id as workId

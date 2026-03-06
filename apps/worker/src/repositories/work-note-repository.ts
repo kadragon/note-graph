@@ -22,7 +22,7 @@ import type {
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import { queryInChunks } from '../utils/db-utils';
-import { parseKeywordsJson } from './meeting-minute-repository';
+import { parseKeywordsJson } from '../utils/json-utils';
 
 const MAX_VERSIONS = 5;
 
