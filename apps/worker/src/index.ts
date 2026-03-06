@@ -206,32 +206,36 @@ const SCHEDULED_EMBED_PENDING_BATCH_SIZE = 20;
 
 async function runScheduledEmbedPending(env: Env): Promise<void> {
   const db = createDatabaseClient(env);
-  const settingRepo = new SettingRepository(db);
-  const settingService = new SettingService(settingRepo);
-  await settingService.preload();
-  const processor = new EmbeddingProcessor(db, env, settingService);
-  const result = await processor.embedPending(SCHEDULED_EMBED_PENDING_BATCH_SIZE);
+  try {
+    const settingRepo = new SettingRepository(db);
+    const settingService = new SettingService(settingRepo);
+    await settingService.preload();
+    const processor = new EmbeddingProcessor(db, env, settingService);
+    const result = await processor.embedPending(SCHEDULED_EMBED_PENDING_BATCH_SIZE);
 
-  const skipReasons = {
-    deleted: 0,
-    staleVersion: 0,
-  };
+    const skipReasons = {
+      deleted: 0,
+      staleVersion: 0,
+    };
 
-  for (const error of result.errors) {
-    if (error.reason === EMBEDDING_FAILURE_REASON.NOT_FOUND) {
-      skipReasons.deleted++;
-    } else if (error.reason === EMBEDDING_FAILURE_REASON.STALE_VERSION) {
-      skipReasons.staleVersion++;
+    for (const error of result.errors) {
+      if (error.reason === EMBEDDING_FAILURE_REASON.NOT_FOUND) {
+        skipReasons.deleted++;
+      } else if (error.reason === EMBEDDING_FAILURE_REASON.STALE_VERSION) {
+        skipReasons.staleVersion++;
+      }
     }
-  }
 
-  console.warn('[EmbeddingScheduler] embed-pending run complete', {
-    total: result.total,
-    processed: result.processed,
-    succeeded: result.succeeded,
-    failed: result.failed,
-    skipReasons,
-  });
+    console.warn('[EmbeddingScheduler] embed-pending run complete', {
+      total: result.total,
+      processed: result.processed,
+      succeeded: result.succeeded,
+      failed: result.failed,
+      skipReasons,
+    });
+  } finally {
+    await db.close?.();
+  }
 }
 
 const worker = {

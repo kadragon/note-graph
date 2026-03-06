@@ -37,6 +37,21 @@ describe('SupabaseDatabaseClient', () => {
       const sql = "WHERE a = 'x''y''z' AND b = ?";
       expect(translatePlaceholders(sql)).toBe("WHERE a = 'x''y''z' AND b = $1");
     });
+
+    it('does not translate ? inside double-quoted identifiers', () => {
+      const sql = 'SELECT "column?" FROM t WHERE id = ?';
+      expect(translatePlaceholders(sql)).toBe('SELECT "column?" FROM t WHERE id = $1');
+    });
+
+    it('does not translate ? inside line comments', () => {
+      const sql = 'SELECT 1 -- is this a param?\nWHERE id = ?';
+      expect(translatePlaceholders(sql)).toBe('SELECT 1 -- is this a param?\nWHERE id = $1');
+    });
+
+    it('handles double-quoted identifier followed by placeholder', () => {
+      const sql = 'SELECT "col" FROM t WHERE a = ? AND "b?" = ?';
+      expect(translatePlaceholders(sql)).toBe('SELECT "col" FROM t WHERE a = $1 AND "b?" = $2');
+    });
   });
 
   describe('buildAliasMap', () => {
@@ -72,6 +87,42 @@ describe('SupabaseDatabaseClient', () => {
     it('handles aliases with numbers like bm25Score', () => {
       const map = buildAliasMap('SELECT score as bm25Score FROM fts');
       expect(map?.get('bm25score')).toBe('bm25Score');
+    });
+
+    it('does not match AS alias inside single-quoted string literals', () => {
+      const map = buildAliasMap("SELECT 'save as workId' as label FROM t");
+      expect(map).toBeNull();
+    });
+
+    it('does not match AS alias inside double-quoted identifiers', () => {
+      const map = buildAliasMap('SELECT "as workId" FROM t');
+      expect(map).toBeNull();
+    });
+  });
+
+  describe('close', () => {
+    it('calls close on the underlying connection', async () => {
+      const mockClose = vi.fn().mockResolvedValue(undefined);
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+        close: mockClose,
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      await client.close();
+
+      expect(mockClose).toHaveBeenCalledOnce();
+    });
+
+    it('does not throw when connection has no close method', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      await expect(client.close()).resolves.toBeUndefined();
     });
   });
 

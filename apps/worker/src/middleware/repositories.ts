@@ -68,5 +68,9 @@ export async function repositoriesMiddleware(c: Context<AppContext>, next: Next)
   await settingService.preload();
   c.set('settingService', settingService);
 
-  await next();
+  try {
+    await next();
+  } finally {
+    await db.close?.();
+  }
 }

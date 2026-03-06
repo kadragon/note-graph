@@ -12,27 +12,49 @@ import type { DatabaseClient, TransactionClient } from '../types/database';
 export interface SupabaseConnection {
   query<T>(sql: string, params?: unknown[]): Promise<{ rows: T[] }>;
   execute(sql: string, params?: unknown[]): Promise<{ rowCount: number }>;
+  close?(): Promise<void>;
 }
 
 /**
  * Translate D1-style `?` placeholders to PostgreSQL `$1, $2, ...`.
- * Skips `?` characters inside single-quoted string literals.
+ * Skips `?` characters inside single-quoted string literals,
+ * double-quoted identifiers, and line comments (`-- ...`).
  */
 export function translatePlaceholders(sql: string): string {
   let index = 0;
-  let inString = false;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let inLineComment = false;
   let result = '';
 
   for (let i = 0; i < sql.length; i++) {
     const ch = sql[i];
 
-    if (ch === "'" && !inString) {
-      inString = true;
+    if (inLineComment) {
+      if (ch === '\n') {
+        inLineComment = false;
+      }
       result += ch;
-    } else if (ch === "'" && inString) {
-      inString = false;
+    } else if (inSingleQuote) {
+      if (ch === "'") {
+        inSingleQuote = false;
+      }
       result += ch;
-    } else if (ch === '?' && !inString) {
+    } else if (inDoubleQuote) {
+      if (ch === '"') {
+        inDoubleQuote = false;
+      }
+      result += ch;
+    } else if (ch === '-' && sql[i + 1] === '-') {
+      inLineComment = true;
+      result += ch;
+    } else if (ch === "'") {
+      inSingleQuote = true;
+      result += ch;
+    } else if (ch === '"') {
+      inDoubleQuote = true;
+      result += ch;
+    } else if (ch === '?') {
       index++;
       result += `$${index}`;
     } else {
@@ -44,6 +66,17 @@ export function translatePlaceholders(sql: string): string {
 }
 
 /**
+ * Strip string literals (single-quoted) and double-quoted identifiers from SQL,
+ * replacing their contents with spaces. This prevents regex-based analysis from
+ * matching tokens inside quoted contexts.
+ */
+function stripQuotedContexts(sql: string): string {
+  return sql
+    .replace(/'[^']*'/g, (m) => ' '.repeat(m.length))
+    .replace(/"[^"]*"/g, (m) => ' '.repeat(m.length));
+}
+
+/**
  * Extract camelCase aliases from SQL and build a lowercase → original mapping.
  * PostgreSQL folds unquoted identifiers to lowercase, so `AS workId` returns
  * a column named `workid`. This map allows restoring the original casing on
@@ -51,8 +84,9 @@ export function translatePlaceholders(sql: string): string {
  * CTE references to those aliases).
  */
 export function buildAliasMap(sql: string): Map<string, string> | null {
+  const stripped = stripQuotedContexts(sql);
   const map = new Map<string, string>();
-  for (const match of sql.matchAll(/\b[Aa][Ss]\s+(?!")([a-z]\w*[A-Z]\w*)\b/g)) {
+  for (const match of stripped.matchAll(/\b[Aa][Ss]\s+(?!")([a-z]\w*[A-Z]\w*)\b/g)) {
     const alias = match[1] as string;
     map.set(alias.toLowerCase(), alias);
   }
@@ -72,6 +106,10 @@ function remapRowKeys<T>(rows: T[], aliasMap: Map<string, string>): T[] {
 
 export class SupabaseDatabaseClient implements DatabaseClient {
   constructor(private conn: SupabaseConnection) {}
+
+  async close(): Promise<void> {
+    await this.conn.close?.();
+  }
 
   async query<T>(sql: string, params?: unknown[]): Promise<{ rows: T[] }> {
     const translated = translatePlaceholders(sql);
