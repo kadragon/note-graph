@@ -219,8 +219,9 @@ export class TodoRepository {
 
     const workIds = query.workIds ?? [];
     if (workIds.length > 0) {
-      conditions.push(`t.work_id IN (SELECT value FROM json_each(?))`);
-      params.push(JSON.stringify(workIds));
+      const placeholders = workIds.map(() => '?').join(', ');
+      conditions.push(`t.work_id IN (${placeholders})`);
+      params.push(...workIds);
     }
 
     switch (query.view) {
