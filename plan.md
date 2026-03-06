@@ -10,3 +10,9 @@
 > Keep web tests deterministic by removing external CDN/network dependency in the PDF generation test.
 
 - [ ] Mock/stub external font fetch in generate-work-note-pdf test so it passes without internet access
+
+## Persons Import - PostgreSQL boolean writes
+
+> Keep person import working against PostgreSQL by writing boolean literals for `is_active` columns.
+
+- [x] Import repository writes PostgreSQL-safe boolean values when auto-creating departments and department history
