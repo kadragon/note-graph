@@ -82,6 +82,7 @@ export class StatisticsRepository {
         FROM todos
         WHERE updated_at >= ? AND updated_at <= ?
         GROUP BY work_id
+        -- PostgreSQL does not allow SELECT alias references in HAVING; use the full expression.
         HAVING SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END) > 0
       )
       SELECT DISTINCT
