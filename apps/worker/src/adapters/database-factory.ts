@@ -2,9 +2,11 @@
  * Factory functions for creating the correct database client and FTS dialect
  * based on environment bindings. Uses Hyperdrive binding presence as the selector.
  *
- * The Supabase client is cached per isolate to avoid creating a new postgres.js
- * connection pool on every request. Hyperdrive manages TCP connection pooling
- * underneath, so a single postgres.js instance per isolate is sufficient.
+ * A new postgres.js client is created per request. Hyperdrive manages TCP
+ * connection pooling at the infrastructure level, so there is no performance
+ * penalty. Caching the client at module level causes "Cannot perform I/O on
+ * behalf of a different request" errors because postgres.js internal streams
+ * are bound to the request context that created them.
  */
 
 import type { DatabaseClient } from '../types/database';
@@ -16,18 +18,10 @@ import { PostgresFtsDialect } from './postgres-fts-dialect';
 import { createSupabaseConnection } from './supabase-connection';
 import { SupabaseDatabaseClient } from './supabase-database-client';
 
-let cachedSupabase: { connStr: string; client: SupabaseDatabaseClient } | null = null;
-
 export function createDatabaseClient(env: Env): DatabaseClient {
   if (env.HYPERDRIVE) {
-    const connStr = env.HYPERDRIVE.connectionString;
-    if (cachedSupabase && cachedSupabase.connStr === connStr) {
-      return cachedSupabase.client;
-    }
-    const conn = createSupabaseConnection(connStr);
-    const client = new SupabaseDatabaseClient(conn);
-    cachedSupabase = { connStr, client };
-    return client;
+    const conn = createSupabaseConnection(env.HYPERDRIVE.connectionString);
+    return new SupabaseDatabaseClient(conn);
   }
   return new D1DatabaseClient(env.DB);
 }
@@ -37,9 +31,4 @@ export function createFtsDialect(env: Env): FtsDialect {
     return new PostgresFtsDialect();
   }
   return new D1FtsDialect();
-}
-
-/** Reset cached client (for testing only). */
-export function resetCachedSupabaseClient(): void {
-  cachedSupabase = null;
 }

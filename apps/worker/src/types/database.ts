@@ -21,6 +21,9 @@ export interface DatabaseClient {
    * D1: uses native batch API. PostgreSQL: wraps in BEGIN/COMMIT.
    */
   executeBatch(statements: Array<{ sql: string; params?: unknown[] }>): Promise<void>;
+
+  /** Close the underlying connection. No-op for adapters that don't need cleanup. */
+  close?(): Promise<void>;
 }
 
 export interface TransactionClient {

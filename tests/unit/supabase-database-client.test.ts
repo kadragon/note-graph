@@ -1,5 +1,6 @@
 import type { SupabaseConnection } from '@worker/adapters/supabase-database-client';
 import {
+  buildAliasMap,
   SupabaseDatabaseClient,
   translatePlaceholders,
 } from '@worker/adapters/supabase-database-client';
@@ -36,6 +37,93 @@ describe('SupabaseDatabaseClient', () => {
       const sql = "WHERE a = 'x''y''z' AND b = ?";
       expect(translatePlaceholders(sql)).toBe("WHERE a = 'x''y''z' AND b = $1");
     });
+
+    it('does not translate ? inside double-quoted identifiers', () => {
+      const sql = 'SELECT "column?" FROM t WHERE id = ?';
+      expect(translatePlaceholders(sql)).toBe('SELECT "column?" FROM t WHERE id = $1');
+    });
+
+    it('does not translate ? inside line comments', () => {
+      const sql = 'SELECT 1 -- is this a param?\nWHERE id = ?';
+      expect(translatePlaceholders(sql)).toBe('SELECT 1 -- is this a param?\nWHERE id = $1');
+    });
+
+    it('handles double-quoted identifier followed by placeholder', () => {
+      const sql = 'SELECT "col" FROM t WHERE a = ? AND "b?" = ?';
+      expect(translatePlaceholders(sql)).toBe('SELECT "col" FROM t WHERE a = $1 AND "b?" = $2');
+    });
+  });
+
+  describe('buildAliasMap', () => {
+    it('builds map for camelCase aliases', () => {
+      const map = buildAliasMap('SELECT t.work_id as workId FROM todos t');
+      expect(map).not.toBeNull();
+      expect(map?.get('workid')).toBe('workId');
+    });
+
+    it('builds map for multiple camelCase aliases', () => {
+      const sql =
+        'SELECT t.todo_id as todoId, t.work_id as workId, w.title as workTitle FROM todos t';
+      const map = buildAliasMap(sql);
+      expect(map?.get('todoid')).toBe('todoId');
+      expect(map?.get('workid')).toBe('workId');
+      expect(map?.get('worktitle')).toBe('workTitle');
+    });
+
+    it('returns null for lowercase-only aliases', () => {
+      expect(buildAliasMap('SELECT t.title as title FROM todos t')).toBeNull();
+    });
+
+    it('skips already-quoted aliases', () => {
+      const map = buildAliasMap('SELECT t.work_id as "workId" FROM todos t');
+      expect(map).toBeNull();
+    });
+
+    it('handles AS keyword in any case', () => {
+      const map = buildAliasMap('SELECT t.work_id AS workId FROM todos t');
+      expect(map?.get('workid')).toBe('workId');
+    });
+
+    it('handles aliases with numbers like bm25Score', () => {
+      const map = buildAliasMap('SELECT score as bm25Score FROM fts');
+      expect(map?.get('bm25score')).toBe('bm25Score');
+    });
+
+    it('does not match AS alias inside single-quoted string literals', () => {
+      const map = buildAliasMap("SELECT 'save as workId' as label FROM t");
+      expect(map).toBeNull();
+    });
+
+    it('does not match AS alias inside double-quoted identifiers', () => {
+      const map = buildAliasMap('SELECT "as workId" FROM t');
+      expect(map).toBeNull();
+    });
+  });
+
+  describe('close', () => {
+    it('calls close on the underlying connection', async () => {
+      const mockClose = vi.fn().mockResolvedValue(undefined);
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+        close: mockClose,
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      await client.close();
+
+      expect(mockClose).toHaveBeenCalledOnce();
+    });
+
+    it('does not throw when connection has no close method', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      await expect(client.close()).resolves.toBeUndefined();
+    });
   });
 
   describe('query', () => {
@@ -54,6 +142,21 @@ describe('SupabaseDatabaseClient', () => {
         'y',
       ]);
     });
+
+    it('remaps lowercased PostgreSQL keys back to camelCase aliases', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [{ workid: 'W-001', createdat: '2026-01-01' }] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      const result = await client.query<{ workId: string; createdAt: string }>(
+        'SELECT work_id as workId, created_at as createdAt FROM work_notes WHERE id = ?',
+        [1]
+      );
+
+      expect(result.rows).toEqual([{ workId: 'W-001', createdAt: '2026-01-01' }]);
+    });
   });
 
   describe('queryOne', () => {
@@ -68,6 +171,21 @@ describe('SupabaseDatabaseClient', () => {
 
       expect(result).toEqual({ id: 1 });
       expect(mockConn.query).toHaveBeenCalledWith('SELECT * FROM t WHERE id = $1', [1]);
+    });
+
+    it('remaps lowercased keys for queryOne result', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [{ workid: 'W-001', dudate: '2026-03-01' }] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      const result = await client.queryOne<{ workId: string }>(
+        'SELECT work_id as workId FROM t WHERE id = ?',
+        [1]
+      );
+
+      expect(result).toEqual({ workId: 'W-001', dudate: '2026-03-01' });
     });
 
     it('returns null when no rows', async () => {
