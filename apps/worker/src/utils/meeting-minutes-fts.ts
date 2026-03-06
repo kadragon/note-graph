@@ -7,17 +7,6 @@ function toFiniteRank(value: number): number {
   return 0;
 }
 
-export function buildMeetingMinutesFtsQuery(rawQuery: string): string {
-  const tokens = rawQuery.match(FTS_TERM_PATTERN) ?? [];
-  const uniqueTokens = [...new Set(tokens.map((token) => token.trim()).filter(Boolean))];
-
-  if (uniqueTokens.length === 0) {
-    return '';
-  }
-
-  return uniqueTokens.map((token) => `"${token.replace(/"/g, '""')}"`).join(' OR ');
-}
-
 export function buildMeetingMinutesTsQuery(rawQuery: string): string {
   const tokens = rawQuery.match(FTS_TERM_PATTERN) ?? [];
   const uniqueTokens = [...new Set(tokens.map((token) => token.trim()).filter(Boolean))];

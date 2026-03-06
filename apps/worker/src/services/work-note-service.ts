@@ -1,6 +1,6 @@
 // Trace: SPEC-rag-1, SPEC-rag-2, SPEC-ai-draft-refs-1, SPEC-worknote-attachments-1, TASK-012, TASK-022, TASK-029, TASK-057, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 /**
- * Work note service coordinating D1, chunking, embedding, and file operations
+ * Work note service coordinating DB, chunking, embedding, and file operations
  * Uses embedded_at tracking for embedding state management
  */
 
@@ -32,7 +32,7 @@ interface EmbeddingRunOptions {
  * Work note service with integrated RAG support and file attachments
  *
  * Coordinates:
- * - D1 operations via WorkNoteRepository
+ * - Database operations via WorkNoteRepository
  * - Text chunking via ChunkingService
  * - Vector embeddings via VectorizeService
  * - File attachments via WorkNoteFileService
@@ -86,7 +86,7 @@ export class WorkNoteService {
 
   /**
    * Create work note with automatic chunking and embedding
-   * D1 write always succeeds; embedding failures are logged but don't fail the operation
+   * DB write always succeeds; embedding failures are logged but don't fail the operation
    *
    * @param data - Work note creation data
    * @param options - Options for embedding (skipEmbedding to defer to background)
@@ -107,7 +107,7 @@ export class WorkNoteService {
 
   /**
    * Update work note with automatic chunking and embedding
-   * D1 write always succeeds; embedding failures are logged but don't fail the operation
+   * DB write always succeeds; embedding failures are logged but don't fail the operation
    *
    * @param workId - Work note ID to update
    * @param data - Work note update data
@@ -172,7 +172,7 @@ export class WorkNoteService {
         })
       : Promise.resolve();
 
-    // Delete from D1 (cascade will handle work_note_files via ON DELETE CASCADE)
+    // Delete from DB (cascade will handle work_note_files via ON DELETE CASCADE)
     await this.repository.delete(workId);
 
     const chunkCleanupPromise = this.deleteWorkNoteChunks(workId, maxKnownChunkCount).catch(

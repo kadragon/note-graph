@@ -3,7 +3,6 @@ import type { DatabaseClient } from '../types/database';
 import type { FtsDialect } from '../types/fts-dialect';
 import { parseKeywordsJson } from '../utils/json-utils';
 import {
-  buildMeetingMinutesFtsQuery,
   buildMeetingMinutesTsQuery,
   mapMeetingMinutesFtsScores,
 } from '../utils/meeting-minutes-fts';
@@ -35,9 +34,7 @@ export class MeetingMinuteReferenceService {
     limit: number,
     minScore: number = 0
   ): Promise<MeetingMinuteReference[]> {
-    const ftsQuery = this.dialect.isTsQuerySyntax()
-      ? buildMeetingMinutesTsQuery(query)
-      : buildMeetingMinutesFtsQuery(query);
+    const ftsQuery = buildMeetingMinutesTsQuery(query);
 
     if (ftsQuery.length === 0) {
       return [];

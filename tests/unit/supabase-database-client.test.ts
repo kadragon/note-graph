@@ -76,18 +76,17 @@ describe('SupabaseDatabaseClient', () => {
   });
 
   describe('query', () => {
-    it('passes SQL through unchanged without placeholder or function translation', async () => {
+    it('passes SQL through unchanged to the connection', async () => {
       const mockConn: SupabaseConnection = {
         query: vi.fn().mockResolvedValue({ rows: [] }),
         execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
       };
       const client = new SupabaseDatabaseClient(mockConn);
-      const sql =
-        'SELECT t.todo_id as todoId FROM todos t WHERE t.work_id IN (SELECT value FROM json_each(?))';
+      const sql = 'SELECT t.todo_id as todoId FROM todos t WHERE t.work_id = $1';
 
-      await client.query(sql, [JSON.stringify(['W-1'])]);
+      await client.query(sql, ['W-1']);
 
-      expect(mockConn.query).toHaveBeenCalledWith(sql, [JSON.stringify(['W-1'])]);
+      expect(mockConn.query).toHaveBeenCalledWith(sql, ['W-1']);
     });
 
     it('translates placeholders and returns rows from connection', async () => {

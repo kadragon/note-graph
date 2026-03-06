@@ -1,9 +1,8 @@
 import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
-import type { FtsDialect } from '@worker/types/fts-dialect';
 import { describe, expect, it } from 'vitest';
 
 describe('PostgresFtsDialect', () => {
-  const dialect: FtsDialect = new PostgresFtsDialect();
+  const dialect = new PostgresFtsDialect();
 
   describe('buildWorkNoteFtsCte', () => {
     it('returns SQL with tsvector match operator', () => {
@@ -104,15 +103,11 @@ describe('PostgresFtsDialect', () => {
     });
   });
 
-  describe('isAlwaysSynced', () => {
-    it('returns true for PostgreSQL generated columns', () => {
-      expect(dialect.isAlwaysSynced()).toBe(true);
-    });
-  });
-
-  describe('isTsQuerySyntax', () => {
-    it('returns true for PostgreSQL tsquery syntax', () => {
-      expect(dialect.isTsQuerySyntax()).toBe(true);
+  describe('D1 dialect removal', () => {
+    it('does not have D1-era boolean methods after simplification', () => {
+      const instance = new PostgresFtsDialect();
+      expect('isAlwaysSynced' in instance).toBe(false);
+      expect('isTsQuerySyntax' in instance).toBe(false);
     });
   });
 });

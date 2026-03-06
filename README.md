@@ -11,7 +11,7 @@ Personal work note management system with AI-powered features, built on Cloudfla
 - **Work Notes**: 업무 기록 생성, 버전 관리 (최근 5개 보관)
 - **People & Departments**: 조직 구성원 및 부서 관리, 부서 이력 추적
 - **Todo Management**: 반복 업무 지원, 대기일 설정, 기한 관리
-- **Hybrid Search**: FTS5(lexical) + Vectorize(semantic) 하이브리드 검색
+- **Hybrid Search**: PostgreSQL tsvector(lexical) + Vectorize(semantic) 하이브리드 검색
 - **RAG (Retrieval-Augmented Generation)**: 업무 기반 맥락적 질의응답
 - **AI Draft Generation**: 텍스트 및 PDF 기반 자동 업무노트 초안 생성
 - **PDF Processing**: 비동기 PDF 텍스트 추출 및 업무 생성

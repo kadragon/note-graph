@@ -100,7 +100,7 @@ export class HybridSearchService {
         metadata: (match.metadata ?? {}) as Record<string, string>,
       }));
 
-      // Fetch work notes from D1 for matched IDs with person/dept filters applied
+      // Fetch work notes from DB for matched IDs with person/dept filters applied
       const workNotes = await this.fetchWorkNotesByIds(
         results.map((r) => r.id),
         filters
@@ -209,7 +209,7 @@ export class HybridSearchService {
   /**
    * Build Vectorize metadata filter from search filters
    * Note: Only category is used here. Person and department filters are applied
-   * via D1 query in fetchWorkNotesByIds() for accurate filtering.
+   * via DB query in fetchWorkNotesByIds() for accurate filtering.
    */
   private buildVectorizeFilter(filters?: SearchFilters): Record<string, string> | undefined {
     if (!filters) return undefined;
@@ -224,7 +224,7 @@ export class HybridSearchService {
   }
 
   /**
-   * Fetch work notes by IDs from D1 with optional filters
+   * Fetch work notes by IDs from DB with optional filters
    *
    * @param workIds - Work note IDs to fetch
    * @param filters - Optional filters to apply (personId, deptName)

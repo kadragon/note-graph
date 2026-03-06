@@ -47,6 +47,6 @@
 
 > Final cleanup and PostgreSQL-native optimizations.
 
-- [ ] Simplify `FtsDialect` and search code after D1 dialect removal
-- [ ] Audit remaining SQLite-isms (`json_each`, D1 comments, `?` SQL snippets) and replace them with PostgreSQL-native equivalents
-- [ ] Update governance/docs snapshots after the PostgreSQL migration lands cleanly
+- [x] Simplify `FtsDialect` and search code after D1 dialect removal
+- [x] Audit remaining SQLite-isms (`json_each`, D1 comments, `?` SQL snippets) and replace them with PostgreSQL-native equivalents
+- [x] Update governance/docs snapshots after the PostgreSQL migration lands cleanly

@@ -8,7 +8,7 @@ import type { WorkNote } from '@web/types/models/work-note';
 
 /**
  * Backend work note response format
- * Maps to D1 database schema
+ * Maps to database schema
  */
 export interface BackendWorkNote {
   workId: string;

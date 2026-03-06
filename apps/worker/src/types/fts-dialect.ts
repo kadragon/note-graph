@@ -13,10 +13,4 @@ export interface FtsDialect {
 
   /** CTE for meeting minute FTS (filter only, no scoring). SQL uses PostgreSQL numbered placeholders. */
   buildMeetingMinuteFilterCte(): { sql: string; joinCondition: string };
-
-  /** Whether FTS is always in sync (PostgreSQL generated column = true, D1 trigger-based = false). */
-  isAlwaysSynced(): boolean;
-
-  /** Whether to use PostgreSQL tsquery syntax instead of D1 FTS5 MATCH syntax for query strings. */
-  isTsQuerySyntax(): boolean;
 }

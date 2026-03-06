@@ -373,7 +373,7 @@ describe('StatisticsRepository', () => {
   });
 
   describe('batch query optimization', () => {
-    it('should use json_each for batch fetching assigned persons instead of dynamic IN clause', async () => {
+    it('should batch fetch assigned persons for completed work notes', async () => {
       // Arrange: Create work notes with completed todos
       await pglite.query(`INSERT INTO departments (dept_name, description) VALUES ($1, $2)`, [
         '개발팀',
@@ -404,8 +404,7 @@ describe('StatisticsRepository', () => {
       expect(results).toHaveLength(1);
       expect(results[0].assignedPersons).toHaveLength(1);
       expect(results[0].assignedPersons[0].personName).toBe('홍길동');
-      // Note: The internal SQL structure using json_each is verified by this working correctly
-      // If json_each fails, the query would error or return no results
+      // The internal SQL batch fetch is verified by correct person association
     });
   });
 

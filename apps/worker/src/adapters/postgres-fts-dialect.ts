@@ -39,12 +39,4 @@ export class PostgresFtsDialect implements FtsDialect {
       joinCondition: 'fts.id = mm.meeting_id',
     };
   }
-
-  isAlwaysSynced(): boolean {
-    return true;
-  }
-
-  isTsQuerySyntax(): boolean {
-    return true;
-  }
 }

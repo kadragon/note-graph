@@ -4,7 +4,6 @@ import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
 import type { FtsDialect } from '../types/fts-dialect';
 import {
-  buildWorkNoteFtsQuery,
   buildWorkNoteTsQuery,
   extractWorkNoteFtsTokens,
   normalizeWorkNoteSearchPhrase,
@@ -44,9 +43,7 @@ export class KeywordSearchService {
   ) {}
 
   private buildQuery(rawQuery: string, operator: 'AND' | 'OR'): string {
-    return this.dialect.isTsQuerySyntax()
-      ? buildWorkNoteTsQuery(rawQuery, operator)
-      : buildWorkNoteFtsQuery(rawQuery, operator);
+    return buildWorkNoteTsQuery(rawQuery, operator);
   }
 
   async search(query: string, filters?: SearchFilters): Promise<SearchResultItem[]> {

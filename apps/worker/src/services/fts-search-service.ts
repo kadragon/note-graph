@@ -7,7 +7,7 @@ import type { FtsDialect } from '../types/fts-dialect';
 import { buildWorkNoteTsQuery } from '../utils/work-notes-fts';
 
 /**
- * FTS (Full-Text Search) service for lexical search using D1 FTS5
+ * FTS (Full-Text Search) service for lexical search using PostgreSQL tsvector
  */
 export class FtsSearchService {
   constructor(
@@ -16,7 +16,7 @@ export class FtsSearchService {
   ) {}
 
   /**
-   * Search work notes using FTS5 with trigram tokenizer
+   * Search work notes using PostgreSQL tsvector full-text search
    * Supports Korean partial matching and filters
    *
    * @param query - Search query string
@@ -27,7 +27,6 @@ export class FtsSearchService {
     const limit = filters?.limit ?? 10;
 
     // Build FTS query
-    // unicode61 tokenizer handles Korean text well
     const ftsQuery = this.buildFtsQuery(query);
 
     // Build SQL query with CTE to filter FTS results first
@@ -117,33 +116,13 @@ export class FtsSearchService {
   }
 
   private buildFtsQuery(query: string): string {
-    if (this.dialect.isTsQuerySyntax()) {
-      return buildWorkNoteTsQuery(query, 'OR') || query.trim();
-    }
-    return query.trim();
+    return buildWorkNoteTsQuery(query, 'OR') || query.trim();
   }
 
   /**
-   * Verify FTS synchronization by checking if triggers are working
-   * Useful for testing and debugging
-   *
-   * @returns True if FTS is synchronized with work_notes
+   * PostgreSQL generated columns keep FTS always in sync.
    */
   async verifyFtsSync(): Promise<boolean> {
-    if (this.dialect.isAlwaysSynced()) {
-      return true;
-    }
-
-    const result = await this.db.queryOne<{ work_notes_count: number; fts_count: number }>(
-      `SELECT
-        (SELECT COUNT(*) FROM work_notes) as work_notes_count,
-        (SELECT COUNT(*) FROM notes_fts) as fts_count`
-    );
-
-    if (!result) {
-      return false;
-    }
-
-    return result.work_notes_count === result.fts_count;
+    return true;
   }
 }

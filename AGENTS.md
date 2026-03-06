@@ -65,7 +65,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Default: Vitest + PGlite (PostgreSQL in-process).
 - Tests run against PGlite for full PostgreSQL compatibility without external dependencies.
 - Known limitation: coverage in Workers is blocked by node:inspector requirements.
-- Jest + Miniflare migration phases 1-3 completed historically, but Vitest remains primary.
+- Historical: Jest migration phases 1-3 completed, but Vitest + PGlite is the current default.
 - Builds run locally/CI with Bun; Cloudflare Workers runtime cannot execute Bun.
 
 ## Design Patterns
@@ -93,7 +93,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - SPEC-stats-1: Statistics dashboard.
 - SPEC-ui-1: Work note detail UX polish.
 - SPEC-devx-1/2/3: Dev experience items (schema parity, CI opt, warning cleanup).
-- SPEC-testing-migration-001: Vitest -> Jest + Miniflare migration plan.
+- SPEC-testing-migration-001: Vitest -> Jest migration plan (completed, Vitest + PGlite is current).
 - SPEC-governance-1: Governance file hygiene.
 - Archive specs (implemented): collapsible sidebar, embedding service split, repository DI, validation middleware, base file service.
 
@@ -102,7 +102,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Backlog: empty (metadata retained in history; prior effort estimates 33-45 hours for migration plan).
 - Recent completions include:
   - Google Drive integration backend: OAuth service, Drive service, repository, routes, file service updates (Phase 2-4).
-  - TASK-MIGRATE-001/002/003: Jest + Miniflare migration phases 1-3 (parallel run with Vitest).
+  - TASK-MIGRATE-001/002/003: Jest migration phases 1-3 (completed; now on Vitest + PGlite).
   - TASK-0070/0071: PDF draft auto-attach flow clarifications and fix.
 - plan.md cleanup: archived completed Google Calendar and performance tasks.
 - Full historical details are in git history and prior session notes.
@@ -142,7 +142,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - For Drive-backed work notes with a stored folder ID, delete the folder directly and skip per-file Drive deletions to reduce API calls and avoid redundant deletes.
 - When persisting `work_note_gdrive_folders`, use `INSERT OR IGNORE` to make inserts idempotent under concurrent folder creation.
 - For R2→Drive migrations, reuse existing `work_note_gdrive_folders` records before calling Drive APIs and skip files with missing R2 objects to keep the migration idempotent.
-- For CLI scripts in this repo, keep worker-only dependencies (like Miniflare/Drive services) behind dynamic imports so worker-based tests can import the module without bundling errors.
+- For CLI scripts in this repo, keep worker-only dependencies (like Drive services) behind dynamic imports so worker-based tests can import the module without bundling errors.
 - For migration actions, capture per-mutation results (migrated/skipped/failed) via `mutate` callbacks and surface a short UI summary to reduce storage confusion.
 - For Drive migrations, use `appProperties` to match files by `workNoteFileId` and roll back Drive uploads if DB updates fail.
 

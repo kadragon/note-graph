@@ -5,10 +5,7 @@ import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { FtsDialect } from '../types/fts-dialect';
 import { parseKeywordsJson } from '../utils/json-utils';
-import {
-  buildMeetingMinutesFtsQuery,
-  buildMeetingMinutesTsQuery,
-} from '../utils/meeting-minutes-fts';
+import { buildMeetingMinutesTsQuery } from '../utils/meeting-minutes-fts';
 
 export interface MeetingMinute {
   meetingId: string;
@@ -254,9 +251,7 @@ export class MeetingMinuteRepository {
     let paramIndex = 1;
 
     if (query.q && query.q.trim().length > 0) {
-      const ftsQuery = this.dialect.isTsQuerySyntax()
-        ? buildMeetingMinutesTsQuery(query.q)
-        : buildMeetingMinutesFtsQuery(query.q);
+      const ftsQuery = buildMeetingMinutesTsQuery(query.q);
       if (!ftsQuery) {
         return { items: [], total: 0, page, pageSize };
       }
