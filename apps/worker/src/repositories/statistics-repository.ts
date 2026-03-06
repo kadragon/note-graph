@@ -136,6 +136,8 @@ export class StatisticsRepository {
     const result = await this.db.query<WorkNoteWithStats>(query, bindings);
     const workNotes = result.rows;
 
+    // PostgreSQL returns SUM/COUNT aggregates as strings (bigint); coerce to number.
+    // Safe: INNER JOIN + HAVING guarantees non-null integer values.
     for (const workNote of workNotes) {
       workNote.completedTodoCount = Number(workNote.completedTodoCount);
       workNote.totalTodoCount = Number(workNote.totalTodoCount);
