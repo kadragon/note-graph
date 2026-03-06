@@ -21,40 +21,32 @@
 
 > Convert all repository SQL from D1 style (?) to PostgreSQL native ($1, $2, ...).
 
-- [ ] `db-utils.ts` — queryInChunks placeholders to $N, SQL_VAR_LIMIT → 32767
-- [ ] `setting-repository.ts`
-- [ ] `department-repository.ts`
-- [ ] `task-category-repository.ts`
-- [ ] `work-note-group-repository.ts`
-- [ ] `pdf-job-repository.ts`
-- [ ] `embedding-retry-queue-repository.ts`
-- [ ] `google-oauth-repository.ts`
-- [ ] `person-repository.ts`
-- [ ] `meeting-minute-repository.ts`
-- [ ] `statistics-repository.ts`
-- [ ] `todo-repository.ts`
-- [ ] `work-note-repository.ts`
+- [x] `db-utils.ts` uses PostgreSQL placeholder helpers and PostgreSQL-safe variable limits
+- [x] Repository SQL uses PostgreSQL `$N` placeholders across settings, departments, task categories, groups, PDF jobs, embedding retry queue, Google OAuth, persons, meeting minutes, statistics, todos, and work notes
+- [ ] Remaining non-repository SQL callers use PostgreSQL `$N` placeholders directly (`base-file-service`, search services, meeting-minute routes, PostgreSQL FTS dialect)
 
 ## D1 Removal - PR 3: Test files to PGlite
 
 > Switch all test files from D1/Miniflare to PGlite-based testing.
 
-- [ ] vitest.config.ts: defineWorkersConfig → defineConfig
-- [ ] Convert D1 test imports to PGlite setup
-- [ ] Create createTestApp() helper for integration tests
-- [ ] Update boolean/timestamp expectations
+- [x] `vitest.config.ts` uses standard `defineConfig` with `tests/pg-setup.ts`
+- [x] Worker unit and integration tests run through PGlite-backed setup/helpers
+- [x] PostgreSQL boolean and timestamp expectations are reflected in the migrated tests
 
 ## D1 Removal - PR 4: D1 code and translation layer removal
 
 > Remove all D1-specific code and the SQL translation layer.
 
-- [ ] Delete D1 adapter files, migrations, scripts
-- [ ] Simplify database-factory, supabase-database-client, env.ts
-- [ ] Update wrangler.toml and package.json
+- [x] Remove D1 fallback wiring from `database-factory`, `env.ts`, and test env helpers so runtime selection is PostgreSQL-only
+- [x] Delete D1-only adapters and legacy test setup once no production or test code imports them
+- [x] Remove SQL placeholder/function translation from `supabase-database-client` after the last `?`-based callers are converted
+- [x] Update D1-specific scripts and Wrangler/package configuration to the PostgreSQL path
+- [x] Remove stale D1/Miniflare documentation in repo docs and test docs
 
 ## D1 Removal - PR 5: Cleanup and optimization
 
 > Final cleanup and PostgreSQL-native optimizations.
 
-- [ ] Update AGENTS.md, simplify FtsDialect
-- [ ] Audit SQLite-isms, apply PG optimizations
+- [ ] Simplify `FtsDialect` and search code after D1 dialect removal
+- [ ] Audit remaining SQLite-isms (`json_each`, D1 comments, `?` SQL snippets) and replace them with PostgreSQL-native equivalents
+- [ ] Update governance/docs snapshots after the PostgreSQL migration lands cleanly

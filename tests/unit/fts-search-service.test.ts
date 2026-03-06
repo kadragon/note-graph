@@ -1,10 +1,11 @@
 // Trace: SPEC-search-1, TASK-009, TASK-016
 // Unit tests for FTS Search Service
 
-import { D1FtsDialect } from '@worker/adapters/d1-fts-dialect';
+import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { FtsSearchService } from '@worker/services/fts-search-service';
 import type { DatabaseClient } from '@worker/types/database';
 import type { FtsDialect } from '@worker/types/fts-dialect';
+import { buildWorkNoteTsQuery } from '@worker/utils/work-notes-fts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function createMockDb(queryResult: { rows: unknown[] } = { rows: [] }): DatabaseClient {
@@ -17,13 +18,20 @@ function createMockDb(queryResult: { rows: unknown[] } = { rows: [] }): Database
   } as unknown as DatabaseClient;
 }
 
+function createUnsyncedDialect(): FtsDialect {
+  return {
+    ...new PostgresFtsDialect(),
+    isAlwaysSynced: () => false,
+  };
+}
+
 describe('FtsSearchService', () => {
   let mockDb: DatabaseClient;
   let ftsService: FtsSearchService;
 
   beforeEach(() => {
     mockDb = createMockDb();
-    ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
+    ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
   });
 
   describe('search()', () => {
@@ -41,7 +49,7 @@ describe('FtsSearchService', () => {
       ];
 
       mockDb = createMockDb({ rows: mockResults });
-      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
+      ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
 
       const results = await ftsService.search('업무');
 
@@ -75,7 +83,7 @@ describe('FtsSearchService', () => {
       ];
 
       mockDb = createMockDb({ rows: mockResults });
-      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
+      ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
 
       const results = await ftsService.search('test');
 
@@ -87,7 +95,7 @@ describe('FtsSearchService', () => {
       await ftsService.search('업무', { category: '회의' });
 
       const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(sql).toContain('wn.category = ?');
+      expect(sql).toContain('wn.category = $2');
       expect(params).toContain('회의');
     });
 
@@ -98,8 +106,8 @@ describe('FtsSearchService', () => {
       });
 
       const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(sql).toContain('wn.created_at >= ?');
-      expect(sql).toContain('wn.created_at <= ?');
+      expect(sql).toContain('wn.created_at >= $2');
+      expect(sql).toContain('wn.created_at <= $3');
       expect(params).toContain('2024-01-01');
       expect(params).toContain('2024-12-31');
     });
@@ -109,7 +117,7 @@ describe('FtsSearchService', () => {
 
       const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(sql).toContain('work_note_person');
-      expect(sql).toContain('wnp.person_id = ?');
+      expect(sql).toContain('wnp.person_id = $2');
       expect(params).toContain('P-001');
     });
 
@@ -118,7 +126,7 @@ describe('FtsSearchService', () => {
 
       const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(sql).toContain('persons p');
-      expect(sql).toContain('p.current_dept = ?');
+      expect(sql).toContain('p.current_dept = $2');
       expect(params).toContain('개발팀');
     });
 
@@ -126,7 +134,7 @@ describe('FtsSearchService', () => {
       await ftsService.search('업무', { limit: 20 });
 
       const [sql, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(sql).toContain('LIMIT ?');
+      expect(sql).toContain('LIMIT $2');
       expect(params[params.length - 1]).toBe(20);
     });
 
@@ -145,8 +153,8 @@ describe('FtsSearchService', () => {
 
       const [sql] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(sql).toContain('work_note_person');
-      expect(sql).toContain('wnp.person_id = ?');
-      expect(sql).toContain('p.current_dept = ?');
+      expect(sql).toContain('wnp.person_id = $2');
+      expect(sql).toContain('p.current_dept = $3');
     });
 
     it('should handle empty search results', async () => {
@@ -158,14 +166,14 @@ describe('FtsSearchService', () => {
       await ftsService.search('한글 검색어');
 
       const [, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(params[0]).toBe('한글 검색어');
+      expect(params[0]).toBe(buildWorkNoteTsQuery('한글 검색어', 'OR'));
     });
 
     it('should trim whitespace from query', async () => {
       await ftsService.search('  업무 보고  ');
 
       const [, params] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(params[0]).toBe('업무 보고');
+      expect(params[0]).toBe(buildWorkNoteTsQuery('업무 보고', 'OR'));
     });
 
     it('should order results by FTS rank descending', async () => {
@@ -180,7 +188,7 @@ describe('FtsSearchService', () => {
 
       const [sql] = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(sql).toMatch(/WITH\s+fts_matches\s+AS/i);
-      expect(sql).toMatch(/fts_matches\s+AS\s*\(\s*SELECT.*MATCH/is);
+      expect(sql).toMatch(/fts_matches\s+AS\s*\(\s*SELECT.*to_tsquery/is);
       expect(sql).toMatch(/FROM\s+fts_matches\s+fts/i);
     });
 
@@ -198,7 +206,7 @@ describe('FtsSearchService', () => {
       ];
 
       mockDb = createMockDb({ rows: mockResults });
-      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
+      ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
 
       const results = await ftsService.search('test');
 
@@ -215,7 +223,7 @@ describe('FtsSearchService', () => {
         work_notes_count: 100,
         fts_count: 100,
       });
-      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
+      ftsService = new FtsSearchService(mockDb, createUnsyncedDialect());
 
       const result = await ftsService.verifyFtsSync();
       expect(result).toBe(true);
@@ -227,20 +235,21 @@ describe('FtsSearchService', () => {
         work_notes_count: 100,
         fts_count: 95,
       });
-      ftsService = new FtsSearchService(mockDb, new D1FtsDialect());
+      ftsService = new FtsSearchService(mockDb, createUnsyncedDialect());
 
       const result = await ftsService.verifyFtsSync();
       expect(result).toBe(false);
     });
 
     it('should return false when no result', async () => {
+      ftsService = new FtsSearchService(mockDb, createUnsyncedDialect());
       const result = await ftsService.verifyFtsSync();
       expect(result).toBe(false);
     });
 
     it('should return true immediately when dialect.isAlwaysSynced() is true', async () => {
       const alwaysSyncedDialect: FtsDialect = {
-        ...new D1FtsDialect(),
+        ...new PostgresFtsDialect(),
         isAlwaysSynced: () => true,
       };
       const service = new FtsSearchService(mockDb, alwaysSyncedDialect);
@@ -252,6 +261,7 @@ describe('FtsSearchService', () => {
     });
 
     it('should query both work_notes and notes_fts tables', async () => {
+      ftsService = new FtsSearchService(mockDb, createUnsyncedDialect());
       (mockDb.queryOne as ReturnType<typeof vi.fn>).mockResolvedValue({
         work_notes_count: 50,
         fts_count: 50,

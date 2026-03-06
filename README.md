@@ -19,7 +19,7 @@ Personal work note management system with AI-powered features, built on Cloudfla
 ### Architecture
 
 - **Platform**: Cloudflare Workers (서버리스)
-- **Database**: Cloudflare D1 (SQLite)
+- **Database**: PostgreSQL via Cloudflare Hyperdrive
 - **Vector Search**: Cloudflare Vectorize
 - **AI**: OpenAI GPT-4.5 + text-embedding-3-small via AI Gateway
 - **Auth**: Cloudflare Access (Google OAuth)
@@ -38,7 +38,8 @@ note-graph/
 ├── packages/
 │   └── shared/           # Cross-app TypeScript types
 │
-├── migrations/           # D1 database migrations
+├── migrations/           # Historical migration archive
+├── supabase/migrations/  # Active PostgreSQL schema migration
 ├── tests/                # Test files (unit + integration)
 ├── dist/                 # Build output (worker bundle, web assets under dist/web)
 └── wrangler.toml         # Cloudflare Workers config
@@ -60,7 +61,7 @@ note-graph/
 #### Phase 1: Infrastructure & Core (11h)
 
 - Wrangler 프로젝트 초기화
-- D1 스키마 및 마이그레이션
+- PostgreSQL 스키마 및 마이그레이션
 - 인증 미들웨어
 - Hono API 구조
 
@@ -113,8 +114,8 @@ note-graph/
 # Install dependencies
 bun install
 
-# Create D1 database
-wrangler d1 create worknote-db
+# Start local Supabase stack
+bunx supabase start
 
 # Create Vectorize index
 wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
@@ -125,7 +126,7 @@ wrangler r2 bucket create worknote-pdf-temp
 # Create Queue
 wrangler queues create pdf-processing-queue
 
-# Run migrations
+# Apply local schema reset/migrations
 bun run db:migrate:local
 
 # Start development server
@@ -158,7 +159,7 @@ bun run dev
 
 3. Update `wrangler.toml` with resource IDs:
 
-   - Update `database_id` in `[[d1_databases]]` section
+   - Update the `HYPERDRIVE` binding with your PostgreSQL connection
    - Update `AI_GATEWAY_ID` with your gateway name
 
 4. Set up Cloudflare Access for Google OAuth

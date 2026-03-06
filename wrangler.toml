@@ -37,19 +37,8 @@ mode = "smart"
 crons = ["*/5 * * * *"]
 
 # ============================================================================
-# D1 Database
+# Hyperdrive (Supabase PostgreSQL)
 # ============================================================================
-[[d1_databases]]
-binding = "DB"
-database_name = "worknote-db"
-database_id = "04d814ad-5e61-4502-9e1d-85cfcdd1bea9"
-migrations_dir = "migrations"
-
-# ============================================================================
-# Hyperdrive (optional: Supabase PostgreSQL)
-# ============================================================================
-# When HYPERDRIVE binding is present, the app automatically switches to
-# SupabaseDatabaseClient + PostgresFtsDialect.
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "e0be183154624f8b96bdde8910b3d6a5"
@@ -138,11 +127,10 @@ head_sampling_rate = 1
 # Development Setup:
 # 1. Copy .dev.vars.example to .dev.vars
 # 2. Update .dev.vars with your CLOUDFLARE_ACCOUNT_ID and Google OAuth variables
-# 3. Create D1 database: wrangler d1 create worknote-db
+# 3. Configure the HYPERDRIVE binding with your PostgreSQL connection
 # 4. Create Vectorize index: wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
 # 5. Create AI Gateway in Cloudflare Dashboard: https://dash.cloudflare.com/?to=/:account/ai/ai-gateway
 # 6. Update AI_GATEWAY_ID in [vars] section with your gateway name
-# 7. Update database_id in [[d1_databases]] section after creation
 #
 # Production Setup:
 # 1. Set secrets:

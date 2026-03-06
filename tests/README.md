@@ -11,13 +11,13 @@ This test suite uses **Vitest** with **@cloudflare/vitest-pool-workers** to test
 - **Test Runner**: Vitest 3.x
 - **Test Pool**: @cloudflare/vitest-pool-workers
 - **Coverage**: @vitest/coverage-v8 with 80% threshold
-- **Environment**: Miniflare (local Cloudflare Workers simulator)
+- **Environment**: PGlite-backed Vitest Workers pool
 
 ## Test Structure
 
 ```
 tests/
-├── setup.ts           # Global test setup
+├── pg-setup.ts        # Global PostgreSQL test setup
 ├── api.test.ts        # Basic API integration tests
 └── README.md          # This file
 ```
@@ -121,12 +121,12 @@ Based on the historical spec catalog in `AGENTS.md`, the following test categori
 - This is Phase 5 (Testing & Polish) initial setup
 - Test suite demonstrates infrastructure and basic functionality
 - Comprehensive tests for all specs can be expanded iteratively
-- D1 database operations in tests use miniflare's in-memory SQLite
-- Vectorize, Queue, and R2 bindings are mocked by miniflare
+- Worker database tests use in-process PGlite with the PostgreSQL schema
+- Vectorize, Queue, and R2 bindings are mocked through the Vitest Workers setup
 
 ### Known Testing Issues
 
-**AI Gateway Binding**: The current test setup encounters an error with the AI Gateway binding in the Workers runtime environment. This is a known limitation with the external AI worker wrapper in miniflare.
+**AI Gateway Binding**: The current test setup can require explicit mocking for AI Gateway interactions in the Workers runtime environment.
 
 **Workarounds**:
 1. Mock the AI services in tests

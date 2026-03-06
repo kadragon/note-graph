@@ -1,24 +1,51 @@
+import * as databaseFactory from '@worker/adapters/database-factory';
 import worker from '@worker/index';
 import { EMBEDDING_FAILURE_REASON, EmbeddingProcessor } from '@worker/services/embedding-processor';
 import { SettingService } from '@worker/services/setting-service';
+import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+function createMockHyperdrive(): Env['HYPERDRIVE'] {
+  return {
+    connectionString: 'postgresql://user:pass@host:5432/db',
+    host: 'host',
+    port: 5432,
+    user: 'user',
+    password: 'pass',
+    database: 'db',
+  } as unknown as Env['HYPERDRIVE'];
+}
+
+function createMockDatabaseClient(): DatabaseClient {
+  return {
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+    queryOne: vi.fn().mockResolvedValue(null),
+    execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+    transaction: vi.fn(),
+    executeBatch: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+}
 
 describe('Worker scheduled handler', () => {
   it('runs embedPending through waitUntil', async () => {
     const waitUntil = vi.fn();
     const ctx = { waitUntil } as unknown as ExecutionContext;
-    const dbMock = {
-      prepare: vi.fn().mockReturnThis(),
-      bind: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue({
+    const dbMock = createMockDatabaseClient();
+    vi.spyOn(databaseFactory, 'createDatabaseClient').mockReturnValue(dbMock);
+    vi.spyOn(SettingService.prototype, 'preload').mockResolvedValue();
+    const embedPendingSpy = vi
+      .spyOn(EmbeddingProcessor.prototype, 'embedPending')
+      .mockResolvedValue({
         total: 1,
-        embedded: 1,
-        pending: 0,
-      }),
-    };
+        processed: 1,
+        succeeded: 1,
+        failed: 0,
+        errors: [],
+      });
     const env = {
-      DB: dbMock,
+      HYPERDRIVE: createMockHyperdrive(),
       VECTORIZE: { upsert: vi.fn(), query: vi.fn(), deleteByIds: vi.fn() },
       OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
       OPENAI_API_KEY: 'test',
@@ -52,7 +79,8 @@ describe('Worker scheduled handler', () => {
     const scheduledPromise = waitUntil.mock.calls[0]?.[0] as Promise<void>;
     await scheduledPromise;
 
-    expect(dbMock.prepare).toHaveBeenCalled();
+    expect(embedPendingSpy).toHaveBeenCalledWith(20);
+    expect(dbMock.close).toHaveBeenCalled();
   });
 
   afterEach(() => {
@@ -84,9 +112,10 @@ describe('Worker scheduled handler', () => {
           },
         ],
       });
+    vi.spyOn(databaseFactory, 'createDatabaseClient').mockReturnValue(createMockDatabaseClient());
 
     const env = {
-      DB: {} as Env['DB'],
+      HYPERDRIVE: createMockHyperdrive(),
       VECTORIZE: {} as Env['VECTORIZE'],
       OPENAI_MODEL_EMBEDDING: 'text-embedding-3-small',
       OPENAI_API_KEY: 'test',

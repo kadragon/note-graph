@@ -1,11 +1,11 @@
 // Trace: SPEC-search-1, TASK-011, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
-import { D1FtsDialect } from '../adapters/d1-fts-dialect';
+import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import type { FtsDialect } from '../types/fts-dialect';
-import { SQL_VAR_LIMIT } from '../utils/db-utils';
+import { pgPlaceholders, SQL_VAR_LIMIT } from '../utils/db-utils';
 import { FtsSearchService } from './fts-search-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
 import type { SettingService } from './setting-service';
@@ -23,7 +23,7 @@ export class HybridSearchService {
   constructor(
     private db: DatabaseClient,
     env: Env,
-    ftsDialect: FtsDialect = new D1FtsDialect(),
+    ftsDialect: FtsDialect = new PostgresFtsDialect(),
     settingService?: SettingService
   ) {
     this.ftsService = new FtsSearchService(db, ftsDialect);
@@ -242,7 +242,7 @@ export class HybridSearchService {
 
     for (let i = 0; i < workIds.length; i += SQL_VAR_LIMIT) {
       const chunk = workIds.slice(i, i + SQL_VAR_LIMIT);
-      const placeholders = chunk.map(() => '?').join(',');
+      const placeholders = pgPlaceholders(chunk.length);
 
       let sql = `
         SELECT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
@@ -252,18 +252,19 @@ export class HybridSearchService {
 
       const conditions: string[] = [`wn.work_id IN (${placeholders})`];
       const params: unknown[] = [...chunk];
+      let paramIndex = chunk.length + 1;
 
       if (filters?.personId || filters?.deptName) {
         sql += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
         sql += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
 
         if (filters?.personId) {
-          conditions.push('wnp.person_id = ?');
+          conditions.push(`wnp.person_id = $${paramIndex++}`);
           params.push(filters.personId);
         }
 
         if (filters?.deptName) {
-          conditions.push('p.current_dept = ?');
+          conditions.push(`p.current_dept = $${paramIndex++}`);
           params.push(filters.deptName);
         }
       }

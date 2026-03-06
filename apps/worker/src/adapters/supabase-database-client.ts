@@ -1,6 +1,5 @@
 /**
  * Supabase (PostgreSQL) adapter implementing DatabaseClient interface.
- * Translates D1-style SQL (? placeholders) to PostgreSQL ($1, $2, ...).
  */
 
 import type { DatabaseClient, TransactionClient } from '../types/database';
@@ -13,74 +12,6 @@ export interface SupabaseConnection {
   query<T>(sql: string, params?: unknown[]): Promise<{ rows: T[] }>;
   execute(sql: string, params?: unknown[]): Promise<{ rowCount: number }>;
   close?(): Promise<void>;
-}
-
-/**
- * Translate SQLite-specific functions to PostgreSQL equivalents.
- * Currently handles:
- *   - `SELECT value FROM json_each(?)` → `SELECT jsonb_array_elements_text(?::jsonb)`
- */
-export function translateSqliteFunctions(sql: string): string {
-  const translated = sql.replace(
-    /SELECT\s+value\s+FROM\s+json_each\(\s*\?\s*\)/gi,
-    'SELECT jsonb_array_elements_text(?::jsonb)'
-  );
-  if (/json_each\s*\(/i.test(translated)) {
-    console.error(
-      `translateSqliteFunctions: untranslated json_each() detected. SQL preview: ${translated.slice(0, 200)}`
-    );
-  }
-  return translated;
-}
-
-/**
- * Translate D1-style `?` placeholders to PostgreSQL `$1, $2, ...`.
- * Skips `?` characters inside single-quoted string literals,
- * double-quoted identifiers, and line comments (`-- ...`).
- */
-export function translatePlaceholders(sql: string): string {
-  let index = 0;
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
-  let inLineComment = false;
-  let result = '';
-
-  for (let i = 0; i < sql.length; i++) {
-    const ch = sql[i];
-
-    if (inLineComment) {
-      if (ch === '\n') {
-        inLineComment = false;
-      }
-      result += ch;
-    } else if (inSingleQuote) {
-      if (ch === "'") {
-        inSingleQuote = false;
-      }
-      result += ch;
-    } else if (inDoubleQuote) {
-      if (ch === '"') {
-        inDoubleQuote = false;
-      }
-      result += ch;
-    } else if (ch === '-' && sql[i + 1] === '-') {
-      inLineComment = true;
-      result += ch;
-    } else if (ch === "'") {
-      inSingleQuote = true;
-      result += ch;
-    } else if (ch === '"') {
-      inDoubleQuote = true;
-      result += ch;
-    } else if (ch === '?') {
-      index++;
-      result += `$${index}`;
-    } else {
-      result += ch;
-    }
-  }
-
-  return result;
 }
 
 /**
@@ -130,9 +61,8 @@ export class SupabaseDatabaseClient implements DatabaseClient {
   }
 
   async query<T>(sql: string, params?: unknown[]): Promise<{ rows: T[] }> {
-    const translated = translatePlaceholders(translateSqliteFunctions(sql));
     const aliasMap = buildAliasMap(sql);
-    const result = await this.conn.query<T>(translated, params);
+    const result = await this.conn.query<T>(sql, params);
     if (aliasMap) {
       return { rows: remapRowKeys(result.rows, aliasMap) };
     }
@@ -140,9 +70,8 @@ export class SupabaseDatabaseClient implements DatabaseClient {
   }
 
   async queryOne<T>(sql: string, params?: unknown[]): Promise<T | null> {
-    const translated = translatePlaceholders(translateSqliteFunctions(sql));
     const aliasMap = buildAliasMap(sql);
-    const { rows } = await this.conn.query<T>(translated, params);
+    const { rows } = await this.conn.query<T>(sql, params);
     if (aliasMap && rows[0]) {
       return remapRowKeys(rows, aliasMap)[0] ?? null;
     }
@@ -150,7 +79,7 @@ export class SupabaseDatabaseClient implements DatabaseClient {
   }
 
   async execute(sql: string, params?: unknown[]): Promise<{ rowCount: number }> {
-    return this.conn.execute(translatePlaceholders(translateSqliteFunctions(sql)), params);
+    return this.conn.execute(sql, params);
   }
 
   async transaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
@@ -175,10 +104,7 @@ export class SupabaseDatabaseClient implements DatabaseClient {
     await this.conn.execute('BEGIN');
     try {
       for (const stmt of statements) {
-        await this.conn.execute(
-          translatePlaceholders(translateSqliteFunctions(stmt.sql)),
-          stmt.params
-        );
+        await this.conn.execute(stmt.sql, stmt.params);
       }
       await this.conn.execute('COMMIT');
     } catch (error) {

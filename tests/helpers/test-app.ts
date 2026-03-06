@@ -114,9 +114,20 @@ export function mockDatabaseFactory() {
 
 const defaultMockR2 = new MockR2();
 
+function createMockHyperdrive(): Hyperdrive {
+  return {
+    connectionString: 'postgresql://user:pass@host:5432/note_graph_test',
+    host: 'host',
+    port: 5432,
+    user: 'user',
+    password: 'pass',
+    database: 'note_graph_test',
+  } as unknown as Hyperdrive;
+}
+
 export function buildMockEnv(overrides: Partial<Env> = {}): Env {
   return {
-    DB: {} as unknown as D1Database,
+    HYPERDRIVE: createMockHyperdrive(),
     VECTORIZE: {} as unknown as VectorizeIndex,
     AI_GATEWAY: {} as unknown as Fetcher,
     ASSETS: {
