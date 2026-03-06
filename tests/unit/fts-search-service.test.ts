@@ -1,7 +1,6 @@
 // Trace: SPEC-search-1, TASK-009, TASK-016
 // Unit tests for FTS Search Service
 
-import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { FtsSearchService } from '@worker/services/fts-search-service';
 import type { DatabaseClient } from '@worker/types/database';
 import { buildWorkNoteTsQuery } from '@worker/utils/work-notes-fts';
@@ -23,7 +22,7 @@ describe('FtsSearchService', () => {
 
   beforeEach(() => {
     mockDb = createMockDb();
-    ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
+    ftsService = new FtsSearchService(mockDb);
   });
 
   describe('search()', () => {
@@ -41,7 +40,7 @@ describe('FtsSearchService', () => {
       ];
 
       mockDb = createMockDb({ rows: mockResults });
-      ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
+      ftsService = new FtsSearchService(mockDb);
 
       const results = await ftsService.search('업무');
 
@@ -75,7 +74,7 @@ describe('FtsSearchService', () => {
       ];
 
       mockDb = createMockDb({ rows: mockResults });
-      ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
+      ftsService = new FtsSearchService(mockDb);
 
       const results = await ftsService.search('test');
 
@@ -198,7 +197,7 @@ describe('FtsSearchService', () => {
       ];
 
       mockDb = createMockDb({ rows: mockResults });
-      ftsService = new FtsSearchService(mockDb, new PostgresFtsDialect());
+      ftsService = new FtsSearchService(mockDb);
 
       const results = await ftsService.search('test');
 
@@ -206,14 +205,11 @@ describe('FtsSearchService', () => {
       expect(results[0].workNote).toHaveProperty('workId');
       expect(results[0].workNote).toHaveProperty('title');
     });
-  });
 
-  describe('verifyFtsSync()', () => {
-    it('should always return true for PostgreSQL generated columns', async () => {
-      const result = await ftsService.verifyFtsSync();
-
-      expect(result).toBe(true);
-      expect(mockDb.queryOne).not.toHaveBeenCalled();
+    it('should return empty array for empty query tokens', async () => {
+      const results = await ftsService.search('   ');
+      expect(results).toEqual([]);
+      expect(mockDb.query).not.toHaveBeenCalled();
     });
   });
 });

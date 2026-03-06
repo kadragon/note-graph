@@ -1,4 +1,4 @@
-const FTS_TERM_PATTERN = /[\p{L}\p{N}]+/gu;
+import { FTS_TERM_PATTERN } from './fts-constants';
 
 export function extractWorkNoteFtsTokens(rawQuery: string): string[] {
   return [...new Set(rawQuery.match(FTS_TERM_PATTERN) ?? [])];

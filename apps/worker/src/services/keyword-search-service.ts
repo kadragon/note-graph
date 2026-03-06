@@ -1,8 +1,7 @@
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
-import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
+import { buildWorkNoteBm25Cte } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
-import type { FtsDialect } from '../types/fts-dialect';
 import {
   buildWorkNoteTsQuery,
   extractWorkNoteFtsTokens,
@@ -37,10 +36,7 @@ function toTimestamp(isoString: string): number | null {
 }
 
 export class KeywordSearchService {
-  constructor(
-    private db: DatabaseClient,
-    private dialect: FtsDialect = new PostgresFtsDialect()
-  ) {}
+  constructor(private db: DatabaseClient) {}
 
   private buildQuery(rawQuery: string, operator: 'AND' | 'OR'): string {
     return buildWorkNoteTsQuery(rawQuery, operator);
@@ -150,7 +146,7 @@ export class KeywordSearchService {
     filters: SearchFilters | undefined,
     candidateLimit: number
   ): Promise<KeywordCandidateRow[]> {
-    const cte = this.dialect.buildWorkNoteBm25Cte();
+    const cte = buildWorkNoteBm25Cte();
     let sql = `
       ${cte.sql}
       SELECT

@@ -42,7 +42,7 @@ const SELF_EXCLUDE = /tests\/unit\/d1-removal\.test\.ts|\/dist\//;
 describe('D1 removal cleanup', () => {
   it('removes D1-only adapters and legacy test setup references', () => {
     const raw = grepR(
-      'd1-database-client|d1-fts-dialect|tests/setup\\.ts|tests/test-setup\\.ts|D1DatabaseClient|D1FtsDialect',
+      'd1-database-client|d1-fts-dialect|tests/setup\\.ts|tests/test-setup\\.ts|D1DatabaseClient|D1FtsDialect|FtsDialect|createFtsDialect',
       'apps',
       'tests',
       'scripts'
@@ -52,6 +52,7 @@ describe('D1 removal cleanup', () => {
     expect(references).toBe('');
     expect(existsSync('apps/worker/src/adapters/d1-database-client.ts')).toBe(false);
     expect(existsSync('apps/worker/src/adapters/d1-fts-dialect.ts')).toBe(false);
+    expect(existsSync('apps/worker/src/types/fts-dialect.ts')).toBe(false);
     expect(existsSync('tests/setup.ts')).toBe(false);
     expect(existsSync('tests/test-setup.ts')).toBe(false);
   });

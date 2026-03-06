@@ -1,6 +1,5 @@
-import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
+import { buildMeetingMinuteFtsCteWithLimit } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
-import type { FtsDialect } from '../types/fts-dialect';
 import { parseKeywordsJson } from '../utils/json-utils';
 import {
   buildMeetingMinutesTsQuery,
@@ -24,10 +23,7 @@ export interface MeetingMinuteReference {
 }
 
 export class MeetingMinuteReferenceService {
-  constructor(
-    private db: DatabaseClient,
-    private dialect: FtsDialect = new PostgresFtsDialect()
-  ) {}
+  constructor(private db: DatabaseClient) {}
 
   async search(
     query: string,
@@ -42,7 +38,7 @@ export class MeetingMinuteReferenceService {
 
     // Over-fetch to compensate for minScore filtering
     const FETCH_MULTIPLIER = 3;
-    const cte = this.dialect.buildMeetingMinuteFtsCteWithLimit();
+    const cte = buildMeetingMinuteFtsCteWithLimit();
     const { rows } = await this.db.query<MeetingMinuteFtsRow>(
       `${cte.sql}
          SELECT

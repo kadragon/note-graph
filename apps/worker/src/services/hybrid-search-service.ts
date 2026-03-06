@@ -1,10 +1,8 @@
 // Trace: SPEC-search-1, TASK-011, SPEC-refactor-embedding-service, TASK-REFACTOR-005
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
-import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
-import type { FtsDialect } from '../types/fts-dialect';
 import { pgPlaceholders, SQL_VAR_LIMIT } from '../utils/db-utils';
 import { FtsSearchService } from './fts-search-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
@@ -23,10 +21,9 @@ export class HybridSearchService {
   constructor(
     private db: DatabaseClient,
     env: Env,
-    ftsDialect: FtsDialect = new PostgresFtsDialect(),
     settingService?: SettingService
   ) {
-    this.ftsService = new FtsSearchService(db, ftsDialect);
+    this.ftsService = new FtsSearchService(db);
     this.embeddingService = new OpenAIEmbeddingService(env, settingService);
     this.vectorizeService = new VectorizeService(env.VECTORIZE);
   }

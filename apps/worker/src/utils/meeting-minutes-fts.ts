@@ -1,4 +1,4 @@
-const FTS_TERM_PATTERN = /[\p{L}\p{N}]+/gu;
+import { FTS_TERM_PATTERN } from './fts-constants';
 
 function toFiniteRank(value: number): number {
   if (Number.isFinite(value)) {

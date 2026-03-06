@@ -1,4 +1,3 @@
-import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { MeetingMinuteReferenceService } from '@worker/services/meeting-minute-reference-service';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { pglite, testPgDb } from '../pg-setup';
@@ -7,7 +6,7 @@ describe('MeetingMinuteReferenceService', () => {
   let service: MeetingMinuteReferenceService;
 
   beforeEach(async () => {
-    service = new MeetingMinuteReferenceService(testPgDb, new PostgresFtsDialect());
+    service = new MeetingMinuteReferenceService(testPgDb);
 
     await pglite.query(
       'TRUNCATE work_note_meeting_minute, meeting_minute_task_category, meeting_minute_group, meeting_minute_person, meeting_minutes CASCADE'

@@ -1,19 +1,15 @@
 // Trace: SPEC-search-1, TASK-009
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
-import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
+import { buildWorkNoteFtsCte } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
-import type { FtsDialect } from '../types/fts-dialect';
 import { buildWorkNoteTsQuery } from '../utils/work-notes-fts';
 
 /**
  * FTS (Full-Text Search) service for lexical search using PostgreSQL tsvector
  */
 export class FtsSearchService {
-  constructor(
-    private db: DatabaseClient,
-    private dialect: FtsDialect = new PostgresFtsDialect()
-  ) {}
+  constructor(private db: DatabaseClient) {}
 
   /**
    * Search work notes using PostgreSQL tsvector full-text search
@@ -27,11 +23,15 @@ export class FtsSearchService {
     const limit = filters?.limit ?? 10;
 
     // Build FTS query
-    const ftsQuery = this.buildFtsQuery(query);
+    const ftsQuery = buildWorkNoteTsQuery(query, 'OR');
+
+    if (!ftsQuery) {
+      return [];
+    }
 
     // Build SQL query with CTE to filter FTS results first
     // This optimizes join by limiting rows before full table scan
-    const cte = this.dialect.buildWorkNoteFtsCte();
+    const cte = buildWorkNoteFtsCte();
     let sql = `
       ${cte.sql}
       SELECT
@@ -113,16 +113,5 @@ export class FtsSearchService {
         source: 'LEXICAL' as const,
       };
     });
-  }
-
-  private buildFtsQuery(query: string): string {
-    return buildWorkNoteTsQuery(query, 'OR') || query.trim();
-  }
-
-  /**
-   * PostgreSQL generated columns keep FTS always in sync.
-   */
-  async verifyFtsSync(): Promise<boolean> {
-    return true;
   }
 }

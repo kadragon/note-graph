@@ -10,8 +10,6 @@
 
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
-import type { FtsDialect } from '../types/fts-dialect';
-import { PostgresFtsDialect } from './postgres-fts-dialect';
 import { createSupabaseConnection } from './supabase-connection';
 import { SupabaseDatabaseClient } from './supabase-database-client';
 
@@ -27,9 +25,4 @@ export function createDatabaseClient(env: Env): DatabaseClient {
   const hyperdrive = requireHyperdrive(env);
   const conn = createSupabaseConnection(hyperdrive.connectionString);
   return new SupabaseDatabaseClient(conn);
-}
-
-export function createFtsDialect(env: Env): FtsDialect {
-  requireHyperdrive(env);
-  return new PostgresFtsDialect();
 }

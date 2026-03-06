@@ -1,4 +1,3 @@
-import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { KeywordSearchService } from '@worker/services/keyword-search-service';
 import type { DatabaseClient } from '@worker/types/database';
 import { buildWorkNoteTsQuery } from '@worker/utils/work-notes-fts';
@@ -38,7 +37,7 @@ describe('KeywordSearchService', () => {
     ];
 
     const mockDb = createMockDb({ rows });
-    const service = new KeywordSearchService(mockDb, new PostgresFtsDialect());
+    const service = new KeywordSearchService(mockDb);
 
     const results = await service.search('검색 성능');
 
@@ -78,7 +77,7 @@ describe('KeywordSearchService', () => {
         ],
       });
 
-    const service = new KeywordSearchService(mockDb, new PostgresFtsDialect());
+    const service = new KeywordSearchService(mockDb);
     const results = await service.search('검색 성능', { limit: 2 });
 
     expect(results).toHaveLength(2);
@@ -93,7 +92,7 @@ describe('KeywordSearchService', () => {
 
   it('returns empty results for punctuation-only query', async () => {
     const mockDb = createMockDb();
-    const service = new KeywordSearchService(mockDb, new PostgresFtsDialect());
+    const service = new KeywordSearchService(mockDb);
     const results = await service.search(' !!! ((( ))) ::: ');
 
     expect(results).toEqual([]);
@@ -102,7 +101,7 @@ describe('KeywordSearchService', () => {
 
   it('applies category/person/dept/date filters in candidate query', async () => {
     const mockDb = createMockDb();
-    const service = new KeywordSearchService(mockDb, new PostgresFtsDialect());
+    const service = new KeywordSearchService(mockDb);
     await service.search('검색', {
       category: '운영',
       personId: 'P-001',

@@ -1,7 +1,6 @@
 // Trace: SPEC-search-1, TASK-011, TASK-016
 // Unit tests for Hybrid Search Service - Public API Testing
 
-import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { HybridSearchService } from '@worker/services/hybrid-search-service';
 import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
@@ -57,7 +56,7 @@ describe('HybridSearchService - Public API', () => {
 
   describe('search() method', () => {
     it('should accept query string and return array of results', async () => {
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       const results = await service.search('test query');
 
       expect(results).toBeDefined();
@@ -65,13 +64,13 @@ describe('HybridSearchService - Public API', () => {
     });
 
     it('should handle empty query results gracefully', async () => {
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       const results = await service.search('nonexistent term');
       expect(results).toEqual([]);
     });
 
     it('should accept and apply filter parameters', async () => {
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       const filters = {
         category: '회의',
         personId: '123456',
@@ -97,14 +96,14 @@ describe('HybridSearchService - Public API', () => {
       }));
 
       mockDb = createMockDb({ rows: manyResults });
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
 
       const results = await service.search('test', { limit: 10 });
       expect(results.length).toBeLessThanOrEqual(10);
     });
 
     it('should handle Korean text in queries', async () => {
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       const results = await service.search('한글 검색 테스트');
       expect(results).toBeDefined();
       expect(Array.isArray(results)).toBe(true);
@@ -124,7 +123,7 @@ describe('HybridSearchService - Public API', () => {
           },
         ],
       });
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
 
       const results = await service.search('test');
 
@@ -145,7 +144,7 @@ describe('HybridSearchService - Public API', () => {
       (mockDb.query as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Database connection failed')
       );
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
 
       await expect(service.search('test')).resolves.toBeDefined();
     });
@@ -168,7 +167,7 @@ describe('HybridSearchService - Public API', () => {
         new Error('Vectorize service down')
       );
 
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       const results = await service.search('test');
 
       expect(results).toBeDefined();
@@ -176,7 +175,7 @@ describe('HybridSearchService - Public API', () => {
     });
 
     it('should call both FTS and Vectorize for search', async () => {
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       await service.search('test query');
 
       expect(mockDb.query).toHaveBeenCalled(); // FTS
@@ -217,7 +216,7 @@ describe('HybridSearchService - Public API', () => {
           },
         ],
       });
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       const results = await service.search('test');
 
       if (results.length > 1) {
@@ -241,7 +240,7 @@ describe('HybridSearchService - Public API', () => {
           },
         ],
       });
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       const results = await service.search('test');
 
       if (results.length > 0) {
@@ -253,7 +252,7 @@ describe('HybridSearchService - Public API', () => {
 
   describe('Filter Application', () => {
     it('should construct appropriate SQL for category filter', async () => {
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       await service.search('test', { category: '회의' });
 
       expect(mockDb.query).toHaveBeenCalled();
@@ -262,7 +261,7 @@ describe('HybridSearchService - Public API', () => {
     });
 
     it('should construct appropriate SQL for person filter', async () => {
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       await service.search('test', { personId: '123456' });
 
       expect(mockDb.query).toHaveBeenCalled();
@@ -271,7 +270,7 @@ describe('HybridSearchService - Public API', () => {
     });
 
     it('should construct appropriate SQL for department filter', async () => {
-      const service = new HybridSearchService(mockDb, mockEnv, new PostgresFtsDialect());
+      const service = new HybridSearchService(mockDb, mockEnv);
       await service.search('test', { deptName: '개발팀' });
 
       expect(mockDb.query).toHaveBeenCalled();

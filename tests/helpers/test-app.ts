@@ -71,10 +71,9 @@ export class MockR2 implements R2Bucket {
 // vi.mock factory for database-factory
 // ---------------------------------------------------------------------------
 
-// Shared lazy references for the mock database factory.
-// These are populated on first use (during request handling, after beforeAll).
+// Shared lazy reference for the mock database factory.
+// Populated on first use (during request handling, after beforeAll).
 let _dbRef: import('@worker/types/database').DatabaseClient | null = null;
-let _ftsRef: import('@worker/types/fts-dialect').FtsDialect | null = null;
 
 function getTestPgDb() {
   if (!_dbRef) {
@@ -83,14 +82,6 @@ function getTestPgDb() {
       .__testPgDb as import('@worker/types/database').DatabaseClient;
   }
   return _dbRef;
-}
-
-function getTestFtsDialect() {
-  if (!_ftsRef) {
-    _ftsRef = (globalThis as Record<string, unknown>)
-      .__testFtsDialect as import('@worker/types/fts-dialect').FtsDialect;
-  }
-  return _ftsRef;
 }
 
 /**
@@ -104,7 +95,6 @@ function getTestFtsDialect() {
 export function mockDatabaseFactory() {
   return {
     createDatabaseClient: () => getTestPgDb(),
-    createFtsDialect: () => getTestFtsDialect(),
   };
 }
 

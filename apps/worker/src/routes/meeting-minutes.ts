@@ -96,7 +96,7 @@ meetingMinutes.get('/', queryValidator(listMeetingMinutesQuerySchema), async (c)
   const query = getValidatedQuery<typeof listMeetingMinutesQuerySchema>(c);
   const db = c.get('db');
 
-  const repository = new MeetingMinuteRepository(db, c.get('ftsDialect'));
+  const repository = new MeetingMinuteRepository(db);
   const result = await repository.findPaginated({
     q: query.q,
     meetingDateFrom: query.meetingDateFrom,
@@ -114,10 +114,7 @@ meetingMinutes.get('/', queryValidator(listMeetingMinutesQuerySchema), async (c)
 meetingMinutes.post('/suggest', bodyValidator(suggestMeetingMinutesSchema), async (c) => {
   const body = getValidatedBody<typeof suggestMeetingMinutesSchema>(c);
   const limit = body.limit ?? 5;
-  const meetingMinuteReferenceService = new MeetingMinuteReferenceService(
-    c.get('db'),
-    c.get('ftsDialect')
-  );
+  const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.get('db'));
   const meetingReferences = await meetingMinuteReferenceService.search(body.query, limit);
 
   return c.json({ meetingReferences });
@@ -237,7 +234,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
   }
 
   const keywordService = new MeetingMinuteKeywordService(c.env, c.get('settingService'));
-  const repository = new MeetingMinuteRepository(db, c.get('ftsDialect'));
+  const repository = new MeetingMinuteRepository(db);
 
   const keywords = await keywordService.extractKeywords({
     topic: data.topic ?? existing.topic,
@@ -279,7 +276,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
 
 meetingMinutes.delete('/:meetingId', async (c) => {
   const meetingId = c.req.param('meetingId');
-  const repository = new MeetingMinuteRepository(c.get('db'), c.get('ftsDialect'));
+  const repository = new MeetingMinuteRepository(c.get('db'));
   await repository.delete(meetingId);
   return c.body(null, 204);
 });
@@ -305,7 +302,7 @@ meetingMinutes.post('/', bodyValidator(createMeetingMinuteSchema), async (c) => 
   }
 
   const keywordService = new MeetingMinuteKeywordService(c.env, c.get('settingService'));
-  const repository = new MeetingMinuteRepository(db, c.get('ftsDialect'));
+  const repository = new MeetingMinuteRepository(db);
   const personRepository = new PersonRepository(db);
   const categoryRepository = new TaskCategoryRepository(db);
 
