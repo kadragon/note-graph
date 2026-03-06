@@ -1,6 +1,7 @@
 import { D1FtsDialect } from '../adapters/d1-fts-dialect';
 import type { DatabaseClient } from '../types/database';
 import type { FtsDialect } from '../types/fts-dialect';
+import { parseKeywordsJson } from '../utils/json-utils';
 import {
   buildMeetingMinutesFtsQuery,
   buildMeetingMinutesTsQuery,
@@ -21,15 +22,6 @@ export interface MeetingMinuteReference {
   topic: string;
   keywords: string[];
   score: number;
-}
-
-function safeParseJsonArray(json: string | null | undefined): string[] {
-  try {
-    const parsed = JSON.parse(json || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 }
 
 export class MeetingMinuteReferenceService {
@@ -75,7 +67,7 @@ export class MeetingMinuteReferenceService {
         meetingId: row.meetingId,
         meetingDate: row.meetingDate,
         topic: row.topic,
-        keywords: safeParseJsonArray(row.keywordsJson),
+        keywords: parseKeywordsJson(row.keywordsJson),
         score: row.score,
       }));
   }

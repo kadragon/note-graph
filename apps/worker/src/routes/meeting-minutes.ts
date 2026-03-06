@@ -17,6 +17,7 @@ import { MeetingMinuteKeywordService } from '../services/meeting-minute-keyword-
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import type { AppContext, AppVariables } from '../types/context';
 import type { DatabaseClient } from '../types/database';
+import { parseKeywordsJson } from '../utils/json-utils';
 import { notFoundJson } from './_shared/route-responses';
 import { createProtectedRouter } from './_shared/router-factory';
 
@@ -183,7 +184,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
     meetingDate: row.meetingDate,
     topic: row.topic,
     detailsRaw: row.detailsRaw,
-    keywords: JSON.parse(row.keywordsJson || '[]'),
+    keywords: parseKeywordsJson(row.keywordsJson),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     attendees: attendeesResult.rows,

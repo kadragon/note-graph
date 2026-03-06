@@ -16,6 +16,24 @@ export interface SupabaseConnection {
 }
 
 /**
+ * Translate SQLite-specific functions to PostgreSQL equivalents.
+ * Currently handles:
+ *   - `SELECT value FROM json_each(?)` → `SELECT json_array_elements_text(?::jsonb)`
+ */
+export function translateSqliteFunctions(sql: string): string {
+  const translated = sql.replace(
+    /SELECT\s+value\s+FROM\s+json_each\(\s*\?\s*\)/gi,
+    'SELECT json_array_elements_text(?::jsonb)'
+  );
+  if (/json_each\s*\(/i.test(translated)) {
+    console.error(
+      `translateSqliteFunctions: untranslated json_each() detected. SQL preview: ${translated.slice(0, 200)}`
+    );
+  }
+  return translated;
+}
+
+/**
  * Translate D1-style `?` placeholders to PostgreSQL `$1, $2, ...`.
  * Skips `?` characters inside single-quoted string literals,
  * double-quoted identifiers, and line comments (`-- ...`).
@@ -112,7 +130,7 @@ export class SupabaseDatabaseClient implements DatabaseClient {
   }
 
   async query<T>(sql: string, params?: unknown[]): Promise<{ rows: T[] }> {
-    const translated = translatePlaceholders(sql);
+    const translated = translatePlaceholders(translateSqliteFunctions(sql));
     const aliasMap = buildAliasMap(sql);
     const result = await this.conn.query<T>(translated, params);
     if (aliasMap) {
@@ -122,7 +140,7 @@ export class SupabaseDatabaseClient implements DatabaseClient {
   }
 
   async queryOne<T>(sql: string, params?: unknown[]): Promise<T | null> {
-    const translated = translatePlaceholders(sql);
+    const translated = translatePlaceholders(translateSqliteFunctions(sql));
     const aliasMap = buildAliasMap(sql);
     const { rows } = await this.conn.query<T>(translated, params);
     if (aliasMap && rows[0]) {
@@ -132,7 +150,7 @@ export class SupabaseDatabaseClient implements DatabaseClient {
   }
 
   async execute(sql: string, params?: unknown[]): Promise<{ rowCount: number }> {
-    return this.conn.execute(translatePlaceholders(sql), params);
+    return this.conn.execute(translatePlaceholders(translateSqliteFunctions(sql)), params);
   }
 
   async transaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
@@ -157,7 +175,10 @@ export class SupabaseDatabaseClient implements DatabaseClient {
     await this.conn.execute('BEGIN');
     try {
       for (const stmt of statements) {
-        await this.conn.execute(translatePlaceholders(stmt.sql), stmt.params);
+        await this.conn.execute(
+          translatePlaceholders(translateSqliteFunctions(stmt.sql)),
+          stmt.params
+        );
       }
       await this.conn.execute('COMMIT');
     } catch (error) {

@@ -35,6 +35,9 @@ export const SEARCH_CONFIG = {
 
   /** Maximum number of department suggestions to show */
   DEPARTMENT_LIMIT: 5,
+
+  /** Limit for full department list pages (management, RAG filter) */
+  DEPARTMENT_LIST_LIMIT: 100,
 } as const;
 
 // -----------------------------------------------------------------------------

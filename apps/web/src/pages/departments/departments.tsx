@@ -14,6 +14,7 @@ import {
 } from '@web/components/ui/table';
 import { useDepartments, useUpdateDepartment } from '@web/hooks/use-departments';
 import { useDialogState } from '@web/hooks/use-dialog-state';
+import { SEARCH_CONFIG } from '@web/lib/config';
 import { cn } from '@web/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -24,7 +25,11 @@ import { CreateDepartmentDialog } from './components/create-department-dialog';
 export default function Departments() {
   const navigate = useNavigate();
   const createDialog = useDialogState();
-  const { data: departments = [], isLoading, error } = useDepartments();
+  const {
+    data: departments = [],
+    isLoading,
+    error,
+  } = useDepartments({ limit: SEARCH_CONFIG.DEPARTMENT_LIST_LIMIT });
   const updateDepartmentMutation = useUpdateDepartment();
 
   const handleToggleStatus = (deptName: string, currentStatus: boolean) => {

@@ -4,6 +4,7 @@ import type { CreateMeetingMinuteInput, UpdateMeetingMinuteInput } from '../sche
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { FtsDialect } from '../types/fts-dialect';
+import { parseKeywordsJson } from '../utils/json-utils';
 import {
   buildMeetingMinutesFtsQuery,
   buildMeetingMinutesTsQuery,
@@ -144,7 +145,7 @@ export class MeetingMinuteRepository {
     }
 
     const now = new Date().toISOString();
-    const nextKeywords = data.keywords ?? JSON.parse(existing.keywordsJson || '[]');
+    const nextKeywords = data.keywords ?? parseKeywordsJson(existing.keywordsJson);
     const nextKeywordsJson = JSON.stringify(nextKeywords);
     const nextKeywordsText = nextKeywords.join(' ');
 
@@ -340,7 +341,7 @@ export class MeetingMinuteRepository {
       meetingDate: row.meetingDate,
       topic: row.topic,
       detailsRaw: row.detailsRaw,
-      keywords: JSON.parse(row.keywordsJson || '[]'),
+      keywords: parseKeywordsJson(row.keywordsJson),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));
