@@ -72,6 +72,30 @@ describe('TodoRepository - Filtering and Views', () => {
   });
 
   describe('findAll()', () => {
+    const insertTodo = async ({
+      todoId,
+      title,
+      createdAt,
+      dueDate = null,
+      waitUntil = null,
+      status = '진행중',
+      repeatRule = 'NONE',
+    }: {
+      todoId: string;
+      title: string;
+      createdAt: string;
+      dueDate?: string | null;
+      waitUntil?: string | null;
+      status?: '진행중' | '완료' | '보류' | '중단';
+      repeatRule?: 'NONE';
+    }) => {
+      await testEnv.DB.prepare(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(todoId, testWorkId, title, createdAt, dueDate, waitUntil, status, repeatRule)
+        .run();
+    };
+
     beforeEach(async () => {
       const now = new Date(BASE_NOW.getTime());
       const yesterday = new Date(now);
@@ -84,77 +108,45 @@ describe('TodoRepository - Filtering and Views', () => {
       waitNextWeek.setDate(waitNextWeek.getDate() + 8); // Beyond this week's Friday
       const overdueWaitTomorrow = new Date(now);
       overdueWaitTomorrow.setDate(overdueWaitTomorrow.getDate() - 1);
-      const nextWeek = new Date(now);
-      nextWeek.setDate(nextWeek.getDate() + 7);
 
-      await testEnv.DB.batch([
-        // Overdue todo
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(
-          'TODO-OVERDUE',
-          testWorkId,
-          'Overdue',
-          now.toISOString(),
-          yesterday.toISOString(),
-          '진행중',
-          'NONE'
-        ),
-        // Due today
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(
-          'TODO-TODAY',
-          testWorkId,
-          'Today',
-          now.toISOString(),
-          now.toISOString(),
-          '진행중',
-          'NONE'
-        ),
-        // Due tomorrow
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(
-          'TODO-TOMORROW',
-          testWorkId,
-          'Tomorrow',
-          now.toISOString(),
-          tomorrow.toISOString(),
-          '진행중',
-          'NONE'
-        ),
-        // Wait-until in future (should be hidden from remaining and week views)
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        ).bind(
-          'TODO-WAIT-FUTURE',
-          testWorkId,
-          'Waiting',
-          now.toISOString(),
-          waitNextWeek.toISOString(),
-          waitNextWeek.toISOString(),
-          '진행중',
-          'NONE'
-        ),
-        // Overdue but wait_until in future (should not appear in backlog)
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        ).bind(
-          'TODO-OVERDUE-WAIT',
-          testWorkId,
-          'Overdue Wait',
-          now.toISOString(),
-          overdueWaitTomorrow.toISOString(),
-          waitTomorrow.toISOString(),
-          '진행중',
-          'NONE'
-        ),
-        // Completed
-        testEnv.DB.prepare(
-          'INSERT INTO todos (todo_id, work_id, title, created_at, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind('TODO-DONE', testWorkId, 'Done', now.toISOString(), '완료', 'NONE'),
-      ]);
+      await insertTodo({
+        todoId: 'TODO-OVERDUE',
+        title: 'Overdue',
+        createdAt: now.toISOString(),
+        dueDate: yesterday.toISOString(),
+      });
+      await insertTodo({
+        todoId: 'TODO-TODAY',
+        title: 'Today',
+        createdAt: now.toISOString(),
+        dueDate: now.toISOString(),
+      });
+      await insertTodo({
+        todoId: 'TODO-TOMORROW',
+        title: 'Tomorrow',
+        createdAt: now.toISOString(),
+        dueDate: tomorrow.toISOString(),
+      });
+      await insertTodo({
+        todoId: 'TODO-WAIT-FUTURE',
+        title: 'Waiting',
+        createdAt: now.toISOString(),
+        dueDate: waitNextWeek.toISOString(),
+        waitUntil: waitNextWeek.toISOString(),
+      });
+      await insertTodo({
+        todoId: 'TODO-OVERDUE-WAIT',
+        title: 'Overdue Wait',
+        createdAt: now.toISOString(),
+        dueDate: overdueWaitTomorrow.toISOString(),
+        waitUntil: waitTomorrow.toISOString(),
+      });
+      await insertTodo({
+        todoId: 'TODO-DONE',
+        title: 'Done',
+        createdAt: now.toISOString(),
+        status: '완료',
+      });
     });
 
     it('should return all todos when view is "all"', async () => {
@@ -260,20 +252,13 @@ describe('TodoRepository - Filtering and Views', () => {
       const now = new Date(BASE_NOW.getTime());
       const nearFuture = new Date(now.getTime() + 3600000); // 1 hour later
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
-          'TODO-NEAR-FUTURE',
-          testWorkId,
-          'Near Future',
-          now.toISOString(),
-          nearFuture.toISOString(),
-          nearFuture.toISOString(),
-          '진행중',
-          'NONE'
-        )
-        .run();
+      await insertTodo({
+        todoId: 'TODO-NEAR-FUTURE',
+        title: 'Near Future',
+        createdAt: now.toISOString(),
+        dueDate: nearFuture.toISOString(),
+        waitUntil: nearFuture.toISOString(),
+      });
 
       // Act
       const result = await repository.findAll({ view: 'today' });
@@ -287,20 +272,13 @@ describe('TodoRepository - Filtering and Views', () => {
       const nextWeek = new Date(now);
       nextWeek.setDate(nextWeek.getDate() + 7);
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
-          'TODO-TODAY-WAIT-FUTURE-DUE',
-          testWorkId,
-          'Today Wait Future Due',
-          now.toISOString(),
-          nextWeek.toISOString(),
-          now.toISOString(),
-          '진행중',
-          'NONE'
-        )
-        .run();
+      await insertTodo({
+        todoId: 'TODO-TODAY-WAIT-FUTURE-DUE',
+        title: 'Today Wait Future Due',
+        createdAt: now.toISOString(),
+        dueDate: nextWeek.toISOString(),
+        waitUntil: now.toISOString(),
+      });
 
       const result = await repository.findAll({ view: 'today' });
 
@@ -312,20 +290,13 @@ describe('TodoRepository - Filtering and Views', () => {
       const nextWeek = new Date(now);
       nextWeek.setDate(nextWeek.getDate() + 7);
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
-          'TODO-REMAINING-WAIT-TODAY',
-          testWorkId,
-          'Remaining Wait Today',
-          now.toISOString(),
-          nextWeek.toISOString(),
-          now.toISOString(),
-          '진행중',
-          'NONE'
-        )
-        .run();
+      await insertTodo({
+        todoId: 'TODO-REMAINING-WAIT-TODAY',
+        title: 'Remaining Wait Today',
+        createdAt: now.toISOString(),
+        dueDate: nextWeek.toISOString(),
+        waitUntil: now.toISOString(),
+      });
 
       const result = await repository.findAll({ view: 'remaining' });
 
@@ -337,20 +308,13 @@ describe('TodoRepository - Filtering and Views', () => {
       const nextWeek = new Date(now);
       nextWeek.setDate(nextWeek.getDate() + 7);
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
-          'TODO-WEEK-WAIT-TODAY',
-          testWorkId,
-          'Week Wait Today',
-          now.toISOString(),
-          nextWeek.toISOString(),
-          now.toISOString(),
-          '진행중',
-          'NONE'
-        )
-        .run();
+      await insertTodo({
+        todoId: 'TODO-WEEK-WAIT-TODAY',
+        title: 'Week Wait Today',
+        createdAt: now.toISOString(),
+        dueDate: nextWeek.toISOString(),
+        waitUntil: now.toISOString(),
+      });
 
       const result = await repository.findAll({ view: 'week' });
 
@@ -362,20 +326,13 @@ describe('TodoRepository - Filtering and Views', () => {
       const nextMonth = new Date(now);
       nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
-          'TODO-MONTH-WAIT-TODAY',
-          testWorkId,
-          'Month Wait Today',
-          now.toISOString(),
-          nextMonth.toISOString(),
-          now.toISOString(),
-          '진행중',
-          'NONE'
-        )
-        .run();
+      await insertTodo({
+        todoId: 'TODO-MONTH-WAIT-TODAY',
+        title: 'Month Wait Today',
+        createdAt: now.toISOString(),
+        dueDate: nextMonth.toISOString(),
+        waitUntil: now.toISOString(),
+      });
 
       const result = await repository.findAll({ view: 'month' });
 
@@ -386,20 +343,13 @@ describe('TodoRepository - Filtering and Views', () => {
       const earlyKstNow = new REAL_DATE('2025-01-09T23:00:00.000Z'); // 2025-01-10 08:00 KST
       useFixedDate(earlyKstNow);
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
-          'TODO-WAIT-TODAY',
-          testWorkId,
-          'Wait Today',
-          earlyKstNow.toISOString(),
-          '2025-01-10T00:00:00.000Z',
-          '2025-01-10T00:00:00.000Z',
-          '진행중',
-          'NONE'
-        )
-        .run();
+      await insertTodo({
+        todoId: 'TODO-WAIT-TODAY',
+        title: 'Wait Today',
+        createdAt: earlyKstNow.toISOString(),
+        dueDate: '2025-01-10T00:00:00.000Z',
+        waitUntil: '2025-01-10T00:00:00.000Z',
+      });
 
       const result = await repository.findAll({ view: 'remaining' });
 
@@ -409,20 +359,12 @@ describe('TodoRepository - Filtering and Views', () => {
     it('should exclude wait_until-only todo from today view', async () => {
       const now = new Date(BASE_NOW.getTime());
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
-          'TODO-WAIT-ONLY-TODAY',
-          testWorkId,
-          'Wait Only Today',
-          now.toISOString(),
-          null,
-          now.toISOString(),
-          '진행중',
-          'NONE'
-        )
-        .run();
+      await insertTodo({
+        todoId: 'TODO-WAIT-ONLY-TODAY',
+        title: 'Wait Only Today',
+        createdAt: now.toISOString(),
+        waitUntil: now.toISOString(),
+      });
 
       const result = await repository.findAll({ view: 'today' });
 
@@ -432,20 +374,12 @@ describe('TodoRepository - Filtering and Views', () => {
     it('should exclude wait_until-only todo from week and month views', async () => {
       const now = new Date(BASE_NOW.getTime());
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
-          'TODO-WAIT-ONLY-PERIOD',
-          testWorkId,
-          'Wait Only Period',
-          now.toISOString(),
-          null,
-          now.toISOString(),
-          '진행중',
-          'NONE'
-        )
-        .run();
+      await insertTodo({
+        todoId: 'TODO-WAIT-ONLY-PERIOD',
+        title: 'Wait Only Period',
+        createdAt: now.toISOString(),
+        waitUntil: now.toISOString(),
+      });
 
       const weekResult = await repository.findAll({ view: 'week' });
       const monthResult = await repository.findAll({ view: 'month' });
@@ -457,20 +391,12 @@ describe('TodoRepository - Filtering and Views', () => {
     it('should include wait_until-only todo in remaining view once wait_until is today', async () => {
       const now = new Date(BASE_NOW.getTime());
 
-      await testEnv.DB.prepare(
-        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-        .bind(
-          'TODO-WAIT-ONLY-REMAINING',
-          testWorkId,
-          'Wait Only Remaining',
-          now.toISOString(),
-          null,
-          now.toISOString(),
-          '진행중',
-          'NONE'
-        )
-        .run();
+      await insertTodo({
+        todoId: 'TODO-WAIT-ONLY-REMAINING',
+        title: 'Wait Only Remaining',
+        createdAt: now.toISOString(),
+        waitUntil: now.toISOString(),
+      });
 
       const result = await repository.findAll({ view: 'remaining' });
 
