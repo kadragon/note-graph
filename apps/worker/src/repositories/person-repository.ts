@@ -43,7 +43,7 @@ export class PersonRepository {
         const now = new Date().toISOString();
         statements.push({
           sql: `INSERT INTO departments (dept_name, description, is_active, created_at)
-                VALUES (?, NULL, 1, ?)`,
+                VALUES (?, NULL, TRUE, ?)`,
           params: [deptName, now],
         });
       } else {
@@ -161,7 +161,7 @@ export class PersonRepository {
     if (data.currentDept) {
       statements.push({
         sql: `INSERT INTO person_dept_history (person_id, dept_name, position, role_desc, start_date, is_active)
-              VALUES (?, ?, ?, ?, ?, 1)`,
+              VALUES (?, ?, ?, ?, ?, TRUE)`,
         params: [
           data.personId,
           data.currentDept,
@@ -213,7 +213,7 @@ export class PersonRepository {
       // Deactivate current department history entry
       statements.push({
         sql: `UPDATE person_dept_history
-              SET is_active = 0, end_date = ?
+              SET is_active = FALSE, end_date = ?
               WHERE person_id = ? AND is_active`,
         params: [now, personId],
       });
@@ -222,7 +222,7 @@ export class PersonRepository {
       if (data.currentDept) {
         statements.push({
           sql: `INSERT INTO person_dept_history (person_id, dept_name, position, role_desc, start_date, is_active)
-                VALUES (?, ?, ?, ?, ?, 1)`,
+                VALUES (?, ?, ?, ?, ?, TRUE)`,
           params: [
             personId,
             data.currentDept,

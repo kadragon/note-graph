@@ -5,9 +5,10 @@ import { env } from 'cloudflare:test';
 import { D1DatabaseClient } from '@worker/adapters/d1-database-client';
 import { PersonRepository } from '@worker/repositories/person-repository';
 import type { CreatePersonInput, UpdatePersonInput } from '@worker/schemas/person';
+import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
 import { ConflictError, NotFoundError, ValidationError } from '@worker/types/errors';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const testEnv = env as unknown as Env;
 const testDb = new D1DatabaseClient(testEnv.DB);
@@ -362,6 +363,40 @@ describe('PersonRepository', () => {
       expect(department).not.toBeNull();
       expect(department?.deptName).toBe(deptName);
       expect(department?.isActive).toBe(1);
+    });
+
+    it('should write PostgreSQL-safe boolean literals when auto-creating department data', async () => {
+      // Arrange
+      const executeBatch = vi.fn().mockResolvedValue(undefined);
+      const mockDb: DatabaseClient = {
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+        queryOne: vi.fn().mockResolvedValue(null),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+        transaction: vi.fn(),
+        executeBatch,
+      };
+      const importRepository = new PersonRepository(mockDb, {
+        autoCreateDepartment: true,
+      });
+
+      // Act
+      await importRepository.create({
+        personId: '999001',
+        name: '김신규',
+        currentDept: '신규부서',
+      });
+
+      // Assert
+      expect(executeBatch).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            sql: expect.stringContaining('VALUES (?, NULL, TRUE, ?)'),
+          }),
+          expect.objectContaining({
+            sql: expect.stringContaining('VALUES (?, ?, ?, ?, ?, TRUE)'),
+          }),
+        ])
+      );
     });
   });
 
