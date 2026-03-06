@@ -497,7 +497,7 @@ describe('Search Functionality', () => {
         const cleaned = query.trim();
 
         expect(cleaned).toBe('학생 성적 관리 시스템');
-        // FTS5 will match documents containing any of these terms
+        // FTS will match documents containing any of these terms
       });
     });
 

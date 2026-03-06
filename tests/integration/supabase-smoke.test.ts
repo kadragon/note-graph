@@ -137,7 +137,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
 
       expect(rows.length).toBeGreaterThanOrEqual(1);
       expect(rows.some((r) => r.id === testWorkId)).toBe(true);
-      // Negated ts_rank: lower (more negative) = better match, consistent with D1 bm25
+      // Negated ts_rank: lower (more negative) = better match
       expect(rows.find((r) => r.id === testWorkId)!.rank).toBeLessThan(0);
     } finally {
       await db.execute('DELETE FROM work_notes WHERE work_id = $1', [testWorkId]);

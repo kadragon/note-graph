@@ -168,7 +168,7 @@ describe('Meeting minutes schema migrations', () => {
   });
 
   it('creates meeting_minutes table (FTS equivalent verified by table existence in PG)', async () => {
-    // In PostgreSQL, FTS is handled differently than SQLite FTS5.
+    // In PostgreSQL, FTS is handled via tsvector generated columns.
     // We verify the main table exists and has the text-searchable columns.
     await expect(tableExists('meeting_minutes')).resolves.toBe(true);
     await expect(getTableColumns('meeting_minutes')).resolves.toEqual(

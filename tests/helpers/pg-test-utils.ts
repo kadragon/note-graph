@@ -33,7 +33,7 @@ export async function pgInsert(
 
 /**
  * Execute a parameterized query directly against PGlite.
- * Convenience wrapper matching the D1 `prepare().bind().run()` pattern.
+ * Convenience wrapper matching an ORM-like `prepare().bind().run()` pattern.
  */
 export async function pgExec(pglite: PGlite, sql: string, params?: unknown[]): Promise<void> {
   await pglite.query(sql, params);
