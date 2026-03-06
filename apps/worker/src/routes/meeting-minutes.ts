@@ -5,7 +5,10 @@ import {
   getValidatedQuery,
   queryValidator,
 } from '../middleware/validation-middleware';
-import { MeetingMinuteRepository } from '../repositories/meeting-minute-repository';
+import {
+  MeetingMinuteRepository,
+  parseKeywordsJson,
+} from '../repositories/meeting-minute-repository';
 import { PersonRepository } from '../repositories/person-repository';
 import { TaskCategoryRepository } from '../repositories/task-category-repository';
 import {
@@ -183,7 +186,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
     meetingDate: row.meetingDate,
     topic: row.topic,
     detailsRaw: row.detailsRaw,
-    keywords: JSON.parse(row.keywordsJson || '[]'),
+    keywords: parseKeywordsJson(row.keywordsJson),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     attendees: attendeesResult.rows,

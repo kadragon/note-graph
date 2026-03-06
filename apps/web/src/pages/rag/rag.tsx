@@ -42,7 +42,9 @@ export default function RAG() {
 
   const ragMutation = useRAGQuery();
   const { data: persons = [], isLoading: isLoadingPersons } = usePersons();
-  const { data: departments = [], isLoading: isLoadingDepartments } = useDepartments();
+  const { data: departments = [], isLoading: isLoadingDepartments } = useDepartments({
+    limit: 100,
+  });
   const { data: workNotes = [], isLoading: isLoadingWorkNotes } = useWorkNotes();
 
   // scope 변경 시 선택 초기화

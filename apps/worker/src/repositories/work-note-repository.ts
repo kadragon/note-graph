@@ -22,6 +22,7 @@ import type {
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import { queryInChunks } from '../utils/db-utils';
+import { parseKeywordsJson } from './meeting-minute-repository';
 
 const MAX_VERSIONS = 5;
 
@@ -123,14 +124,7 @@ export class WorkNoteRepository {
         meetingId: meeting.meetingId,
         meetingDate: meeting.meetingDate,
         topic: meeting.topic,
-        keywords: (() => {
-          try {
-            const parsed = JSON.parse(meeting.keywordsJson);
-            return Array.isArray(parsed) ? parsed.filter((value) => typeof value === 'string') : [];
-          } catch {
-            return [];
-          }
-        })(),
+        keywords: parseKeywordsJson(meeting.keywordsJson),
       })),
     };
   }

@@ -9,6 +9,19 @@ import {
   buildMeetingMinutesTsQuery,
 } from '../utils/meeting-minutes-fts';
 
+export function parseKeywordsJson(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === 'string') : [];
+  } catch {
+    return raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+}
+
 export interface MeetingMinute {
   meetingId: string;
   meetingDate: string;
@@ -144,7 +157,7 @@ export class MeetingMinuteRepository {
     }
 
     const now = new Date().toISOString();
-    const nextKeywords = data.keywords ?? JSON.parse(existing.keywordsJson || '[]');
+    const nextKeywords = data.keywords ?? parseKeywordsJson(existing.keywordsJson);
     const nextKeywordsJson = JSON.stringify(nextKeywords);
     const nextKeywordsText = nextKeywords.join(' ');
 
@@ -340,7 +353,7 @@ export class MeetingMinuteRepository {
       meetingDate: row.meetingDate,
       topic: row.topic,
       detailsRaw: row.detailsRaw,
-      keywords: JSON.parse(row.keywordsJson || '[]'),
+      keywords: parseKeywordsJson(row.keywordsJson),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));

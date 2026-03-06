@@ -3,6 +3,7 @@ import {
   buildAliasMap,
   SupabaseDatabaseClient,
   translatePlaceholders,
+  translateSqliteFunctions,
 } from '@worker/adapters/supabase-database-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -51,6 +52,36 @@ describe('SupabaseDatabaseClient', () => {
     it('handles double-quoted identifier followed by placeholder', () => {
       const sql = 'SELECT "col" FROM t WHERE a = ? AND "b?" = ?';
       expect(translatePlaceholders(sql)).toBe('SELECT "col" FROM t WHERE a = $1 AND "b?" = $2');
+    });
+  });
+
+  describe('translateSqliteFunctions', () => {
+    it('translates json_each to json_array_elements_text', () => {
+      const sql = 't.work_id IN (SELECT value FROM json_each(?))';
+      expect(translateSqliteFunctions(sql)).toBe(
+        't.work_id IN (SELECT json_array_elements_text(?::jsonb))'
+      );
+    });
+
+    it('handles case-insensitive json_each', () => {
+      const sql = 'SELECT value FROM JSON_EACH(?)';
+      expect(translateSqliteFunctions(sql)).toBe('SELECT json_array_elements_text(?::jsonb)');
+    });
+
+    it('preserves sql without json_each', () => {
+      const sql = 'SELECT * FROM todos WHERE id = ?';
+      expect(translateSqliteFunctions(sql)).toBe(sql);
+    });
+
+    it('works with TodoRepository findAll workIds pattern', () => {
+      const sql = `
+      SELECT t.todo_id as todoId, t.work_id as workId
+      FROM todos t
+      WHERE t.work_id IN (SELECT value FROM json_each(?))
+      ORDER BY t.due_date ASC`;
+      const result = translateSqliteFunctions(sql);
+      expect(result).toContain('json_array_elements_text(?::jsonb)');
+      expect(result).not.toContain('json_each');
     });
   });
 
@@ -141,6 +172,24 @@ describe('SupabaseDatabaseClient', () => {
         'x',
         'y',
       ]);
+    });
+
+    it('translates json_each to json_array_elements_text in query', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [{ todoid: 'T-1', workid: 'W-1' }] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+
+      await client.query(
+        'SELECT t.todo_id as todoId, t.work_id as workId FROM todos t WHERE t.work_id IN (SELECT value FROM json_each(?))',
+        [JSON.stringify(['W-1', 'W-2'])]
+      );
+
+      expect(mockConn.query).toHaveBeenCalledWith(
+        'SELECT t.todo_id as todoId, t.work_id as workId FROM todos t WHERE t.work_id IN (SELECT json_array_elements_text($1::jsonb))',
+        [JSON.stringify(['W-1', 'W-2'])]
+      );
     });
 
     it('remaps lowercased PostgreSQL keys back to camelCase aliases', async () => {

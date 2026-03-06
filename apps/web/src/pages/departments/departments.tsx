@@ -24,7 +24,7 @@ import { CreateDepartmentDialog } from './components/create-department-dialog';
 export default function Departments() {
   const navigate = useNavigate();
   const createDialog = useDialogState();
-  const { data: departments = [], isLoading, error } = useDepartments();
+  const { data: departments = [], isLoading, error } = useDepartments({ limit: 100 });
   const updateDepartmentMutation = useUpdateDepartment();
 
   const handleToggleStatus = (deptName: string, currentStatus: boolean) => {
