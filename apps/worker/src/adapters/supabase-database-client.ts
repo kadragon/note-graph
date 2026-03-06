@@ -18,12 +18,12 @@ export interface SupabaseConnection {
 /**
  * Translate SQLite-specific functions to PostgreSQL equivalents.
  * Currently handles:
- *   - `SELECT value FROM json_each(?)` → `SELECT json_array_elements_text(?::jsonb)`
+ *   - `SELECT value FROM json_each(?)` → `SELECT jsonb_array_elements_text(?::jsonb)`
  */
 export function translateSqliteFunctions(sql: string): string {
   const translated = sql.replace(
     /SELECT\s+value\s+FROM\s+json_each\(\s*\?\s*\)/gi,
-    'SELECT json_array_elements_text(?::jsonb)'
+    'SELECT jsonb_array_elements_text(?::jsonb)'
   );
   if (/json_each\s*\(/i.test(translated)) {
     console.error(

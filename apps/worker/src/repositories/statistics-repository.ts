@@ -76,13 +76,14 @@ export class StatisticsRepository {
       WITH PeriodTodos AS (
         SELECT
           work_id,
-          SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END) as completedInPeriod,
-          COUNT(*) as totalInPeriod,
-          MAX(updated_at) as lastUpdated
+          SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END) as completed_in_period,
+          COUNT(*) as total_in_period,
+          MAX(updated_at) as last_updated
         FROM todos
         WHERE updated_at >= ? AND updated_at <= ?
         GROUP BY work_id
-        HAVING completedInPeriod > 0
+        -- PostgreSQL does not allow SELECT alias references in HAVING; use the full expression.
+        HAVING SUM(CASE WHEN status = '완료' THEN 1 ELSE 0 END) > 0
       )
       SELECT DISTINCT
         wn.work_id as workId,
@@ -92,8 +93,8 @@ export class StatisticsRepository {
         wn.created_at as createdAt,
         wn.updated_at as updatedAt,
         wn.embedded_at as embeddedAt,
-        pt.completedInPeriod as completedTodoCount,
-        pt.totalInPeriod as totalTodoCount
+        pt.completed_in_period as completedTodoCount,
+        pt.total_in_period as totalTodoCount
       FROM work_notes wn
       INNER JOIN PeriodTodos pt ON wn.work_id = pt.work_id
     `;
@@ -129,7 +130,7 @@ export class StatisticsRepository {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    query += ` ORDER BY pt.lastUpdated DESC`;
+    query += ` ORDER BY pt.last_updated DESC`;
 
     const result = await this.db.query<WorkNoteWithStats>(query, bindings);
     const workNotes = result.rows;
