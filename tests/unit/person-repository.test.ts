@@ -13,6 +13,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const testEnv = env as unknown as Env;
 const testDb = new D1DatabaseClient(testEnv.DB);
 
+const createMockDb = (overrides: Partial<DatabaseClient> = {}): DatabaseClient => ({
+  query: vi.fn().mockResolvedValue({ rows: [] }),
+  queryOne: vi.fn().mockResolvedValue(null),
+  execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+  transaction: vi.fn(),
+  executeBatch: vi.fn().mockResolvedValue(undefined),
+  ...overrides,
+});
+
 describe('PersonRepository', () => {
   let repository: PersonRepository;
 
@@ -368,13 +377,7 @@ describe('PersonRepository', () => {
     it('should write PostgreSQL-safe boolean literals when auto-creating department data', async () => {
       // Arrange
       const executeBatch = vi.fn().mockResolvedValue(undefined);
-      const mockDb: DatabaseClient = {
-        query: vi.fn().mockResolvedValue({ rows: [] }),
-        queryOne: vi.fn().mockResolvedValue(null),
-        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
-        transaction: vi.fn(),
-        executeBatch,
-      };
+      const mockDb = createMockDb({ executeBatch });
       const importRepository = new PersonRepository(mockDb, {
         autoCreateDepartment: true,
       });
@@ -521,6 +524,47 @@ describe('PersonRepository', () => {
       const oldHistory = history.find((h) => h.deptName === '개발팀');
       expect(oldHistory?.isActive).toBe(0);
       expect(oldHistory?.endDate).toBeDefined();
+    });
+
+    it('should write PostgreSQL-safe FALSE literal when deactivating department history', async () => {
+      // Arrange
+      const executeBatch = vi.fn().mockResolvedValue(undefined);
+      const queryOne = vi
+        .fn()
+        .mockResolvedValueOnce({
+          personId: '123456',
+          name: '홍길동',
+          phoneExt: null,
+          currentDept: '개발팀',
+          currentPosition: '선임',
+          currentRoleDesc: null,
+          employmentStatus: '재직',
+          createdAt: '2026-03-06T00:00:00.000Z',
+          updatedAt: '2026-03-06T00:00:00.000Z',
+        })
+        .mockResolvedValueOnce(null);
+      const mockDb = createMockDb({ executeBatch, queryOne });
+      const importRepository = new PersonRepository(mockDb, {
+        autoCreateDepartment: true,
+      });
+
+      // Act
+      await importRepository.update('123456', { currentDept: '기획팀' });
+
+      // Assert
+      expect(executeBatch).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            sql: expect.stringContaining('VALUES (?, NULL, TRUE, ?)'),
+          }),
+          expect.objectContaining({
+            sql: expect.stringContaining('SET is_active = FALSE, end_date = ?'),
+          }),
+          expect.objectContaining({
+            sql: expect.stringContaining('VALUES (?, ?, ?, ?, ?, TRUE)'),
+          }),
+        ])
+      );
     });
 
     it('should throw ValidationError when changing to non-existent department', async () => {
