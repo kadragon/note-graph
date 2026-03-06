@@ -1,6 +1,7 @@
-import { D1FtsDialect } from '@worker/adapters/d1-fts-dialect';
+import { PostgresFtsDialect } from '@worker/adapters/postgres-fts-dialect';
 import { KeywordSearchService } from '@worker/services/keyword-search-service';
 import type { DatabaseClient } from '@worker/types/database';
+import { buildWorkNoteTsQuery } from '@worker/utils/work-notes-fts';
 import { describe, expect, it, vi } from 'vitest';
 
 function createMockDb(queryResult: { rows: unknown[] } = { rows: [] }): DatabaseClient {
@@ -37,7 +38,7 @@ describe('KeywordSearchService', () => {
     ];
 
     const mockDb = createMockDb({ rows });
-    const service = new KeywordSearchService(mockDb, new D1FtsDialect());
+    const service = new KeywordSearchService(mockDb, new PostgresFtsDialect());
 
     const results = await service.search('검색 성능');
 
@@ -77,7 +78,7 @@ describe('KeywordSearchService', () => {
         ],
       });
 
-    const service = new KeywordSearchService(mockDb, new D1FtsDialect());
+    const service = new KeywordSearchService(mockDb, new PostgresFtsDialect());
     const results = await service.search('검색 성능', { limit: 2 });
 
     expect(results).toHaveLength(2);
@@ -86,13 +87,13 @@ describe('KeywordSearchService', () => {
     );
 
     const calls = (mockDb.query as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls[0]?.[1]?.[0]).toContain('AND');
-    expect(calls[1]?.[1]?.[0]).toContain('OR');
+    expect(calls[0]?.[1]?.[0]).toBe(buildWorkNoteTsQuery('검색 성능', 'AND'));
+    expect(calls[1]?.[1]?.[0]).toBe(buildWorkNoteTsQuery('검색 성능', 'OR'));
   });
 
   it('returns empty results for punctuation-only query', async () => {
     const mockDb = createMockDb();
-    const service = new KeywordSearchService(mockDb, new D1FtsDialect());
+    const service = new KeywordSearchService(mockDb, new PostgresFtsDialect());
     const results = await service.search(' !!! ((( ))) ::: ');
 
     expect(results).toEqual([]);
@@ -101,7 +102,7 @@ describe('KeywordSearchService', () => {
 
   it('applies category/person/dept/date filters in candidate query', async () => {
     const mockDb = createMockDb();
-    const service = new KeywordSearchService(mockDb, new D1FtsDialect());
+    const service = new KeywordSearchService(mockDb, new PostgresFtsDialect());
     await service.search('검색', {
       category: '운영',
       personId: 'P-001',
@@ -115,11 +116,11 @@ describe('KeywordSearchService', () => {
 
     expect(sql).toContain('work_note_person wnp');
     expect(sql).toContain('persons p');
-    expect(sql).toContain('wn.category = ?');
-    expect(sql).toContain('wnp.person_id = ?');
-    expect(sql).toContain('p.current_dept = ?');
-    expect(sql).toContain('wn.created_at >= ?');
-    expect(sql).toContain('wn.created_at <= ?');
+    expect(sql).toContain('wnp.person_id = $3');
+    expect(sql).toContain('p.current_dept = $4');
+    expect(sql).toContain('wn.category = $5');
+    expect(sql).toContain('wn.created_at >= $6');
+    expect(sql).toContain('wn.created_at <= $7');
 
     expect(params).toContain('운영');
     expect(params).toContain('P-001');

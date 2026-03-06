@@ -1,4 +1,4 @@
-import { D1FtsDialect } from '../adapters/d1-fts-dialect';
+import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
 import type { FtsDialect } from '../types/fts-dialect';
 import { parseKeywordsJson } from '../utils/json-utils';
@@ -27,7 +27,7 @@ export interface MeetingMinuteReference {
 export class MeetingMinuteReferenceService {
   constructor(
     private db: DatabaseClient,
-    private dialect: FtsDialect = new D1FtsDialect()
+    private dialect: FtsDialect = new PostgresFtsDialect()
   ) {}
 
   async search(

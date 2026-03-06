@@ -154,7 +154,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
         file_id, work_id, r2_key, original_name, file_type, file_size,
         uploaded_by, uploaded_at, storage_type,
         gdrive_file_id, gdrive_folder_id, gdrive_web_view_link
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         fileId,
         workId,
@@ -214,7 +214,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
     const folderId = userEmail
       ? ((
           await this.db.queryOne<{ gdrive_folder_id: string }>(
-            `SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = ?`,
+            `SELECT gdrive_folder_id FROM work_note_gdrive_folders WHERE work_id = $1`,
             [workId]
           )
         )?.gdrive_folder_id ?? null)
@@ -228,7 +228,7 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       gdrive_file_id: string | null;
     }>(
       `SELECT file_id, r2_key, storage_type, gdrive_file_id FROM work_note_files
-       WHERE work_id = ? AND deleted_at IS NULL`,
+       WHERE work_id = $1 AND deleted_at IS NULL`,
       [workId]
     );
 
@@ -275,8 +275,8 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   ): Promise<void> {
     await this.db.execute(
       `UPDATE work_note_files
-       SET storage_type = ?, gdrive_file_id = ?, gdrive_folder_id = ?, gdrive_web_view_link = ?
-       WHERE file_id = ?`,
+       SET storage_type = $1, gdrive_file_id = $2, gdrive_folder_id = $3, gdrive_web_view_link = $4
+       WHERE file_id = $5`,
       ['GDRIVE', driveFile.id, folderId, driveFile.webViewLink, fileId]
     );
   }
@@ -459,14 +459,14 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       gdriveFolderLink: string;
     }>(
       `SELECT gdrive_folder_id as gdriveFolderId, gdrive_folder_link as gdriveFolderLink
-       FROM work_note_gdrive_folders WHERE work_id = ?`,
+       FROM work_note_gdrive_folders WHERE work_id = $1`,
       [workId]
     );
 
     // Check for legacy R2 files
     const legacyCount = await this.db.queryOne<{ count: number }>(
       `SELECT COUNT(*) as count FROM work_note_files
-       WHERE work_id = ? AND storage_type = 'R2' AND deleted_at IS NULL`,
+       WHERE work_id = $1 AND storage_type = 'R2' AND deleted_at IS NULL`,
       [workId]
     );
 

@@ -5,6 +5,7 @@ import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
+import { pgPlaceholders } from '../utils/db-utils';
 import { ChunkingService } from './chunking-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
 import { DEFAULT_RAG_QUERY_PROMPT } from './setting-defaults';
@@ -207,7 +208,7 @@ export class RagService {
       return new Map();
     }
 
-    const placeholders = workIds.map(() => '?').join(',');
+    const placeholders = pgPlaceholders(workIds.length);
     const { rows } = await this.db.query<WorkNote>(
       `SELECT work_id as workId, title, content_raw as contentRaw,
               category, created_at as createdAt, updated_at as updatedAt

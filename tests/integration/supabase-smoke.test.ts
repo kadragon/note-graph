@@ -85,7 +85,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
     });
 
     const row = await db.queryOne<{ value: string }>(
-      'SELECT value FROM app_settings WHERE key = ?',
+      'SELECT value FROM app_settings WHERE key = $1',
       ['test.smoke.tx1']
     );
     expect(row?.value).toBe('txval');
@@ -104,7 +104,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
     ).rejects.toThrow('intentional rollback');
 
     const row = await db.queryOne<{ value: string }>(
-      'SELECT value FROM app_settings WHERE key = ?',
+      'SELECT value FROM app_settings WHERE key = $1',
       ['test.smoke.tx2']
     );
     expect(row).toBeNull();
@@ -115,7 +115,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
 
     await db.execute(
       `INSERT INTO work_notes (work_id, title, content_raw, category)
-       VALUES (?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4)`,
       [
         testWorkId,
         'Smoke FTS Test Title',
@@ -138,7 +138,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
       // Negated ts_rank: lower (more negative) = better match, consistent with D1 bm25
       expect(rows.find((r) => r.id === testWorkId)!.rank).toBeLessThan(0);
     } finally {
-      await db.execute('DELETE FROM work_notes WHERE work_id = ?', [testWorkId]);
+      await db.execute('DELETE FROM work_notes WHERE work_id = $1', [testWorkId]);
     }
   });
 
@@ -147,7 +147,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
 
     await db.execute(
       `INSERT INTO meeting_minutes (meeting_id, meeting_date, topic, details_raw)
-       VALUES (?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4)`,
       [
         testMeetingId,
         '2026-01-01',
@@ -169,7 +169,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
       expect(rows.some((r) => r.id === testMeetingId)).toBe(true);
       expect(rows.find((r) => r.id === testMeetingId)!.rank).toBeLessThan(0);
     } finally {
-      await db.execute('DELETE FROM meeting_minutes WHERE meeting_id = ?', [testMeetingId]);
+      await db.execute('DELETE FROM meeting_minutes WHERE meeting_id = $1', [testMeetingId]);
     }
   });
 });

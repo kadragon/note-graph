@@ -64,7 +64,7 @@ async function getMeetingMinuteGroups(db: DatabaseClient, meetingId: string) {
     `SELECT wng.group_id as groupId, wng.name as name
      FROM meeting_minute_group mmg
      INNER JOIN work_note_groups wng ON wng.group_id = mmg.group_id
-     WHERE mmg.meeting_id = ?
+     WHERE mmg.meeting_id = $1
      ORDER BY wng.group_id ASC`,
     [meetingId]
   );
@@ -79,11 +79,11 @@ async function hasMeetingMinuteDuplicateTopic(
     excludeMeetingId?: string;
   }
 ): Promise<boolean> {
-  let sql = `SELECT topic FROM meeting_minutes WHERE meeting_date = ?`;
+  let sql = `SELECT topic FROM meeting_minutes WHERE meeting_date = $1`;
   const params: string[] = [input.meetingDate];
 
   if (input.excludeMeetingId) {
-    sql += ' AND meeting_id <> ?';
+    sql += ' AND meeting_id <> $2';
     params.push(input.excludeMeetingId);
   }
 
@@ -145,7 +145,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
       created_at as createdAt,
       updated_at as updatedAt
      FROM meeting_minutes
-     WHERE meeting_id = ?`,
+     WHERE meeting_id = $1`,
     [meetingId]
   );
 
@@ -158,7 +158,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
       `SELECT p.person_id as personId, p.name as name
          FROM meeting_minute_person mmp
          INNER JOIN persons p ON p.person_id = mmp.person_id
-         WHERE mmp.meeting_id = ?
+         WHERE mmp.meeting_id = $1
          ORDER BY p.person_id ASC`,
       [meetingId]
     ),
@@ -166,7 +166,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
       `SELECT tc.category_id as categoryId, tc.name as name
          FROM meeting_minute_task_category mmtc
          INNER JOIN task_categories tc ON tc.category_id = mmtc.category_id
-         WHERE mmtc.meeting_id = ?
+         WHERE mmtc.meeting_id = $1
          ORDER BY tc.category_id ASC`,
       [meetingId]
     ),
@@ -174,7 +174,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
     db.queryOne<{ linkedWorkNoteCount: number }>(
       `SELECT COUNT(*) as linkedWorkNoteCount
          FROM work_note_meeting_minute
-         WHERE meeting_id = ?`,
+         WHERE meeting_id = $1`,
       [meetingId]
     ),
   ]);
@@ -207,7 +207,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
   }>(
     `SELECT meeting_id as meetingId, meeting_date as meetingDate, topic, details_raw as detailsRaw
        FROM meeting_minutes
-       WHERE meeting_id = ?`,
+       WHERE meeting_id = $1`,
     [meetingId]
   );
 
@@ -254,7 +254,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
       `SELECT p.person_id as personId, p.name as name
          FROM meeting_minute_person mmp
          INNER JOIN persons p ON p.person_id = mmp.person_id
-         WHERE mmp.meeting_id = ?
+         WHERE mmp.meeting_id = $1
          ORDER BY p.person_id ASC`,
       [meetingId]
     ),
@@ -262,7 +262,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
       `SELECT tc.category_id as categoryId, tc.name as name
          FROM meeting_minute_task_category mmtc
          INNER JOIN task_categories tc ON tc.category_id = mmtc.category_id
-         WHERE mmtc.meeting_id = ?
+         WHERE mmtc.meeting_id = $1
          ORDER BY tc.category_id ASC`,
       [meetingId]
     ),

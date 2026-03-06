@@ -1,4 +1,7 @@
-import type { D1Database, R2Bucket, R2ObjectBody } from '@cloudflare/workers-types';
+import type { R2Bucket, R2ObjectBody } from '@cloudflare/workers-types';
+import { createSupabaseConnection } from '../apps/worker/src/adapters/supabase-connection.js';
+import { SupabaseDatabaseClient } from '../apps/worker/src/adapters/supabase-database-client.js';
+import type { DatabaseClient } from '../apps/worker/src/types/database.js';
 import type { Env } from '../apps/worker/src/types/env.js';
 
 type Logger = Pick<Console, 'info' | 'warn' | 'error'>;
@@ -30,7 +33,7 @@ export interface DriveClient {
 }
 
 interface MigrationOptions {
-  db: D1Database;
+  db: DatabaseClient;
   r2: R2Bucket;
   drive: DriveClient;
   userEmail: string;
@@ -52,14 +55,14 @@ const DEFAULT_LOGGER: Logger = console;
 
 interface CliBindings {
   env: Env;
-  db: D1Database;
+  db: DatabaseClient;
   r2: R2Bucket;
   dispose?: () => Promise<void>;
 }
 
 interface CliDeps {
   createBindings?: () => Promise<CliBindings>;
-  driveFactory?: (env: Env, db: D1Database) => DriveClient | Promise<DriveClient>;
+  driveFactory?: (env: Env, db: DatabaseClient) => DriveClient | Promise<DriveClient>;
   migrate?: (options: MigrationOptions) => Promise<number>;
   logger?: Logger;
 }
@@ -72,15 +75,14 @@ interface CliArgs {
 export async function migrateR2WorkNoteFiles(options: MigrationOptions): Promise<number> {
   const { db, r2, drive, userEmail, deleteR2 = false, logger = DEFAULT_LOGGER } = options;
 
-  const filesResult = await db
-    .prepare(
+  const files = (
+    await db.query<WorkNoteFileRow>(
       `SELECT file_id, work_id, r2_key, original_name, file_type, file_size, uploaded_by
        FROM work_note_files
        WHERE storage_type = 'R2' AND deleted_at IS NULL`
     )
-    .all<WorkNoteFileRow>();
+  ).rows;
 
-  const files = filesResult.results ?? [];
   if (files.length === 0) {
     logger.info('No R2 files to migrate.');
     return 0;
@@ -126,17 +128,15 @@ export async function migrateR2WorkNoteFiles(options: MigrationOptions): Promise
         file.file_type
       );
 
-      await db
-        .prepare(
-          `UPDATE work_note_files
-           SET storage_type = 'GDRIVE',
-               gdrive_file_id = ?,
-               gdrive_folder_id = ?,
-               gdrive_web_view_link = ?
-           WHERE file_id = ?`
-        )
-        .bind(uploaded.id, folder.gdriveFolderId, uploaded.webViewLink, file.file_id)
-        .run();
+      await db.execute(
+        `UPDATE work_note_files
+         SET storage_type = 'GDRIVE',
+             gdrive_file_id = $1,
+             gdrive_folder_id = $2,
+             gdrive_web_view_link = $3
+         WHERE file_id = $4`,
+        [uploaded.id, folder.gdriveFolderId, uploaded.webViewLink, file.file_id]
+      );
 
       if (deleteR2) {
         await r2.delete(file.r2_key);
@@ -224,23 +224,21 @@ function defaultArgv(): string[] {
 
 async function createDefaultBindings(): Promise<CliBindings> {
   const { Miniflare } = await import('miniflare');
-  const bindings = buildEnvBindings();
+  const databaseUrl = requireDatabaseUrl();
+  const db = new SupabaseDatabaseClient(createSupabaseConnection(databaseUrl));
+  const bindings = buildEnvBindings(databaseUrl);
   const mf = new Miniflare({
     modules: true,
     compatibilityDate: '2025-01-01',
     compatibilityFlags: ['nodejs_compat'],
-    d1Databases: { DB: 'worknote-db' },
     r2Buckets: { R2_BUCKET: 'worknote-files' },
     bindings,
-    d1Persist: process.env.D1_PERSIST,
     r2Persist: process.env.R2_PERSIST,
   });
 
-  const db = await mf.getD1Database('DB');
   const r2 = await mf.getR2Bucket('R2_BUCKET');
   const env = {
     ...bindings,
-    DB: db,
     R2_BUCKET: r2,
   } as Env;
 
@@ -248,20 +246,32 @@ async function createDefaultBindings(): Promise<CliBindings> {
     env,
     db,
     r2,
-    dispose: () => mf.dispose(),
+    dispose: async () => {
+      await db.close?.();
+      await mf.dispose();
+    },
   };
 }
 
-async function defaultDriveFactory(env: Env, db: D1Database): Promise<DriveClient> {
+async function defaultDriveFactory(env: Env, db: DatabaseClient): Promise<DriveClient> {
   const { GoogleDriveService } = await import(
     '../apps/worker/src/services/google-drive-service.js'
   );
-  const { D1DatabaseClient } = await import('../apps/worker/src/adapters/d1-database-client.js');
-  return new GoogleDriveService(env, new D1DatabaseClient(db));
+  return new GoogleDriveService(env, db);
 }
 
-function buildEnvBindings(): Record<string, string> {
+function requireDatabaseUrl(): string {
+  const databaseUrl = process.env.SUPABASE_DB_URL ?? process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('SUPABASE_DB_URL or DATABASE_URL is required');
+  }
+
+  return databaseUrl;
+}
+
+function buildEnvBindings(databaseUrl: string): Record<string, unknown> {
   return {
+    HYPERDRIVE: { connectionString: databaseUrl } as Hyperdrive,
     ENVIRONMENT: process.env.ENVIRONMENT ?? 'development',
     CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID ?? '',
     AI_GATEWAY_ID: process.env.AI_GATEWAY_ID ?? 'worknote-maker',

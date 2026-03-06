@@ -131,7 +131,7 @@
 - `apps/web/src/test/pwa-config.test.ts`
 
 ## Coverage by Area (Summary)
-- Repository and service layer: unit tests for repositories, services, and utilities (D1, R2, Drive, search, embeddings).
+- Repository and service layer: unit tests for repositories, services, and utilities (PostgreSQL, R2, Drive, search, embeddings).
 - API route coverage: integration tests for REST endpoints, file handling, and error mapping.
 - Frontend hooks: query/mutation hooks validated for data, cache invalidation, and error toasts.
 - UI flows: page-level tests for dashboards, CRUD screens, and modal behaviors.

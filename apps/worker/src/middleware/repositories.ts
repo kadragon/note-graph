@@ -6,18 +6,18 @@
  * Each request receives its own set of repository instances to ensure proper isolation
  * and state management.
  *
- * @param c - Hono context with AppContext type, provides access to environment (DB)
+ * @param c - Hono context with AppContext type, provides access to environment (HYPERDRIVE)
  * @param next - Hono next middleware function
  * @returns Promise that resolves to Response or void, following Hono middleware pattern
  *
  * @description
  * **Repository Instantiation:**
- * - Instantiates 7 repositories (departments, embeddingRetryQueue, pdfJobs, persons, taskCategories, todos, workNotes)
+ * - Instantiates repositories (departments, embeddingRetryQueue, pdfJobs, persons, taskCategories, todos, workNoteGroups)
  * - Creates a special PersonRepository variant with autoCreateDepartment option
- * - All repositories require a valid database connection (c.env.DB)
+ * - All repositories require a valid database connection via Hyperdrive
  *
  * **Error Handling:**
- * - Repository instantiation errors (e.g., invalid DB connection, missing environment)
+ * - Repository instantiation errors (e.g., missing HYPERDRIVE binding, invalid connection)
  * are NOT caught in this middleware
  * - Errors propagate to the global error handler middleware for centralized handling
  * - This design ensures consistent error responses and logging across the application
@@ -25,7 +25,7 @@
  *   to catch and format them appropriately
  *
  * **When Instantiation Might Fail:**
- * - c.env.DB is undefined or null (missing database binding)
+ * - c.env.HYPERDRIVE is undefined or null (missing Hyperdrive binding)
  * - Database connection is invalid or unreachable
  * - Repository constructors encounter validation errors (rare in normal operation)
  */

@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import { D1FtsDialect } from '../adapters/d1-fts-dialect';
+import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
 import type { CreateMeetingMinuteInput, UpdateMeetingMinuteInput } from '../schemas/meeting-minute';
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
@@ -44,7 +44,7 @@ export interface PaginatedMeetingMinutesResult {
 export class MeetingMinuteRepository {
   constructor(
     private db: DatabaseClient,
-    private dialect: FtsDialect = new D1FtsDialect()
+    private dialect: FtsDialect = new PostgresFtsDialect()
   ) {}
 
   private generateMeetingId(): string {

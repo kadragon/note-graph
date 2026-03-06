@@ -1,6 +1,8 @@
 # Database Migrations
 
-This directory contains D1 database migrations for the work note management system.
+This directory contains the historical migration archive for the work note management system.
+
+The active PostgreSQL schema lives under `supabase/migrations/`.
 
 ## Migration Files
 
@@ -46,24 +48,17 @@ Optimized indexes for:
 
 ## Running Migrations
 
-### Local Development
+### Historical Reference
 
 ```bash
-# Create local D1 database
-wrangler d1 create worknote-db
+# Create a new PostgreSQL migration
+bun run db:create-migration add_feature_name
 
-# Run migrations on local database
-wrangler d1 execute worknote-db --local --file=migrations/0001_initial_schema.sql
+# Reset/apply the local PostgreSQL schema
+bun run db:migrate:local
 
-# Verify schema
-wrangler d1 execute worknote-db --local --command="SELECT name FROM sqlite_master WHERE type='table'"
-```
-
-### Production
-
-```bash
-# Run migrations on production database
-wrangler d1 execute worknote-db --file=migrations/0001_initial_schema.sql
+# Push the current schema to the configured PostgreSQL database
+bun run db:migrate
 ```
 
 ## Naming Convention
@@ -77,7 +72,7 @@ Migration files follow the pattern: `NNNN_description.sql`
 
 1. Create new migration file with next sequential number
 2. Write SQL DDL statements (CREATE, ALTER, DROP)
-3. Test locally with `wrangler d1 execute --local`
+3. Test locally with the PostgreSQL/PGlite workflow
 4. Document changes in this README
 5. Apply to production after verification
 
@@ -85,12 +80,12 @@ Migration files follow the pattern: `NNNN_description.sql`
 
 - **FTS Tokenizer**: Uses `trigram` tokenizer for better Korean text matching
 - **Cascade Deletes**: Foreign keys use `ON DELETE CASCADE` where appropriate
-- **Timestamps**: Use TEXT type with ISO 8601 format (SQLite convention)
+- **Timestamps**: Use PostgreSQL timestamp/date types in the active schema
 - **Check Constraints**: Enforce valid values for status, role, repeat_rule, etc.
 - **Unique Constraints**: Prevent duplicate relationships and version numbers
 
 ## Schema Traceability
 
 All schema elements are traced to:
-- **TASK-002** - D1 database schema and migrations
+- **TASK-002** - Database schema and migrations
 - **Spec IDs**: SPEC-worknote-1, SPEC-person-1, SPEC-dept-1, SPEC-todo-1, SPEC-pdf-1

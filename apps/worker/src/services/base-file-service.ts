@@ -6,6 +6,7 @@
 import type { R2Bucket, R2Object, R2ObjectBody } from '@cloudflare/workers-types';
 import type { DatabaseClient } from '../types/database';
 import { BadRequestError, NotFoundError } from '../types/errors';
+import { pgPlaceholders } from '../utils/db-utils';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const GENERIC_MIME_TYPES = ['', 'application/octet-stream'];
@@ -154,7 +155,7 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
       values.push(...additionalColumns.values);
     }
 
-    const placeholders = columnNames.map(() => '?').join(', ');
+    const placeholders = pgPlaceholders(columnNames.length);
 
     await this.db.execute(
       `INSERT INTO ${this.tableName} (${columnNames.join(', ')}) VALUES (${placeholders})`,
@@ -164,7 +165,7 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
 
   async getFileById(fileId: string): Promise<TFile | null> {
     const result = await this.db.queryOne<Record<string, unknown>>(
-      `SELECT * FROM ${this.tableName} WHERE file_id = ? AND deleted_at IS NULL`,
+      `SELECT * FROM ${this.tableName} WHERE file_id = $1 AND deleted_at IS NULL`,
       [fileId]
     );
 
@@ -176,7 +177,7 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
   async listFiles(ownerId: string): Promise<TFile[]> {
     const { rows } = await this.db.query<Record<string, unknown>>(
       `SELECT * FROM ${this.tableName}
-       WHERE ${this.ownerIdColumn} = ? AND deleted_at IS NULL
+       WHERE ${this.ownerIdColumn} = $1 AND deleted_at IS NULL
        ORDER BY uploaded_at DESC`,
       [ownerId]
     );
@@ -220,7 +221,7 @@ export abstract class BaseFileService<TFile extends BaseFileRecord> {
 
   protected async softDeleteFileRecord(fileId: string): Promise<void> {
     const now = new Date().toISOString();
-    await this.db.execute(`UPDATE ${this.tableName} SET deleted_at = ? WHERE file_id = ?`, [
+    await this.db.execute(`UPDATE ${this.tableName} SET deleted_at = $1 WHERE file_id = $2`, [
       now,
       fileId,
     ]);

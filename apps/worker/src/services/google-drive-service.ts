@@ -177,12 +177,12 @@ export class GoogleDriveService {
       `SELECT work_id as workId, gdrive_folder_id as gdriveFolderId,
               gdrive_folder_link as gdriveFolderLink, created_at as createdAt
        FROM work_note_gdrive_folders
-       WHERE work_id = ?`,
+       WHERE work_id = $1`,
       [workId]
     );
 
     const workNote = await this.db.queryOne<{ createdAt: string }>(
-      'SELECT created_at as createdAt FROM work_notes WHERE work_id = ?',
+      'SELECT created_at as createdAt FROM work_notes WHERE work_id = $1',
       [workId]
     );
 
@@ -212,7 +212,7 @@ export class GoogleDriveService {
     // Store in DB
     await this.db.execute(
       `INSERT INTO work_note_gdrive_folders (work_id, gdrive_folder_id, gdrive_folder_link, created_at)
-       VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+       VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
       [workId, folder.id, folder.webViewLink, now]
     );
 

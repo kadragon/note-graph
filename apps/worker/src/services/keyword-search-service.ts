@@ -1,6 +1,6 @@
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
-import { D1FtsDialect } from '../adapters/d1-fts-dialect';
+import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
 import type { FtsDialect } from '../types/fts-dialect';
 import {
@@ -40,7 +40,7 @@ function toTimestamp(isoString: string): number | null {
 export class KeywordSearchService {
   constructor(
     private db: DatabaseClient,
-    private dialect: FtsDialect = new D1FtsDialect()
+    private dialect: FtsDialect = new PostgresFtsDialect()
   ) {}
 
   private buildQuery(rawQuery: string, operator: 'AND' | 'OR'): string {
@@ -170,34 +170,35 @@ export class KeywordSearchService {
 
     const conditions: string[] = [];
     const params: unknown[] = [ftsQuery, candidateLimit];
+    let paramIndex = 3;
 
     if (filters?.personId || filters?.deptName) {
       sql += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
       sql += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
 
       if (filters?.personId) {
-        conditions.push('wnp.person_id = ?');
+        conditions.push(`wnp.person_id = $${paramIndex++}`);
         params.push(filters.personId);
       }
 
       if (filters?.deptName) {
-        conditions.push('p.current_dept = ?');
+        conditions.push(`p.current_dept = $${paramIndex++}`);
         params.push(filters.deptName);
       }
     }
 
     if (filters?.category) {
-      conditions.push('wn.category = ?');
+      conditions.push(`wn.category = $${paramIndex++}`);
       params.push(filters.category);
     }
 
     if (filters?.from) {
-      conditions.push('wn.created_at >= ?');
+      conditions.push(`wn.created_at >= $${paramIndex++}`);
       params.push(filters.from);
     }
 
     if (filters?.to) {
-      conditions.push('wn.created_at <= ?');
+      conditions.push(`wn.created_at <= $${paramIndex++}`);
       params.push(filters.to);
     }
 

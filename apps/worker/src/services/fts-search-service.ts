@@ -1,7 +1,7 @@
 // Trace: SPEC-search-1, TASK-009
 import type { SearchFilters, SearchResultItem } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
-import { D1FtsDialect } from '../adapters/d1-fts-dialect';
+import { PostgresFtsDialect } from '../adapters/postgres-fts-dialect';
 import type { DatabaseClient } from '../types/database';
 import type { FtsDialect } from '../types/fts-dialect';
 import { buildWorkNoteTsQuery } from '../utils/work-notes-fts';
@@ -12,7 +12,7 @@ import { buildWorkNoteTsQuery } from '../utils/work-notes-fts';
 export class FtsSearchService {
   constructor(
     private db: DatabaseClient,
-    private dialect: FtsDialect = new D1FtsDialect()
+    private dialect: FtsDialect = new PostgresFtsDialect()
   ) {}
 
   /**
@@ -49,20 +49,21 @@ export class FtsSearchService {
 
     const conditions: string[] = [];
     const params: unknown[] = [ftsQuery];
+    let paramIndex = 2;
 
     // Apply filters
     if (filters?.category) {
-      conditions.push('wn.category = ?');
+      conditions.push(`wn.category = $${paramIndex++}`);
       params.push(filters.category);
     }
 
     if (filters?.from) {
-      conditions.push('wn.created_at >= ?');
+      conditions.push(`wn.created_at >= $${paramIndex++}`);
       params.push(filters.from);
     }
 
     if (filters?.to) {
-      conditions.push('wn.created_at <= ?');
+      conditions.push(`wn.created_at <= $${paramIndex++}`);
       params.push(filters.to);
     }
 
@@ -73,12 +74,12 @@ export class FtsSearchService {
       sql += ` INNER JOIN persons p ON wnp.person_id = p.person_id`;
 
       if (filters?.personId) {
-        conditions.push('wnp.person_id = ?');
+        conditions.push(`wnp.person_id = $${paramIndex++}`);
         params.push(filters.personId);
       }
 
       if (filters?.deptName) {
-        conditions.push('p.current_dept = ?');
+        conditions.push(`p.current_dept = $${paramIndex++}`);
         params.push(filters.deptName);
       }
     }
@@ -92,7 +93,7 @@ export class FtsSearchService {
     sql += ` ORDER BY fts.${cte.rankColumn} DESC`;
 
     // Add limit
-    sql += ` LIMIT ?`;
+    sql += ` LIMIT $${paramIndex}`;
     params.push(limit);
 
     // Execute query

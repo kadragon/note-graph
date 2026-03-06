@@ -1,98 +1,8 @@
 import type { SupabaseConnection } from '@worker/adapters/supabase-database-client';
-import {
-  buildAliasMap,
-  SupabaseDatabaseClient,
-  translatePlaceholders,
-  translateSqliteFunctions,
-} from '@worker/adapters/supabase-database-client';
+import { buildAliasMap, SupabaseDatabaseClient } from '@worker/adapters/supabase-database-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('SupabaseDatabaseClient', () => {
-  describe('translatePlaceholders', () => {
-    it('returns sql unchanged when no params', () => {
-      expect(translatePlaceholders('SELECT 1')).toBe('SELECT 1');
-    });
-
-    it('translates single ? to $1', () => {
-      expect(translatePlaceholders('SELECT * FROM t WHERE id = ?')).toBe(
-        'SELECT * FROM t WHERE id = $1'
-      );
-    });
-
-    it('translates multiple ? to $1, $2, $N', () => {
-      const sql = 'INSERT INTO t (a, b, c) VALUES (?, ?, ?)';
-      expect(translatePlaceholders(sql)).toBe('INSERT INTO t (a, b, c) VALUES ($1, $2, $3)');
-    });
-
-    it('does not translate ? inside single-quoted strings', () => {
-      const sql = "SELECT * FROM t WHERE name = '?' AND id = ?";
-      expect(translatePlaceholders(sql)).toBe("SELECT * FROM t WHERE name = '?' AND id = $1");
-    });
-
-    it('handles SQL-standard escaped single quotes (double-quote escape)', () => {
-      const sql = "WHERE name = 'it''s' AND id = ?";
-      expect(translatePlaceholders(sql)).toBe("WHERE name = 'it''s' AND id = $1");
-    });
-
-    it('handles consecutive escaped quotes with trailing placeholder', () => {
-      const sql = "WHERE a = 'x''y''z' AND b = ?";
-      expect(translatePlaceholders(sql)).toBe("WHERE a = 'x''y''z' AND b = $1");
-    });
-
-    it('does not translate ? inside double-quoted identifiers', () => {
-      const sql = 'SELECT "column?" FROM t WHERE id = ?';
-      expect(translatePlaceholders(sql)).toBe('SELECT "column?" FROM t WHERE id = $1');
-    });
-
-    it('does not translate ? inside line comments', () => {
-      const sql = 'SELECT 1 -- is this a param?\nWHERE id = ?';
-      expect(translatePlaceholders(sql)).toBe('SELECT 1 -- is this a param?\nWHERE id = $1');
-    });
-
-    it('handles double-quoted identifier followed by placeholder', () => {
-      const sql = 'SELECT "col" FROM t WHERE a = ? AND "b?" = ?';
-      expect(translatePlaceholders(sql)).toBe('SELECT "col" FROM t WHERE a = $1 AND "b?" = $2');
-    });
-  });
-
-  describe('translateSqliteFunctions', () => {
-    it('translates json_each to jsonb_array_elements_text', () => {
-      const sql = 't.work_id IN (SELECT value FROM json_each(?))';
-      expect(translateSqliteFunctions(sql)).toBe(
-        't.work_id IN (SELECT jsonb_array_elements_text(?::jsonb))'
-      );
-    });
-
-    it('handles case-insensitive json_each', () => {
-      const sql = 'SELECT value FROM JSON_EACH(?)';
-      expect(translateSqliteFunctions(sql)).toBe('SELECT jsonb_array_elements_text(?::jsonb)');
-    });
-
-    it('preserves sql without json_each', () => {
-      const sql = 'SELECT * FROM todos WHERE id = ?';
-      expect(translateSqliteFunctions(sql)).toBe(sql);
-    });
-
-    it('logs error for untranslated json_each patterns', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const sql = 'SELECT 1 FROM json_each(some_column)';
-      translateSqliteFunctions(sql);
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('untranslated json_each()'));
-      consoleSpy.mockRestore();
-    });
-
-    it('works with TodoRepository findAll workIds pattern', () => {
-      const sql = `
-      SELECT t.todo_id as todoId, t.work_id as workId
-      FROM todos t
-      WHERE t.work_id IN (SELECT value FROM json_each(?))
-      ORDER BY t.due_date ASC`;
-      const result = translateSqliteFunctions(sql);
-      expect(result).toContain('jsonb_array_elements_text(?::jsonb)');
-      expect(result).not.toContain('json_each');
-    });
-  });
-
   describe('buildAliasMap', () => {
     it('builds map for camelCase aliases', () => {
       const map = buildAliasMap('SELECT t.work_id as workId FROM todos t');
@@ -166,6 +76,20 @@ describe('SupabaseDatabaseClient', () => {
   });
 
   describe('query', () => {
+    it('passes SQL through unchanged without placeholder or function translation', async () => {
+      const mockConn: SupabaseConnection = {
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      };
+      const client = new SupabaseDatabaseClient(mockConn);
+      const sql =
+        'SELECT t.todo_id as todoId FROM todos t WHERE t.work_id IN (SELECT value FROM json_each(?))';
+
+      await client.query(sql, [JSON.stringify(['W-1'])]);
+
+      expect(mockConn.query).toHaveBeenCalledWith(sql, [JSON.stringify(['W-1'])]);
+    });
+
     it('translates placeholders and returns rows from connection', async () => {
       const mockConn: SupabaseConnection = {
         query: vi.fn().mockResolvedValue({ rows: [{ id: 1 }, { id: 2 }] }),
@@ -173,7 +97,7 @@ describe('SupabaseDatabaseClient', () => {
       };
       const client = new SupabaseDatabaseClient(mockConn);
 
-      const result = await client.query('SELECT * FROM t WHERE a = ? AND b = ?', ['x', 'y']);
+      const result = await client.query('SELECT * FROM t WHERE a = $1 AND b = $2', ['x', 'y']);
 
       expect(result.rows).toEqual([{ id: 1 }, { id: 2 }]);
       expect(mockConn.query).toHaveBeenCalledWith('SELECT * FROM t WHERE a = $1 AND b = $2', [
@@ -182,7 +106,7 @@ describe('SupabaseDatabaseClient', () => {
       ]);
     });
 
-    it('translates json_each to jsonb_array_elements_text in query', async () => {
+    it('passes PostgreSQL-native set-returning function SQL through unchanged', async () => {
       const mockConn: SupabaseConnection = {
         query: vi.fn().mockResolvedValue({ rows: [{ todoid: 'T-1', workid: 'W-1' }] }),
         execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
@@ -190,7 +114,7 @@ describe('SupabaseDatabaseClient', () => {
       const client = new SupabaseDatabaseClient(mockConn);
 
       await client.query(
-        'SELECT t.todo_id as todoId, t.work_id as workId FROM todos t WHERE t.work_id IN (SELECT value FROM json_each(?))',
+        'SELECT t.todo_id as todoId, t.work_id as workId FROM todos t WHERE t.work_id IN (SELECT jsonb_array_elements_text($1::jsonb))',
         [JSON.stringify(['W-1', 'W-2'])]
       );
 
@@ -208,7 +132,7 @@ describe('SupabaseDatabaseClient', () => {
       const client = new SupabaseDatabaseClient(mockConn);
 
       const result = await client.query<{ workId: string; createdAt: string }>(
-        'SELECT work_id as workId, created_at as createdAt FROM work_notes WHERE id = ?',
+        'SELECT work_id as workId, created_at as createdAt FROM work_notes WHERE id = $1',
         [1]
       );
 
@@ -224,7 +148,7 @@ describe('SupabaseDatabaseClient', () => {
       };
       const client = new SupabaseDatabaseClient(mockConn);
 
-      const result = await client.queryOne('SELECT * FROM t WHERE id = ?', [1]);
+      const result = await client.queryOne('SELECT * FROM t WHERE id = $1', [1]);
 
       expect(result).toEqual({ id: 1 });
       expect(mockConn.query).toHaveBeenCalledWith('SELECT * FROM t WHERE id = $1', [1]);
@@ -238,7 +162,7 @@ describe('SupabaseDatabaseClient', () => {
       const client = new SupabaseDatabaseClient(mockConn);
 
       const result = await client.queryOne<{ workId: string }>(
-        'SELECT work_id as workId FROM t WHERE id = ?',
+        'SELECT work_id as workId FROM t WHERE id = $1',
         [1]
       );
 
@@ -252,7 +176,7 @@ describe('SupabaseDatabaseClient', () => {
       };
       const client = new SupabaseDatabaseClient(mockConn);
 
-      const result = await client.queryOne('SELECT * FROM t WHERE id = ?', [999]);
+      const result = await client.queryOne('SELECT * FROM t WHERE id = $1', [999]);
 
       expect(result).toBeNull();
     });
@@ -277,7 +201,7 @@ describe('SupabaseDatabaseClient', () => {
 
     it('commits on success', async () => {
       const result = await client.transaction(async (tx) => {
-        await tx.execute('INSERT INTO t (a) VALUES (?)', ['x']);
+        await tx.execute('INSERT INTO t (a) VALUES ($1)', ['x']);
         return 'ok';
       });
 
@@ -338,8 +262,8 @@ describe('SupabaseDatabaseClient', () => {
 
     it('wraps statements in a single transaction', async () => {
       await client.executeBatch([
-        { sql: 'INSERT INTO t (a) VALUES (?)', params: ['x'] },
-        { sql: 'INSERT INTO t (a) VALUES (?)', params: ['y'] },
+        { sql: 'INSERT INTO t (a) VALUES ($1)', params: ['x'] },
+        { sql: 'INSERT INTO t (a) VALUES ($1)', params: ['y'] },
       ]);
 
       expect(executeCalls[0].sql).toBe('BEGIN');
@@ -361,8 +285,8 @@ describe('SupabaseDatabaseClient', () => {
 
       await expect(
         client.executeBatch([
-          { sql: 'INSERT INTO t (a) VALUES (?)', params: ['x'] },
-          { sql: 'INSERT INTO t (a) VALUES (?)', params: ['y'] },
+          { sql: 'INSERT INTO t (a) VALUES ($1)', params: ['x'] },
+          { sql: 'INSERT INTO t (a) VALUES ($1)', params: ['y'] },
         ])
       ).rejects.toThrow('constraint');
 

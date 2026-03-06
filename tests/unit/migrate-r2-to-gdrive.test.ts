@@ -1,63 +1,15 @@
-import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
+import type { R2Bucket } from '@cloudflare/workers-types';
+import { createPgliteConnection } from '@worker/adapters/pglite-connection';
+import { SupabaseDatabaseClient } from '@worker/adapters/supabase-database-client';
+import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrateR2WorkNoteFiles, runMigrationCli } from '../../scripts/migrate-r2-to-gdrive';
 import { MockR2 } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
-/**
- * Thin D1-compatible shim over PGlite for the migration script,
- * which uses the D1 API (prepare/bind/all/first/run) directly.
- */
-function createD1Shim(): D1Database {
-  function convertPlaceholders(sql: string): string {
-    let idx = 0;
-    return sql.replace(/\?/g, () => {
-      idx += 1;
-      return `$${idx}`;
-    });
-  }
-
-  const db = {
-    prepare(sql: string) {
-      let boundParams: unknown[] = [];
-      const stmt = {
-        bind(...args: unknown[]) {
-          boundParams = args;
-          return stmt;
-        },
-        async all<T>() {
-          const pgSql = convertPlaceholders(sql);
-          const result = await pglite.query<T>(pgSql, boundParams);
-          return { results: result.rows };
-        },
-        async first<T>(): Promise<T | null> {
-          const pgSql = convertPlaceholders(sql);
-          const result = await pglite.query<T>(pgSql, boundParams);
-          return (result.rows[0] as T) ?? null;
-        },
-        async run() {
-          const pgSql = convertPlaceholders(sql);
-          await pglite.query(pgSql, boundParams);
-          return { success: true };
-        },
-      };
-      return stmt;
-    },
-    async batch(statements: { run: () => Promise<unknown> }[]) {
-      const results = [];
-      for (const stmt of statements) {
-        results.push(await stmt.run());
-      }
-      return results;
-    },
-  } as unknown as D1Database;
-
-  return db;
-}
-
 describe('migrateR2WorkNoteFiles', () => {
-  const d1Shim = createD1Shim();
+  const getDb = () => new SupabaseDatabaseClient(createPgliteConnection(pglite));
 
   const insertWorkNote = async (workId: string, createdAt = new Date().toISOString()) => {
     await pglite.query(
@@ -119,7 +71,7 @@ describe('migrateR2WorkNoteFiles', () => {
     };
 
     const migrated = await migrateR2WorkNoteFiles({
-      db: d1Shim,
+      db: getDb(),
       r2: r2 as unknown as R2Bucket,
       drive,
       userEmail: uploadedBy,
@@ -221,7 +173,7 @@ describe('migrateR2WorkNoteFiles', () => {
     };
 
     const migrated = await migrateR2WorkNoteFiles({
-      db: d1Shim,
+      db: getDb(),
       r2: r2 as unknown as R2Bucket,
       drive,
       userEmail: uploadedBy,
@@ -280,7 +232,7 @@ describe('migrateR2WorkNoteFiles', () => {
     };
 
     const migrated = await migrateR2WorkNoteFiles({
-      db: d1Shim,
+      db: getDb(),
       r2: r2 as unknown as R2Bucket,
       drive,
       userEmail: uploadedBy,
@@ -326,7 +278,7 @@ describe('migrateR2WorkNoteFiles', () => {
     };
 
     const migrated = await migrateR2WorkNoteFiles({
-      db: d1Shim,
+      db: getDb(),
       r2: r2 as unknown as R2Bucket,
       drive,
       userEmail: uploadedBy,
@@ -339,7 +291,7 @@ describe('migrateR2WorkNoteFiles', () => {
 
 describe('runMigrationCli', () => {
   it('wires CLI flags into migration options', async () => {
-    const db = createD1Shim();
+    const db = {} as DatabaseClient;
     const r2 = new MockR2() as unknown as R2Bucket;
     const envBindings = {
       GOOGLE_CLIENT_ID: 'id',
