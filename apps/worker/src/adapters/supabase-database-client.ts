@@ -43,20 +43,38 @@ export function translatePlaceholders(sql: string): string {
   return result;
 }
 
+/**
+ * Quote camelCase column aliases with double quotes so PostgreSQL preserves casing.
+ * Matches `AS identifier` where the identifier contains at least one uppercase letter
+ * (i.e. camelCase aliases like `workId`, `createdAt`). Already-quoted aliases are skipped.
+ */
+export function quoteCamelCaseAliases(sql: string): string {
+  return sql.replace(/\bas\s+(?!")([a-z]\w*[A-Z]\w*)\b/gi, (match, alias: string) => {
+    if (/[A-Z]/.test(alias)) {
+      return `as "${alias}"`;
+    }
+    return match;
+  });
+}
+
 export class SupabaseDatabaseClient implements DatabaseClient {
   constructor(private conn: SupabaseConnection) {}
 
+  private translateSql(sql: string): string {
+    return quoteCamelCaseAliases(translatePlaceholders(sql));
+  }
+
   async query<T>(sql: string, params?: unknown[]): Promise<{ rows: T[] }> {
-    return this.conn.query<T>(translatePlaceholders(sql), params);
+    return this.conn.query<T>(this.translateSql(sql), params);
   }
 
   async queryOne<T>(sql: string, params?: unknown[]): Promise<T | null> {
-    const { rows } = await this.conn.query<T>(translatePlaceholders(sql), params);
+    const { rows } = await this.conn.query<T>(this.translateSql(sql), params);
     return rows[0] ?? null;
   }
 
   async execute(sql: string, params?: unknown[]): Promise<{ rowCount: number }> {
-    return this.conn.execute(translatePlaceholders(sql), params);
+    return this.conn.execute(this.translateSql(sql), params);
   }
 
   async transaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
@@ -81,7 +99,7 @@ export class SupabaseDatabaseClient implements DatabaseClient {
     await this.conn.execute('BEGIN');
     try {
       for (const stmt of statements) {
-        await this.conn.execute(translatePlaceholders(stmt.sql), stmt.params);
+        await this.conn.execute(this.translateSql(stmt.sql), stmt.params);
       }
       await this.conn.execute('COMMIT');
     } catch (error) {

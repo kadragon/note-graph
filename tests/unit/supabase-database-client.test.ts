@@ -1,5 +1,6 @@
 import type { SupabaseConnection } from '@worker/adapters/supabase-database-client';
 import {
+  quoteCamelCaseAliases,
   SupabaseDatabaseClient,
   translatePlaceholders,
 } from '@worker/adapters/supabase-database-client';
@@ -35,6 +36,39 @@ describe('SupabaseDatabaseClient', () => {
     it('handles consecutive escaped quotes with trailing placeholder', () => {
       const sql = "WHERE a = 'x''y''z' AND b = ?";
       expect(translatePlaceholders(sql)).toBe("WHERE a = 'x''y''z' AND b = $1");
+    });
+  });
+
+  describe('quoteCamelCaseAliases', () => {
+    it('quotes camelCase aliases', () => {
+      expect(quoteCamelCaseAliases('SELECT t.work_id as workId FROM todos t')).toBe(
+        'SELECT t.work_id as "workId" FROM todos t'
+      );
+    });
+
+    it('quotes multiple camelCase aliases', () => {
+      const sql =
+        'SELECT t.todo_id as todoId, t.work_id as workId, w.title as workTitle FROM todos t';
+      expect(quoteCamelCaseAliases(sql)).toBe(
+        'SELECT t.todo_id as "todoId", t.work_id as "workId", w.title as "workTitle" FROM todos t'
+      );
+    });
+
+    it('does not quote lowercase-only aliases', () => {
+      expect(quoteCamelCaseAliases('SELECT t.title as title FROM todos t')).toBe(
+        'SELECT t.title as title FROM todos t'
+      );
+    });
+
+    it('does not double-quote already quoted aliases', () => {
+      expect(quoteCamelCaseAliases('SELECT t.work_id as "workId" FROM todos t')).toBe(
+        'SELECT t.work_id as "workId" FROM todos t'
+      );
+    });
+
+    it('handles AS keyword in any case', () => {
+      const result = quoteCamelCaseAliases('SELECT t.work_id AS workId FROM todos t');
+      expect(result).toContain('"workId"');
     });
   });
 
