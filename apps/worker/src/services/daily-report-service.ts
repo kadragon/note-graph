@@ -4,7 +4,7 @@
 
 import type { DailyReport, DailyReportAIAnalysis } from '@shared/types/daily-report';
 import { DailyReportRepository } from '../repositories/daily-report-repository';
-import { TodoRepository } from '../repositories/todo-repository';
+import { dailyReportAIAnalysisSchema } from '../schemas/daily-report';
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { RateLimitError } from '../types/errors';
@@ -14,10 +14,10 @@ import { DEFAULT_DAILY_REPORT_PROMPT, DEFAULT_WRITER_CONTEXT } from './setting-d
 import type { SettingService } from './setting-service';
 
 const GPT_MAX_COMPLETION_TOKENS = 4000;
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 export class DailyReportService {
   private reportRepo: DailyReportRepository;
-  private todoRepo: TodoRepository;
   private env: Env;
   private db: DatabaseClient;
   private settingService?: SettingService;
@@ -27,7 +27,6 @@ export class DailyReportService {
     this.db = db;
     this.settingService = settingService;
     this.reportRepo = new DailyReportRepository(db);
-    this.todoRepo = new TodoRepository(db);
   }
 
   async generateReport(userEmail: string, date: string, timezoneOffset = 0): Promise<DailyReport> {
@@ -40,35 +39,8 @@ export class DailyReportService {
       console.warn('[DailyReportService] Calendar fetch failed, proceeding without:', error);
     }
 
-    // 2. Fetch todos by view
-    const [todayTodos, weekTodos, backlogTodos] = await Promise.all([
-      this.todoRepo.findAll({ view: 'today', workIds: [] }),
-      this.todoRepo.findAll({ view: 'week', workIds: [] }),
-      this.todoRepo.findAll({ view: 'backlog', workIds: [] }),
-    ]);
-
-    const todosSnapshot: DailyReport['todosSnapshot'] = {
-      today: todayTodos.map((t) => ({
-        id: t.todoId,
-        title: t.title,
-        dueDate: t.dueDate,
-        status: t.status,
-      })),
-      upcoming: weekTodos
-        .filter((t) => !todayTodos.some((tt) => tt.todoId === t.todoId))
-        .map((t) => ({
-          id: t.todoId,
-          title: t.title,
-          dueDate: t.dueDate,
-          status: t.status,
-        })),
-      backlog: backlogTodos.map((t) => ({
-        id: t.todoId,
-        title: t.title,
-        dueDate: t.dueDate,
-        status: t.status,
-      })),
-    };
+    // 2. Fetch todos bucketed by report date
+    const todosSnapshot = await this.buildTodosSnapshot(date);
 
     // 3. Fetch previous report
     const previousReport = await this.reportRepo.findPreviousReport(date);
@@ -98,6 +70,66 @@ export class DailyReportService {
 
   async getRecentReports(limit: number): Promise<DailyReport[]> {
     return this.reportRepo.findRecent(limit);
+  }
+
+  /**
+   * Build todo snapshot bucketed by the requested report date, not the current date.
+   * - today: due on the report date
+   * - upcoming: due after report date through end of that week (Friday)
+   * - backlog: overdue before the report date
+   * Each todo appears in exactly one bucket.
+   */
+  private async buildTodosSnapshot(date: string): Promise<DailyReport['todosSnapshot']> {
+    const reportDate = new Date(`${date}T00:00:00+09:00`);
+    const dayStartUTC = new Date(reportDate.getTime() - KST_OFFSET_MS).toISOString();
+    const dayEndUTC = new Date(
+      reportDate.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    const dayOfWeek = reportDate.getDay();
+    const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+    const weekEndUTC = new Date(
+      reportDate.getTime() - KST_OFFSET_MS + (daysUntilFriday + 1) * 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    const { rows } = await this.db.query<{
+      todo_id: string;
+      title: string;
+      due_date: string | null;
+      status: string;
+    }>(
+      `SELECT todo_id, title, due_date, status
+       FROM todos
+       WHERE status = '진행중'
+         AND due_date IS NOT NULL
+         AND (wait_until IS NULL OR wait_until < $1::timestamptz)
+       ORDER BY due_date ASC`,
+      [dayEndUTC]
+    );
+
+    const toItem = (r: (typeof rows)[number]) => ({
+      id: r.todo_id,
+      title: r.title,
+      dueDate: r.due_date,
+      status: r.status,
+    });
+
+    const today: DailyReport['todosSnapshot']['today'] = [];
+    const upcoming: DailyReport['todosSnapshot']['upcoming'] = [];
+    const backlog: DailyReport['todosSnapshot']['backlog'] = [];
+
+    for (const row of rows) {
+      const due = row.due_date!;
+      if (due >= dayStartUTC && due < dayEndUTC) {
+        today.push(toItem(row));
+      } else if (due >= dayEndUTC && due < weekEndUTC) {
+        upcoming.push(toItem(row));
+      } else if (due < dayStartUTC) {
+        backlog.push(toItem(row));
+      }
+    }
+
+    return { today, upcoming, backlog };
   }
 
   private getModel(): string {
@@ -199,9 +231,10 @@ export class DailyReportService {
     }
 
     try {
-      return JSON.parse(content) as DailyReportAIAnalysis;
-    } catch {
-      console.error('[DailyReportService] Failed to parse AI response:', content);
+      const parsed = JSON.parse(content);
+      return dailyReportAIAnalysisSchema.parse(parsed);
+    } catch (error) {
+      console.error('[DailyReportService] Failed to parse AI response:', content, error);
       throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해 주세요.');
     }
   }
