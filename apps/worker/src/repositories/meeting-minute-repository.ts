@@ -332,6 +332,14 @@ export class MeetingMinuteRepository {
     const joinClause = joins.length > 0 ? `\n${joins.join('\n')}` : '';
     const whereClause = conditions.length > 0 ? `\nWHERE ${conditions.join(' AND ')}` : '';
 
+    const totalSql = `
+      ${withClause}
+      SELECT COUNT(mm.meeting_id) as "total"
+      FROM meeting_minutes mm${joinClause}${whereClause}
+    `;
+
+    const totalRow = await this.db.queryOne<{ total: number }>(totalSql, params);
+
     let sql = `
       ${withClause}
       SELECT
@@ -341,8 +349,7 @@ export class MeetingMinuteRepository {
         mm.details_raw as "detailsRaw",
         mm.keywords_json as "keywordsJson",
         mm.created_at as "createdAt",
-        mm.updated_at as "updatedAt",
-        COUNT(*) OVER() as "totalCount"
+        mm.updated_at as "updatedAt"
       FROM meeting_minutes mm
     `;
     sql += joinClause;
@@ -358,10 +365,9 @@ export class MeetingMinuteRepository {
       keywordsJson: string;
       createdAt: string;
       updatedAt: string;
-      totalCount: number;
     }>(sql, [...params, pageSize, offset]);
 
-    const total = Number(result.rows[0]?.totalCount || 0);
+    const total = Number(totalRow?.total || 0);
     const items = result.rows.map((row) => ({
       meetingId: row.meetingId,
       meetingDate: row.meetingDate,
