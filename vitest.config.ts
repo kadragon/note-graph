@@ -1,6 +1,34 @@
 import path from "path";
 import { defineConfig } from "vitest/config";
 
+/**
+ * Unit test files that require PGlite (import from pg-setup or pg-test-utils).
+ * All other unit tests run without DB setup for faster execution.
+ */
+const dbUnitTests = [
+  "tests/unit/department-repository.test.ts",
+  "tests/unit/embedding-processor.batch.test.ts",
+  "tests/unit/embedding-retry-queue-repository.test.ts",
+  "tests/unit/meeting-minute-reference-service.test.ts",
+  "tests/unit/meeting-minute-repository.test.ts",
+  "tests/unit/migrate-r2-to-gdrive.test.ts",
+  "tests/unit/migration-meeting-minutes.test.ts",
+  "tests/unit/pdf-job-repository.test.ts",
+  "tests/unit/person-repository.test.ts",
+  "tests/unit/setting-repository.test.ts",
+  "tests/unit/setting-service.test.ts",
+  "tests/unit/statistics-repository.test.ts",
+  "tests/unit/task-category-repository.test.ts",
+  "tests/unit/todo-repository-ai-context.test.ts",
+  "tests/unit/todo-repository-crud.test.ts",
+  "tests/unit/todo-repository-filtering.test.ts",
+  "tests/unit/todo-repository-query.test.ts",
+  "tests/unit/todo-repository-recurrence.test.ts",
+  "tests/unit/work-note-file-service.test.ts",
+  "tests/unit/work-note-group-repository.test.ts",
+  "tests/unit/work-note-repository.test.ts",
+];
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -11,25 +39,43 @@ export default defineConfig({
     },
   },
   test: {
-    exclude: ["**/node_modules/**", "**/dist/**", "apps/web/**"],
-    setupFiles: ["./tests/pg-setup.ts"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "worker-db",
+          include: ["tests/integration/**/*.test.ts", ...dbUnitTests],
+          exclude: ["tests/integration/supabase-*.test.ts"],
+          setupFiles: ["./tests/pg-setup.ts"],
+          pool: "forks",
+          poolOptions: {
+            forks: { maxForks: 4 },
+          },
+          globals: true,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "worker-pure",
+          include: ["tests/unit/**/*.test.ts", "tests/search.test.ts"],
+          exclude: [...dbUnitTests, "tests/integration/supabase-*.test.ts"],
+          globals: true,
+        },
+      },
+    ],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
       exclude: [
-        // Standard exclusions
         "node_modules/",
         "dist/",
         "**/*.test.ts",
         "**/*.spec.ts",
         "**/*.config.ts",
-        // Type-only definitions (no runtime code to test)
         "packages/shared/types/**",
-        // Third-party UI components (shadcn/ui)
         "apps/web/src/components/ui/**",
-        // CSS-only files
         "apps/web/src/styles/**",
-        // Test utilities and setup files
         "tests/",
         "apps/web/src/test/**",
       ],
@@ -40,6 +86,5 @@ export default defineConfig({
         lines: 71,
       },
     },
-    globals: true,
   },
 });

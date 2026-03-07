@@ -14,15 +14,17 @@ export function createSupabaseConnection(
     idle_timeout: 20,
     connect_timeout: 10,
   });
+  type UnsafeParameters = Parameters<typeof sql.unsafe>[1];
+  const toUnsafeParameters = (params?: unknown[]): UnsafeParameters => params as UnsafeParameters;
 
   return {
     async query<T>(sqlText: string, params?: unknown[]): Promise<{ rows: T[] }> {
-      const rows = await sql.unsafe<T[]>(sqlText, params as any[]);
+      const rows = await sql.unsafe<T[]>(sqlText, toUnsafeParameters(params));
       return { rows: rows as T[] };
     },
 
     async execute(sqlText: string, params?: unknown[]): Promise<{ rowCount: number }> {
-      const result = await sql.unsafe(sqlText, params as any[]);
+      const result = await sql.unsafe(sqlText, toUnsafeParameters(params));
       return { rowCount: result.count ?? 0 };
     },
 
@@ -35,11 +37,11 @@ export function createSupabaseConnection(
       return sql.begin(async (txSql) => {
         const tx = {
           async query<R>(sqlText: string, params?: unknown[]): Promise<{ rows: R[] }> {
-            const rows = await txSql.unsafe<R[]>(sqlText, params as any[]);
+            const rows = await txSql.unsafe<R[]>(sqlText, toUnsafeParameters(params));
             return { rows: rows as R[] };
           },
           async execute(sqlText: string, params?: unknown[]): Promise<{ rowCount: number }> {
-            const result = await txSql.unsafe(sqlText, params as any[]);
+            const result = await txSql.unsafe(sqlText, toUnsafeParameters(params));
             return { rowCount: result.count ?? 0 };
           },
         };

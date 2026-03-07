@@ -5,6 +5,7 @@ import { mockDatabaseFactory } from '../helpers/test-app';
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
 import worker from '@worker/index';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { createAuthFetch } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
@@ -12,17 +13,7 @@ const authFetch = createAuthFetch(worker);
 
 describe('Search API Routes', () => {
   beforeEach(async () => {
-    await pglite.query('DELETE FROM work_note_meeting_minute');
-    await pglite.query('DELETE FROM meeting_minute_task_category');
-    await pglite.query('DELETE FROM meeting_minute_group');
-    await pglite.query('DELETE FROM meeting_minute_person');
-    await pglite.query('DELETE FROM meeting_minutes');
-    await pglite.query('DELETE FROM work_note_relation');
-    await pglite.query('DELETE FROM work_note_person');
-    await pglite.query('DELETE FROM work_notes');
-    await pglite.query('DELETE FROM person_dept_history');
-    await pglite.query('DELETE FROM persons');
-    await pglite.query('DELETE FROM departments');
+    await pgCleanupAll(pglite);
   });
 
   describe('POST /api/search/unified', () => {

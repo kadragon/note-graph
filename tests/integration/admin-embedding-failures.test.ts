@@ -10,6 +10,7 @@ import { mockDatabaseFactory } from '../helpers/test-app';
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
 import worker from '@worker/index';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { createAuthFetch } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
@@ -26,9 +27,7 @@ const adminFetch = (path: string, options?: RequestInit) =>
 
 describe('Admin Embedding Failure Routes', () => {
   beforeEach(async () => {
-    // Clean up test data
-    await pglite.query('DELETE FROM embedding_retry_queue');
-    await pglite.query('DELETE FROM work_notes');
+    await pgCleanupAll(pglite);
   });
 
   describe('GET /api/admin/embedding-failures', () => {

@@ -1,6 +1,7 @@
 import { SettingRepository } from '@worker/repositories/setting-repository';
 import { SettingService } from '@worker/services/setting-service';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('SettingService', () => {
@@ -10,7 +11,7 @@ describe('SettingService', () => {
   beforeEach(async () => {
     repository = new SettingRepository(testPgDb);
     service = new SettingService(repository);
-    await pglite.query('DELETE FROM app_settings');
+    await pgCleanupAll(pglite);
   });
 
   describe('getValue()', () => {

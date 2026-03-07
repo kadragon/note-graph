@@ -6,6 +6,7 @@
 import { StatisticsRepository } from '@worker/repositories/statistics-repository';
 import type { DatabaseClient } from '@worker/types/database';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('StatisticsRepository', () => {
@@ -14,10 +15,7 @@ describe('StatisticsRepository', () => {
   beforeEach(async () => {
     repo = new StatisticsRepository(testPgDb);
 
-    // Clean up before each test
-    await pglite.query(
-      'TRUNCATE work_note_person, work_note_relation, work_note_task_category, todos, work_note_versions, work_notes, persons, departments, task_categories CASCADE'
-    );
+    await pgCleanupAll(pglite);
   });
 
   describe('findCompletedWorkNotes', () => {

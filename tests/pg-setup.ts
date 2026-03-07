@@ -1,42 +1,22 @@
 /**
  * PGlite-based test setup for PostgreSQL-native testing.
- * Creates an in-process PGlite instance and applies the Supabase migration schema.
+ * Creates an in-process PGlite instance and applies all Supabase migration files.
  *
- * This is the primary test setup file - used by all worker tests.
+ * This setup file is only used by the 'worker-db' project (tests that need DB).
  */
 
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { createPgliteConnection } from '@worker/adapters/pglite-connection';
 import { SupabaseDatabaseClient } from '@worker/adapters/supabase-database-client';
 import { afterAll, beforeAll } from 'vitest';
+import { loadAndApplyMigrations } from './helpers/pg-test-utils';
 
 let pglite: PGlite;
 let testPgDb: SupabaseDatabaseClient;
 
-/**
- * Load and adapt migration SQL for PGlite.
- * PGlite doesn't include pg_trgm, so we strip that extension and
- * any indexes using gin_trgm_ops.
- */
-function loadMigrationSql(): string {
-  const migrationPath = join(
-    process.cwd(),
-    'supabase',
-    'migrations',
-    '20260305085855_initial_schema.sql'
-  );
-  let sql = readFileSync(migrationPath, 'utf-8');
-  sql = sql.replace(/CREATE EXTENSION IF NOT EXISTS pg_trgm;/g, '');
-  sql = sql.replace(/CREATE INDEX.*USING GIN\s*\([^)]*gin_trgm_ops\);/g, '');
-  return sql;
-}
-
 beforeAll(async () => {
   pglite = new PGlite();
-  const migrationSql = loadMigrationSql();
-  await pglite.exec(migrationSql);
+  await loadAndApplyMigrations(pglite);
   const conn = createPgliteConnection(pglite);
   testPgDb = new SupabaseDatabaseClient(conn);
 
@@ -45,7 +25,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pglite.close();
+  try {
+    await pglite.close();
+  } catch (err) {
+    console.error('PGlite close failed (non-fatal):', (err as Error).message);
+  }
 });
 
 export { testPgDb, pglite };

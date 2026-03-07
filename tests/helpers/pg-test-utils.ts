@@ -2,7 +2,40 @@
  * Utility helpers for PGlite-based tests.
  */
 
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { PGlite } from '@electric-sql/pglite';
+
+/**
+ * Load and apply all migration SQL files to PGlite.
+ * PGlite doesn't include pg_trgm, so we strip that extension and
+ * any indexes using gin_trgm_ops.
+ *
+ * Applies migrations one file at a time so errors identify the failing file.
+ */
+export async function loadAndApplyMigrations(pglite: PGlite): Promise<void> {
+  const migrationsDir = join(process.cwd(), 'supabase', 'migrations');
+  const files = readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+
+  if (files.length === 0) {
+    throw new Error(
+      `No .sql migration files found in ${migrationsDir}. Check your working directory.`
+    );
+  }
+
+  for (const f of files) {
+    let sql = readFileSync(join(migrationsDir, f), 'utf-8');
+    sql = sql.replace(/CREATE EXTENSION IF NOT EXISTS pg_trgm;/g, '');
+    sql = sql.replace(/CREATE INDEX.*USING GIN\s*\([^)]*gin_trgm_ops\);/g, '');
+    try {
+      await pglite.exec(sql);
+    } catch (err) {
+      throw new Error(`Migration ${f} failed: ${(err as Error).message}`);
+    }
+  }
+}
 
 /**
  * Delete all rows from the given tables (in order) using TRUNCATE CASCADE.
@@ -10,7 +43,21 @@ import type { PGlite } from '@electric-sql/pglite';
  */
 export async function pgCleanup(pglite: PGlite, tables: string[]): Promise<void> {
   if (tables.length === 0) return;
-  await pglite.exec(`TRUNCATE ${tables.join(', ')} CASCADE`);
+  await pglite.exec(`TRUNCATE ${tables.join(', ')} RESTART IDENTITY CASCADE`);
+}
+
+/**
+ * Truncate ALL application tables dynamically.
+ * Queries pg_tables for the public schema so no hardcoded list is needed.
+ */
+export async function pgCleanupAll(pglite: PGlite): Promise<void> {
+  const result = await pglite.query<{ tablename: string }>(
+    "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+  );
+  const tables = result.rows.map((row) => `"${row.tablename}"`).join(', ');
+  if (tables) {
+    await pglite.exec(`TRUNCATE ${tables} RESTART IDENTITY CASCADE`);
+  }
 }
 
 /**
@@ -29,25 +76,4 @@ export async function pgInsert(
     `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`,
     Object.values(data)
   );
-}
-
-/**
- * Execute a parameterized query directly against PGlite.
- * Convenience wrapper matching an ORM-like `prepare().bind().run()` pattern.
- */
-export async function pgExec(pglite: PGlite, sql: string, params?: unknown[]): Promise<void> {
-  await pglite.query(sql, params);
-}
-
-/**
- * Execute a parameterized query and return one column value from first row.
- */
-export async function pgQueryOne<T = unknown>(
-  pglite: PGlite,
-  sql: string,
-  params?: unknown[]
-): Promise<T | null> {
-  const result = await pglite.query(sql, params);
-  if (result.rows.length === 0) return null;
-  return result.rows[0] as T;
 }

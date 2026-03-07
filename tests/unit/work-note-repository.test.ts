@@ -5,6 +5,7 @@ import { WorkNoteRepository } from '@worker/repositories/work-note-repository';
 import type { CreateWorkNoteInput, UpdateWorkNoteInput } from '@worker/schemas/work-note';
 import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('WorkNoteRepository', () => {
@@ -13,10 +14,7 @@ describe('WorkNoteRepository', () => {
   beforeEach(async () => {
     repository = new WorkNoteRepository(testPgDb);
 
-    // Clean up test data
-    await pglite.query(
-      'TRUNCATE work_note_relation, work_note_person, work_note_versions, todos, work_note_meeting_minute, work_notes, person_dept_history, persons, departments CASCADE'
-    );
+    await pgCleanupAll(pglite);
   });
 
   // --- CRUD operations ---

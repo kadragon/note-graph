@@ -21,9 +21,9 @@ Personal work note management system with AI-powered features, built on Cloudfla
 - **Platform**: Cloudflare Workers (서버리스)
 - **Database**: PostgreSQL via Cloudflare Hyperdrive
 - **Vector Search**: Cloudflare Vectorize
-- **AI**: OpenAI GPT-4.5 + text-embedding-3-small via AI Gateway
+- **AI**: OpenAI models via AI Gateway
 - **Auth**: Cloudflare Access (Google OAuth)
-- **Async Processing**: Cloudflare Queues
+- **Async Processing**: Scheduled worker jobs + database-backed retry queue
 - **Storage**: Google Drive (업무노트 첨부), Cloudflare R2 (프로젝트 파일/임시 PDF)
 
 ## Project Structure
@@ -35,10 +35,10 @@ note-graph/
 │   ├── worker/           # Cloudflare Worker backend (Hono API, services, utils)
 │   └── web/              # React SPA (Vite, Tailwind, shadcn/ui)
 │
+├── .github/workflows/    # CI definitions
 ├── packages/
 │   └── shared/           # Cross-app TypeScript types
 │
-├── migrations/           # Historical migration archive
 ├── supabase/migrations/  # Active PostgreSQL schema migration
 ├── tests/                # Test files (unit + integration)
 ├── dist/                 # Build output (worker bundle, web assets under dist/web)
@@ -107,6 +107,7 @@ note-graph/
 - Bun >= 1.2.20
 - Cloudflare account
 - Wrangler CLI
+- Docker (for local Supabase)
 
 ### Installation
 
@@ -121,10 +122,7 @@ bunx supabase start
 wrangler vectorize create worknote-vectors --dimensions=1536 --metric=cosine
 
 # Create R2 bucket
-wrangler r2 bucket create worknote-pdf-temp
-
-# Create Queue
-wrangler queues create pdf-processing-queue
+wrangler r2 bucket create worknote-files
 
 # Apply local schema reset/migrations
 bun run db:migrate:local
@@ -143,7 +141,8 @@ bun run dev
    cp .dev.vars.example .dev.vars
    ```
 
-2. Update `.dev.vars` with required Google OAuth settings (업무노트 첨부에 필수):
+2. Update `.dev.vars` with required Google OAuth settings (업무노트 첨부에 필수).
+   `SUPABASE_DB_URL` is optional and only used for the explicit real-DB smoke test:
 
    ```bash
    # .dev.vars
@@ -153,13 +152,15 @@ bun run dev
    GOOGLE_CLIENT_SECRET=your-client-secret
    GOOGLE_REDIRECT_URI=https://example.test/oauth/callback
    GDRIVE_ROOT_FOLDER_ID=your-folder-id
+   # Optional: used by bun run test:supabase
+   # SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
    ```
 
    Find your account ID at: <https://dash.cloudflare.com/?to=/:account/workers>
 
 3. Update `wrangler.toml` with resource IDs:
 
-   - Update the `HYPERDRIVE` binding with your PostgreSQL connection
+   - Update the `HYPERDRIVE` binding with your PostgreSQL connection info
    - Update `AI_GATEWAY_ID` with your gateway name
 
 4. Set up Cloudflare Access for Google OAuth
@@ -181,7 +182,7 @@ wrangler secret put CLOUDFLARE_API_TOKEN  # Optional, required for /api/admin/ai
 ## Testing
 
 ```bash
-# Run Workers tests (backend/unit/integration)
+# Run Workers tests against PGlite (default fast path)
 bun run test
 
 # Run Web tests (frontend)
@@ -190,9 +191,15 @@ bun run test:web
 # Run Workers + Web in parallel
 bun run test:all
 
+# Run real PostgreSQL/Supabase smoke tests
+bun run test:supabase
+
 # Run with coverage (Workers config)
 bun run test:coverage
 ```
+
+- `bun run test` uses PGlite and excludes the real Supabase smoke suite.
+- `bun run test:supabase` requires a local Supabase stack (`bunx supabase start`) and is the explicit real-DB verification path.
 
 ## Vector Store Recovery
 
@@ -207,17 +214,10 @@ bun run test:coverage
 bun run deploy
 ```
 
-## 문서
+## 개발 참고
 
-### 사용자 가이드
-
-- **[사용자 가이드](docs/USER_GUIDE.md)**: 시스템 사용 방법, 기능 설명 (한국어)
-
-### 개발자 문서
-
-- **[개발 환경 설정](docs/SETUP.md)**: 로컬 개발 환경 구축 가이드
-- **[시스템 아키텍처](docs/ARCHITECTURE.md)**: 아키텍처, 설계 결정, 기술 스택
-- **[API 문서](docs/API.md)**: 모든 API 엔드포인트 상세 설명
+- 현재 개발/운영 기준 정보는 이 README와 [`AGENTS.md`](./AGENTS.md)에 유지합니다.
+- PostgreSQL 스키마 변경은 `supabase/migrations/` 기준으로 관리합니다.
 - **[배포 가이드](docs/DEPLOYMENT.md)**: Cloudflare Workers 배포 방법
 
 ### API 엔드포인트

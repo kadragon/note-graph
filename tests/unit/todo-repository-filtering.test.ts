@@ -3,6 +3,7 @@
 
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 const REAL_DATE = Date;
@@ -47,8 +48,7 @@ describe('TodoRepository - Filtering and Views', () => {
   beforeEach(async () => {
     repository = new TodoRepository(testPgDb);
 
-    // Clean up test data
-    await pglite.query('TRUNCATE todos, work_notes CASCADE');
+    await pgCleanupAll(pglite);
 
     // Create a test work note
     testWorkId = 'WORK-TEST-001';

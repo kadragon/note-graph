@@ -6,6 +6,7 @@ import type { Env } from '@worker/types/env';
 import { BadRequestError, NotFoundError } from '@worker/types/errors';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { MockR2 } from '../helpers/test-app';
 import { pglite, testPgDb } from '../pg-setup';
 
@@ -80,11 +81,7 @@ describe('WorkNoteFileService', () => {
   beforeEach(async () => {
     originalFetch = global.fetch;
 
-    // Clean DB tables
-    await pglite.query('DELETE FROM google_oauth_tokens');
-    await pglite.query('DELETE FROM work_note_gdrive_folders');
-    await pglite.query('DELETE FROM work_note_files');
-    await pglite.query('DELETE FROM work_notes');
+    await pgCleanupAll(pglite);
 
     r2 = new MockR2();
 

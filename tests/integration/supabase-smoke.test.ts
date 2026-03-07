@@ -18,6 +18,8 @@ import { SettingRepository } from '../../apps/worker/src/repositories/setting-re
 
 const DB_URL =
   process.env.SUPABASE_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+const REQUIRE_SUPABASE =
+  process.env.SUPABASE_REQUIRED === '1' || process.env.SUPABASE_REQUIRED === 'true';
 
 let available = false;
 
@@ -27,6 +29,11 @@ try {
   available = res.rows.length > 0;
   await probe.close();
 } catch (err) {
+  if (REQUIRE_SUPABASE) {
+    throw new Error(
+      `Supabase smoke tests require a running database at ${DB_URL}: ${(err as Error).message}`
+    );
+  }
   console.error('Supabase not available, skipping integration tests:', (err as Error).message);
 }
 
@@ -47,6 +54,23 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
     if (conn) {
       await conn.close();
     }
+  });
+
+  it('uses the current PostgreSQL migration schema', async () => {
+    const { rows } = await db.query<{ tableName: string; columnName: string }>(
+      `SELECT table_name AS "tableName", column_name AS "columnName"
+       FROM information_schema.columns
+       WHERE (table_name = 'app_settings' AND column_name = 'key')
+          OR (table_name = 'work_notes' AND column_name = 'fts_vector')
+          OR (table_name = 'meeting_minutes' AND column_name = 'fts_vector')
+       ORDER BY table_name, column_name`
+    );
+
+    expect(rows).toEqual([
+      { tableName: 'app_settings', columnName: 'key' },
+      { tableName: 'meeting_minutes', columnName: 'fts_vector' },
+      { tableName: 'work_notes', columnName: 'fts_vector' },
+    ]);
   });
 
   it('executes basic CRUD via SettingRepository', async () => {
@@ -114,7 +138,7 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
   });
 
   it('FTS query works with buildWorkNoteFtsCte on work_notes', async () => {
-    const testWorkId = 'test-smoke-fts-' + Date.now();
+    const testWorkId = `test-smoke-fts-${Date.now()}`;
 
     await db.execute(
       `INSERT INTO work_notes (work_id, title, content_raw, category)
@@ -134,18 +158,22 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
         `${cte.sql} SELECT id, ${cte.rankColumn} FROM fts_matches`,
         ['smoke & test']
       );
+      const match = rows.find((row) => row.id === testWorkId);
 
       expect(rows.length).toBeGreaterThanOrEqual(1);
-      expect(rows.some((r) => r.id === testWorkId)).toBe(true);
+      expect(match).toBeDefined();
       // Negated ts_rank: lower (more negative) = better match
-      expect(rows.find((r) => r.id === testWorkId)!.rank).toBeLessThan(0);
+      if (!match) {
+        throw new Error(`Expected work note ${testWorkId} in FTS results`);
+      }
+      expect(match.rank).toBeLessThan(0);
     } finally {
       await db.execute('DELETE FROM work_notes WHERE work_id = $1', [testWorkId]);
     }
   });
 
   it('FTS query works with buildMeetingMinuteFtsCte on meeting_minutes', async () => {
-    const testMeetingId = 'test-smoke-fts-mm-' + Date.now();
+    const testMeetingId = `test-smoke-fts-mm-${Date.now()}`;
 
     await db.execute(
       `INSERT INTO meeting_minutes (meeting_id, meeting_date, topic, details_raw)
@@ -165,10 +193,14 @@ describe.skipIf(!available)('SupabaseDatabaseClient integration', () => {
         `${cte.sql} SELECT id, ${cte.rankColumn} FROM fts_matches`,
         ['smoke & meeting']
       );
+      const match = rows.find((row) => row.id === testMeetingId);
 
       expect(rows.length).toBeGreaterThanOrEqual(1);
-      expect(rows.some((r) => r.id === testMeetingId)).toBe(true);
-      expect(rows.find((r) => r.id === testMeetingId)!.rank).toBeLessThan(0);
+      expect(match).toBeDefined();
+      if (!match) {
+        throw new Error(`Expected meeting minute ${testMeetingId} in FTS results`);
+      }
+      expect(match.rank).toBeLessThan(0);
     } finally {
       await db.execute('DELETE FROM meeting_minutes WHERE meeting_id = $1', [testMeetingId]);
     }

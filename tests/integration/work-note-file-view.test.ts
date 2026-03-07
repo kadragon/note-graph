@@ -7,6 +7,7 @@ import { MockR2, mockDatabaseFactory } from '../helpers/test-app';
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
 import worker from '@worker/index';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { createAuthFetch } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
@@ -25,9 +26,7 @@ describe('Work Note File Upload Route', () => {
   beforeEach(async () => {
     originalFetch = global.fetch;
 
-    await pglite.query('DELETE FROM google_oauth_tokens');
-    await pglite.query('DELETE FROM work_note_files');
-    await pglite.query('DELETE FROM work_notes');
+    await pgCleanupAll(pglite);
 
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();

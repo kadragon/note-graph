@@ -6,6 +6,7 @@ import type { CreatePersonInput, UpdatePersonInput } from '@worker/schemas/perso
 import type { DatabaseClient } from '@worker/types/database';
 import { ConflictError, NotFoundError, ValidationError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 const createMockDb = (overrides: Partial<DatabaseClient> = {}): DatabaseClient => ({
@@ -23,10 +24,7 @@ describe('PersonRepository', () => {
   beforeEach(async () => {
     repository = new PersonRepository(testPgDb);
 
-    // Clean up test data
-    await pglite.query(
-      'TRUNCATE work_note_person, person_dept_history, persons, work_notes, departments CASCADE'
-    );
+    await pgCleanupAll(pglite);
   });
 
   describe('findById()', () => {

@@ -8,6 +8,7 @@ import { mockDatabaseFactory } from '../helpers/test-app';
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
 import worker from '@worker/index';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { createAuthFetch, createTestRequest } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
@@ -18,8 +19,7 @@ describe('Calendar API Routes', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
 
-    // Clean up test data
-    await pglite.query('DELETE FROM google_oauth_tokens');
+    await pgCleanupAll(pglite);
   });
 
   afterEach(() => {
