@@ -6,6 +6,7 @@ import { cn } from '@web/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 import {
   BarChart3,
+  BookOpen,
   BotMessageSquare,
   Building2,
   Calendar,
@@ -36,6 +37,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { path: '/', label: '대시보드', icon: Home, group: 0 },
+  { path: '/daily-report', label: '일일 리포트', icon: BookOpen, group: 0 },
   { path: '/statistics', label: '통계', icon: BarChart3, group: 0 },
   { path: '/work-notes', label: '업무노트', icon: NotebookPen, group: 0 },
   { path: '/meeting-minutes', label: '회의록', icon: ClipboardList, group: 0 },

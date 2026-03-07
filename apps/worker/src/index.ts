@@ -15,6 +15,7 @@ import admin from './routes/admin';
 import aiDraft from './routes/ai-draft';
 import { authGoogle } from './routes/auth-google';
 import { calendar } from './routes/calendar';
+import dailyReports from './routes/daily-reports';
 import departments from './routes/departments';
 import meetingMinutes from './routes/meeting-minutes';
 import pdf from './routes/pdf';
@@ -86,6 +87,7 @@ api.get('/', (c) => {
       statistics: '/api/statistics',
       authGoogle: '/api/auth/google',
       calendar: '/api/calendar',
+      dailyReports: '/api/daily-reports',
     },
   });
 });
@@ -110,6 +112,7 @@ api.route('/settings', settings);
 api.route('/statistics', statistics);
 api.route('/auth/google', authGoogle);
 api.route('/calendar', calendar);
+api.route('/daily-reports', dailyReports);
 
 // Mount API router to main app
 app.route('/', api);

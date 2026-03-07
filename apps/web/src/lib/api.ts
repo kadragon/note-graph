@@ -15,6 +15,7 @@ import type {
   CreateTodoRequest,
   CreateWorkNoteGroupRequest,
   CreateWorkNoteRequest,
+  DailyReport,
   Department,
   DepartmentSearchResult,
   DriveFileListItem,
@@ -1111,6 +1112,24 @@ export class APIClient {
 
   getOpenAIModels() {
     return this.request<OpenAIModel[]>('/settings/openai-models');
+  }
+
+  // Daily Reports
+  getDailyReport(date: string) {
+    return this.request<DailyReport>(`/daily-reports/${date}`);
+  }
+
+  getDailyReports(limit = 7) {
+    const queryString = this.buildQueryString({ limit });
+    return this.request<DailyReport[]>(`/daily-reports${queryString}`);
+  }
+
+  generateDailyReport(date: string) {
+    const timezoneOffset = -new Date().getTimezoneOffset();
+    return this.request<DailyReport>('/daily-reports/generate', {
+      method: 'POST',
+      body: JSON.stringify({ date, timezoneOffset }),
+    });
   }
 
   // Calendar

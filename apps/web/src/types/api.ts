@@ -227,6 +227,12 @@ export interface GoogleDriveStatus {
   needsReauth?: boolean;
 }
 
+// Daily Report types
+export type {
+  DailyReport,
+  DailyReportAIAnalysis,
+} from '@shared/types/daily-report';
+
 // Calendar types
 export interface CalendarEvent {
   id: string;
