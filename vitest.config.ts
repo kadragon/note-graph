@@ -15,7 +15,6 @@ const dbUnitTests = [
   "tests/unit/migration-meeting-minutes.test.ts",
   "tests/unit/pdf-job-repository.test.ts",
   "tests/unit/person-repository.test.ts",
-  "tests/unit/pglite-smoke.test.ts",
   "tests/unit/setting-repository.test.ts",
   "tests/unit/setting-service.test.ts",
   "tests/unit/statistics-repository.test.ts",

@@ -3,13 +3,16 @@
  * Validates schema loading, CRUD, transactions, and cleanup utilities.
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { createPgliteConnection } from '@worker/adapters/pglite-connection';
 import { SupabaseDatabaseClient } from '@worker/adapters/supabase-database-client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { pgCleanup, pgCleanupAll, pgInsert } from '../helpers/pg-test-utils';
+import {
+  loadAndApplyMigrations,
+  pgCleanup,
+  pgCleanupAll,
+  pgInsert,
+} from '../helpers/pg-test-utils';
 
 describe('PGlite smoke test', () => {
   let pglite: PGlite;
@@ -17,18 +20,7 @@ describe('PGlite smoke test', () => {
 
   beforeAll(async () => {
     pglite = new PGlite();
-    const migrationsDir = join(process.cwd(), 'supabase', 'migrations');
-    const sql = readdirSync(migrationsDir)
-      .filter((f) => f.endsWith('.sql'))
-      .sort()
-      .map((f) => {
-        let s = readFileSync(join(migrationsDir, f), 'utf-8');
-        s = s.replace(/CREATE EXTENSION IF NOT EXISTS pg_trgm;/g, '');
-        s = s.replace(/CREATE INDEX.*USING GIN\s*\([^)]*gin_trgm_ops\);/g, '');
-        return s;
-      })
-      .join('\n');
-    await pglite.exec(sql);
+    await loadAndApplyMigrations(pglite);
     const conn = createPgliteConnection(pglite);
     db = new SupabaseDatabaseClient(conn);
   });
