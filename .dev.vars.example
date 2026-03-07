@@ -24,7 +24,7 @@ GDRIVE_ROOT_FOLDER_ID=your-folder-id
 # OPENAI_API_KEY=your-openai-api-key
 # CLOUDFLARE_API_TOKEN=your-cloudflare-api-token  # Optional: required for /api/admin/ai-gateway/logs
 
-# Supabase (선택: D1 대신 PostgreSQL 사용 시)
-# Hyperdrive 바인딩이 wrangler.toml에 설정되면 자동으로 Supabase 어댑터를 사용합니다.
-# 로컬 테스트용 Supabase URL (supabase start 후):
+# PostgreSQL / Supabase (기본 런타임)
+# Worker는 Hyperdrive 바인딩을 통해 PostgreSQL에 연결합니다.
+# 로컬 실DB 스모크 테스트용 URL (bunx supabase start 후):
 # SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
