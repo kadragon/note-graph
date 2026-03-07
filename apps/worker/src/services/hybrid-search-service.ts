@@ -242,8 +242,8 @@ export class HybridSearchService {
       const placeholders = pgPlaceholders(chunk.length);
 
       let sql = `
-        SELECT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
-               wn.category, wn.created_at as createdAt, wn.updated_at as updatedAt
+        SELECT wn.work_id as "workId", wn.title, wn.content_raw as "contentRaw",
+               wn.category, wn.created_at as "createdAt", wn.updated_at as "updatedAt"
         FROM work_notes wn
       `;
 

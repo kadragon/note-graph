@@ -16,7 +16,7 @@ export class DepartmentRepository {
    */
   async findByName(deptName: string): Promise<Department | null> {
     return this.db.queryOne<Department>(
-      `SELECT dept_name as deptName, description, is_active as isActive, created_at as createdAt
+      `SELECT dept_name as "deptName", description, is_active as "isActive", created_at as "createdAt"
        FROM departments
        WHERE dept_name = $1`,
       [deptName]
@@ -27,7 +27,7 @@ export class DepartmentRepository {
    * Find all departments
    */
   async findAll(searchQuery?: string, limit: number = 100): Promise<Department[]> {
-    let sql = `SELECT dept_name as deptName, description, is_active as isActive, created_at as createdAt
+    let sql = `SELECT dept_name as "deptName", description, is_active as "isActive", created_at as "createdAt"
                FROM departments`;
     const params: (string | number)[] = [];
     let paramIndex = 1;
@@ -125,13 +125,13 @@ export class DepartmentRepository {
 
     let query = `
       SELECT
-        pdh.person_id as personId,
+        pdh.person_id as "personId",
         p.name,
         pdh.position,
-        pdh.role_desc as roleDesc,
-        pdh.start_date as startDate,
-        pdh.end_date as endDate,
-        pdh.is_active as isActive
+        pdh.role_desc as "roleDesc",
+        pdh.start_date as "startDate",
+        pdh.end_date as "endDate",
+        pdh.is_active as "isActive"
       FROM person_dept_history pdh
       INNER JOIN persons p ON pdh.person_id = p.person_id
       WHERE pdh.dept_name = $1
@@ -158,13 +158,13 @@ export class DepartmentRepository {
 
     const result = await this.db.query<DepartmentWorkNote>(
       `SELECT DISTINCT
-        wn.work_id as workId,
+        wn.work_id as "workId",
         wn.title,
         wn.category,
-        wn.created_at as createdAt,
-        wn.updated_at as updatedAt,
-        owner.person_id as ownerPersonId,
-        owner_person.name as ownerPersonName
+        wn.created_at as "createdAt",
+        wn.updated_at as "updatedAt",
+        owner.person_id as "ownerPersonId",
+        owner_person.name as "ownerPersonName"
        FROM work_notes wn
        INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id
        INNER JOIN person_dept_history pdh ON wnp.person_id = pdh.person_id

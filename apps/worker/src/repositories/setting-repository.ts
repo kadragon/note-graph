@@ -41,7 +41,7 @@ export class SettingRepository {
 
   async findAll(category?: string): Promise<AppSetting[]> {
     let sql = `SELECT key, value, category, label, description,
-               default_value as defaultValue, updated_at as updatedAt
+               default_value as "defaultValue", updated_at as "updatedAt"
                FROM app_settings`;
     const params: string[] = [];
 
@@ -60,7 +60,7 @@ export class SettingRepository {
   async findByKey(key: string): Promise<AppSetting | null> {
     const result = await this.db.queryOne<AppSettingRow>(
       `SELECT key, value, category, label, description,
-       default_value as defaultValue, updated_at as updatedAt
+       default_value as "defaultValue", updated_at as "updatedAt"
        FROM app_settings WHERE key = $1`,
       [key]
     );

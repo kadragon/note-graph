@@ -60,11 +60,11 @@ export class PersonRepository {
    */
   async findById(personId: string): Promise<Person | null> {
     return this.db.queryOne<Person>(
-      `SELECT person_id as personId, name, phone_ext as phoneExt,
-              current_dept as currentDept, current_position as currentPosition,
-              current_role_desc as currentRoleDesc,
-              employment_status as employmentStatus,
-              created_at as createdAt, updated_at as updatedAt
+      `SELECT person_id as "personId", name, phone_ext as "phoneExt",
+              current_dept as "currentDept", current_position as "currentPosition",
+              current_role_desc as "currentRoleDesc",
+              employment_status as "employmentStatus",
+              created_at as "createdAt", updated_at as "updatedAt"
        FROM persons
        WHERE person_id = $1`,
       [personId]
@@ -83,11 +83,11 @@ export class PersonRepository {
     const placeholders = pgPlaceholders(uniquePersonIds.length);
 
     const result = await this.db.query<Person>(
-      `SELECT person_id as personId, name, phone_ext as phoneExt,
-              current_dept as currentDept, current_position as currentPosition,
-              current_role_desc as currentRoleDesc,
-              employment_status as employmentStatus,
-              created_at as createdAt, updated_at as updatedAt
+      `SELECT person_id as "personId", name, phone_ext as "phoneExt",
+              current_dept as "currentDept", current_position as "currentPosition",
+              current_role_desc as "currentRoleDesc",
+              employment_status as "employmentStatus",
+              created_at as "createdAt", updated_at as "updatedAt"
        FROM persons
        WHERE person_id IN (${placeholders})`,
       uniquePersonIds
@@ -103,11 +103,11 @@ export class PersonRepository {
    * Find all persons with optional search query
    */
   async findAll(searchQuery?: string): Promise<Person[]> {
-    let query = `SELECT person_id as personId, name, phone_ext as phoneExt,
-                        current_dept as currentDept, current_position as currentPosition,
-                        current_role_desc as currentRoleDesc,
-                        employment_status as employmentStatus,
-                        created_at as createdAt, updated_at as updatedAt
+    let query = `SELECT person_id as "personId", name, phone_ext as "phoneExt",
+                        current_dept as "currentDept", current_position as "currentPosition",
+                        current_role_desc as "currentRoleDesc",
+                        employment_status as "employmentStatus",
+                        created_at as "createdAt", updated_at as "updatedAt"
                  FROM persons`;
     const params: string[] = [];
 
@@ -310,9 +310,9 @@ export class PersonRepository {
     }
 
     const result = await this.db.query<PersonDeptHistory>(
-      `SELECT id, person_id as personId, dept_name as deptName,
-              position, role_desc as roleDesc, start_date as startDate,
-              end_date as endDate, is_active as isActive
+      `SELECT id, person_id as "personId", dept_name as "deptName",
+              position, role_desc as "roleDesc", start_date as "startDate",
+              end_date as "endDate", is_active as "isActive"
        FROM person_dept_history
        WHERE person_id = $1
        ORDER BY start_date DESC, id DESC`,
@@ -333,12 +333,12 @@ export class PersonRepository {
 
     const result = await this.db.query<PersonWorkNote>(
       `SELECT
-        wn.work_id as workId,
+        wn.work_id as "workId",
         wn.title,
         wn.category,
         wnp.role,
-        wn.created_at as createdAt,
-        wn.updated_at as updatedAt
+        wn.created_at as "createdAt",
+        wn.updated_at as "updatedAt"
        FROM work_notes wn
        INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id
        WHERE wnp.person_id = $1

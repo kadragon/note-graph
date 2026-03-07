@@ -210,8 +210,8 @@ export class RagService {
 
     const placeholders = pgPlaceholders(workIds.length);
     const { rows } = await this.db.query<WorkNote>(
-      `SELECT work_id as workId, title, content_raw as contentRaw,
-              category, created_at as createdAt, updated_at as updatedAt
+      `SELECT work_id as "workId", title, content_raw as "contentRaw",
+              category, created_at as "createdAt", updated_at as "updatedAt"
        FROM work_notes
        WHERE work_id IN (${placeholders})`,
       workIds

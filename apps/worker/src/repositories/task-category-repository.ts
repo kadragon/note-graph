@@ -40,7 +40,7 @@ export class TaskCategoryRepository {
    */
   async findById(categoryId: string): Promise<TaskCategory | null> {
     const result = await this.db.queryOne<TaskCategoryRow>(
-      `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
+      `SELECT category_id as "categoryId", name, is_active as "isActive", created_at as "createdAt"
        FROM task_categories
        WHERE category_id = $1`,
       [categoryId]
@@ -61,7 +61,7 @@ export class TaskCategoryRepository {
     const placeholders = pgPlaceholders(uniqueCategoryIds.length);
 
     const result = await this.db.query<TaskCategoryRow>(
-      `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
+      `SELECT category_id as "categoryId", name, is_active as "isActive", created_at as "createdAt"
        FROM task_categories
        WHERE category_id IN (${placeholders})`,
       uniqueCategoryIds
@@ -80,7 +80,7 @@ export class TaskCategoryRepository {
    */
   async findByName(name: string): Promise<TaskCategory | null> {
     const result = await this.db.queryOne<TaskCategoryRow>(
-      `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
+      `SELECT category_id as "categoryId", name, is_active as "isActive", created_at as "createdAt"
        FROM task_categories
        WHERE name = $1`,
       [name]
@@ -97,7 +97,7 @@ export class TaskCategoryRepository {
     limit: number = 100,
     activeOnly?: boolean
   ): Promise<TaskCategory[]> {
-    let sql = `SELECT category_id as categoryId, name, is_active as isActive, created_at as createdAt
+    let sql = `SELECT category_id as "categoryId", name, is_active as "isActive", created_at as "createdAt"
                FROM task_categories`;
     const params: (string | number)[] = [];
     const conditions: string[] = [];
@@ -226,10 +226,10 @@ export class TaskCategoryRepository {
 
     const result = await this.db.query<TaskCategoryWorkNote>(
       `SELECT
-        wn.work_id as workId,
+        wn.work_id as "workId",
         wn.title,
-        wn.created_at as createdAt,
-        wn.updated_at as updatedAt
+        wn.created_at as "createdAt",
+        wn.updated_at as "updatedAt"
        FROM work_notes wn
        INNER JOIN work_note_task_category wntc ON wn.work_id = wntc.work_id
        WHERE wntc.category_id = $1
@@ -274,10 +274,10 @@ export class TaskCategoryRepository {
   async getByWorkNoteId(workId: string): Promise<TaskCategory[]> {
     const result = await this.db.query<TaskCategoryRow>(
       `SELECT
-        tc.category_id as categoryId,
+        tc.category_id as "categoryId",
         tc.name,
-        tc.is_active as isActive,
-        tc.created_at as createdAt
+        tc.is_active as "isActive",
+        tc.created_at as "createdAt"
        FROM task_categories tc
        INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
        WHERE wntc.work_id = $1

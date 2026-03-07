@@ -135,7 +135,8 @@ CREATE TABLE work_note_person (
   person_id TEXT NOT NULL REFERENCES persons(person_id) ON DELETE CASCADE,
   role work_note_person_role_enum NOT NULL,
   dept_at_time TEXT,
-  position_at_time TEXT
+  position_at_time TEXT,
+  UNIQUE(work_id, person_id)
 );
 
 CREATE INDEX idx_work_note_person_work_id ON work_note_person(work_id);

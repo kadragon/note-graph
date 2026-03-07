@@ -1,54 +1,8 @@
 import type { SupabaseConnection } from '@worker/adapters/supabase-database-client';
-import { buildAliasMap, SupabaseDatabaseClient } from '@worker/adapters/supabase-database-client';
+import { SupabaseDatabaseClient } from '@worker/adapters/supabase-database-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('SupabaseDatabaseClient', () => {
-  describe('buildAliasMap', () => {
-    it('builds map for camelCase aliases', () => {
-      const map = buildAliasMap('SELECT t.work_id as workId FROM todos t');
-      expect(map).not.toBeNull();
-      expect(map?.get('workid')).toBe('workId');
-    });
-
-    it('builds map for multiple camelCase aliases', () => {
-      const sql =
-        'SELECT t.todo_id as todoId, t.work_id as workId, w.title as workTitle FROM todos t';
-      const map = buildAliasMap(sql);
-      expect(map?.get('todoid')).toBe('todoId');
-      expect(map?.get('workid')).toBe('workId');
-      expect(map?.get('worktitle')).toBe('workTitle');
-    });
-
-    it('returns null for lowercase-only aliases', () => {
-      expect(buildAliasMap('SELECT t.title as title FROM todos t')).toBeNull();
-    });
-
-    it('skips already-quoted aliases', () => {
-      const map = buildAliasMap('SELECT t.work_id as "workId" FROM todos t');
-      expect(map).toBeNull();
-    });
-
-    it('handles AS keyword in any case', () => {
-      const map = buildAliasMap('SELECT t.work_id AS workId FROM todos t');
-      expect(map?.get('workid')).toBe('workId');
-    });
-
-    it('handles aliases with numbers like bm25Score', () => {
-      const map = buildAliasMap('SELECT score as bm25Score FROM fts');
-      expect(map?.get('bm25score')).toBe('bm25Score');
-    });
-
-    it('does not match AS alias inside single-quoted string literals', () => {
-      const map = buildAliasMap("SELECT 'save as workId' as label FROM t");
-      expect(map).toBeNull();
-    });
-
-    it('does not match AS alias inside double-quoted identifiers', () => {
-      const map = buildAliasMap('SELECT "as workId" FROM t');
-      expect(map).toBeNull();
-    });
-  });
-
   describe('close', () => {
     it('calls close on the underlying connection', async () => {
       const mockClose = vi.fn().mockResolvedValue(undefined);
@@ -76,20 +30,20 @@ describe('SupabaseDatabaseClient', () => {
   });
 
   describe('query', () => {
-    it('passes SQL through unchanged to the connection', async () => {
+    it('passes SQL and params through to the connection', async () => {
       const mockConn: SupabaseConnection = {
         query: vi.fn().mockResolvedValue({ rows: [] }),
         execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
       };
       const client = new SupabaseDatabaseClient(mockConn);
-      const sql = 'SELECT t.todo_id as todoId FROM todos t WHERE t.work_id = $1';
+      const sql = 'SELECT t.todo_id as "todoId" FROM todos t WHERE t.work_id = $1';
 
       await client.query(sql, ['W-1']);
 
       expect(mockConn.query).toHaveBeenCalledWith(sql, ['W-1']);
     });
 
-    it('translates placeholders and returns rows from connection', async () => {
+    it('returns rows from connection', async () => {
       const mockConn: SupabaseConnection = {
         query: vi.fn().mockResolvedValue({ rows: [{ id: 1 }, { id: 2 }] }),
         execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
@@ -99,39 +53,17 @@ describe('SupabaseDatabaseClient', () => {
       const result = await client.query('SELECT * FROM t WHERE a = $1 AND b = $2', ['x', 'y']);
 
       expect(result.rows).toEqual([{ id: 1 }, { id: 2 }]);
-      expect(mockConn.query).toHaveBeenCalledWith('SELECT * FROM t WHERE a = $1 AND b = $2', [
-        'x',
-        'y',
-      ]);
     });
 
-    it('passes PostgreSQL-native set-returning function SQL through unchanged', async () => {
+    it('preserves camelCase keys from double-quoted aliases', async () => {
       const mockConn: SupabaseConnection = {
-        query: vi.fn().mockResolvedValue({ rows: [{ todoid: 'T-1', workid: 'W-1' }] }),
-        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
-      };
-      const client = new SupabaseDatabaseClient(mockConn);
-
-      await client.query(
-        'SELECT t.todo_id as todoId, t.work_id as workId FROM todos t WHERE t.work_id IN (SELECT jsonb_array_elements_text($1::jsonb))',
-        [JSON.stringify(['W-1', 'W-2'])]
-      );
-
-      expect(mockConn.query).toHaveBeenCalledWith(
-        'SELECT t.todo_id as todoId, t.work_id as workId FROM todos t WHERE t.work_id IN (SELECT jsonb_array_elements_text($1::jsonb))',
-        [JSON.stringify(['W-1', 'W-2'])]
-      );
-    });
-
-    it('remaps lowercased PostgreSQL keys back to camelCase aliases', async () => {
-      const mockConn: SupabaseConnection = {
-        query: vi.fn().mockResolvedValue({ rows: [{ workid: 'W-001', createdat: '2026-01-01' }] }),
+        query: vi.fn().mockResolvedValue({ rows: [{ workId: 'W-001', createdAt: '2026-01-01' }] }),
         execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
       };
       const client = new SupabaseDatabaseClient(mockConn);
 
       const result = await client.query<{ workId: string; createdAt: string }>(
-        'SELECT work_id as workId, created_at as createdAt FROM work_notes WHERE id = $1',
+        'SELECT work_id as "workId", created_at as "createdAt" FROM work_notes WHERE id = $1',
         [1]
       );
 
@@ -150,22 +82,6 @@ describe('SupabaseDatabaseClient', () => {
       const result = await client.queryOne('SELECT * FROM t WHERE id = $1', [1]);
 
       expect(result).toEqual({ id: 1 });
-      expect(mockConn.query).toHaveBeenCalledWith('SELECT * FROM t WHERE id = $1', [1]);
-    });
-
-    it('remaps lowercased keys for queryOne result', async () => {
-      const mockConn: SupabaseConnection = {
-        query: vi.fn().mockResolvedValue({ rows: [{ workid: 'W-001', dudate: '2026-03-01' }] }),
-        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
-      };
-      const client = new SupabaseDatabaseClient(mockConn);
-
-      const result = await client.queryOne<{ workId: string }>(
-        'SELECT work_id as workId FROM t WHERE id = $1',
-        [1]
-      );
-
-      expect(result).toEqual({ workId: 'W-001', dudate: '2026-03-01' });
     });
 
     it('returns null when no rows', async () => {

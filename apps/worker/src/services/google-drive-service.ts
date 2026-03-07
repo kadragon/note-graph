@@ -174,15 +174,15 @@ export class GoogleDriveService {
   async getOrCreateWorkNoteFolder(userEmail: string, workId: string): Promise<GDriveFolderRecord> {
     // Check if folder already exists in DB
     const existing = await this.db.queryOne<GDriveFolderRecord>(
-      `SELECT work_id as workId, gdrive_folder_id as gdriveFolderId,
-              gdrive_folder_link as gdriveFolderLink, created_at as createdAt
+      `SELECT work_id as "workId", gdrive_folder_id as "gdriveFolderId",
+              gdrive_folder_link as "gdriveFolderLink", created_at as "createdAt"
        FROM work_note_gdrive_folders
        WHERE work_id = $1`,
       [workId]
     );
 
     const workNote = await this.db.queryOne<{ createdAt: string }>(
-      'SELECT created_at as createdAt FROM work_notes WHERE work_id = $1',
+      'SELECT created_at as "createdAt" FROM work_notes WHERE work_id = $1',
       [workId]
     );
 

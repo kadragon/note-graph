@@ -35,12 +35,12 @@ export class FtsSearchService {
     let sql = `
       ${cte.sql}
       SELECT
-        wn.work_id as workId,
+        wn.work_id as "workId",
         wn.title,
-        wn.content_raw as contentRaw,
+        wn.content_raw as "contentRaw",
         wn.category,
-        wn.created_at as createdAt,
-        wn.updated_at as updatedAt,
+        wn.created_at as "createdAt",
+        wn.updated_at as "updatedAt",
         fts.${cte.rankColumn} as fts_rank
       FROM fts_matches fts
       INNER JOIN work_notes wn ON ${cte.joinCondition}

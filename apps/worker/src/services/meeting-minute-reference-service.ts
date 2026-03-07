@@ -42,11 +42,11 @@ export class MeetingMinuteReferenceService {
     const { rows } = await this.db.query<MeetingMinuteFtsRow>(
       `${cte.sql}
          SELECT
-           mm.meeting_id as meetingId,
-           mm.meeting_date as meetingDate,
+           mm.meeting_id as "meetingId",
+           mm.meeting_date as "meetingDate",
            mm.topic as topic,
-           mm.keywords_json as keywordsJson,
-           fts.${cte.rankColumn} as ftsRank
+           mm.keywords_json as "keywordsJson",
+           fts.${cte.rankColumn} as "ftsRank"
          FROM fts_matches fts
          INNER JOIN meeting_minutes mm ON ${cte.joinCondition}
          ORDER BY fts.${cte.rankColumn} ASC`,

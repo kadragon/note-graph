@@ -12,7 +12,6 @@ import type {
   WorkNoteRelation,
   WorkNoteVersion,
 } from '@shared/types/work-note';
-import type { WorkNoteGroup } from '@shared/types/work-note-group';
 import { nanoid } from 'nanoid';
 import type {
   CreateWorkNoteInput,
@@ -21,7 +20,7 @@ import type {
 } from '../schemas/work-note';
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
-import { queryInChunks } from '../utils/db-utils';
+import { buildMultiRowInsert, queryInChunks } from '../utils/db-utils';
 import { parseKeywordsJson } from '../utils/json-utils';
 
 const MAX_VERSIONS = 5;
@@ -41,9 +40,9 @@ export class WorkNoteRepository {
    */
   async findById(workId: string): Promise<WorkNote | null> {
     return this.db.queryOne<WorkNote>(
-      `SELECT work_id as workId, title, content_raw as contentRaw,
-              category, created_at as createdAt,
-              updated_at as updatedAt, embedded_at as embeddedAt
+      `SELECT work_id as "workId", title, content_raw as "contentRaw",
+              category, created_at as "createdAt",
+              updated_at as "updatedAt", embedded_at as "embeddedAt"
        FROM work_notes
        WHERE work_id = $1`,
       [workId]
@@ -54,73 +53,107 @@ export class WorkNoteRepository {
    * Find work note by ID with all associations
    */
   async findByIdWithDetails(workId: string): Promise<WorkNoteDetail | null> {
-    const workNote = await this.findById(workId);
-    if (!workNote) {
+    const row = await this.db.queryOne<{
+      workId: string;
+      title: string;
+      contentRaw: string;
+      category: string | null;
+      createdAt: string;
+      updatedAt: string;
+      embeddedAt: string | null;
+      persons: WorkNotePersonAssociation[] | null;
+      relatedWorkNotes: WorkNoteRelation[] | null;
+      categories: TaskCategory[] | null;
+      groups: Array<{ groupId: string; name: string; isActive: boolean; createdAt: string }> | null;
+      relatedMeetingMinutes: Array<{
+        meetingId: string;
+        meetingDate: string;
+        topic: string;
+        keywordsJson: string;
+      }> | null;
+    }>(
+      `SELECT
+        wn.work_id as "workId", wn.title, wn.content_raw as "contentRaw",
+        wn.category, wn.created_at as "createdAt",
+        wn.updated_at as "updatedAt", wn.embedded_at as "embeddedAt",
+        COALESCE(pers.data, '[]') as "persons",
+        COALESCE(rels.data, '[]') as "relatedWorkNotes",
+        COALESCE(cats.data, '[]') as "categories",
+        COALESCE(grps.data, '[]') as "groups",
+        COALESCE(meets.data, '[]') as "relatedMeetingMinutes"
+      FROM work_notes wn
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'id', wnp.id, 'workId', wnp.work_id, 'personId', wnp.person_id,
+          'role', wnp.role, 'personName', p.name, 'currentDept', p.current_dept,
+          'currentPosition', p.current_position, 'phoneExt', p.phone_ext
+        )) as data
+        FROM work_note_person wnp
+        JOIN persons p ON wnp.person_id = p.person_id
+        WHERE wnp.work_id = wn.work_id
+      ) pers ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'id', wnr.id, 'workId', wnr.work_id,
+          'relatedWorkId', wnr.related_work_id,
+          'relatedWorkTitle', rw.title
+        )) as data
+        FROM work_note_relation wnr
+        LEFT JOIN work_notes rw ON wnr.related_work_id = rw.work_id
+        WHERE wnr.work_id = wn.work_id
+      ) rels ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'categoryId', tc.category_id, 'name', tc.name, 'createdAt', tc.created_at
+        )) as data
+        FROM task_categories tc
+        JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+        WHERE wntc.work_id = wn.work_id
+      ) cats ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'groupId', g.group_id, 'name', g.name,
+          'isActive', g.is_active, 'createdAt', g.created_at
+        ) ORDER BY g.name ASC) as data
+        FROM work_note_groups g
+        JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
+        WHERE wngi.work_id = wn.work_id
+      ) grps ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'meetingId', mm.meeting_id, 'meetingDate', mm.meeting_date,
+          'topic', mm.topic, 'keywordsJson', mm.keywords_json
+        ) ORDER BY mm.meeting_date DESC, mm.updated_at DESC, mm.meeting_id DESC) as data
+        FROM work_note_meeting_minute wnmm
+        JOIN meeting_minutes mm ON mm.meeting_id = wnmm.meeting_id
+        WHERE wnmm.work_id = wn.work_id
+      ) meets ON true
+      WHERE wn.work_id = $1`,
+      [workId]
+    );
+
+    if (!row) {
       return null;
     }
 
-    const [personsResult, relationsResult, categoriesResult, groupsResult, meetingsResult] =
-      await Promise.all([
-        this.db.query<WorkNotePersonAssociation>(
-          `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                wnp.role, p.name as personName, p.current_dept as currentDept,
-                p.current_position as currentPosition, p.phone_ext as phoneExt
-         FROM work_note_person wnp
-         INNER JOIN persons p ON wnp.person_id = p.person_id
-         WHERE wnp.work_id = $1`,
-          [workId]
-        ),
-        this.db.query<WorkNoteRelation>(
-          `SELECT wnr.id, wnr.work_id as workId, wnr.related_work_id as relatedWorkId,
-                wn.title as relatedWorkTitle
-         FROM work_note_relation wnr
-         LEFT JOIN work_notes wn ON wnr.related_work_id = wn.work_id
-         WHERE wnr.work_id = $1`,
-          [workId]
-        ),
-        this.db.query<TaskCategory>(
-          `SELECT tc.category_id as categoryId, tc.name, tc.created_at as createdAt
-         FROM task_categories tc
-         INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
-         WHERE wntc.work_id = $1`,
-          [workId]
-        ),
-        this.db.query<{ groupId: string; name: string; isActive: boolean; createdAt: string }>(
-          `SELECT g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
-         FROM work_note_groups g
-         INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
-         WHERE wngi.work_id = $1
-         ORDER BY g.name ASC`,
-          [workId]
-        ),
-        this.db.query<{
-          meetingId: string;
-          meetingDate: string;
-          topic: string;
-          keywordsJson: string;
-        }>(
-          `SELECT mm.meeting_id as meetingId, mm.meeting_date as meetingDate, mm.topic,
-                mm.keywords_json as keywordsJson
-         FROM work_note_meeting_minute wnmm
-         INNER JOIN meeting_minutes mm ON mm.meeting_id = wnmm.meeting_id
-         WHERE wnmm.work_id = $1
-         ORDER BY mm.meeting_date DESC, mm.updated_at DESC, mm.meeting_id DESC`,
-          [workId]
-        ),
-      ]);
-
     return {
-      ...workNote,
-      persons: personsResult.rows,
-      relatedWorkNotes: relationsResult.rows,
-      categories: categoriesResult.rows,
-      groups: groupsResult.rows.map((g) => ({
+      workId: row.workId,
+      title: row.title,
+      contentRaw: row.contentRaw,
+      category: row.category,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      embeddedAt: row.embeddedAt,
+      persons: row.persons || [],
+      relatedWorkNotes: row.relatedWorkNotes || [],
+      categories: row.categories || [],
+      groups: (row.groups || []).map((g) => ({
         groupId: g.groupId,
         name: g.name,
         isActive: Boolean(g.isActive),
         createdAt: g.createdAt,
       })),
-      relatedMeetingMinutes: meetingsResult.rows.map((meeting) => ({
+      relatedMeetingMinutes: (row.relatedMeetingMinutes || []).map((meeting) => ({
         meetingId: meeting.meetingId,
         meetingDate: meeting.meetingDate,
         topic: meeting.topic,
@@ -135,9 +168,9 @@ export class WorkNoteRepository {
   async findByIds(workIds: string[]): Promise<WorkNote[]> {
     return queryInChunks(this.db, workIds, async (db, chunk, placeholders) => {
       const result = await db.query<WorkNote>(
-        `SELECT work_id as workId, title, content_raw as contentRaw,
-                category, created_at as createdAt,
-                updated_at as updatedAt, embedded_at as embeddedAt
+        `SELECT work_id as "workId", title, content_raw as "contentRaw",
+                category, created_at as "createdAt",
+                updated_at as "updatedAt", embedded_at as "embeddedAt"
          FROM work_notes
          WHERE work_id IN (${placeholders})`,
         chunk
@@ -158,7 +191,7 @@ export class WorkNoteRepository {
         status: string;
         dueDate: string | null;
       }>(
-        `SELECT work_id as workId, title, description, status, due_date as dueDate
+        `SELECT work_id as "workId", title, description, status, due_date as "dueDate"
          FROM todos
          WHERE work_id IN (${placeholders})
          ORDER BY due_date ASC NULLS LAST, created_at ASC`,
@@ -191,9 +224,9 @@ export class WorkNoteRepository {
     const [workNotes, persons] = await Promise.all([
       queryInChunks(this.db, workIds, async (db, chunk, placeholders) => {
         const result = await db.query<WorkNote>(
-          `SELECT work_id as workId, title, content_raw as contentRaw,
-                  category, created_at as createdAt,
-                  updated_at as updatedAt, embedded_at as embeddedAt
+          `SELECT work_id as "workId", title, content_raw as "contentRaw",
+                  category, created_at as "createdAt",
+                  updated_at as "updatedAt", embedded_at as "embeddedAt"
            FROM work_notes
            WHERE work_id IN (${placeholders})`,
           chunk
@@ -202,9 +235,9 @@ export class WorkNoteRepository {
       }),
       queryInChunks(this.db, workIds, async (db, chunk, placeholders) => {
         const result = await db.query<WorkNotePersonAssociation & { workId: string }>(
-          `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                  wnp.role, p.name as personName, p.current_dept as currentDept,
-                  p.current_position as currentPosition, p.phone_ext as phoneExt
+          `SELECT wnp.id, wnp.work_id as "workId", wnp.person_id as "personId",
+                  wnp.role, p.name as "personName", p.current_dept as "currentDept",
+                  p.current_position as "currentPosition", p.phone_ext as "phoneExt"
            FROM work_note_person wnp
            INNER JOIN persons p ON wnp.person_id = p.person_id
            WHERE wnp.work_id IN (${placeholders})`,
@@ -248,25 +281,19 @@ export class WorkNoteRepository {
    * Find all work notes with filters
    */
   async findAll(query: ListWorkNotesQuery): Promise<WorkNoteDetail[]> {
-    let sql = `
-      SELECT DISTINCT wn.work_id as workId, wn.title, wn.content_raw as contentRaw,
-             wn.category, wn.created_at as createdAt,
-             wn.updated_at as updatedAt, wn.embedded_at as embeddedAt
-      FROM work_notes wn
-    `;
-
+    let filterJoins = '';
     const conditions: string[] = [];
     const params: (string | null)[] = [];
     let paramIndex = 1;
 
     if (query.personId) {
-      sql += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
+      filterJoins += ` INNER JOIN work_note_person wnp ON wn.work_id = wnp.work_id`;
       conditions.push(`wnp.person_id = $${paramIndex++}`);
       params.push(query.personId);
     }
 
     if (query.deptName) {
-      sql += `
+      filterJoins += `
         INNER JOIN work_note_person wnp2 ON wn.work_id = wnp2.work_id
         INNER JOIN person_dept_history pdh ON wnp2.person_id = pdh.person_id
       `;
@@ -294,118 +321,94 @@ export class WorkNoteRepository {
       params.push(query.to);
     }
 
-    if (conditions.length > 0) {
-      sql += ` WHERE ${conditions.join(' AND ')}`;
-    }
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    sql += ` ORDER BY wn.created_at DESC`;
+    const sql = `
+      SELECT
+        wn.work_id as "workId", wn.title, wn.content_raw as "contentRaw",
+        wn.category, wn.created_at as "createdAt",
+        wn.updated_at as "updatedAt", wn.embedded_at as "embeddedAt",
+        COALESCE(pers.data, '[]') as "persons",
+        COALESCE(cats.data, '[]') as "categories",
+        COALESCE(grps.data, '[]') as "groups"
+      FROM (
+        SELECT DISTINCT wn.work_id
+        FROM work_notes wn
+        ${filterJoins}
+        ${whereClause}
+      ) filtered
+      INNER JOIN work_notes wn ON wn.work_id = filtered.work_id
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'id', wnp.id, 'workId', wnp.work_id, 'personId', wnp.person_id,
+          'role', wnp.role, 'personName', p.name, 'currentDept', p.current_dept,
+          'currentPosition', p.current_position, 'phoneExt', p.phone_ext
+        )) as data
+        FROM work_note_person wnp
+        JOIN persons p ON wnp.person_id = p.person_id
+        WHERE wnp.work_id = wn.work_id
+      ) pers ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'categoryId', tc.category_id, 'name', tc.name,
+          'isActive', tc.is_active, 'createdAt', tc.created_at
+        )) as data
+        FROM task_categories tc
+        JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
+        WHERE wntc.work_id = wn.work_id
+      ) cats ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'groupId', g.group_id, 'name', g.name,
+          'isActive', g.is_active, 'createdAt', g.created_at
+        ) ORDER BY g.name ASC) as data
+        FROM work_note_groups g
+        JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
+        WHERE wngi.work_id = wn.work_id
+      ) grps ON true
+      ORDER BY wn.created_at DESC
+    `;
 
-    const result = await this.db.query<WorkNote>(sql, params);
-    const workNotes = result.rows;
-    const workIds = workNotes.map((wn) => wn.workId);
+    const result = await this.db.query<{
+      workId: string;
+      title: string;
+      contentRaw: string;
+      category: string | null;
+      createdAt: string;
+      updatedAt: string;
+      embeddedAt: string | null;
+      persons: WorkNotePersonAssociation[] | null;
+      categories: Array<{
+        categoryId: string;
+        name: string;
+        isActive: boolean;
+        createdAt: string;
+      }> | null;
+      groups: Array<{ groupId: string; name: string; isActive: boolean; createdAt: string }> | null;
+    }>(sql, params);
 
-    if (workIds.length === 0) {
-      return [];
-    }
-
-    // Batch fetch categories, persons, and groups using queryInChunks
-    const [categoriesRows, personsRows, groupsRows] = await Promise.all([
-      queryInChunks(this.db, workIds, async (db, chunk, placeholders) => {
-        const r = await db.query<{
-          workId: string;
-          categoryId: string;
-          name: string;
-          isActive: boolean;
-          createdAt: string;
-        }>(
-          `SELECT wntc.work_id as workId, tc.category_id as categoryId, tc.name, tc.is_active as isActive, tc.created_at as createdAt
-           FROM task_categories tc
-           INNER JOIN work_note_task_category wntc ON tc.category_id = wntc.category_id
-           WHERE wntc.work_id IN (${placeholders})`,
-          chunk
-        );
-        return r.rows;
-      }),
-      queryInChunks(this.db, workIds, async (db, chunk, placeholders) => {
-        const r = await db.query<WorkNotePersonAssociation & { workId: string }>(
-          `SELECT wnp.id, wnp.work_id as workId, wnp.person_id as personId,
-                  wnp.role, p.name as personName, p.current_dept as currentDept,
-                  p.current_position as currentPosition, p.phone_ext as phoneExt
-           FROM work_note_person wnp
-           INNER JOIN persons p ON wnp.person_id = p.person_id
-           WHERE wnp.work_id IN (${placeholders})`,
-          chunk
-        );
-        return r.rows;
-      }),
-      queryInChunks(this.db, workIds, async (db, chunk, placeholders) => {
-        const r = await db.query<{
-          workId: string;
-          groupId: string;
-          name: string;
-          isActive: boolean;
-          createdAt: string;
-        }>(
-          `SELECT wngi.work_id as workId, g.group_id as groupId, g.name, g.is_active as isActive, g.created_at as createdAt
-           FROM work_note_groups g
-           INNER JOIN work_note_group_items wngi ON g.group_id = wngi.group_id
-           WHERE wngi.work_id IN (${placeholders})
-           ORDER BY g.name ASC`,
-          chunk
-        );
-        return r.rows;
-      }),
-    ]);
-
-    const categoriesByWorkId = new Map<string, TaskCategory[]>();
-    for (const cat of categoriesRows) {
-      if (!categoriesByWorkId.has(cat.workId)) {
-        categoriesByWorkId.set(cat.workId, []);
-      }
-      categoriesByWorkId.get(cat.workId)?.push({
-        categoryId: cat.categoryId,
-        name: cat.name,
-        isActive: Boolean(cat.isActive),
-        createdAt: cat.createdAt,
-      });
-    }
-
-    const personsByWorkId = new Map<string, WorkNotePersonAssociation[]>();
-    for (const person of personsRows) {
-      if (!personsByWorkId.has(person.workId)) {
-        personsByWorkId.set(person.workId, []);
-      }
-      personsByWorkId.get(person.workId)?.push({
-        id: person.id,
-        workId: person.workId,
-        personId: person.personId,
-        role: person.role,
-        personName: person.personName,
-        currentDept: person.currentDept,
-        currentPosition: person.currentPosition,
-        phoneExt: person.phoneExt,
-      });
-    }
-
-    const groupsByWorkId = new Map<string, WorkNoteGroup[]>();
-    for (const group of groupsRows) {
-      if (!groupsByWorkId.has(group.workId)) {
-        groupsByWorkId.set(group.workId, []);
-      }
-      groupsByWorkId.get(group.workId)?.push({
-        groupId: group.groupId,
-        name: group.name,
-        isActive: Boolean(group.isActive),
-        createdAt: group.createdAt,
-      });
-    }
-
-    return workNotes.map((workNote) => ({
-      ...workNote,
-      persons: personsByWorkId.get(workNote.workId) || [],
+    return result.rows.map((row) => ({
+      workId: row.workId,
+      title: row.title,
+      contentRaw: row.contentRaw,
+      category: row.category,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      embeddedAt: row.embeddedAt,
+      persons: row.persons || [],
       relatedWorkNotes: [],
-      categories: categoriesByWorkId.get(workNote.workId) || [],
-      groups: groupsByWorkId.get(workNote.workId) || [],
+      categories: (row.categories || []).map((c) => ({
+        categoryId: c.categoryId,
+        name: c.name,
+        isActive: Boolean(c.isActive),
+        createdAt: c.createdAt,
+      })),
+      groups: (row.groups || []).map((g) => ({
+        groupId: g.groupId,
+        name: g.name,
+        isActive: Boolean(g.isActive),
+        createdAt: g.createdAt,
+      })),
     }));
   }
 
@@ -459,56 +462,64 @@ export class WorkNoteRepository {
         });
       }
 
-      for (const person of data.persons) {
+      const personRows = data.persons.map((person) => {
         const info = personInfoMap.get(person.personId);
-        statements.push({
-          sql: `INSERT INTO work_note_person (work_id, person_id, role, dept_at_time, position_at_time)
-                VALUES ($1, $2, $3, $4, $5)`,
-          params: [
-            workId,
-            person.personId,
-            person.role,
-            info?.currentDept || null,
-            info?.currentPosition || null,
-          ],
-        });
-      }
+        return [
+          workId,
+          person.personId,
+          person.role,
+          info?.currentDept || null,
+          info?.currentPosition || null,
+        ];
+      });
+      statements.push(
+        buildMultiRowInsert(
+          'work_note_person',
+          ['work_id', 'person_id', 'role', 'dept_at_time', 'position_at_time'],
+          personRows
+        )
+      );
     }
 
     if (data.relatedWorkIds && data.relatedWorkIds.length > 0) {
-      for (const relatedWorkId of data.relatedWorkIds) {
-        statements.push({
-          sql: `INSERT INTO work_note_relation (work_id, related_work_id) VALUES ($1, $2)`,
-          params: [workId, relatedWorkId],
-        });
-      }
+      statements.push(
+        buildMultiRowInsert(
+          'work_note_relation',
+          ['work_id', 'related_work_id'],
+          data.relatedWorkIds.map((id) => [workId, id])
+        )
+      );
     }
 
     if (data.relatedMeetingIds && data.relatedMeetingIds.length > 0) {
-      for (const meetingId of data.relatedMeetingIds) {
-        statements.push({
-          sql: `INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES ($1, $2)`,
-          params: [workId, meetingId],
-        });
-      }
+      statements.push(
+        buildMultiRowInsert(
+          'work_note_meeting_minute',
+          ['work_id', 'meeting_id'],
+          data.relatedMeetingIds.map((id) => [workId, id])
+        )
+      );
     }
 
     if (data.categoryIds && data.categoryIds.length > 0) {
-      for (const categoryId of data.categoryIds) {
-        statements.push({
-          sql: `INSERT INTO work_note_task_category (work_id, category_id) VALUES ($1, $2)`,
-          params: [workId, categoryId],
-        });
-      }
+      statements.push(
+        buildMultiRowInsert(
+          'work_note_task_category',
+          ['work_id', 'category_id'],
+          data.categoryIds.map((id) => [workId, id])
+        )
+      );
     }
 
     if (data.groupIds && data.groupIds.length > 0) {
-      for (const groupId of data.groupIds) {
-        statements.push({
-          sql: `INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          params: [workId, groupId],
-        });
-      }
+      statements.push(
+        buildMultiRowInsert(
+          'work_note_group_items',
+          ['work_id', 'group_id'],
+          data.groupIds.map((id) => [workId, id]),
+          'ON CONFLICT DO NOTHING'
+        )
+      );
     }
 
     await this.db.executeBatch(statements);
@@ -566,7 +577,7 @@ export class WorkNoteRepository {
 
       // Get next version number
       const versionCountResult = await this.db.queryOne<{ nextVersion: number }>(
-        `SELECT COALESCE(MAX(version_no), 0) + 1 as nextVersion FROM work_note_versions WHERE work_id = $1`,
+        `SELECT COALESCE(MAX(version_no), 0) + 1 as "nextVersion" FROM work_note_versions WHERE work_id = $1`,
         [workId]
       );
 
@@ -599,14 +610,14 @@ export class WorkNoteRepository {
       });
     }
 
-    // Update person associations if provided
+    // Update person associations if provided (UPSERT pattern)
     if (data.persons !== undefined) {
-      statements.push({
-        sql: `DELETE FROM work_note_person WHERE work_id = $1`,
-        params: [workId],
-      });
-
-      if (data.persons.length > 0) {
+      if (data.persons.length === 0) {
+        statements.push({
+          sql: `DELETE FROM work_note_person WHERE work_id = $1`,
+          params: [workId],
+        });
+      } else {
         const personIds = data.persons.map((p) => p.personId);
         const personsInfo = await queryInChunks(
           this.db,
@@ -635,72 +646,124 @@ export class WorkNoteRepository {
           });
         }
 
-        for (const person of data.persons) {
+        // Delete removed persons
+        const inPlaceholders = personIds.map((_, i) => `$${i + 2}`).join(', ');
+        statements.push({
+          sql: `DELETE FROM work_note_person WHERE work_id = $1 AND person_id NOT IN (${inPlaceholders})`,
+          params: [workId, ...personIds],
+        });
+
+        // Upsert remaining
+        const personRows = data.persons.map((person) => {
           const info = personInfoMap.get(person.personId);
-          statements.push({
-            sql: `INSERT INTO work_note_person (work_id, person_id, role, dept_at_time, position_at_time)
-                  VALUES ($1, $2, $3, $4, $5)`,
-            params: [
-              workId,
-              person.personId,
-              person.role,
-              info?.currentDept || null,
-              info?.currentPosition || null,
-            ],
-          });
-        }
+          return [
+            workId,
+            person.personId,
+            person.role,
+            info?.currentDept || null,
+            info?.currentPosition || null,
+          ];
+        });
+        statements.push(
+          buildMultiRowInsert(
+            'work_note_person',
+            ['work_id', 'person_id', 'role', 'dept_at_time', 'position_at_time'],
+            personRows,
+            'ON CONFLICT (work_id, person_id) DO UPDATE SET role = EXCLUDED.role, dept_at_time = EXCLUDED.dept_at_time, position_at_time = EXCLUDED.position_at_time'
+          )
+        );
       }
     }
 
     if (data.relatedWorkIds !== undefined) {
-      statements.push({
-        sql: `DELETE FROM work_note_relation WHERE work_id = $1`,
-        params: [workId],
-      });
-      for (const relatedWorkId of data.relatedWorkIds) {
+      if (data.relatedWorkIds.length === 0) {
         statements.push({
-          sql: `INSERT INTO work_note_relation (work_id, related_work_id) VALUES ($1, $2)`,
-          params: [workId, relatedWorkId],
+          sql: `DELETE FROM work_note_relation WHERE work_id = $1`,
+          params: [workId],
         });
+      } else {
+        const inPlaceholders = data.relatedWorkIds.map((_, i) => `$${i + 2}`).join(', ');
+        statements.push({
+          sql: `DELETE FROM work_note_relation WHERE work_id = $1 AND related_work_id NOT IN (${inPlaceholders})`,
+          params: [workId, ...data.relatedWorkIds],
+        });
+        statements.push(
+          buildMultiRowInsert(
+            'work_note_relation',
+            ['work_id', 'related_work_id'],
+            data.relatedWorkIds.map((id) => [workId, id]),
+            'ON CONFLICT DO NOTHING'
+          )
+        );
       }
     }
 
     if (data.relatedMeetingIds !== undefined) {
-      statements.push({
-        sql: `DELETE FROM work_note_meeting_minute WHERE work_id = $1`,
-        params: [workId],
-      });
-      for (const meetingId of data.relatedMeetingIds) {
+      if (data.relatedMeetingIds.length === 0) {
         statements.push({
-          sql: `INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES ($1, $2)`,
-          params: [workId, meetingId],
+          sql: `DELETE FROM work_note_meeting_minute WHERE work_id = $1`,
+          params: [workId],
         });
+      } else {
+        const inPlaceholders = data.relatedMeetingIds.map((_, i) => `$${i + 2}`).join(', ');
+        statements.push({
+          sql: `DELETE FROM work_note_meeting_minute WHERE work_id = $1 AND meeting_id NOT IN (${inPlaceholders})`,
+          params: [workId, ...data.relatedMeetingIds],
+        });
+        statements.push(
+          buildMultiRowInsert(
+            'work_note_meeting_minute',
+            ['work_id', 'meeting_id'],
+            data.relatedMeetingIds.map((id) => [workId, id]),
+            'ON CONFLICT DO NOTHING'
+          )
+        );
       }
     }
 
     if (data.categoryIds !== undefined) {
-      statements.push({
-        sql: `DELETE FROM work_note_task_category WHERE work_id = $1`,
-        params: [workId],
-      });
-      for (const categoryId of data.categoryIds) {
+      if (data.categoryIds.length === 0) {
         statements.push({
-          sql: `INSERT INTO work_note_task_category (work_id, category_id) VALUES ($1, $2)`,
-          params: [workId, categoryId],
+          sql: `DELETE FROM work_note_task_category WHERE work_id = $1`,
+          params: [workId],
         });
+      } else {
+        const inPlaceholders = data.categoryIds.map((_, i) => `$${i + 2}`).join(', ');
+        statements.push({
+          sql: `DELETE FROM work_note_task_category WHERE work_id = $1 AND category_id NOT IN (${inPlaceholders})`,
+          params: [workId, ...data.categoryIds],
+        });
+        statements.push(
+          buildMultiRowInsert(
+            'work_note_task_category',
+            ['work_id', 'category_id'],
+            data.categoryIds.map((id) => [workId, id]),
+            'ON CONFLICT DO NOTHING'
+          )
+        );
       }
     }
 
     if (data.groupIds !== undefined) {
-      statements.push({
-        sql: `DELETE FROM work_note_group_items WHERE work_id = $1`,
-        params: [workId],
-      });
-      for (const groupId of data.groupIds) {
+      if (data.groupIds.length === 0) {
         statements.push({
-          sql: `INSERT INTO work_note_group_items (work_id, group_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          params: [workId, groupId],
+          sql: `DELETE FROM work_note_group_items WHERE work_id = $1`,
+          params: [workId],
         });
+      } else {
+        const inPlaceholders = data.groupIds.map((_, i) => `$${i + 2}`).join(', ');
+        statements.push({
+          sql: `DELETE FROM work_note_group_items WHERE work_id = $1 AND group_id NOT IN (${inPlaceholders})`,
+          params: [workId, ...data.groupIds],
+        });
+        statements.push(
+          buildMultiRowInsert(
+            'work_note_group_items',
+            ['work_id', 'group_id'],
+            data.groupIds.map((id) => [workId, id]),
+            'ON CONFLICT DO NOTHING'
+          )
+        );
       }
     }
 
@@ -738,8 +801,8 @@ export class WorkNoteRepository {
     }
 
     const result = await this.db.query<WorkNoteVersion>(
-      `SELECT id, work_id as workId, version_no as versionNo,
-              title, content_raw as contentRaw, category, created_at as createdAt
+      `SELECT id, work_id as "workId", version_no as "versionNo",
+              title, content_raw as "contentRaw", category, created_at as "createdAt"
        FROM work_note_versions
        WHERE work_id = $1
        ORDER BY version_no DESC`,
@@ -814,9 +877,9 @@ export class WorkNoteRepository {
    */
   async findPendingEmbedding(limit: number = 10, offset: number = 0): Promise<WorkNote[]> {
     const result = await this.db.query<WorkNote>(
-      `SELECT work_id as workId, title, content_raw as contentRaw,
-              category, created_at as createdAt, updated_at as updatedAt,
-              embedded_at as embeddedAt
+      `SELECT work_id as "workId", title, content_raw as "contentRaw",
+              category, created_at as "createdAt", updated_at as "updatedAt",
+              embedded_at as "embeddedAt"
        FROM work_notes
        WHERE embedded_at IS NULL
        ORDER BY created_at ASC

@@ -26,6 +26,39 @@ export function pgPlaceholders(count: number, startIndex: number = 1): string {
  * @param queryFn - Function that executes the query for a chunk, receives the db client, chunk, and placeholder string
  * @returns Combined results from all chunks
  */
+/**
+ * Build a multi-row INSERT statement with numbered placeholders.
+ * Returns { sql, params } ready for db.execute().
+ *
+ * @param table - Table name
+ * @param columns - Column names
+ * @param rows - Array of row value arrays (each must match columns.length)
+ * @param onConflict - Optional ON CONFLICT clause (e.g. 'DO NOTHING')
+ */
+export function buildMultiRowInsert(
+  table: string,
+  columns: string[],
+  rows: unknown[][],
+  onConflict?: string
+): { sql: string; params: unknown[] } {
+  const params: unknown[] = [];
+  const valueClauses: string[] = [];
+  let paramIndex = 1;
+
+  for (const row of rows) {
+    const placeholders = row.map(() => `$${paramIndex++}`).join(', ');
+    valueClauses.push(`(${placeholders})`);
+    params.push(...row);
+  }
+
+  let sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${valueClauses.join(', ')}`;
+  if (onConflict) {
+    sql += ` ${onConflict}`;
+  }
+
+  return { sql, params };
+}
+
 export async function queryInChunks<T, R>(
   db: DatabaseClient,
   items: T[],

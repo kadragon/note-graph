@@ -119,16 +119,16 @@ export class EmbeddingProcessor {
     while (result.processed < result.total) {
       // Use keyset pagination instead of OFFSET for better performance on large datasets
       const query = lastCreatedAt
-        ? `SELECT work_id as workId, title, content_raw as contentRaw,
-                  category, created_at as createdAt, updated_at as updatedAt,
-                  embedded_at as embeddedAt
+        ? `SELECT work_id as "workId", title, content_raw as "contentRaw",
+                  category, created_at as "createdAt", updated_at as "updatedAt",
+                  embedded_at as "embeddedAt"
            FROM work_notes
            WHERE created_at > $1
            ORDER BY created_at ASC
            LIMIT $2`
-        : `SELECT work_id as workId, title, content_raw as contentRaw,
-                  category, created_at as createdAt, updated_at as updatedAt,
-                  embedded_at as embeddedAt
+        : `SELECT work_id as "workId", title, content_raw as "contentRaw",
+                  category, created_at as "createdAt", updated_at as "updatedAt",
+                  embedded_at as "embeddedAt"
            FROM work_notes
            ORDER BY created_at ASC
            LIMIT $1`;
