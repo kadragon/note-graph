@@ -30,6 +30,7 @@ const RAG = lazy(() => import('@web/pages/rag'));
 const PDFUpload = lazy(() => import('@web/pages/pdf-upload'));
 const VectorStore = lazy(() => import('@web/pages/vector-store'));
 
+const DailyReport = lazy(() => import('@web/pages/daily-report'));
 const Statistics = lazy(() => import('@web/pages/statistics'));
 const AILogs = lazy(() => import('@web/pages/ai-logs'));
 const Settings = lazy(() => import('@web/pages/settings'));
@@ -65,6 +66,7 @@ function App() {
               <Route path="/work-note-groups" element={<WorkNoteGroups />} />
               <Route path="/work-note-groups/:id" element={<WorkNoteGroupDetail />} />
 
+              <Route path="/daily-report" element={<DailyReport />} />
               <Route path="/statistics" element={<Statistics />} />
               <Route path="/search" element={<Search />} />
               <Route path="/rag" element={<RAG />} />

@@ -13,6 +13,9 @@ export const qk = {
   settings: (category?: string) => ['settings', category] as const,
   openaiModels: () => ['openai-models'] as const,
 
+  dailyReports: () => ['daily-reports'] as const,
+  dailyReport: (date: string) => ['daily-report', date] as const,
+
   googleDriveStatus: () => ['google-drive-status'] as const,
   pdfJob: (jobId: string | null) => ['pdf-job', jobId] as const,
 };
