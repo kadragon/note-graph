@@ -1,5 +1,6 @@
 import { SettingRepository } from '@worker/repositories/setting-repository';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('SettingRepository', () => {
@@ -7,7 +8,7 @@ describe('SettingRepository', () => {
 
   beforeEach(async () => {
     repository = new SettingRepository(testPgDb);
-    await pglite.query('DELETE FROM app_settings');
+    await pgCleanupAll(pglite);
   });
 
   describe('ensureDefaults()', () => {

@@ -5,6 +5,7 @@ import { mockDatabaseFactory } from '../helpers/test-app';
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
 import worker from '@worker/index';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { createAuthFetch } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
@@ -12,7 +13,7 @@ const authFetch = createAuthFetch(worker);
 
 describe('Settings Routes', () => {
   beforeEach(async () => {
-    await pglite.query('DELETE FROM app_settings');
+    await pgCleanupAll(pglite);
   });
 
   describe('GET /api/settings', () => {

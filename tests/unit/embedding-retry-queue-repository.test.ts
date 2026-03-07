@@ -4,6 +4,7 @@
 import { EmbeddingRetryQueueRepository } from '@worker/repositories/embedding-retry-queue-repository';
 import { nanoid } from 'nanoid';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('EmbeddingRetryQueueRepository', () => {
@@ -12,9 +13,7 @@ describe('EmbeddingRetryQueueRepository', () => {
   beforeEach(async () => {
     repository = new EmbeddingRetryQueueRepository(testPgDb);
 
-    // Clean up test data
-    await pglite.query('DELETE FROM embedding_retry_queue');
-    await pglite.query('DELETE FROM work_notes');
+    await pgCleanupAll(pglite);
   });
 
   describe('findDeadLetterItems()', () => {

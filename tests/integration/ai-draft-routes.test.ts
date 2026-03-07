@@ -10,6 +10,7 @@ import { mockDatabaseFactory } from '../helpers/test-app';
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
 import worker from '@worker/index';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { createAuthFetch } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
@@ -31,10 +32,7 @@ const DRAFT_RESPONSE: WorkNoteDraft = {
 describe('AI Draft Routes - due date distribution context wiring', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
-    await pglite.query('DELETE FROM todos');
-    await pglite.query('DELETE FROM work_notes');
-    await pglite.query('DELETE FROM task_categories');
-    await pglite.query('DELETE FROM pdf_jobs');
+    await pgCleanupAll(pglite);
   });
 
   afterEach(() => {

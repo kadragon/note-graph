@@ -1,6 +1,7 @@
 import { WorkNoteGroupRepository } from '@worker/repositories/work-note-group-repository';
 import { ConflictError, NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('WorkNoteGroupRepository', () => {
@@ -8,9 +9,7 @@ describe('WorkNoteGroupRepository', () => {
 
   beforeEach(async () => {
     repository = new WorkNoteGroupRepository(testPgDb);
-    await pglite.query('DELETE FROM work_note_group_items');
-    await pglite.query('DELETE FROM work_note_groups');
-    await pglite.query('DELETE FROM work_notes');
+    await pgCleanupAll(pglite);
   });
 
   describe('migration: tables exist', () => {
@@ -138,7 +137,10 @@ describe('WorkNoteGroupRepository', () => {
       expect(result?.groupId).toBe('g1');
       expect(result?.name).toBe('프로젝트A');
       expect(result?.isActive).toBe(true);
-      expect(new Date(result!.createdAt).toISOString()).toBe(now);
+      if (!result) {
+        throw new Error('Expected work note group to exist');
+      }
+      expect(new Date(result.createdAt).toISOString()).toBe(now);
     });
 
     it('should return null for non-existent group', async () => {

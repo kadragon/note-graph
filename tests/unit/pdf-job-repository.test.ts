@@ -8,6 +8,7 @@ import type {
 import { PdfJobRepository } from '@worker/repositories/pdf-job-repository';
 import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('PdfJobRepository', () => {
@@ -16,8 +17,7 @@ describe('PdfJobRepository', () => {
   beforeEach(async () => {
     repository = new PdfJobRepository(testPgDb);
 
-    // Clean up test data
-    await pglite.query('DELETE FROM pdf_jobs');
+    await pgCleanupAll(pglite);
   });
 
   describe('create()', () => {

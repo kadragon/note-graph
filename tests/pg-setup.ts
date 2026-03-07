@@ -1,11 +1,11 @@
 /**
  * PGlite-based test setup for PostgreSQL-native testing.
- * Creates an in-process PGlite instance and applies the Supabase migration schema.
+ * Creates an in-process PGlite instance and applies all Supabase migration files.
  *
- * This is the primary test setup file - used by all worker tests.
+ * This setup file is only used by the 'worker-db' project (tests that need DB).
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { createPgliteConnection } from '@worker/adapters/pglite-connection';
@@ -16,21 +16,23 @@ let pglite: PGlite;
 let testPgDb: SupabaseDatabaseClient;
 
 /**
- * Load and adapt migration SQL for PGlite.
+ * Load and adapt all migration SQL files for PGlite.
  * PGlite doesn't include pg_trgm, so we strip that extension and
  * any indexes using gin_trgm_ops.
  */
 function loadMigrationSql(): string {
-  const migrationPath = join(
-    process.cwd(),
-    'supabase',
-    'migrations',
-    '20260305085855_initial_schema.sql'
-  );
-  let sql = readFileSync(migrationPath, 'utf-8');
-  sql = sql.replace(/CREATE EXTENSION IF NOT EXISTS pg_trgm;/g, '');
-  sql = sql.replace(/CREATE INDEX.*USING GIN\s*\([^)]*gin_trgm_ops\);/g, '');
-  return sql;
+  const migrationsDir = join(process.cwd(), 'supabase', 'migrations');
+  const files = readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+  return files
+    .map((f) => {
+      let sql = readFileSync(join(migrationsDir, f), 'utf-8');
+      sql = sql.replace(/CREATE EXTENSION IF NOT EXISTS pg_trgm;/g, '');
+      sql = sql.replace(/CREATE INDEX.*USING GIN\s*\([^)]*gin_trgm_ops\);/g, '');
+      return sql;
+    })
+    .join('\n');
 }
 
 beforeAll(async () => {

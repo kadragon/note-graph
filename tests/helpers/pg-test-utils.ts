@@ -14,6 +14,26 @@ export async function pgCleanup(pglite: PGlite, tables: string[]): Promise<void>
 }
 
 /**
+ * Truncate ALL application tables in a single statement.
+ * Preferred over pgCleanup when the test touches multiple or unknown tables.
+ */
+export async function pgCleanupAll(pglite: PGlite): Promise<void> {
+  await pglite.exec(`
+    TRUNCATE
+      work_note_meeting_minute, meeting_minute_task_category,
+      meeting_minute_group, meeting_minute_person, meeting_minutes,
+      work_note_group_items, work_note_groups,
+      work_note_relation, work_note_person, work_note_task_category,
+      work_note_files, work_note_gdrive_folders,
+      work_note_versions, work_notes,
+      todos, pdf_jobs, embedding_retry_queue,
+      person_dept_history, persons, departments,
+      task_categories, google_oauth_tokens, app_settings, daily_reports
+    CASCADE
+  `);
+}
+
+/**
  * Seed a single row into a table.
  * Columns and values are derived from the data object keys.
  */

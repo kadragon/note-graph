@@ -1,5 +1,6 @@
 import { TaskCategoryRepository } from '@worker/repositories/task-category-repository';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('TaskCategoryRepository', () => {
@@ -8,8 +9,7 @@ describe('TaskCategoryRepository', () => {
   beforeEach(async () => {
     repository = new TaskCategoryRepository(testPgDb);
 
-    await pglite.query('DELETE FROM work_note_task_category');
-    await pglite.query('DELETE FROM task_categories');
+    await pgCleanupAll(pglite);
   });
 
   describe('findByIds()', () => {

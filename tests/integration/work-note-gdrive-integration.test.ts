@@ -9,6 +9,7 @@ import { buildMockEnv, MockR2, mockDatabaseFactory } from '../helpers/test-app';
 
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
@@ -39,10 +40,7 @@ describe('Work Note Google Drive Integration', () => {
       } as unknown as VectorizeIndex,
     });
 
-    await pglite.query('DELETE FROM google_oauth_tokens');
-    await pglite.query('DELETE FROM work_note_gdrive_folders');
-    await pglite.query('DELETE FROM work_note_files');
-    await pglite.query('DELETE FROM work_notes');
+    await pgCleanupAll(pglite);
 
     await pglite.query(
       `INSERT INTO work_notes (work_id, title, content_raw, created_at, updated_at)

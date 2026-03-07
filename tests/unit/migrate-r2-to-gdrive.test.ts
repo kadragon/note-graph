@@ -5,6 +5,7 @@ import type { DatabaseClient } from '@worker/types/database';
 import type { Env } from '@worker/types/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrateR2WorkNoteFiles, runMigrationCli } from '../../scripts/migrate-r2-to-gdrive';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { MockR2 } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
@@ -19,9 +20,7 @@ describe('migrateR2WorkNoteFiles', () => {
   };
 
   beforeEach(async () => {
-    await pglite.query('DELETE FROM work_note_gdrive_folders');
-    await pglite.query('DELETE FROM work_note_files');
-    await pglite.query('DELETE FROM work_notes');
+    await pgCleanupAll(pglite);
   });
 
   it('migrates a single R2 work note file to Google Drive and updates DB', async () => {

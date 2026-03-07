@@ -5,6 +5,7 @@ import { mockDatabaseFactory } from '../helpers/test-app';
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
 import worker from '@worker/index';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { createAuthFetch } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
@@ -12,9 +13,7 @@ const authFetch = createAuthFetch(worker);
 
 describe('Work Note Groups API', () => {
   beforeEach(async () => {
-    await pglite.query('DELETE FROM work_note_group_items');
-    await pglite.query('DELETE FROM work_note_groups');
-    await pglite.query('DELETE FROM work_notes');
+    await pgCleanupAll(pglite);
   });
 
   describe('POST /api/work-note-groups', () => {

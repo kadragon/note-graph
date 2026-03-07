@@ -1,5 +1,6 @@
 import { MeetingMinuteReferenceService } from '@worker/services/meeting-minute-reference-service';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('MeetingMinuteReferenceService', () => {
@@ -8,9 +9,7 @@ describe('MeetingMinuteReferenceService', () => {
   beforeEach(async () => {
     service = new MeetingMinuteReferenceService(testPgDb);
 
-    await pglite.query(
-      'TRUNCATE work_note_meeting_minute, meeting_minute_task_category, meeting_minute_group, meeting_minute_person, meeting_minutes CASCADE'
-    );
+    await pgCleanupAll(pglite);
   });
 
   it('returns scored references ordered by relevance', async () => {

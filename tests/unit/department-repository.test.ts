@@ -5,6 +5,7 @@ import { DepartmentRepository } from '@worker/repositories/department-repository
 import type { CreateDepartmentInput, UpdateDepartmentInput } from '@worker/schemas/department';
 import { ConflictError, NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('DepartmentRepository', () => {
@@ -13,10 +14,7 @@ describe('DepartmentRepository', () => {
   beforeEach(async () => {
     repository = new DepartmentRepository(testPgDb);
 
-    // Clean up test data
-    await pglite.query(
-      'TRUNCATE work_note_person, person_dept_history, work_notes, persons, departments CASCADE'
-    );
+    await pgCleanupAll(pglite);
   });
 
   describe('findByName()', () => {

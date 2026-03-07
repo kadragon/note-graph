@@ -1,6 +1,7 @@
 import { MeetingMinuteRepository } from '@worker/repositories/meeting-minute-repository';
 import type { CreateMeetingMinuteInput } from '@worker/schemas/meeting-minute';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('MeetingMinuteRepository', () => {
@@ -9,9 +10,7 @@ describe('MeetingMinuteRepository', () => {
   beforeEach(async () => {
     repository = new MeetingMinuteRepository(testPgDb);
 
-    await pglite.query(
-      'TRUNCATE work_note_meeting_minute, meeting_minute_task_category, meeting_minute_group, meeting_minute_person, meeting_minutes, task_categories, persons CASCADE'
-    );
+    await pgCleanupAll(pglite);
   });
 
   describe('create()', () => {

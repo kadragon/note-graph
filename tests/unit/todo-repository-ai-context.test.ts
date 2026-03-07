@@ -1,5 +1,6 @@
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
 describe('TodoRepository.getOpenTodoDueDateContextForAI', () => {
@@ -8,7 +9,7 @@ describe('TodoRepository.getOpenTodoDueDateContextForAI', () => {
 
   beforeEach(async () => {
     repository = new TodoRepository(testPgDb);
-    await pglite.query('TRUNCATE todos, work_notes CASCADE');
+    await pgCleanupAll(pglite);
 
     const now = new Date().toISOString();
     await pglite.query(

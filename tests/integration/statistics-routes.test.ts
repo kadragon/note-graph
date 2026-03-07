@@ -9,6 +9,7 @@ import { mockDatabaseFactory } from '../helpers/test-app';
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
 
 import worker from '@worker/index';
+import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { createAuthFetch, createTestRequest } from '../helpers/test-app';
 import { pglite } from '../pg-setup';
 
@@ -17,14 +18,7 @@ const request = createTestRequest(worker);
 
 describe('Statistics API Routes', () => {
   beforeEach(async () => {
-    // Clean up test data
-    await pglite.query('DELETE FROM work_note_person');
-    await pglite.query('DELETE FROM work_note_task_category');
-    await pglite.query('DELETE FROM todos');
-    await pglite.query('DELETE FROM work_notes');
-    await pglite.query('DELETE FROM persons');
-    await pglite.query('DELETE FROM departments');
-    await pglite.query('DELETE FROM task_categories');
+    await pgCleanupAll(pglite);
   });
 
   describe('GET /api/statistics', () => {
