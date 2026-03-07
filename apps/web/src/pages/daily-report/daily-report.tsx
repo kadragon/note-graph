@@ -128,10 +128,10 @@ function ReportContent({ report }: { report: DailyReportType }) {
       <ReportSection title="할일 우선순위 제안" icon={ListOrdered}>
         {aiAnalysis.todoPriorities.length > 0 ? (
           <ol className="space-y-2">
-            {aiAnalysis.todoPriorities
+            {[...aiAnalysis.todoPriorities]
               .sort((a, b) => a.suggestedOrder - b.suggestedOrder)
               .map((item) => (
-                <li key={item.todoTitle} className="flex gap-3 text-sm">
+                <li key={`${item.suggestedOrder}-${item.todoTitle}`} className="flex gap-3 text-sm">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
                     {item.suggestedOrder}
                   </span>
@@ -152,7 +152,7 @@ function ReportContent({ report }: { report: DailyReportType }) {
         {aiAnalysis.timeAllocation.length > 0 ? (
           <div className="space-y-2">
             {aiAnalysis.timeAllocation.map((item) => (
-              <div key={item.timeBlock} className="flex gap-3 text-sm">
+              <div key={`${item.timeBlock}-${item.activity}`} className="flex gap-3 text-sm">
                 <span className="shrink-0 font-mono text-xs text-muted-foreground w-24">
                   {item.timeBlock}
                 </span>

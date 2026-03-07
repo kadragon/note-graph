@@ -14,8 +14,6 @@ import { DEFAULT_DAILY_REPORT_PROMPT, DEFAULT_WRITER_CONTEXT } from './setting-d
 import type { SettingService } from './setting-service';
 
 const GPT_MAX_COMPLETION_TOKENS = 4000;
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-
 export class DailyReportService {
   private reportRepo: DailyReportRepository;
   private env: Env;
@@ -50,6 +48,7 @@ export class DailyReportService {
 
     // 5. Upsert to DB
     const reportId = this.reportRepo.generateReportId();
+    // createdAt/updatedAt are set by the repository upsert
     const report: DailyReport = {
       reportId,
       reportDate: date,
@@ -57,8 +56,8 @@ export class DailyReportService {
       todosSnapshot,
       aiAnalysis,
       previousReportId: previousReport?.reportId ?? null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: '',
+      updatedAt: '',
     };
 
     return this.reportRepo.upsert(report);
@@ -80,16 +79,15 @@ export class DailyReportService {
    * Each todo appears in exactly one bucket.
    */
   private async buildTodosSnapshot(date: string): Promise<DailyReport['todosSnapshot']> {
+    // Parse as KST midnight — Date already converts to UTC internally
     const reportDate = new Date(`${date}T00:00:00+09:00`);
-    const dayStartUTC = new Date(reportDate.getTime() - KST_OFFSET_MS).toISOString();
-    const dayEndUTC = new Date(
-      reportDate.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000
-    ).toISOString();
+    const dayStartUTC = reportDate.toISOString();
+    const dayEndUTC = new Date(reportDate.getTime() + 24 * 60 * 60 * 1000).toISOString();
 
     const dayOfWeek = reportDate.getDay();
     const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
     const weekEndUTC = new Date(
-      reportDate.getTime() - KST_OFFSET_MS + (daysUntilFriday + 1) * 24 * 60 * 60 * 1000
+      reportDate.getTime() + (daysUntilFriday + 1) * 24 * 60 * 60 * 1000
     ).toISOString();
 
     const { rows } = await this.db.query<{
@@ -119,7 +117,8 @@ export class DailyReportService {
     const backlog: DailyReport['todosSnapshot']['backlog'] = [];
 
     for (const row of rows) {
-      const due = row.due_date!;
+      const due = row.due_date;
+      if (!due) continue;
       if (due >= dayStartUTC && due < dayEndUTC) {
         today.push(toItem(row));
       } else if (due >= dayEndUTC && due < weekEndUTC) {

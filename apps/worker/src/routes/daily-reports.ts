@@ -48,11 +48,7 @@ dailyReports.post('/generate', bodyValidator(generateDailyReportSchema), async (
   const { date, timezoneOffset } = getValidatedBody<typeof generateDailyReportSchema>(c);
   const user = getAuthUser(c);
   const service = new DailyReportService(c.env, c.get('db'), c.get('settingService'));
-  const report = await service.generateReport(
-    user.email,
-    date,
-    timezoneOffset ?? -new Date().getTimezoneOffset()
-  );
+  const report = await service.generateReport(user.email, date, timezoneOffset ?? 540);
   return c.json(report, 201);
 });
 
