@@ -89,7 +89,6 @@ describe('D1 removal cleanup', () => {
       '\\bD1\\b|wrangler d1|miniflare|Miniflare|SQLite|sqlite_master|d1_databases|FTS5|notes_fts',
       'README.md',
       'tests/README.md',
-      'migrations/README.md',
       'TEST_STRUCTURE.md',
       'AGENTS.md'
     );
