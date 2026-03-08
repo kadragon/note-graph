@@ -5,7 +5,12 @@
 
 import { PGlite } from '@electric-sql/pglite';
 import { createPgliteConnection } from '@worker/adapters/pglite-connection';
+import {
+  buildMeetingMinuteFtsCte,
+  buildWorkNoteFtsCte,
+} from '@worker/adapters/postgres-fts-dialect';
 import { SupabaseDatabaseClient } from '@worker/adapters/supabase-database-client';
+import { SettingRepository } from '@worker/repositories/setting-repository';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   loadAndApplyMigrations,
@@ -188,5 +193,70 @@ describe('PGlite smoke test', () => {
     );
     expect(rows).toHaveLength(2);
     expect(rows.map((r) => r.dept_name)).toEqual(['batch-dept-1', 'batch-dept-2']);
+  });
+
+  it('SettingRepository CRUD via ensureDefaults, findByKey, upsert, resetToDefault', async () => {
+    const repo = new SettingRepository(db);
+
+    await repo.ensureDefaults([
+      {
+        key: 'test.smoke.key1',
+        value: 'original',
+        category: 'config',
+        label: 'Smoke Test Key',
+        description: 'Integration test setting',
+      },
+    ]);
+
+    const found = await repo.findByKey('test.smoke.key1');
+    expect(found).not.toBeNull();
+    expect(found?.value).toBe('original');
+    expect(found?.category).toBe('config');
+
+    const updated = await repo.upsert('test.smoke.key1', 'modified');
+    expect(updated.value).toBe('modified');
+
+    const reset = await repo.resetToDefault('test.smoke.key1');
+    expect(reset.value).toBe('original');
+  });
+
+  it('FTS query works with buildWorkNoteFtsCte', async () => {
+    await pgInsert(pglite, 'work_notes', {
+      work_id: 'wn-fts-cte-test',
+      title: 'Smoke FTS Test Title',
+      content_raw: 'Integration test content for full text search',
+      category: 'general',
+    });
+
+    const cte = buildWorkNoteFtsCte();
+    const { rows } = await db.query<{ id: string; rank: number }>(
+      `${cte.sql} SELECT id, ${cte.rankColumn} FROM fts_matches`,
+      ['smoke & test']
+    );
+
+    const match = rows.find((row) => row.id === 'wn-fts-cte-test');
+    expect(rows.length).toBeGreaterThanOrEqual(1);
+    expect(match).toBeDefined();
+    expect(match!.rank).toBeLessThan(0);
+  });
+
+  it('FTS query works with buildMeetingMinuteFtsCte', async () => {
+    await pgInsert(pglite, 'meeting_minutes', {
+      meeting_id: 'mm-fts-cte-test',
+      meeting_date: '2026-01-01',
+      topic: 'Smoke FTS Meeting Topic',
+      details_raw: 'Discussion about integration testing',
+    });
+
+    const cte = buildMeetingMinuteFtsCte();
+    const { rows } = await db.query<{ id: string; rank: number }>(
+      `${cte.sql} SELECT id, ${cte.rankColumn} FROM fts_matches`,
+      ['smoke & meeting']
+    );
+
+    const match = rows.find((row) => row.id === 'mm-fts-cte-test');
+    expect(rows.length).toBeGreaterThanOrEqual(1);
+    expect(match).toBeDefined();
+    expect(match!.rank).toBeLessThan(0);
   });
 });

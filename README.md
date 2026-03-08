@@ -142,7 +142,6 @@ bun run dev
    ```
 
 2. Update `.dev.vars` with required Google OAuth settings (업무노트 첨부에 필수).
-   `SUPABASE_DB_URL` is optional and only used for the explicit real-DB smoke test:
 
    ```bash
    # .dev.vars
@@ -152,8 +151,6 @@ bun run dev
    GOOGLE_CLIENT_SECRET=your-client-secret
    GOOGLE_REDIRECT_URI=https://example.test/oauth/callback
    GDRIVE_ROOT_FOLDER_ID=your-folder-id
-   # Optional: used by bun run test:supabase
-   # SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
    ```
 
    Find your account ID at: <https://dash.cloudflare.com/?to=/:account/workers>
@@ -191,15 +188,12 @@ bun run test:web
 # Run Workers + Web in parallel
 bun run test:all
 
-# Run real PostgreSQL/Supabase smoke tests
-bun run test:supabase
-
 # Run with coverage (Workers config)
 bun run test:coverage
 ```
 
-- `bun run test` uses PGlite and excludes the real Supabase smoke suite.
-- `bun run test:supabase` requires a local Supabase stack (`bunx supabase start`) and is the explicit real-DB verification path.
+- `bun run test` uses PGlite for fast, in-process PostgreSQL testing (default).
+- All smoke tests (CRUD, FTS, transactions) run against PGlite without requiring a local Supabase stack.
 
 ## Vector Store Recovery
 
