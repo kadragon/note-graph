@@ -2,7 +2,6 @@
  * Settings management routes
  */
 
-import type { OpenAIModel } from '@shared/types/setting';
 import {
   bodyValidator,
   getValidatedBody,
@@ -10,6 +9,7 @@ import {
   queryValidator,
 } from '../middleware/validation-middleware';
 import { listSettingsQuerySchema, updateSettingSchema } from '../schemas/setting';
+import { fetchOpenAIModelsFromLiteLLM } from '../utils/litellm-models';
 import { notFoundJson } from './_shared/route-responses';
 import { createProtectedRouter } from './_shared/router-factory';
 
@@ -29,31 +29,13 @@ settings.get('/', queryValidator(listSettingsQuerySchema), async (c) => {
 
 /**
  * GET /settings/openai-models - List available OpenAI models
+ *
+ * Fetches model list from LiteLLM's model registry (GitHub).
+ * AI Gateway fails when proxying /models, and direct OpenAI calls are unreliable from deployment region.
  */
 settings.get('/openai-models', async (c) => {
-  const url = 'https://api.openai.com/v1/models';
-  const headers = {
-    Authorization: `Bearer ${c.env.OPENAI_API_KEY}`,
-  };
-
-  const response = await fetch(url, { headers });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    return c.json(
-      { code: 'OPENAI_API_ERROR', message: `Failed to fetch models: ${errorText}` },
-      500
-    );
-  }
-
-  const data = await response.json<{ data: OpenAIModel[] }>();
-
-  // Filter to GPT/O-series models only
-  const filtered = (data.data || [])
-    .filter((m) => /^(gpt-|o[1-9]|text-embedding-)/.test(m.id))
-    .sort((a, b) => a.id.localeCompare(b.id));
-
-  return c.json(filtered);
+  const models = await fetchOpenAIModelsFromLiteLLM();
+  return c.json(models);
 });
 
 /**
