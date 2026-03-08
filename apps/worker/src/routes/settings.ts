@@ -10,7 +10,6 @@ import {
   queryValidator,
 } from '../middleware/validation-middleware';
 import { listSettingsQuerySchema, updateSettingSchema } from '../schemas/setting';
-import { getAIGatewayHeaders, getAIGatewayUrl } from '../utils/ai-gateway';
 import { notFoundJson } from './_shared/route-responses';
 import { createProtectedRouter } from './_shared/router-factory';
 
@@ -32,8 +31,10 @@ settings.get('/', queryValidator(listSettingsQuerySchema), async (c) => {
  * GET /settings/openai-models - List available OpenAI models
  */
 settings.get('/openai-models', async (c) => {
-  const url = getAIGatewayUrl(c.env, 'models');
-  const headers = getAIGatewayHeaders(c.env);
+  const url = 'https://api.openai.com/v1/models';
+  const headers = {
+    Authorization: `Bearer ${c.env.OPENAI_API_KEY}`,
+  };
 
   const response = await fetch(url, { headers });
 
