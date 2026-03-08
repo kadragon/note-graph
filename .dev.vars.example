@@ -26,5 +26,4 @@ GDRIVE_ROOT_FOLDER_ID=your-folder-id
 
 # PostgreSQL / Supabase (기본 런타임)
 # Worker는 Hyperdrive 바인딩을 통해 PostgreSQL에 연결합니다.
-# 로컬 실DB 스모크 테스트용 URL (bunx supabase start 후):
-# SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+# 테스트는 PGlite로 실행되며, 별도의 DB 설정이 필요 없습니다.
