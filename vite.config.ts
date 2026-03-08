@@ -49,6 +49,7 @@ export default defineConfig({
             '@radix-ui/react-toast',
             'cmdk',
           ],
+          'icon-vendor': ['lucide-react'],
           'utility-vendor': [
             'class-variance-authority',
             'clsx',

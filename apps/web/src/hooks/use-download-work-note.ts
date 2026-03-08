@@ -33,15 +33,33 @@ export function useDownloadWorkNote() {
         // 1. Fetch todos for this work note
         const todos = await API.getTodos('all', undefined, [workNote.id]);
 
-        // 2. Generate and download PDF (dynamic import to keep ~200KB out of main bundle)
-        const { generateWorkNotePDF, generatePDFFilename } = await import(
-          '@web/lib/pdf/generate-work-note-pdf'
-        );
+        // 2. Dynamic-import PDF module (keeps ~200KB out of main bundle)
+        let generateWorkNotePDF: Awaited<
+          typeof import('@web/lib/pdf/generate-work-note-pdf')
+        >['generateWorkNotePDF'];
+        let generatePDFFilename: Awaited<
+          typeof import('@web/lib/pdf/generate-work-note-pdf')
+        >['generatePDFFilename'];
+        try {
+          ({ generateWorkNotePDF, generatePDFFilename } = await import(
+            '@web/lib/pdf/generate-work-note-pdf'
+          ));
+        } catch (importError) {
+          console.error('PDF 모듈 로드 실패:', importError);
+          toast({
+            variant: 'destructive',
+            title: '오류',
+            description: 'PDF 모듈을 불러오지 못했습니다. 페이지를 새로고침 후 다시 시도해주세요.',
+          });
+          return;
+        }
+
+        // 3. Generate and download PDF
         const pdfBlob = await generateWorkNotePDF(workNote, todos);
         const pdfFilename = generatePDFFilename(workNote);
         triggerDownload(pdfBlob, pdfFilename);
 
-        // 3. Download attachments in parallel
+        // 4. Download attachments in parallel
         const files = workNote.files ?? [];
         if (files.length > 0) {
           const downloadPromises = files.map(async (file) => {
@@ -55,7 +73,7 @@ export function useDownloadWorkNote() {
           await Promise.all(downloadPromises);
         }
 
-        // 4. Show success toast
+        // 5. Show success toast
         const fileCount = files.length;
         if (fileCount > 0) {
           const driveFileCount = files.filter(
@@ -83,7 +101,7 @@ export function useDownloadWorkNote() {
         toast({
           variant: 'destructive',
           title: '오류',
-          description: 'PDF 생성에 실패했습니다.',
+          description: 'PDF 다운로드에 실패했습니다. 다시 시도해주세요.',
         });
       } finally {
         setIsDownloading(false);
