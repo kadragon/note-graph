@@ -30,8 +30,8 @@ settings.get('/', queryValidator(listSettingsQuerySchema), async (c) => {
 /**
  * GET /settings/openai-models - List available OpenAI models
  *
- * Fetches model list from LiteLLM's maintained model registry (GitHub).
- * AI Gateway does not proxy /models, and direct OpenAI calls are blocked by region.
+ * Fetches model list from LiteLLM's model registry (GitHub).
+ * AI Gateway fails when proxying /models, and direct OpenAI calls are unreliable from deployment region.
  */
 settings.get('/openai-models', async (c) => {
   const models = await fetchOpenAIModelsFromLiteLLM();
