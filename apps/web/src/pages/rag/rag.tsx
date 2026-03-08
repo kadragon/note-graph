@@ -39,7 +39,7 @@ export default function RAG() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [selectedDeptName, setSelectedDeptName] = useState<string | null>(null);
   const [selectedWorkId, setSelectedWorkId] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
 
   const ragMutation = useRAGQuery();
   const { data: persons = [], isLoading: isLoadingPersons } = usePersons();
@@ -69,10 +69,10 @@ export default function RAG() {
   const canSubmit = input.trim() && !ragMutation.isPending && isFilterSelected;
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (scrollViewportRef.current) {
+      scrollViewportRef.current.scrollTop = scrollViewportRef.current.scrollHeight;
     }
-  }, []);
+  }, [messages, ragMutation.isPending]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,7 +164,7 @@ export default function RAG() {
           <TabsContent value={scope} className="flex-1 mt-0">
             <Card className="h-full flex flex-col">
               <CardContent className="flex-1 p-0 flex flex-col">
-                <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                <ScrollArea className="flex-1 p-4" viewportRef={scrollViewportRef}>
                   {messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                       <p>메시지를 입력하여 대화를 시작하세요</p>

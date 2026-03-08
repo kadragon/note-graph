@@ -119,6 +119,8 @@ export default function WorkNoteDetail() {
     [todos]
   );
 
+  const groupedTodos = useMemo(() => groupRecurringTodos(todos), [todos]);
+
   const handleBatchPostpone = (amount: number, unit: 'day' | 'week' | 'month') => {
     if (postponableTodoIds.length === 0) return;
     batchPostponeMutation.mutate({ todoIds: postponableTodoIds, amount, unit });
@@ -756,41 +758,36 @@ export default function WorkNoteDetail() {
             ) : todos.length === 0 ? (
               <p className="text-sm text-muted-foreground">등록된 할일이 없습니다.</p>
             ) : (
-              (() => {
-                const grouped = groupRecurringTodos(todos);
-                return (
-                  <div className="space-y-3">
-                    {grouped.recurring.map((group) => (
-                      <RecurringTodoGroup
-                        key={group.groupKey}
-                        group={group}
-                        onToggleTodo={handleToggleTodoStatus}
-                        onEditTodo={(todo) => {
-                          setEditTodo(todo);
-                          setEditTodoDialogOpen(true);
-                        }}
-                        onDeleteTodo={(todoId) => setDeleteTodoId(todoId)}
-                        togglePending={toggleTodoMutation.isPending}
-                        deletePending={deleteTodoMutation.isPending}
-                      />
-                    ))}
-                    {grouped.standalone.map((todo) => (
-                      <TodoListItem
-                        key={todo.id}
-                        todo={todo}
-                        onToggle={handleToggleTodoStatus}
-                        onEdit={(todo) => {
-                          setEditTodo(todo);
-                          setEditTodoDialogOpen(true);
-                        }}
-                        onDelete={(todoId) => setDeleteTodoId(todoId)}
-                        togglePending={toggleTodoMutation.isPending}
-                        deletePending={deleteTodoMutation.isPending}
-                      />
-                    ))}
-                  </div>
-                );
-              })()
+              <div className="space-y-3">
+                {groupedTodos.recurring.map((group) => (
+                  <RecurringTodoGroup
+                    key={group.groupKey}
+                    group={group}
+                    onToggleTodo={handleToggleTodoStatus}
+                    onEditTodo={(todo) => {
+                      setEditTodo(todo);
+                      setEditTodoDialogOpen(true);
+                    }}
+                    onDeleteTodo={(todoId) => setDeleteTodoId(todoId)}
+                    togglePending={toggleTodoMutation.isPending}
+                    deletePending={deleteTodoMutation.isPending}
+                  />
+                ))}
+                {groupedTodos.standalone.map((todo) => (
+                  <TodoListItem
+                    key={todo.id}
+                    todo={todo}
+                    onToggle={handleToggleTodoStatus}
+                    onEdit={(todo) => {
+                      setEditTodo(todo);
+                      setEditTodoDialogOpen(true);
+                    }}
+                    onDelete={(todoId) => setDeleteTodoId(todoId)}
+                    togglePending={toggleTodoMutation.isPending}
+                    deletePending={deleteTodoMutation.isPending}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>

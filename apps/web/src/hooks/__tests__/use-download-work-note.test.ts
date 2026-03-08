@@ -243,7 +243,7 @@ describe('useDownloadWorkNote', () => {
     expect(mockToast).toHaveBeenCalledWith({
       variant: 'destructive',
       title: '오류',
-      description: 'PDF 생성에 실패했습니다.',
+      description: 'PDF 다운로드에 실패했습니다. 다시 시도해주세요.',
     });
   });
 });
