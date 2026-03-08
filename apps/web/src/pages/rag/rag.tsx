@@ -72,7 +72,7 @@ export default function RAG() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, []);
+  }, [messages, ragMutation.isPending]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -49,12 +49,6 @@ export default defineConfig({
             '@radix-ui/react-toast',
             'cmdk',
           ],
-          'markdown-vendor': [
-            'react-markdown',
-            'remark-gfm',
-            'rehype-sanitize',
-          ],
-          'icon-vendor': ['lucide-react'],
           'utility-vendor': [
             'class-variance-authority',
             'clsx',

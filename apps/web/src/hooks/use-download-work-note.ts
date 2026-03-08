@@ -1,5 +1,4 @@
 import { API } from '@web/lib/api';
-import { generatePDFFilename, generateWorkNotePDF } from '@web/lib/pdf/generate-work-note-pdf';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { useCallback, useState } from 'react';
 
@@ -34,7 +33,10 @@ export function useDownloadWorkNote() {
         // 1. Fetch todos for this work note
         const todos = await API.getTodos('all', undefined, [workNote.id]);
 
-        // 2. Generate and download PDF
+        // 2. Generate and download PDF (dynamic import to keep ~200KB out of main bundle)
+        const { generateWorkNotePDF, generatePDFFilename } = await import(
+          '@web/lib/pdf/generate-work-note-pdf'
+        );
         const pdfBlob = await generateWorkNotePDF(workNote, todos);
         const pdfFilename = generatePDFFilename(workNote);
         triggerDownload(pdfBlob, pdfFilename);
