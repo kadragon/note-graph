@@ -483,4 +483,104 @@ describe('TodoRepository - Filtering and Views', () => {
       expect(result.some((t) => t.todoId === 'TODO-ALL-STOPPED')).toBe(true);
     });
   });
+
+  describe('daily report snapshot queries', () => {
+    const insertTodo = async ({
+      todoId,
+      title,
+      createdAt,
+      dueDate = null,
+      waitUntil = null,
+      status = '진행중',
+      repeatRule = 'NONE',
+    }: {
+      todoId: string;
+      title: string;
+      createdAt: string;
+      dueDate?: string | null;
+      waitUntil?: string | null;
+      status?: '진행중' | '완료' | '보류' | '중단';
+      repeatRule?: 'NONE';
+    }) => {
+      await pglite.query(
+        'INSERT INTO todos (todo_id, work_id, title, created_at, due_date, wait_until, status, repeat_rule) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [todoId, testWorkId, title, createdAt, dueDate, waitUntil, status, repeatRule]
+      );
+    };
+
+    beforeEach(async () => {
+      await insertTodo({
+        todoId: 'TODO-OVERDUE-REPORT',
+        title: 'Overdue Report Todo',
+        createdAt: '2025-01-08T09:00:00.000Z',
+        dueDate: '2025-01-09T12:00:00.000Z',
+      });
+      await insertTodo({
+        todoId: 'TODO-TODAY-REPORT',
+        title: 'Today Report Todo',
+        createdAt: '2025-01-09T09:00:00.000Z',
+        dueDate: '2025-01-10T12:00:00.000Z',
+      });
+      await insertTodo({
+        todoId: 'TODO-TOMORROW-REPORT',
+        title: 'Tomorrow Report Todo',
+        createdAt: '2025-01-09T09:00:00.000Z',
+        dueDate: '2025-01-11T12:00:00.000Z',
+      });
+      await insertTodo({
+        todoId: 'TODO-FUTURE-DUE-REPORT',
+        title: 'Future Due Report Todo',
+        createdAt: '2025-01-09T09:00:00.000Z',
+        dueDate: '2025-01-17T12:00:00.000Z',
+        waitUntil: '2025-01-10T00:00:00.000Z',
+      });
+    });
+
+    it('returns the same overdue and due-today todos that the today tab would show', async () => {
+      const result = await repository.findTodayViewTodosForDate('2025-01-10', 540);
+
+      expect(result.map((todo) => todo.todoId)).toEqual([
+        'TODO-OVERDUE-REPORT',
+        'TODO-TODAY-REPORT',
+      ]);
+    });
+
+    it('excludes future-due todos from the today snapshot even when wait_until has passed', async () => {
+      const result = await repository.findTodayViewTodosForDate('2025-01-10', 540);
+
+      expect(result.some((todo) => todo.todoId === 'TODO-FUTURE-DUE-REPORT')).toBe(false);
+    });
+
+    it('returns upcoming todos only within the same weekly window', async () => {
+      const result = await repository.findUpcomingTodosForDate('2025-01-09', 540);
+
+      expect(result.map((todo) => todo.todoId)).toEqual(['TODO-TODAY-REPORT']);
+    });
+
+    it('uses the requested timezone offset instead of a hardcoded KST boundary', async () => {
+      const getDateWindowForDate = (
+        repository as unknown as {
+          getDateWindowForDate: (
+            date: string,
+            timezoneOffsetMinutes: number
+          ) => {
+            startOfDayUTC: string;
+            endOfDayUTC: string;
+            weekEndExclusiveUTC: string;
+          };
+        }
+      ).getDateWindowForDate.bind(repository);
+
+      expect(getDateWindowForDate('2025-01-10', 540)).toEqual({
+        startOfDayUTC: '2025-01-09T15:00:00.000Z',
+        endOfDayUTC: '2025-01-10T15:00:00.000Z',
+        weekEndExclusiveUTC: '2025-01-10T15:00:00.000Z',
+      });
+      expect(getDateWindowForDate('2025-01-10', 60)).toEqual({
+        startOfDayUTC: '2025-01-09T23:00:00.000Z',
+        endOfDayUTC: '2025-01-10T23:00:00.000Z',
+        weekEndExclusiveUTC: '2025-01-10T23:00:00.000Z',
+      });
+    });
+  });
 });

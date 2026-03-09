@@ -23,7 +23,14 @@ import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI, TodoDueDateCount } from '../types/todo-due-date-context';
 import { pgPlaceholders, queryInChunks } from '../utils/db-utils';
 
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const DEFAULT_TIMEZONE_OFFSET_MINUTES = 9 * 60;
+const MINUTE_MS = 60 * 1000;
+
+interface TodoDateWindow {
+  startOfDayUTC: string;
+  endOfDayUTC: string;
+  weekEndExclusiveUTC: string;
+}
 
 export class TodoRepository {
   constructor(private db: DatabaseClient) {}
@@ -155,52 +162,165 @@ export class TodoRepository {
     return result.rows.map((todo) => this.convertTodoFromDb(todo));
   }
 
-  private getKSTDateParts(date: Date = new Date()) {
-    const kstDate = new Date(date.getTime() + KST_OFFSET_MS);
+  private getDatePartsForOffset(
+    date: Date = new Date(),
+    timezoneOffsetMinutes: number = DEFAULT_TIMEZONE_OFFSET_MINUTES
+  ) {
+    const offsetDate = new Date(date.getTime() + timezoneOffsetMinutes * MINUTE_MS);
     return {
-      year: kstDate.getUTCFullYear(),
-      month: kstDate.getUTCMonth(),
-      day: kstDate.getUTCDate(),
-      dayOfWeek: kstDate.getUTCDay(),
+      year: offsetDate.getUTCFullYear(),
+      month: offsetDate.getUTCMonth(),
+      day: offsetDate.getUTCDate(),
+      dayOfWeek: offsetDate.getUTCDay(),
     };
   }
 
-  private getKSTDayStartUTC(year: number, month: number, day: number): Date {
-    return new Date(Date.UTC(year, month, day) - KST_OFFSET_MS);
+  private getDayStartUTC(
+    year: number,
+    month: number,
+    day: number,
+    timezoneOffsetMinutes: number = DEFAULT_TIMEZONE_OFFSET_MINUTES
+  ): Date {
+    return new Date(Date.UTC(year, month, day) - timezoneOffsetMinutes * MINUTE_MS);
   }
 
-  private getStartOfTodayUTC(): string {
-    const { year, month, day } = this.getKSTDateParts();
-    return this.getKSTDayStartUTC(year, month, day).toISOString();
+  private buildDateWindow(
+    year: number,
+    month: number,
+    day: number,
+    dayOfWeek: number,
+    timezoneOffsetMinutes: number
+  ): TodoDateWindow {
+    const startOfDayUTC = this.getDayStartUTC(
+      year,
+      month,
+      day,
+      timezoneOffsetMinutes
+    ).toISOString();
+    const endOfDayUTC = this.getDayStartUTC(
+      year,
+      month,
+      day + 1,
+      timezoneOffsetMinutes
+    ).toISOString();
+    const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+    const weekEndExclusiveUTC = this.getDayStartUTC(
+      year,
+      month,
+      day + daysUntilFriday + 1,
+      timezoneOffsetMinutes
+    ).toISOString();
+
+    return {
+      startOfDayUTC,
+      endOfDayUTC,
+      weekEndExclusiveUTC,
+    };
   }
 
-  private getStartOfTomorrowUTC(): string {
-    const { year, month, day } = this.getKSTDateParts();
-    return this.getKSTDayStartUTC(year, month, day + 1).toISOString();
+  private getCurrentDateWindow(
+    timezoneOffsetMinutes: number = DEFAULT_TIMEZONE_OFFSET_MINUTES
+  ): TodoDateWindow {
+    const { year, month, day, dayOfWeek } = this.getDatePartsForOffset(
+      new Date(),
+      timezoneOffsetMinutes
+    );
+    return this.buildDateWindow(year, month, day, dayOfWeek, timezoneOffsetMinutes);
+  }
+
+  private getDateWindowForDate(
+    date: string,
+    timezoneOffsetMinutes: number = DEFAULT_TIMEZONE_OFFSET_MINUTES
+  ): TodoDateWindow {
+    const [yearPart = '0', monthPart = '1', dayPart = '1'] = date.split('-');
+    const year = Number(yearPart);
+    const month = Number(monthPart) - 1;
+    const day = Number(dayPart);
+    const dayOfWeek = new Date(Date.UTC(year, month, day)).getUTCDay();
+
+    return this.buildDateWindow(year, month, day, dayOfWeek, timezoneOffsetMinutes);
   }
 
   private getPeriodEndExclusiveUTC(view: 'today' | 'week' | 'month'): string {
-    const { year, month, day, dayOfWeek } = this.getKSTDateParts();
+    const dateWindow = this.getCurrentDateWindow();
     switch (view) {
-      case 'today': {
-        return this.getKSTDayStartUTC(year, month, day + 1).toISOString();
-      }
-      case 'week': {
-        const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
-        return this.getKSTDayStartUTC(year, month, day + daysUntilFriday + 1).toISOString();
-      }
+      case 'today':
+        return dateWindow.endOfDayUTC;
+      case 'week':
+        return dateWindow.weekEndExclusiveUTC;
       case 'month': {
-        return this.getKSTDayStartUTC(year, month + 1, 1).toISOString();
+        const { year, month } = this.getDatePartsForOffset();
+        return this.getDayStartUTC(year, month + 1, 1).toISOString();
       }
     }
+  }
+
+  private async queryTodosForDailyReportWindow(
+    startExclusiveUTC: string,
+    endExclusiveUTC: string,
+    waitUntilUpperBoundUTC: string
+  ): Promise<Todo[]> {
+    const result = await this.db.query<Todo>(
+      `SELECT todo_id as "todoId", work_id as "workId",
+              title, description, created_at as "createdAt", updated_at as "updatedAt",
+              due_date as "dueDate", wait_until as "waitUntil", status,
+              repeat_rule as "repeatRule", recurrence_type as "recurrenceType",
+              custom_interval as "customInterval", custom_unit as "customUnit",
+              skip_weekends as "skipWeekends"
+       FROM todos
+       WHERE status = $1
+         AND due_date IS NOT NULL
+         AND due_date >= $2::timestamptz
+         AND due_date < $3::timestamptz
+         AND (wait_until IS NULL OR wait_until < $4::timestamptz)
+       ORDER BY due_date ASC, created_at DESC`,
+      ['진행중', startExclusiveUTC, endExclusiveUTC, waitUntilUpperBoundUTC]
+    );
+
+    return result.rows.map((todo) => this.convertTodoFromDb(todo));
+  }
+
+  async findTodayViewTodosForDate(date: string, timezoneOffsetMinutes: number): Promise<Todo[]> {
+    const { endOfDayUTC } = this.getDateWindowForDate(date, timezoneOffsetMinutes);
+
+    const result = await this.db.query<Todo>(
+      `SELECT todo_id as "todoId", work_id as "workId",
+              title, description, created_at as "createdAt", updated_at as "updatedAt",
+              due_date as "dueDate", wait_until as "waitUntil", status,
+              repeat_rule as "repeatRule", recurrence_type as "recurrenceType",
+              custom_interval as "customInterval", custom_unit as "customUnit",
+              skip_weekends as "skipWeekends"
+       FROM todos
+       WHERE status = $1
+         AND due_date IS NOT NULL
+         AND due_date < $2::timestamptz
+         AND (wait_until IS NULL OR wait_until < $3::timestamptz)
+       ORDER BY due_date ASC, created_at DESC`,
+      ['진행중', endOfDayUTC, endOfDayUTC]
+    );
+
+    return result.rows.map((todo) => this.convertTodoFromDb(todo));
+  }
+
+  async findUpcomingTodosForDate(date: string, timezoneOffsetMinutes: number): Promise<Todo[]> {
+    const { endOfDayUTC, weekEndExclusiveUTC } = this.getDateWindowForDate(
+      date,
+      timezoneOffsetMinutes
+    );
+
+    return this.queryTodosForDailyReportWindow(
+      endOfDayUTC,
+      weekEndExclusiveUTC,
+      weekEndExclusiveUTC
+    );
   }
 
   /**
    * Find all todos with view filters
    */
   async findAll(query: ListTodosQuery): Promise<TodoWithWorkNote[]> {
-    const startOfTodayUTC = this.getStartOfTodayUTC();
-    const startOfTomorrowUTC = this.getStartOfTomorrowUTC();
+    const { startOfDayUTC: startOfTodayUTC, endOfDayUTC: startOfTomorrowUTC } =
+      this.getCurrentDateWindow();
 
     let sql = `
       SELECT t.todo_id as "todoId", t.work_id as "workId",
