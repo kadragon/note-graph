@@ -8,7 +8,7 @@ import { TodoRepository } from '../repositories/todo-repository';
 import { dailyReportAIAnalysisSchema } from '../schemas/daily-report';
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
-import { BadRequestError, RateLimitError } from '../types/errors';
+import { AIResponseError, RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { GoogleCalendarService } from './google-calendar-service';
 import { DEFAULT_DAILY_REPORT_PROMPT, DEFAULT_WRITER_CONTEXT } from './setting-defaults';
@@ -92,7 +92,7 @@ export class DailyReportService {
     date: string,
     timezoneOffset = DEFAULT_TIMEZONE_OFFSET
   ): Promise<DailyReport['todosSnapshot']> {
-    const dateWindow = this.getDateWindowForDate(date, timezoneOffset);
+    const { startOfDayUTC } = this.todoRepo.getDateWindowForDate(date, timezoneOffset);
     const todayTodos = await this.todoRepo.findTodayViewTodosForDate(date, timezoneOffset);
     const upcomingTodos = await this.todoRepo.findUpcomingTodosForDate(date, timezoneOffset);
 
@@ -106,8 +106,7 @@ export class DailyReportService {
     const today = todayTodos.map(toItem);
     const backlog = todayTodos
       .filter(
-        (todo) =>
-          todo.dueDate !== null && Date.parse(todo.dueDate) < Date.parse(dateWindow.startOfDayUTC)
+        (todo) => todo.dueDate !== null && Date.parse(todo.dueDate) < Date.parse(startOfDayUTC)
       )
       .map(toItem);
     const upcoming = upcomingTodos.map(toItem);
@@ -204,6 +203,8 @@ export class DailyReportService {
       if (response.status === 429) {
         throw new RateLimitError('AI API rate limit exceeded. Please try again later.');
       }
+      const errorBody = await response.text().catch(() => '');
+      console.error(`[DailyReportService] OpenAI API error ${response.status}:`, errorBody);
       throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 
@@ -224,20 +225,6 @@ export class DailyReportService {
     }
   }
 
-  private getDateWindowForDate(date: string, timezoneOffset: number) {
-    const [yearPart = '0', monthPart = '1', dayPart = '1'] = date.split('-');
-    const year = Number(yearPart);
-    const month = Number(monthPart);
-    const day = Number(dayPart);
-    const startOfDayUTC = new Date(
-      Date.UTC(year, month - 1, day) - timezoneOffset * 60 * 1000
-    ).toISOString();
-
-    return {
-      startOfDayUTC,
-    };
-  }
-
   private normalizeTodoReference(value: string): string {
     return value
       .normalize('NFKC')
@@ -253,9 +240,15 @@ export class DailyReportService {
       return;
     }
 
+    const MIN_TITLE_LENGTH = 2;
+
     const todayTitles = todosSnapshot.today
       .map((todo) => this.normalizeTodoReference(todo.title))
-      .filter(Boolean);
+      .filter((title) => title.length >= MIN_TITLE_LENGTH);
+
+    if (todayTitles.length === 0) {
+      return;
+    }
 
     const priorityTitles = new Set(
       aiAnalysis.todoPriorities
@@ -273,7 +266,7 @@ export class DailyReportService {
     );
 
     if (!hasReference) {
-      throw new BadRequestError(
+      throw new AIResponseError(
         '일일 리포트 생성 결과에 오늘 탭 할일이 반영되지 않았습니다. 다시 시도해 주세요.'
       );
     }

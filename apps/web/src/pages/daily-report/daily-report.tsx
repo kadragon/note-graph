@@ -111,6 +111,14 @@ export default function DailyReport() {
 
 function ReportContent({ report }: { report: DailyReportType }) {
   const { aiAnalysis } = report;
+  if (
+    report.todosSnapshot &&
+    (!Array.isArray(report.todosSnapshot.today) ||
+      !Array.isArray(report.todosSnapshot.backlog) ||
+      !Array.isArray(report.todosSnapshot.upcoming))
+  ) {
+    console.warn('[DailyReport] todosSnapshot contains non-array fields:', report.todosSnapshot);
+  }
   const todayTodos = Array.isArray(report.todosSnapshot?.today) ? report.todosSnapshot.today : [];
   const backlogTodos = Array.isArray(report.todosSnapshot?.backlog)
     ? report.todosSnapshot.backlog

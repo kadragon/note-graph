@@ -132,6 +132,61 @@ describe('DailyReportService', () => {
     );
   });
 
+  it('passes validation when AI references a today todo only in actionItems (not in todoPriorities)', async () => {
+    vi.spyOn(GoogleCalendarService.prototype, 'getEvents').mockResolvedValue([]);
+    vi.spyOn(TodoRepository.prototype, 'findTodayViewTodosForDate').mockResolvedValue([
+      {
+        todoId: 'TODO-TODAY',
+        workId: 'WORK-1',
+        title: 'Important Task',
+        description: null,
+        createdAt: '2025-01-10T09:00:00.000Z',
+        updatedAt: '2025-01-10T09:00:00.000Z',
+        dueDate: '2025-01-10T12:00:00.000Z',
+        waitUntil: null,
+        status: '진행중',
+        repeatRule: 'NONE',
+        recurrenceType: null,
+        customInterval: null,
+        customUnit: null,
+        skipWeekends: false,
+      },
+    ]);
+    vi.spyOn(TodoRepository.prototype, 'findUpcomingTodosForDate').mockResolvedValue([]);
+    vi.spyOn(DailyReportRepository.prototype, 'findPreviousReport').mockResolvedValue(null);
+    vi.spyOn(DailyReportRepository.prototype, 'generateReportId').mockReturnValue('REPORT-ACTION');
+    vi.spyOn(DailyReportRepository.prototype, 'upsert').mockImplementation(
+      async (report) => report
+    );
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  scheduleSummary: '요약',
+                  todoPriorities: [],
+                  timeAllocation: [],
+                  conflicts: [],
+                  progressVsPrevious: '',
+                  actionItems: ['Important Task 우선 처리'],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 }
+      )
+    );
+
+    const service = new DailyReportService(env, db);
+    const report = await service.generateReport('test@example.com', '2025-01-10', 540);
+
+    expect(report.todosSnapshot.today.map((t) => t.id)).toEqual(['TODO-TODAY']);
+    expect(DailyReportRepository.prototype.upsert).toHaveBeenCalled();
+  });
+
   it('fails report generation when the AI output does not reference any today-view todo', async () => {
     vi.spyOn(GoogleCalendarService.prototype, 'getEvents').mockResolvedValue([]);
     vi.spyOn(TodoRepository.prototype, 'findTodayViewTodosForDate').mockResolvedValue([

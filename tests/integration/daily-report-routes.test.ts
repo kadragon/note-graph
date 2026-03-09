@@ -63,33 +63,45 @@ describe('Daily Report API Routes', () => {
       ]
     );
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  scheduleSummary: '요약',
-                  todoPriorities: [
-                    {
-                      todoTitle: 'Today Task',
-                      reason: '중요',
-                      suggestedOrder: 1,
-                    },
-                  ],
-                  timeAllocation: [],
-                  conflicts: [],
-                  progressVsPrevious: '',
-                  actionItems: ['Today Task 처리'],
-                }),
-              },
-            },
-          ],
-        }),
-        { status: 200 }
-      )
-    );
+    const originalFetch = globalThis.fetch;
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : (input as Request).url;
+      if (url.includes('chat/completions')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      scheduleSummary: '요약',
+                      todoPriorities: [
+                        {
+                          todoTitle: 'Today Task',
+                          reason: '중요',
+                          suggestedOrder: 1,
+                        },
+                      ],
+                      timeAllocation: [],
+                      conflicts: [],
+                      progressVsPrevious: '',
+                      actionItems: ['Today Task 처리'],
+                    }),
+                  },
+                },
+              ],
+            }),
+            { status: 200 }
+          )
+        );
+      }
+      return originalFetch(input, init);
+    });
 
     const response = await authFetch('/api/daily-reports/generate', {
       method: 'POST',
@@ -100,6 +112,7 @@ describe('Daily Report API Routes', () => {
     const data = (await response.json()) as DailyReport;
     expect(data.todosSnapshot.today.map((todo) => todo.id)).toEqual(['TODO-OVERDUE', 'TODO-TODAY']);
     expect(data.todosSnapshot.backlog.map((todo) => todo.id)).toEqual(['TODO-OVERDUE']);
-    expect(data.todosSnapshot.upcoming).toEqual([]);
+    // 2025-01-10 is a Friday; with the fix, upcoming now includes the next week's todos
+    expect(data.todosSnapshot.upcoming.map((todo) => todo.id)).toEqual(['TODO-TOMORROW']);
   });
 });

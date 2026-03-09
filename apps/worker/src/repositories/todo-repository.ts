@@ -228,10 +228,13 @@ export class TodoRepository {
     return this.buildDateWindow(year, month, day, dayOfWeek, timezoneOffsetMinutes);
   }
 
-  private getDateWindowForDate(
+  getDateWindowForDate(
     date: string,
     timezoneOffsetMinutes: number = DEFAULT_TIMEZONE_OFFSET_MINUTES
   ): TodoDateWindow {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new Error(`Invalid date format: "${date}". Expected YYYY-MM-DD.`);
+    }
     const [yearPart = '0', monthPart = '1', dayPart = '1'] = date.split('-');
     const year = Number(yearPart);
     const month = Number(monthPart) - 1;
@@ -308,11 +311,31 @@ export class TodoRepository {
       timezoneOffsetMinutes
     );
 
-    return this.queryTodosForDailyReportWindow(
-      endOfDayUTC,
-      weekEndExclusiveUTC,
-      weekEndExclusiveUTC
-    );
+    // When the upcoming window collapses (e.g. Friday: endOfDay === weekEnd),
+    // extend to next Friday's end so the daily report always has upcoming context.
+    const effectiveEnd =
+      endOfDayUTC === weekEndExclusiveUTC
+        ? this.extendWeekEndByDays(date, 7, timezoneOffsetMinutes)
+        : weekEndExclusiveUTC;
+
+    return this.queryTodosForDailyReportWindow(endOfDayUTC, effectiveEnd, effectiveEnd);
+  }
+
+  private extendWeekEndByDays(
+    date: string,
+    extraDays: number,
+    timezoneOffsetMinutes: number
+  ): string {
+    const [yearPart = '0', monthPart = '1', dayPart = '1'] = date.split('-');
+    const year = Number(yearPart);
+    const month = Number(monthPart) - 1;
+    const day = Number(dayPart);
+    return this.getDayStartUTC(
+      year,
+      month,
+      day + extraDays + 1,
+      timezoneOffsetMinutes
+    ).toISOString();
   }
 
   /**

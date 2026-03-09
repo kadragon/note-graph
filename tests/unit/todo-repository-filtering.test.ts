@@ -557,20 +557,41 @@ describe('TodoRepository - Filtering and Views', () => {
       expect(result.map((todo) => todo.todoId)).toEqual(['TODO-TODAY-REPORT']);
     });
 
-    it('uses the requested timezone offset instead of a hardcoded KST boundary', async () => {
-      const getDateWindowForDate = (
-        repository as unknown as {
-          getDateWindowForDate: (
-            date: string,
-            timezoneOffsetMinutes: number
-          ) => {
-            startOfDayUTC: string;
-            endOfDayUTC: string;
-            weekEndExclusiveUTC: string;
-          };
-        }
-      ).getDateWindowForDate.bind(repository);
+    it('returns upcoming todos on a Friday within the next-week window', async () => {
+      // 2025-01-10 is a Friday; upcoming window should extend to next Saturday
+      const result = await repository.findUpcomingTodosForDate('2025-01-10', 540);
 
+      // TODO-TOMORROW-REPORT (2025-01-11) falls within the Friday→next-Saturday window
+      expect(result.map((todo) => todo.todoId)).toContain('TODO-TOMORROW-REPORT');
+    });
+
+    it('excludes todos with future wait_until from today snapshot', async () => {
+      await insertTodo({
+        todoId: 'TODO-WAIT-FUTURE-REPORT',
+        title: 'Future Wait Report Todo',
+        createdAt: '2025-01-09T09:00:00.000Z',
+        dueDate: '2025-01-10T06:00:00.000Z',
+        waitUntil: '2025-01-11T00:00:00.000Z',
+      });
+
+      const result = await repository.findTodayViewTodosForDate('2025-01-10', 540);
+
+      expect(result.some((todo) => todo.todoId === 'TODO-WAIT-FUTURE-REPORT')).toBe(false);
+    });
+
+    it('rejects malformed date strings', () => {
+      expect(() => repository.getDateWindowForDate('not-a-date', 540)).toThrow(
+        'Invalid date format'
+      );
+      expect(() => repository.getDateWindowForDate('2025', 540)).toThrow('Invalid date format');
+      expect(() => repository.getDateWindowForDate('', 540)).toThrow('Invalid date format');
+    });
+
+    it('uses the requested timezone offset instead of a hardcoded KST boundary', () => {
+      const getDateWindowForDate = repository.getDateWindowForDate.bind(repository);
+
+      // 2025-01-10 is a Friday; weekEndExclusiveUTC collapses to endOfDayUTC in the raw window
+      // (findUpcomingTodosForDate handles the extension internally)
       expect(getDateWindowForDate('2025-01-10', 540)).toEqual({
         startOfDayUTC: '2025-01-09T15:00:00.000Z',
         endOfDayUTC: '2025-01-10T15:00:00.000Z',

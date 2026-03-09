@@ -55,6 +55,15 @@ export class BadRequestError extends DomainError {
 }
 
 /**
+ * AI response quality error (502) - upstream AI returned an invalid or low-quality response
+ */
+export class AIResponseError extends DomainError {
+  constructor(message: string, details?: unknown) {
+    super(message, 'AI_RESPONSE_ERROR', 502, details);
+  }
+}
+
+/**
  * Rate limit exceeded error (429)
  */
 export class RateLimitError extends DomainError {
