@@ -111,9 +111,48 @@ export default function DailyReport() {
 
 function ReportContent({ report }: { report: DailyReportType }) {
   const { aiAnalysis } = report;
+  if (
+    report.todosSnapshot &&
+    (!Array.isArray(report.todosSnapshot.today) ||
+      !Array.isArray(report.todosSnapshot.backlog) ||
+      !Array.isArray(report.todosSnapshot.upcoming))
+  ) {
+    console.warn('[DailyReport] todosSnapshot contains non-array fields:', report.todosSnapshot);
+  }
+  const todayTodos = Array.isArray(report.todosSnapshot?.today) ? report.todosSnapshot.today : [];
+  const backlogTodos = Array.isArray(report.todosSnapshot?.backlog)
+    ? report.todosSnapshot.backlog
+    : [];
+  const upcomingTodos = Array.isArray(report.todosSnapshot?.upcoming)
+    ? report.todosSnapshot.upcoming
+    : [];
+  const hasSourceTodos =
+    todayTodos.length > 0 || backlogTodos.length > 0 || upcomingTodos.length > 0;
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
+      <div className="md:col-span-2">
+        <ReportSection title="오늘 탭 기준 할일" icon={CheckSquare}>
+          {hasSourceTodos ? (
+            <div className="space-y-4">
+              <TodoSnapshotList
+                title="오늘 탭 전체"
+                items={todayTodos}
+                emptyMessage="오늘 탭 기준 할일 없음"
+              />
+              {backlogTodos.length > 0 && (
+                <TodoSnapshotList title="밀린 항목" items={backlogTodos} />
+              )}
+              {upcomingTodos.length > 0 && (
+                <TodoSnapshotList title="다가오는 할일" items={upcomingTodos} />
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">참고한 할일 정보가 없습니다.</p>
+          )}
+        </ReportSection>
+      </div>
+
       {/* Schedule Summary */}
       <ReportSection title="오늘의 요약" icon={Calendar}>
         <p className="text-sm leading-relaxed">{aiAnalysis.scheduleSummary}</p>
@@ -202,4 +241,45 @@ function ReportContent({ report }: { report: DailyReportType }) {
       </ReportSection>
     </div>
   );
+}
+
+function TodoSnapshotList({
+  title,
+  items,
+  emptyMessage,
+}: {
+  title: string;
+  items: Array<{ id: string; title: string; dueDate?: string | null; status: string }>;
+  emptyMessage?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">{title}</p>
+      {items.length > 0 ? (
+        <ul className="space-y-2">
+          {items.map((item) => (
+            <li
+              key={`${title}-${item.id}`}
+              className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm"
+            >
+              <div className="font-medium">{item.title}</div>
+              <div className="text-xs text-muted-foreground">
+                [{item.status}] {formatTodoDueDate(item.dueDate)}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">{emptyMessage ?? '항목 없음'}</p>
+      )}
+    </div>
+  );
+}
+
+function formatTodoDueDate(dueDate?: string | null) {
+  if (!dueDate) {
+    return '기한 없음';
+  }
+
+  return `기한: ${dueDate.split('T')[0]}`;
 }

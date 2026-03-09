@@ -4,18 +4,22 @@
 
 import type { DailyReport, DailyReportAIAnalysis } from '@shared/types/daily-report';
 import { DailyReportRepository } from '../repositories/daily-report-repository';
+import { TodoRepository } from '../repositories/todo-repository';
 import { dailyReportAIAnalysisSchema } from '../schemas/daily-report';
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
-import { RateLimitError } from '../types/errors';
+import { AIResponseError, RateLimitError } from '../types/errors';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { GoogleCalendarService } from './google-calendar-service';
 import { DEFAULT_DAILY_REPORT_PROMPT, DEFAULT_WRITER_CONTEXT } from './setting-defaults';
 import type { SettingService } from './setting-service';
 
 const GPT_MAX_COMPLETION_TOKENS = 4000;
+const DEFAULT_TIMEZONE_OFFSET = 9 * 60;
+
 export class DailyReportService {
   private reportRepo: DailyReportRepository;
+  private todoRepo: TodoRepository;
   private env: Env;
   private db: DatabaseClient;
   private settingService?: SettingService;
@@ -25,9 +29,14 @@ export class DailyReportService {
     this.db = db;
     this.settingService = settingService;
     this.reportRepo = new DailyReportRepository(db);
+    this.todoRepo = new TodoRepository(db);
   }
 
-  async generateReport(userEmail: string, date: string, timezoneOffset = 0): Promise<DailyReport> {
+  async generateReport(
+    userEmail: string,
+    date: string,
+    timezoneOffset = DEFAULT_TIMEZONE_OFFSET
+  ): Promise<DailyReport> {
     // 1. Fetch calendar events (graceful degradation)
     let calendarEvents: DailyReport['calendarSnapshot'] = [];
     try {
@@ -38,13 +47,14 @@ export class DailyReportService {
     }
 
     // 2. Fetch todos bucketed by report date
-    const todosSnapshot = await this.buildTodosSnapshot(date);
+    const todosSnapshot = await this.buildTodosSnapshot(date, timezoneOffset);
 
     // 3. Fetch previous report
     const previousReport = await this.reportRepo.findPreviousReport(date);
 
     // 4. Build AI prompt and call GPT
     const aiAnalysis = await this.callAI(calendarEvents, todosSnapshot, previousReport, date);
+    this.ensureAIReferencesTodayTodos(aiAnalysis, todosSnapshot);
 
     // 5. Upsert to DB
     const reportId = this.reportRepo.generateReportId();
@@ -78,55 +88,28 @@ export class DailyReportService {
    * - backlog: overdue before the report date
    * Each todo appears in exactly one bucket.
    */
-  private async buildTodosSnapshot(date: string): Promise<DailyReport['todosSnapshot']> {
-    // Parse as KST midnight — Date already converts to UTC internally
-    const reportDate = new Date(`${date}T00:00:00+09:00`);
-    const dayStartUTC = reportDate.toISOString();
-    const dayEndUTC = new Date(reportDate.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  private async buildTodosSnapshot(
+    date: string,
+    timezoneOffset = DEFAULT_TIMEZONE_OFFSET
+  ): Promise<DailyReport['todosSnapshot']> {
+    const { startOfDayUTC } = this.todoRepo.getDateWindowForDate(date, timezoneOffset);
+    const todayTodos = await this.todoRepo.findTodayViewTodosForDate(date, timezoneOffset);
+    const upcomingTodos = await this.todoRepo.findUpcomingTodosForDate(date, timezoneOffset);
 
-    const dayOfWeek = reportDate.getDay();
-    const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
-    const weekEndUTC = new Date(
-      reportDate.getTime() + (daysUntilFriday + 1) * 24 * 60 * 60 * 1000
-    ).toISOString();
-
-    const { rows } = await this.db.query<{
-      todo_id: string;
-      title: string;
-      due_date: string | null;
-      status: string;
-    }>(
-      `SELECT todo_id, title, due_date, status
-       FROM todos
-       WHERE status = '진행중'
-         AND due_date IS NOT NULL
-         AND (wait_until IS NULL OR wait_until < $1::timestamptz)
-       ORDER BY due_date ASC`,
-      [dayEndUTC]
-    );
-
-    const toItem = (r: (typeof rows)[number]) => ({
-      id: r.todo_id,
-      title: r.title,
-      dueDate: r.due_date,
-      status: r.status,
+    const toItem = (todo: Awaited<typeof todayTodos>[number]) => ({
+      id: todo.todoId,
+      title: todo.title,
+      dueDate: todo.dueDate,
+      status: todo.status,
     });
 
-    const today: DailyReport['todosSnapshot']['today'] = [];
-    const upcoming: DailyReport['todosSnapshot']['upcoming'] = [];
-    const backlog: DailyReport['todosSnapshot']['backlog'] = [];
-
-    for (const row of rows) {
-      const due = row.due_date;
-      if (!due) continue;
-      if (due >= dayStartUTC && due < dayEndUTC) {
-        today.push(toItem(row));
-      } else if (due >= dayEndUTC && due < weekEndUTC) {
-        upcoming.push(toItem(row));
-      } else if (due < dayStartUTC) {
-        backlog.push(toItem(row));
-      }
-    }
+    const today = todayTodos.map(toItem);
+    const backlog = todayTodos
+      .filter(
+        (todo) => todo.dueDate !== null && Date.parse(todo.dueDate) < Date.parse(startOfDayUTC)
+      )
+      .map(toItem);
+    const upcoming = upcomingTodos.map(toItem);
 
     return { today, upcoming, backlog };
   }
@@ -171,7 +154,7 @@ export class DailyReportService {
         ? todosSnapshot.today
             .map((t) => `- [${t.status}] ${t.title} (기한: ${t.dueDate || '없음'})`)
             .join('\n')
-        : '(오늘 할일 없음)';
+        : '(오늘 탭 기준 할일 없음)';
 
     const upcomingTodosSection =
       todosSnapshot.upcoming.length > 0
@@ -182,8 +165,10 @@ export class DailyReportService {
 
     const backlogTodosSection =
       todosSnapshot.backlog.length > 0
-        ? todosSnapshot.backlog.map((t) => `- ${t.title}`).join('\n')
-        : '(백로그 없음)';
+        ? todosSnapshot.backlog
+            .map((t) => `- ${t.title} (오늘 탭 기준 할일 중 밀린 항목)`)
+            .join('\n')
+        : '(오늘 탭 기준 할일 중 밀린 항목 없음)';
 
     const previousAnalysisSection = previousReport
       ? `이전 리포트 (${previousReport.reportDate}):\n${JSON.stringify(previousReport.aiAnalysis, null, 2)}`
@@ -218,6 +203,8 @@ export class DailyReportService {
       if (response.status === 429) {
         throw new RateLimitError('AI API rate limit exceeded. Please try again later.');
       }
+      const errorBody = await response.text().catch(() => '');
+      console.error(`[DailyReportService] OpenAI API error ${response.status}:`, errorBody);
       throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 
@@ -235,6 +222,53 @@ export class DailyReportService {
     } catch (error) {
       console.error('[DailyReportService] Failed to parse AI response:', content, error);
       throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해 주세요.');
+    }
+  }
+
+  private normalizeTodoReference(value: string): string {
+    return value
+      .normalize('NFKC')
+      .toLocaleLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, '');
+  }
+
+  private ensureAIReferencesTodayTodos(
+    aiAnalysis: DailyReportAIAnalysis,
+    todosSnapshot: DailyReport['todosSnapshot']
+  ) {
+    if (todosSnapshot.today.length === 0) {
+      return;
+    }
+
+    const MIN_TITLE_LENGTH = 2;
+
+    const todayTitles = todosSnapshot.today
+      .map((todo) => this.normalizeTodoReference(todo.title))
+      .filter((title) => title.length >= MIN_TITLE_LENGTH);
+
+    if (todayTitles.length === 0) {
+      return;
+    }
+
+    const priorityTitles = new Set(
+      aiAnalysis.todoPriorities
+        .map((item) => this.normalizeTodoReference(item.todoTitle))
+        .filter(Boolean)
+    );
+    const normalizedActionItems = aiAnalysis.actionItems
+      .map((item) => this.normalizeTodoReference(item))
+      .filter(Boolean);
+
+    const hasReference = todayTitles.some(
+      (title) =>
+        priorityTitles.has(title) ||
+        normalizedActionItems.some((actionItem) => actionItem.includes(title))
+    );
+
+    if (!hasReference) {
+      throw new AIResponseError(
+        '일일 리포트 생성 결과에 오늘 탭 할일이 반영되지 않았습니다. 다시 시도해 주세요.'
+      );
     }
   }
 }
