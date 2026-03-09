@@ -1097,6 +1097,10 @@ export class APIClient {
     return this.request<AppSetting[]>(`/settings${queryString}`);
   }
 
+  getSetting(key: string) {
+    return this.request<AppSetting>(`/settings/${key}`);
+  }
+
   updateSetting(key: string, data: { value: string }) {
     return this.request<AppSetting>(`/settings/${key}`, {
       method: 'PUT',

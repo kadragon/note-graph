@@ -272,6 +272,18 @@ JSON 배열로 반환:
 JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
 
 // ============================================================================
+// Template Defaults
+// ============================================================================
+
+export const DEFAULT_EMAIL_REPLY_TEMPLATE = `안녕하세요. {{ASSIGNEE_NAME}} {{HONORIFIC}}, 전산정보원 강동욱입니다.
+
+{{WORK_NOTE_TITLE}} 관련하여,
+
+감사합니다.
+
+강동욱 드림.`;
+
+// ============================================================================
 // All Default Settings
 // ============================================================================
 
@@ -349,6 +361,16 @@ export const ALL_DEFAULT_SETTINGS: DefaultSetting[] = [
     description:
       '일일 리포트를 생성하는 프롬프트입니다.\n사용 가능한 변수: {{WRITER_CONTEXT}}, {{DATE}}, {{CALENDAR_EVENTS}}, {{TODAY_TODOS}}, {{UPCOMING_TODOS}}, {{BACKLOG_TODOS}}, {{PREVIOUS_REPORT}}',
     value: DEFAULT_DAILY_REPORT_PROMPT,
+  },
+
+  // Templates
+  {
+    key: 'template.email_reply',
+    category: 'template',
+    label: '이메일 답장 템플릿',
+    description:
+      '담당자에게 보내는 이메일 답장 양식입니다.\n사용 가능한 변수: {{ASSIGNEE_NAME}}, {{WORK_NOTE_TITLE}}, {{HONORIFIC}} (직책이 *주사이면 팀장님, 그 외 선생님)',
+    value: DEFAULT_EMAIL_REPLY_TEMPLATE,
   },
 
   // Config - Model selection

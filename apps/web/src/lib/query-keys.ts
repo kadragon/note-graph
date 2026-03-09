@@ -11,6 +11,7 @@ export const qk = {
   workNoteFiles: (workId: string | null | undefined) => ['work-note-files', workId] as const,
 
   settings: (category?: string) => ['settings', category] as const,
+  setting: (key: string) => ['settings', 'detail', key] as const,
   openaiModels: () => ['openai-models'] as const,
 
   dailyReports: () => ['daily-reports'] as const,
