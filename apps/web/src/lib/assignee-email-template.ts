@@ -20,8 +20,13 @@ export function buildAssigneeEmailTemplate(
 ): string {
   const t = options?.template ?? DEFAULT_TEMPLATE;
   const honorific = resolveHonorific(options?.position);
-  return t
-    .replace(/\{\{ASSIGNEE_NAME\}\}/g, assigneeName)
-    .replace(/\{\{WORK_NOTE_TITLE\}\}/g, workNoteTitle)
-    .replace(/\{\{HONORIFIC\}\}/g, honorific);
+  const replacements: Record<string, string> = {
+    '{{ASSIGNEE_NAME}}': assigneeName,
+    '{{WORK_NOTE_TITLE}}': workNoteTitle,
+    '{{HONORIFIC}}': honorific,
+  };
+  return t.replace(
+    /\{\{(ASSIGNEE_NAME|WORK_NOTE_TITLE|HONORIFIC)\}\}/g,
+    (match) => replacements[match] ?? match
+  );
 }
