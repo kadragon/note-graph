@@ -18,7 +18,7 @@ export function buildAssigneeEmailTemplate(
   workNoteTitle: string,
   options?: { position?: string | null; template?: string }
 ): string {
-  const t = options?.template || DEFAULT_TEMPLATE;
+  const t = options?.template ?? DEFAULT_TEMPLATE;
   const honorific = resolveHonorific(options?.position);
   return t
     .replace(/\{\{ASSIGNEE_NAME\}\}/g, assigneeName)

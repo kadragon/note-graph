@@ -102,9 +102,14 @@ export default function WorkNoteDetail() {
     staleTime: 30_000,
   });
 
-  const { data: emailTemplateSetting } = useQuery({
+  const {
+    data: emailTemplateSetting,
+    isLoading: templateLoading,
+    isError: templateError,
+  } = useQuery({
     queryKey: qk.setting('template.email_reply'),
     queryFn: () => API.getSetting('template.email_reply'),
+    enabled: !!id,
     staleTime: 5 * 60_000,
   });
 
@@ -170,6 +175,20 @@ export default function WorkNoteDetail() {
 
   const handleCopyAssigneeEmail = useCallback(
     async (assigneeName: string, position?: string | null) => {
+      if (templateLoading) {
+        toast({
+          title: '템플릿을 불러오는 중입니다.',
+          description: '잠시 후 다시 시도해주세요.',
+        });
+        return;
+      }
+      if (templateError) {
+        toast({
+          variant: 'destructive',
+          title: '템플릿을 불러오지 못했습니다.',
+          description: '기본 템플릿으로 복사합니다. 설정 페이지에서 확인해주세요.',
+        });
+      }
       const emailBody = buildAssigneeEmailTemplate(assigneeName, workNote?.title ?? '', {
         position,
         template: emailTemplateSetting?.value,
@@ -188,7 +207,8 @@ export default function WorkNoteDetail() {
           title: '이메일 양식을 복사했습니다.',
           description: `${assigneeName} 담당자용 메일 초안을 클립보드에 저장했어요.`,
         });
-      } catch {
+      } catch (error) {
+        console.error('Clipboard write failed:', error);
         toast({
           variant: 'destructive',
           title: '복사에 실패했습니다.',
@@ -196,7 +216,7 @@ export default function WorkNoteDetail() {
         });
       }
     },
-    [toast, workNote?.title, emailTemplateSetting?.value]
+    [toast, workNote?.title, emailTemplateSetting?.value, templateLoading, templateError]
   );
 
   const createTodoMutation = useMutation({

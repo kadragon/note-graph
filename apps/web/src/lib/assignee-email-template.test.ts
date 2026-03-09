@@ -18,6 +18,10 @@ describe('resolveHonorific', () => {
     expect(resolveHonorific(null)).toBe('선생님');
     expect(resolveHonorific(undefined)).toBe('선생님');
   });
+
+  it('returns 선생님 when position is empty string', () => {
+    expect(resolveHonorific('')).toBe('선생님');
+  });
 });
 
 describe('buildAssigneeEmailTemplate', () => {
@@ -65,5 +69,20 @@ describe('buildAssigneeEmailTemplate', () => {
     const result = buildAssigneeEmailTemplate('박민수', '테스트', { template });
 
     expect(result).toBe('박민수 박민수');
+  });
+
+  it('returns empty string when template is explicitly empty', () => {
+    const result = buildAssigneeEmailTemplate('김철수', '테스트', { template: '' });
+
+    expect(result).toBe('');
+  });
+
+  it('falls back to default template when template is undefined', () => {
+    const result = buildAssigneeEmailTemplate('김철수', '네트워크 장애 보고', {
+      template: undefined,
+    });
+
+    expect(result).toContain('김철수 선생님');
+    expect(result).toContain('강동욱 드림');
   });
 });
