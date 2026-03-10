@@ -56,7 +56,7 @@ todos.patch('/batch-postpone', bodyValidator(batchPostponeTodosSchema), async (c
  * Re-embeds the parent work note to reflect updated todo in vector store
  */
 todos.patch('/:todoId', bodyValidator(updateTodoSchema), async (c) => {
-  const todoId = c.req.param('todoId');
+  const todoId = c.req.param('todoId')!;
   const data = getValidatedBody<typeof updateTodoSchema>(c);
   const { todos: repository } = c.get('repositories');
   const todo = await repository.update(todoId, data);
