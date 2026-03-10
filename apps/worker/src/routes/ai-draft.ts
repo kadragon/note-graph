@@ -157,7 +157,7 @@ app.post(
   todoDueDateContextMiddleware,
   bodyValidator(TodoSuggestionsRequestSchema),
   async (c) => {
-    const workId = c.req.param('workId');
+    const workId = c.req.param('workId')!;
     const body = getValidatedBody<typeof TodoSuggestionsRequestSchema>(c);
     const todoDueDateContext = c.get('todoDueDateContext');
 
@@ -188,7 +188,7 @@ app.post(
   activeCategoriesMiddleware,
   todoDueDateContextMiddleware,
   async (c) => {
-    const workId = c.req.param('workId');
+    const workId = c.req.param('workId')!;
     const activeCategoryNames = c.get('activeCategoryNames');
     const { todos: todoRepository } = c.get('repositories');
     const todoDueDateContext = c.get('todoDueDateContext');

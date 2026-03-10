@@ -65,7 +65,7 @@ persons.get('/:personId', async (c) => {
  * Department must already exist; otherwise returns validation error
  */
 persons.put('/:personId', bodyValidator(updatePersonSchema), async (c) => {
-  const personId = c.req.param('personId');
+  const personId = c.req.param('personId')!;
   const data = getValidatedBody<typeof updatePersonSchema>(c);
   const { persons: repository } = c.get('repositories');
   const person = await repository.update(personId, data);
