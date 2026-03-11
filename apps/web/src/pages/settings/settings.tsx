@@ -39,14 +39,18 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="ai-logs" className="mt-4">
-          <Suspense>
-            <AILogs />
+          <Suspense
+            fallback={<div className="text-muted-foreground py-12 text-center">로딩 중...</div>}
+          >
+            <AILogs embedded />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="vector-store" className="mt-4">
-          <Suspense>
-            <VectorStore />
+          <Suspense
+            fallback={<div className="text-muted-foreground py-12 text-center">로딩 중...</div>}
+          >
+            <VectorStore embedded />
           </Suspense>
         </TabsContent>
       </Tabs>

@@ -17,6 +17,7 @@ import {
   Link,
   LogOut,
   NotebookPen,
+  Search,
   Settings,
   Settings2,
   Tag,
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
 
   { path: '/persons', label: '사람 관리', icon: Users, group: 2 },
   { path: '/departments', label: '부서 관리', icon: Building2, group: 2 },
+  { path: '/search', label: '검색', icon: Search, group: 3 },
   { path: '/rag', label: 'AI 챗봇', icon: BotMessageSquare, group: 3 },
   { path: '/statistics', label: '통계', icon: BarChart3, group: 3 },
 ];

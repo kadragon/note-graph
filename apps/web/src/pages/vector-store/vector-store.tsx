@@ -19,7 +19,7 @@ import { AlertCircle, CheckCircle2, Clock, Database, Loader2, Play, RefreshCw } 
 
 const BATCH_SIZE = 10;
 
-export default function VectorStore() {
+export default function VectorStore({ embedded: isEmbedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -81,11 +81,13 @@ export default function VectorStore() {
   const embeddingPercentage = total > 0 ? Math.round((embedded / total) * 100) : 0;
 
   return (
-    <div className="page-container">
-      <div>
-        <h1 className="page-title">벡터 스토어 관리</h1>
-        <p className="page-description">업무노트 임베딩 현황을 확인하고 관리합니다</p>
-      </div>
+    <div className={isEmbedded ? undefined : 'page-container'}>
+      {!isEmbedded && (
+        <div>
+          <h1 className="page-title">벡터 스토어 관리</h1>
+          <p className="page-description">업무노트 임베딩 현황을 확인하고 관리합니다</p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3 mb-6">
