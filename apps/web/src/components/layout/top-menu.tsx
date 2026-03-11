@@ -185,7 +185,9 @@ export default function TopMenu() {
 function ManageMenu() {
   const [open, setOpen] = React.useState(false);
   const location = useLocation();
-  const isActive = manageItems.some((item) => location.pathname.startsWith(item.path));
+  const isActive = manageItems.some(
+    (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+  );
 
   React.useEffect(() => {
     setOpen(false);
