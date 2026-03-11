@@ -50,12 +50,14 @@ export function TodoTabs() {
         </TabsList>
       </Tabs>
 
-      <TodoList
-        todos={todos}
-        isLoading={isLoading}
-        onTodoClick={handleTodoClick}
-        groupByWorkNote={true}
-      />
+      <div className="mt-6">
+        <TodoList
+          todos={todos}
+          isLoading={isLoading}
+          onTodoClick={handleTodoClick}
+          groupByWorkNote={true}
+        />
+      </div>
     </div>
   );
 }
