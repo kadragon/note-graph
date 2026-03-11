@@ -183,11 +183,16 @@ export default function TopMenu() {
 }
 
 function ManageMenu() {
+  const [open, setOpen] = React.useState(false);
   const location = useLocation();
   const isActive = manageItems.some((item) => location.pathname.startsWith(item.path));
 
+  React.useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
