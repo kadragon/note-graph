@@ -36,23 +36,25 @@ describe('top-menu', () => {
   it('renders main navigation links', () => {
     render(<TopMenu />);
 
-    const navLinks = [
-      '대시보드',
-      '업무노트',
-      '일일 리포트',
-      '회의록',
-      '업무 구분',
-      '업무 그룹',
-      '사람 관리',
-      '부서 관리',
-      '검색',
-      'AI 챗봇',
-      '통계',
-    ];
+    const navLinks = ['대시보드', '업무노트', '회의록', '일일 리포트', '검색', 'AI 챗봇', '통계'];
 
     navLinks.forEach((name) => {
       expect(screen.getByRole('link', { name })).toBeInTheDocument();
     });
+
+    expect(screen.getByRole('button', { name: '관리' })).toBeInTheDocument();
+  });
+
+  it('shows manage submenu links when popover is opened', async () => {
+    const user = userEvent.setup();
+    render(<TopMenu />);
+
+    await user.click(screen.getByRole('button', { name: '관리' }));
+
+    const manageLinks = ['업무 구분', '업무 그룹', '사람 관리', '부서 관리'];
+    for (const name of manageLinks) {
+      expect(screen.getByRole('link', { name })).toBeInTheDocument();
+    }
   });
 
   it('renders icon-only status indicators and disables connect/disconnect actions', () => {

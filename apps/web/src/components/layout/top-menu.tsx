@@ -1,4 +1,5 @@
 import { Button } from '@web/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@web/components/ui/popover';
 import { toast } from '@web/hooks/use-toast';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
@@ -15,6 +16,7 @@ import {
   FolderOpen,
   Home,
   Link,
+  ListTree,
   LogOut,
   NotebookPen,
   Search,
@@ -24,7 +26,7 @@ import {
   Users,
 } from 'lucide-react';
 import * as React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 type NavItem = {
   path: string;
@@ -36,16 +38,18 @@ type NavItem = {
 const navItems: NavItem[] = [
   { path: '/', label: '대시보드', icon: Home, group: 0 },
   { path: '/work-notes', label: '업무노트', icon: NotebookPen, group: 0 },
-  { path: '/daily-report', label: '일일 리포트', icon: BookOpen, group: 0 },
   { path: '/meeting-minutes', label: '회의록', icon: ClipboardList, group: 0 },
-  { path: '/task-categories', label: '업무 구분', icon: Tag, group: 1 },
-  { path: '/work-note-groups', label: '업무 그룹', icon: FolderOpen, group: 1 },
+  { path: '/daily-report', label: '일일 리포트', icon: BookOpen, group: 0 },
+  { path: '/search', label: '검색', icon: Search, group: 1 },
+  { path: '/rag', label: 'AI 챗봇', icon: BotMessageSquare, group: 1 },
+  { path: '/statistics', label: '통계', icon: BarChart3, group: 1 },
+];
 
-  { path: '/persons', label: '사람 관리', icon: Users, group: 2 },
-  { path: '/departments', label: '부서 관리', icon: Building2, group: 2 },
-  { path: '/search', label: '검색', icon: Search, group: 3 },
-  { path: '/rag', label: 'AI 챗봇', icon: BotMessageSquare, group: 3 },
-  { path: '/statistics', label: '통계', icon: BarChart3, group: 3 },
+const manageItems: NavItem[] = [
+  { path: '/task-categories', label: '업무 구분', icon: Tag, group: 0 },
+  { path: '/work-note-groups', label: '업무 그룹', icon: FolderOpen, group: 0 },
+  { path: '/persons', label: '사람 관리', icon: Users, group: 0 },
+  { path: '/departments', label: '부서 관리', icon: Building2, group: 0 },
 ];
 
 const navGroups = Object.values(
@@ -106,6 +110,8 @@ export default function TopMenu() {
             ))}
           </React.Fragment>
         ))}
+        <div className="w-px h-5 bg-border mx-1" />
+        <ManageMenu />
       </nav>
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
@@ -173,6 +179,54 @@ export default function TopMenu() {
         </Button>
       </div>
     </div>
+  );
+}
+
+function ManageMenu() {
+  const location = useLocation();
+  const isActive = manageItems.some((item) => location.pathname.startsWith(item.path));
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="관리"
+          title="관리"
+          className={cn(
+            'group relative flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+            isActive
+              ? 'bg-accent text-foreground shadow-sm ring-1 ring-ring/30 after:absolute after:bottom-1 after:h-1 after:w-1 after:rounded-full after:bg-foreground'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+          )}
+        >
+          <ListTree className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-48 p-1">
+        {manageItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive: linkActive }) =>
+                cn(
+                  'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
+                  linkActive
+                    ? 'bg-accent text-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                )
+              }
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {item.label}
+            </NavLink>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
   );
 }
 
