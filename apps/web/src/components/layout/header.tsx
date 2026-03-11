@@ -70,7 +70,7 @@ export default function Header() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="w-36 md:w-44 focus:w-64 md:focus:w-72 transition-[width] duration-200 ease-out pl-8 bg-muted/50 border-0 focus-visible:ring-1"
+            className="w-64 md:w-72 pl-8 bg-muted/50 border-0 focus-visible:ring-1"
           />
         </div>
       </div>
