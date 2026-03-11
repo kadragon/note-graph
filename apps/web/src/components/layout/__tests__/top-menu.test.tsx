@@ -38,8 +38,8 @@ describe('top-menu', () => {
 
     const navLinks = [
       '대시보드',
-      '통계',
       '업무노트',
+      '일일 리포트',
       '회의록',
       '업무 구분',
       '업무 그룹',
@@ -47,8 +47,7 @@ describe('top-menu', () => {
       '부서 관리',
       '검색',
       'AI 챗봇',
-      'AI 로그',
-      '벡터 스토어',
+      '통계',
     ];
 
     navLinks.forEach((name) => {

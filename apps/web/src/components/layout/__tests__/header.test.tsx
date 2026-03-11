@@ -44,15 +44,12 @@ describe('header component', () => {
     expect(screen.getByTestId('top-menu')).toBeInTheDocument();
   });
 
-  it('uses compact width and expands only on focus for search input', () => {
+  it('uses fixed width classes for search input', () => {
     render(<Header />);
 
     const searchInput = screen.getByRole('searchbox', { name: /검색/ });
-    expect(searchInput).toHaveClass('w-36');
-    expect(searchInput).toHaveClass('md:w-44');
-    expect(searchInput).toHaveClass('focus:w-64');
-    expect(searchInput).toHaveClass('md:focus:w-72');
-    expect(searchInput).toHaveClass('transition-[width]');
+    expect(searchInput).toHaveClass('w-64');
+    expect(searchInput).toHaveClass('md:w-72');
   });
 
   it('navigates to search page on Enter with query', async () => {

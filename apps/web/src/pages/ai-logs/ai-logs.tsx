@@ -18,7 +18,7 @@ function renderNullableNumber(value: number | null): string {
   return value === null ? '-' : value.toString();
 }
 
-export default function AILogs() {
+export default function AILogs({ embedded = false }: { embedded?: boolean }) {
   const {
     logs,
     pagination,
@@ -42,13 +42,15 @@ export default function AILogs() {
   } = useAIGatewayLogs();
 
   return (
-    <div className="page-container space-y-6">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">AI 로그</h1>
-          <p className="page-description">Cloudflare AI Gateway 요청 메타데이터 조회</p>
+    <div className={embedded ? 'space-y-6' : 'page-container space-y-6'}>
+      {!embedded && (
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">AI 로그</h1>
+            <p className="page-description">Cloudflare AI Gateway 요청 메타데이터 조회</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <Card>
         <CardHeader>
