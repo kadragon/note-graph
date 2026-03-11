@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@web/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
+import { useDialogState } from '@web/hooks/use-dialog-state';
 import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-notes';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { FileEdit, FileText, Plus } from 'lucide-react';
@@ -37,8 +38,7 @@ type WorkNoteTab = 'active' | 'pending' | 'completed-today' | 'completed-week' |
 export default function WorkNotes() {
   const currentYear = new Date().getFullYear();
   const navigate = useNavigate();
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [workNoteToDelete, setWorkNoteToDelete] = useState<string | null>(null);
+  const deleteDialog = useDialogState<string>();
   const [activeTab, setActiveTab] = useState<WorkNoteTab>('active');
   const [completedYearFilter, setCompletedYearFilter] = useState<CompletedYearFilter>(
     String(currentYear) as CompletedYearFilter
@@ -93,16 +93,17 @@ export default function WorkNotes() {
   };
 
   const handleDeleteClick = (workNoteId: string) => {
-    setWorkNoteToDelete(workNoteId);
-    setDeleteDialogOpen(true);
+    deleteDialog.open(workNoteId);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (workNoteToDelete) {
-      await deleteMutation.mutateAsync(workNoteToDelete);
-      setDeleteDialogOpen(false);
-      setWorkNoteToDelete(null);
-    }
+  const handleDeleteConfirm = () => {
+    if (!deleteDialog.id) return;
+
+    deleteMutation.mutate(deleteDialog.id, {
+      onSuccess: () => {
+        deleteDialog.close();
+      },
+    });
   };
 
   return (
@@ -227,7 +228,7 @@ export default function WorkNotes() {
         </CardContent>
       </Card>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialog.isOpen} onOpenChange={deleteDialog.onOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>업무노트 삭제</AlertDialogTitle>
@@ -239,7 +240,7 @@ export default function WorkNotes() {
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
               autoFocus
-              onClick={() => void handleDeleteConfirm()}
+              onClick={handleDeleteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               삭제

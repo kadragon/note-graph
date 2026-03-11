@@ -1,7 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-notes';
 import { createWorkNoteWithStats, resetFactoryCounter } from '@web/test/factories';
-import { render, screen, waitFor, within } from '@web/test/setup';
+import { render, screen, within } from '@web/test/setup';
 import type { WorkNoteWithStats } from '@web/types/api';
 import { startOfWeek } from 'date-fns';
 import type { ReactNode } from 'react';
@@ -105,7 +105,7 @@ describe('work-notes page', () => {
     vi.clearAllMocks();
     resetFactoryCounter();
     vi.mocked(useDeleteWorkNote).mockReturnValue({
-      mutateAsync: vi.fn(),
+      mutate: vi.fn(),
     } as unknown as ReturnType<typeof useDeleteWorkNote>);
   });
 
@@ -216,9 +216,9 @@ describe('work-notes page', () => {
       }),
     ];
 
-    const mutateAsync = vi.fn().mockResolvedValue(undefined);
+    const mutate = vi.fn();
     vi.mocked(useDeleteWorkNote).mockReturnValue({
-      mutateAsync,
+      mutate,
     } as unknown as ReturnType<typeof useDeleteWorkNote>);
     vi.mocked(useWorkNotesWithStats).mockReturnValue({
       data: workNotes,
@@ -235,8 +235,9 @@ describe('work-notes page', () => {
 
     await user.click(screen.getByRole('button', { name: '삭제' }));
 
-    await waitFor(() => {
-      expect(mutateAsync).toHaveBeenCalledWith('work-delete');
-    });
+    expect(mutate).toHaveBeenCalledWith(
+      'work-delete',
+      expect.objectContaining({ onSuccess: expect.any(Function) })
+    );
   });
 });

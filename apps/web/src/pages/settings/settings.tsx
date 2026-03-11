@@ -1,7 +1,11 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
+import { lazy, Suspense } from 'react';
 import { ConfigSettingsTab } from './components/config-settings-tab';
 import { PromptSettingsTab } from './components/prompt-settings-tab';
 import { TemplateSettingsTab } from './components/template-settings-tab';
+
+const AILogs = lazy(() => import('@web/pages/ai-logs'));
+const VectorStore = lazy(() => import('@web/pages/vector-store'));
 
 export default function Settings() {
   return (
@@ -18,6 +22,8 @@ export default function Settings() {
           <TabsTrigger value="prompts">AI 프롬프트</TabsTrigger>
           <TabsTrigger value="templates">템플릿</TabsTrigger>
           <TabsTrigger value="config">환경 설정</TabsTrigger>
+          <TabsTrigger value="ai-logs">AI 로그</TabsTrigger>
+          <TabsTrigger value="vector-store">벡터 스토어</TabsTrigger>
         </TabsList>
 
         <TabsContent value="prompts" className="mt-4">
@@ -30,6 +36,18 @@ export default function Settings() {
 
         <TabsContent value="config" className="mt-4">
           <ConfigSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="ai-logs" className="mt-4">
+          <Suspense>
+            <AILogs />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="vector-store" className="mt-4">
+          <Suspense>
+            <VectorStore />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

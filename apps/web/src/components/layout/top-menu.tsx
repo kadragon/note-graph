@@ -12,14 +12,11 @@ import {
   Calendar,
   ClipboardList,
   Cloud,
-  DatabaseZap,
   FolderOpen,
   Home,
   Link,
   LogOut,
   NotebookPen,
-  ScrollText,
-  Search,
   Settings,
   Settings2,
   Tag,
@@ -37,19 +34,16 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { path: '/', label: '대시보드', icon: Home, group: 0 },
-  { path: '/daily-report', label: '일일 리포트', icon: BookOpen, group: 0 },
-  { path: '/statistics', label: '통계', icon: BarChart3, group: 0 },
   { path: '/work-notes', label: '업무노트', icon: NotebookPen, group: 0 },
+  { path: '/daily-report', label: '일일 리포트', icon: BookOpen, group: 0 },
   { path: '/meeting-minutes', label: '회의록', icon: ClipboardList, group: 0 },
   { path: '/task-categories', label: '업무 구분', icon: Tag, group: 1 },
   { path: '/work-note-groups', label: '업무 그룹', icon: FolderOpen, group: 1 },
 
   { path: '/persons', label: '사람 관리', icon: Users, group: 2 },
   { path: '/departments', label: '부서 관리', icon: Building2, group: 2 },
-  { path: '/search', label: '검색', icon: Search, group: 3 },
   { path: '/rag', label: 'AI 챗봇', icon: BotMessageSquare, group: 3 },
-  { path: '/ai-logs', label: 'AI 로그', icon: ScrollText, group: 3 },
-  { path: '/vector-store', label: '벡터 스토어', icon: DatabaseZap, group: 3 },
+  { path: '/statistics', label: '통계', icon: BarChart3, group: 3 },
 ];
 
 const navGroups = Object.values(
