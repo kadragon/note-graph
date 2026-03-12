@@ -390,6 +390,34 @@ describe('WorkNoteRepository', () => {
       expect(rows.rows.map((row: any) => row.meetingId)).toEqual(['MEET-NEW-001']);
     });
 
+    it('should remove one meeting from multiple without conflict error', async () => {
+      await pglite.query(
+        `INSERT INTO meeting_minutes (meeting_id, meeting_date, topic, details_raw)
+         VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)`,
+        ['MEET-A', '2024-01-01', 'Meeting A', '', 'MEET-B', '2024-01-02', 'Meeting B', '']
+      );
+      await pglite.query(
+        'INSERT INTO work_note_meeting_minute (work_id, meeting_id) VALUES ($1, $2), ($1, $3)',
+        [existingWorkId, 'MEET-A', 'MEET-B']
+      );
+
+      const update: UpdateWorkNoteInput = {
+        relatedMeetingIds: ['MEET-A'],
+      };
+
+      await repository.update(existingWorkId, update);
+
+      const rows = await pglite.query(
+        `SELECT meeting_id as "meetingId"
+           FROM work_note_meeting_minute
+           WHERE work_id = $1
+           ORDER BY meeting_id ASC`,
+        [existingWorkId]
+      );
+
+      expect(rows.rows.map((row: any) => row.meetingId)).toEqual(['MEET-A']);
+    });
+
     it('should prune old versions after 5 versions', async () => {
       for (let i = 1; i <= 6; i++) {
         await repository.update(existingWorkId, { title: `Version ${i}` });

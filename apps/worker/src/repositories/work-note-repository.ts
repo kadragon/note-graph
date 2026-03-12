@@ -517,7 +517,7 @@ export class WorkNoteRepository {
           'work_note_group_items',
           ['work_id', 'group_id'],
           data.groupIds.map((id) => [workId, id]),
-          'ON CONFLICT DO NOTHING'
+          'ON CONFLICT (work_id, group_id) DO NOTHING'
         )
       );
     }
@@ -692,7 +692,7 @@ export class WorkNoteRepository {
             'work_note_relation',
             ['work_id', 'related_work_id'],
             data.relatedWorkIds.map((id) => [workId, id]),
-            'ON CONFLICT DO NOTHING'
+            'ON CONFLICT (work_id, related_work_id) DO NOTHING'
           )
         );
       }
@@ -715,7 +715,7 @@ export class WorkNoteRepository {
             'work_note_meeting_minute',
             ['work_id', 'meeting_id'],
             data.relatedMeetingIds.map((id) => [workId, id]),
-            'ON CONFLICT DO NOTHING'
+            'ON CONFLICT (work_id, meeting_id) DO NOTHING'
           )
         );
       }
@@ -738,7 +738,7 @@ export class WorkNoteRepository {
             'work_note_task_category',
             ['work_id', 'category_id'],
             data.categoryIds.map((id) => [workId, id]),
-            'ON CONFLICT DO NOTHING'
+            'ON CONFLICT (work_id, category_id) DO NOTHING'
           )
         );
       }
@@ -761,7 +761,7 @@ export class WorkNoteRepository {
             'work_note_group_items',
             ['work_id', 'group_id'],
             data.groupIds.map((id) => [workId, id]),
-            'ON CONFLICT DO NOTHING'
+            'ON CONFLICT (work_id, group_id) DO NOTHING'
           )
         );
       }
