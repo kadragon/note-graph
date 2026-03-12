@@ -352,10 +352,17 @@ describe('WorkNoteService Google Drive integration', () => {
 });
 
 describe('WorkNoteService.delete', () => {
-  it('returns cleanupPromise and passes userEmail to deleteWorkNoteFiles when provided', async () => {
+  it('collects file info before DB delete and deletes storage after', async () => {
     const service = new WorkNoteService(dummyDb, dummyEnv);
 
-    const deleteWorkNoteFiles = vi.fn().mockResolvedValue(undefined);
+    const mockFileInfo = {
+      workId: 'WORK-123',
+      userEmail: 'tester@example.com',
+      folderId: 'FOLDER-1',
+      fileRows: [{ file_id: 'F1', r2_key: '', storage_type: 'GDRIVE', gdrive_file_id: 'GF1' }],
+    };
+    const collectWorkNoteFileInfo = vi.fn().mockResolvedValue(mockFileInfo);
+    const deleteWorkNoteStorageObjects = vi.fn().mockResolvedValue(undefined);
     const deleteChunkRange = vi.fn().mockResolvedValue(undefined);
     const estimateChunkCount = vi.fn().mockReturnValue(1);
     const getMaxKnownChunkCount = vi.fn().mockResolvedValue(1);
@@ -371,7 +378,8 @@ describe('WorkNoteService.delete', () => {
     const repositoryDelete = vi.fn().mockResolvedValue(undefined);
 
     (service as unknown as { fileService: unknown }).fileService = {
-      deleteWorkNoteFiles,
+      collectWorkNoteFileInfo,
+      deleteWorkNoteStorageObjects,
     };
     (service as unknown as { repository: unknown }).repository = {
       findById,
@@ -386,9 +394,22 @@ describe('WorkNoteService.delete', () => {
     const { cleanupPromise } = await service.delete('WORK-123', 'tester@example.com');
     await cleanupPromise;
 
-    expect(deleteWorkNoteFiles).toHaveBeenCalledWith('WORK-123', 'tester@example.com');
-    expect(deleteChunkRange).toHaveBeenCalledWith('WORK-123', 0, 1);
+    // Phase 1: collect file info BEFORE db delete
+    expect(collectWorkNoteFileInfo).toHaveBeenCalledWith('WORK-123', 'tester@example.com');
+
+    // Phase 2: db delete
     expect(repositoryDelete).toHaveBeenCalledWith('WORK-123');
+
+    // Phase 3: storage cleanup with collected info
+    expect(deleteWorkNoteStorageObjects).toHaveBeenCalledWith(mockFileInfo);
+    expect(deleteChunkRange).toHaveBeenCalledWith('WORK-123', 0, 1);
+
+    // Verify order: collectFileInfo called before repositoryDelete
+    const collectOrder = collectWorkNoteFileInfo.mock.invocationCallOrder[0];
+    const deleteOrder = repositoryDelete.mock.invocationCallOrder[0];
+    const storageOrder = deleteWorkNoteStorageObjects.mock.invocationCallOrder[0];
+    expect(collectOrder).toBeLessThan(deleteOrder);
+    expect(deleteOrder).toBeLessThan(storageOrder);
   });
 });
 

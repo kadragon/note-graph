@@ -706,6 +706,152 @@ describe('WorkNoteFileService', () => {
     expect(rowsAfterCascade.rows).toHaveLength(0);
   });
 
+  describe('collectWorkNoteFileInfo', () => {
+    it('returns folder ID and file rows from DB', async () => {
+      await insertWorkNote('WORK-COLLECT', '2023-05-01T00:00:00.000Z');
+
+      // Upload a file (creates both file record and folder record)
+      await service.uploadFile({
+        workId: 'WORK-COLLECT',
+        file: new Blob(['data'], { type: 'application/pdf' }),
+        originalName: 'doc.pdf',
+        uploadedBy: userEmail,
+      });
+
+      const info = await service.collectWorkNoteFileInfo('WORK-COLLECT', userEmail);
+
+      expect(info.workId).toBe('WORK-COLLECT');
+      expect(info.userEmail).toBe(userEmail);
+      expect(info.folderId).toBe('FOLDER-1');
+      expect(info.fileRows).toHaveLength(1);
+      expect(info.fileRows[0]?.storage_type).toBe('GDRIVE');
+      expect(info.fileRows[0]?.gdrive_file_id).toBe('GFILE-1');
+    });
+
+    it('returns null folderId when no Drive folder exists', async () => {
+      await insertWorkNote('WORK-NOFOLDER', '2023-05-01T00:00:00.000Z');
+
+      // Insert R2 file without Drive folder
+      await insertLegacyR2File({
+        workId: 'WORK-NOFOLDER',
+        fileId: 'FILE-R2-1',
+        r2Key: 'work-notes/WORK-NOFOLDER/files/FILE-R2-1',
+        originalName: 'legacy.pdf',
+        fileType: 'application/pdf',
+        fileSize: 10,
+      });
+
+      const info = await service.collectWorkNoteFileInfo('WORK-NOFOLDER', userEmail);
+
+      expect(info.folderId).toBeNull();
+      expect(info.fileRows).toHaveLength(1);
+      expect(info.fileRows[0]?.storage_type).toBe('R2');
+    });
+
+    it('returns empty fileRows when no files exist', async () => {
+      await insertWorkNote('WORK-EMPTY', '2023-05-01T00:00:00.000Z');
+
+      const info = await service.collectWorkNoteFileInfo('WORK-EMPTY', userEmail);
+
+      expect(info.folderId).toBeNull();
+      expect(info.fileRows).toHaveLength(0);
+    });
+  });
+
+  describe('deleteWorkNoteStorageObjects', () => {
+    it('deletes Drive folder when folderId is present', async () => {
+      const info = {
+        workId: 'WORK-123',
+        userEmail,
+        folderId: 'FOLDER-TO-DELETE',
+        fileRows: [
+          {
+            file_id: 'F1',
+            r2_key: '',
+            storage_type: 'GDRIVE' as const,
+            gdrive_file_id: 'GF1',
+          },
+        ],
+      };
+
+      await service.deleteWorkNoteStorageObjects(info);
+
+      // Should delete folder, not individual files
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${DRIVE_API_BASE}/files/FOLDER-TO-DELETE`,
+        expect.objectContaining({ method: 'DELETE' })
+      );
+      // Individual file should NOT be deleted when folder exists
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        `${DRIVE_API_BASE}/files/GF1`,
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+
+    it('deletes individual Drive files when no folderId', async () => {
+      const info = {
+        workId: 'WORK-123',
+        userEmail,
+        folderId: null,
+        fileRows: [
+          {
+            file_id: 'F1',
+            r2_key: '',
+            storage_type: 'GDRIVE' as const,
+            gdrive_file_id: 'GF1',
+          },
+        ],
+      };
+
+      await service.deleteWorkNoteStorageObjects(info);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${DRIVE_API_BASE}/files/GF1`,
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+
+    it('deletes R2 objects', async () => {
+      const r2Key = 'work-notes/WORK-123/files/FILE-R2';
+      await r2.put(r2Key, new Blob(['data']));
+
+      const info = {
+        workId: 'WORK-123',
+        userEmail,
+        folderId: null,
+        fileRows: [
+          {
+            file_id: 'FILE-R2',
+            r2_key: r2Key,
+            storage_type: 'R2' as const,
+            gdrive_file_id: null,
+          },
+        ],
+      };
+
+      await service.deleteWorkNoteStorageObjects(info);
+
+      expect(await r2.get(r2Key)).toBeNull();
+    });
+
+    it('skips cleanup when fileRows is empty', async () => {
+      const info = {
+        workId: 'WORK-123',
+        userEmail,
+        folderId: 'FOLDER-1',
+        fileRows: [],
+      };
+
+      await service.deleteWorkNoteStorageObjects(info);
+
+      // No Drive API calls should be made (including no folder delete)
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        expect.stringContaining(DRIVE_API_BASE),
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+  });
+
   describe('uploadFileToDrive', () => {
     it('uploads file to Drive and returns DriveFileListItem without DB record', async () => {
       await insertWorkNote('WORK-UPLOAD', '2023-05-01T00:00:00.000Z');

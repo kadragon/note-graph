@@ -56,6 +56,18 @@ const UNSUPPORTED_FILE_MESSAGE =
 
 const DRIVE_APP_PROPERTY_FILE_ID = 'workNoteFileId';
 
+export interface WorkNoteFileCleanupInfo {
+  workId: string;
+  userEmail?: string;
+  folderId: string | null;
+  fileRows: Array<{
+    file_id: string;
+    r2_key: string;
+    storage_type: WorkNoteFileStorageType;
+    gdrive_file_id: string | null;
+  }>;
+}
+
 interface UploadFileParams {
   workId: string;
   file: Blob;
@@ -206,11 +218,13 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
   }
 
   /**
-   * Delete all files for a work note (used during work note deletion)
-   * DB records are cleaned up by ON DELETE CASCADE when parent work_note is deleted.
-   * This method deletes storage objects (R2 or Google Drive).
+   * Collect file info from DB before CASCADE deletion.
+   * Returns the data needed to delete storage objects (Drive/R2) without further DB queries.
    */
-  async deleteWorkNoteFiles(workId: string, userEmail?: string): Promise<void> {
+  async collectWorkNoteFileInfo(
+    workId: string,
+    userEmail?: string
+  ): Promise<WorkNoteFileCleanupInfo> {
     const folderId = userEmail
       ? ((
           await this.db.queryOne<{ gdrive_folder_id: string }>(
@@ -219,7 +233,6 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
           )
         )?.gdrive_folder_id ?? null)
       : null;
-    const shouldDeleteDriveFiles = !!(userEmail && !folderId);
 
     const { rows: fileRows } = await this.db.query<{
       file_id: string;
@@ -232,9 +245,21 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
       [workId]
     );
 
+    return { workId, userEmail, folderId, fileRows };
+  }
+
+  /**
+   * Delete storage objects (Drive/R2) using previously collected file info.
+   * Safe to call after DB CASCADE since it requires no further DB queries.
+   */
+  async deleteWorkNoteStorageObjects(info: WorkNoteFileCleanupInfo): Promise<void> {
+    const { workId, userEmail, folderId, fileRows } = info;
+
     if (fileRows.length === 0) {
       return;
     }
+
+    const shouldDeleteDriveFiles = !!(userEmail && !folderId);
 
     // Delete storage objects in parallel. DB records will be cleaned up by ON DELETE CASCADE.
     await Promise.all(
@@ -266,6 +291,16 @@ export class WorkNoteFileService extends BaseFileService<WorkNoteFile> {
         // Non-fatal
       }
     }
+  }
+
+  /**
+   * Delete all files for a work note (used during work note deletion)
+   * DB records are cleaned up by ON DELETE CASCADE when parent work_note is deleted.
+   * This method deletes storage objects (R2 or Google Drive).
+   */
+  async deleteWorkNoteFiles(workId: string, userEmail?: string): Promise<void> {
+    const info = await this.collectWorkNoteFileInfo(workId, userEmail);
+    await this.deleteWorkNoteStorageObjects(info);
   }
 
   private async updateFileToDriveRecord(

@@ -143,6 +143,11 @@ export class WorkNoteService {
 
   /**
    * Delete work note, remove embeddings, and delete attached files
+   *
+   * Uses a 2-phase approach for file cleanup to avoid race conditions:
+   * 1. Collect file info from DB (before CASCADE)
+   * 2. Delete DB record (CASCADE clears file/folder rows)
+   * 3. Delete storage objects using collected info (no DB queries needed)
    */
   async delete(workId: string, userEmail?: string): Promise<{ cleanupPromise: Promise<void> }> {
     const existing = await this.repository.findById(workId);
@@ -161,8 +166,17 @@ export class WorkNoteService {
       currentChunkCount
     );
 
-    const fileCleanupPromise = this.fileService
-      ? this.fileService.deleteWorkNoteFiles(workId, userEmail).catch((error) => {
+    // Phase 1: Collect file info from DB BEFORE cascade deletion
+    const fileInfo = this.fileService
+      ? await this.fileService.collectWorkNoteFileInfo(workId, userEmail)
+      : null;
+
+    // Phase 2: Delete from DB (cascade will handle work_note_files via ON DELETE CASCADE)
+    await this.repository.delete(workId);
+
+    // Phase 3: Delete storage objects using previously collected info (no DB queries needed)
+    const fileCleanupPromise = fileInfo
+      ? this.fileService!.deleteWorkNoteStorageObjects(fileInfo).catch((error) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
 
           console.error('[WorkNoteService] Failed to delete work note files:', {
@@ -171,9 +185,6 @@ export class WorkNoteService {
           });
         })
       : Promise.resolve();
-
-    // Delete from DB (cascade will handle work_note_files via ON DELETE CASCADE)
-    await this.repository.delete(workId);
 
     const chunkCleanupPromise = this.deleteWorkNoteChunks(workId, maxKnownChunkCount).catch(
       (error) => {
