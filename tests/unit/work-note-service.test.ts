@@ -411,6 +411,48 @@ describe('WorkNoteService.delete', () => {
     expect(collectOrder).toBeLessThan(deleteOrder);
     expect(deleteOrder).toBeLessThan(storageOrder);
   });
+
+  it('still deletes work note when collectWorkNoteFileInfo rejects', async () => {
+    const service = new WorkNoteService(dummyDb, dummyEnv);
+
+    const collectWorkNoteFileInfo = vi.fn().mockRejectedValue(new Error('DB read error'));
+    const deleteWorkNoteStorageObjects = vi.fn().mockResolvedValue(undefined);
+    const deleteChunkRange = vi.fn().mockResolvedValue(undefined);
+    const estimateChunkCount = vi.fn().mockReturnValue(1);
+    const getMaxKnownChunkCount = vi.fn().mockResolvedValue(1);
+    const findById = vi.fn().mockResolvedValue({
+      workId: 'WORK-123',
+      title: 'short title',
+      contentRaw: 'short content',
+      category: null,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      embeddedAt: null,
+    } satisfies WorkNote);
+    const repositoryDelete = vi.fn().mockResolvedValue(undefined);
+
+    (service as unknown as { fileService: unknown }).fileService = {
+      collectWorkNoteFileInfo,
+      deleteWorkNoteStorageObjects,
+    };
+    (service as unknown as { repository: unknown }).repository = {
+      findById,
+      delete: repositoryDelete,
+    };
+    (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = {
+      estimateChunkCount,
+      getMaxKnownChunkCount,
+      deleteChunkRange,
+    };
+
+    const { cleanupPromise } = await service.delete('WORK-123', 'tester@example.com');
+    await cleanupPromise;
+
+    // Work note should still be deleted despite file info collection failure
+    expect(repositoryDelete).toHaveBeenCalledWith('WORK-123');
+    // Storage cleanup should be skipped since no file info was collected
+    expect(deleteWorkNoteStorageObjects).not.toHaveBeenCalled();
+  });
 });
 
 describe('WorkNoteService embedding guards and deterministic stale deletion', () => {
