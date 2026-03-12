@@ -517,7 +517,7 @@ export class WorkNoteRepository {
           'work_note_group_items',
           ['work_id', 'group_id'],
           data.groupIds.map((id) => [workId, id]),
-          'ON CONFLICT DO NOTHING'
+          'ON CONFLICT (work_id, group_id) DO NOTHING'
         )
       );
     }
