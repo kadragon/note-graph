@@ -1,53 +1,92 @@
-import { AssigneeSelector } from '@web/components/assignee-selector';
-import { CategorySelector } from '@web/components/category-selector';
-import { GroupSelector } from '@web/components/group-selector';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
-import { Input } from '@web/components/ui/input';
-import { Label } from '@web/components/ui/label';
-import { Textarea } from '@web/components/ui/textarea';
+import { useDraftAutoSave } from '@web/hooks/use-draft-auto-save';
 import { useCreateMeetingMinute } from '@web/hooks/use-meeting-minutes';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+import { MeetingMinuteContentStep } from './components/meeting-minute-content-step';
+import type { MeetingMinuteFormData } from './components/meeting-minute-metadata-form';
+import { MeetingMinuteMetadataForm } from './components/meeting-minute-metadata-form';
+
+const DRAFT_KEY = 'meeting-minute-draft';
 
 export default function MeetingMinuteCreate() {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [step, setStep] = useState<1 | 2>(1);
   const [meetingDate, setMeetingDate] = useState('');
   const [topic, setTopic] = useState('');
   const [detailsRaw, setDetailsRaw] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
-  const [generatedKeywords, setGeneratedKeywords] = useState<string[]>([]);
-  const { toast } = useToast();
 
   const createMutation = useCreateMeetingMinute();
   const { data: taskCategories = [], isLoading: categoriesLoading } = useTaskCategories(true);
   const { data: groups = [], isLoading: groupsLoading } = useWorkNoteGroups(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const formData: MeetingMinuteFormData = useMemo(
+    () => ({
+      meetingDate,
+      topic,
+      detailsRaw,
+      categoryIds: selectedCategoryIds,
+      groupIds: selectedGroupIds,
+      personIds: selectedPersonIds,
+    }),
+    [meetingDate, topic, detailsRaw, selectedCategoryIds, selectedGroupIds, selectedPersonIds]
+  );
 
-    if (!meetingDate || !topic.trim() || !detailsRaw.trim()) {
+  const { restoredDraft, draftStatus, clearDraft, dismissRestoredDraft } =
+    useDraftAutoSave<MeetingMinuteFormData>({
+      key: DRAFT_KEY,
+      data: formData,
+    });
+
+  const applyDraft = useCallback(
+    (draft: MeetingMinuteFormData) => {
+      setMeetingDate(draft.meetingDate);
+      setTopic(draft.topic);
+      setDetailsRaw(draft.detailsRaw);
+      setSelectedCategoryIds(draft.categoryIds);
+      setSelectedGroupIds(draft.groupIds);
+      setSelectedPersonIds(draft.personIds);
+      dismissRestoredDraft();
+    },
+    [dismissRestoredDraft]
+  );
+
+  const handleFormDataChange = useCallback((partial: Partial<MeetingMinuteFormData>) => {
+    if (partial.meetingDate !== undefined) setMeetingDate(partial.meetingDate);
+    if (partial.topic !== undefined) setTopic(partial.topic);
+    if (partial.detailsRaw !== undefined) setDetailsRaw(partial.detailsRaw);
+    if (partial.categoryIds !== undefined) setSelectedCategoryIds(partial.categoryIds);
+    if (partial.groupIds !== undefined) setSelectedGroupIds(partial.groupIds);
+    if (partial.personIds !== undefined) setSelectedPersonIds(partial.personIds);
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!meetingDate || !topic.trim()) {
       toast({
         variant: 'destructive',
         title: '오류',
-        description: '회의일, 토픽, 회의 내용을 입력해주세요.',
+        description: '회의 날짜와 주제를 입력해주세요.',
       });
       return;
     }
 
-    if (selectedPersonIds.length === 0) {
+    if (!detailsRaw.trim()) {
       toast({
         variant: 'destructive',
         title: '오류',
-        description: '참석자를 한 명 이상 선택해주세요.',
+        description: '회의 내용을 입력해주세요.',
       });
       return;
     }
@@ -61,7 +100,7 @@ export default function MeetingMinuteCreate() {
         categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
         groupIds: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
       });
-      setGeneratedKeywords(result.keywords ?? []);
+      clearDraft();
       navigate(`/meeting-minutes/${result.meetingId}`, { replace: true });
     } catch {
       // Error is handled by mutation hook toast.
@@ -81,102 +120,56 @@ export default function MeetingMinuteCreate() {
             <p className="page-description">새로운 회의록을 작성합니다.</p>
           </div>
         </div>
+        {draftStatus === 'saved' && <p className="text-xs text-muted-foreground">자동 저장됨</p>}
       </div>
 
-      <Card className="mx-auto max-w-2xl">
+      {restoredDraft && (
+        <div className="mx-auto max-w-2xl mb-4">
+          <div className="flex items-center justify-between rounded-md border border-yellow-300 bg-yellow-50 px-4 py-2 dark:border-yellow-700 dark:bg-yellow-950">
+            <p className="text-sm">이전에 작성 중이던 내용이 있습니다.</p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={dismissRestoredDraft}>
+                무시
+              </Button>
+              <Button size="sm" onClick={() => applyDraft(restoredDraft)}>
+                복원
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Card className={step === 2 ? 'mx-auto max-w-4xl' : 'mx-auto max-w-2xl'}>
         <CardHeader>
-          <CardTitle>회의 정보</CardTitle>
+          <CardTitle>
+            {step === 1 ? '회의 정보' : '회의 내용'}
+            <span className="ml-2 text-sm font-normal text-muted-foreground">({step}/2)</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4" onSubmit={(e) => void handleSubmit(e)}>
-            <div className="grid gap-2">
-              <Label htmlFor="meeting-date">회의일</Label>
-              <Input
-                id="meeting-date"
-                type="date"
-                value={meetingDate}
-                onChange={(e) => setMeetingDate(e.target.value)}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="meeting-topic">토픽</Label>
-              <Input
-                id="meeting-topic"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="회의 주제를 입력하세요"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="meeting-details">회의 내용</Label>
-              <Textarea
-                id="meeting-details"
-                value={detailsRaw}
-                onChange={(e) => setDetailsRaw(e.target.value)}
-                placeholder="회의 내용을 입력하세요"
-                className="min-h-[160px]"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>업무 구분 (선택사항)</Label>
-              <CategorySelector
-                categories={taskCategories}
-                selectedIds={selectedCategoryIds}
-                onSelectionChange={setSelectedCategoryIds}
-                isLoading={categoriesLoading}
-                idPrefix="meeting-category"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>업무 그룹 (선택사항)</Label>
-              <GroupSelector
-                groups={groups}
-                selectedIds={selectedGroupIds}
-                onSelectionChange={setSelectedGroupIds}
-                isLoading={groupsLoading}
-                idPrefix="meeting-group"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>참석자</Label>
-              <AssigneeSelector
-                persons={persons}
-                selectedPersonIds={selectedPersonIds}
-                onSelectionChange={setSelectedPersonIds}
-                isLoading={personsLoading}
-              />
-            </div>
-
-            {generatedKeywords.length > 0 && (
-              <div className="grid gap-2">
-                <Label>키워드</Label>
-                <div className="flex flex-wrap gap-2">
-                  {generatedKeywords.map((keyword) => (
-                    <span
-                      key={keyword}
-                      className="rounded-md border px-2 py-1 text-xs text-muted-foreground"
-                    >
-                      {keyword}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-                취소
-              </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? '저장 중...' : '저장'}
-              </Button>
-            </div>
-          </form>
+          {step === 1 ? (
+            <MeetingMinuteMetadataForm
+              formData={formData}
+              onFormDataChange={handleFormDataChange}
+              onNext={() => setStep(2)}
+              onCancel={() => navigate(-1)}
+              taskCategories={taskCategories}
+              categoriesLoading={categoriesLoading}
+              groups={groups}
+              groupsLoading={groupsLoading}
+              persons={persons}
+              personsLoading={personsLoading}
+              idPrefix="meeting"
+            />
+          ) : (
+            <MeetingMinuteContentStep
+              detailsRaw={detailsRaw}
+              onDetailsChange={setDetailsRaw}
+              onBack={() => setStep(1)}
+              onSubmit={() => void handleSubmit()}
+              isPending={createMutation.isPending}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

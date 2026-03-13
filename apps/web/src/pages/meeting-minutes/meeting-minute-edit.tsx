@@ -1,23 +1,24 @@
-import { AssigneeSelector } from '@web/components/assignee-selector';
-import { CategorySelector } from '@web/components/category-selector';
-import { GroupSelector } from '@web/components/group-selector';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
-import { Input } from '@web/components/ui/input';
-import { Label } from '@web/components/ui/label';
-import { Textarea } from '@web/components/ui/textarea';
+import { useDraftAutoSave } from '@web/hooks/use-draft-auto-save';
 import { useMeetingMinute, useUpdateMeetingMinute } from '@web/hooks/use-meeting-minutes';
 import { usePersons } from '@web/hooks/use-persons';
 import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+
+import { MeetingMinuteContentStep } from './components/meeting-minute-content-step';
+import type { MeetingMinuteFormData } from './components/meeting-minute-metadata-form';
+import { MeetingMinuteMetadataForm } from './components/meeting-minute-metadata-form';
 
 export default function MeetingMinuteEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [step, setStep] = useState<1 | 2>(1);
   const [meetingDate, setMeetingDate] = useState('');
   const [topic, setTopic] = useState('');
   const [detailsRaw, setDetailsRaw] = useState('');
@@ -25,8 +26,7 @@ export default function MeetingMinuteEdit() {
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
-  const { toast } = useToast();
-  const formInitializedForId = useRef<string | undefined>(undefined);
+  const [formInitializedForId, setFormInitializedForId] = useState<string | undefined>(undefined);
 
   const updateMutation = useUpdateMeetingMinute();
   const detailQuery = useMeetingMinute(id, Boolean(id));
@@ -34,41 +34,80 @@ export default function MeetingMinuteEdit() {
   const { data: groups = [], isLoading: groupsLoading } = useWorkNoteGroups(true);
   const { data: persons = [], isLoading: personsLoading } = usePersons();
 
+  const draftKey = `meeting-minute-draft-${id}`;
+
+  const formData: MeetingMinuteFormData = useMemo(
+    () => ({
+      meetingDate,
+      topic,
+      detailsRaw,
+      categoryIds: selectedCategoryIds,
+      groupIds: selectedGroupIds,
+      personIds: selectedPersonIds,
+    }),
+    [meetingDate, topic, detailsRaw, selectedCategoryIds, selectedGroupIds, selectedPersonIds]
+  );
+
+  const { restoredDraft, draftStatus, clearDraft, dismissRestoredDraft } =
+    useDraftAutoSave<MeetingMinuteFormData>({
+      key: draftKey,
+      data: formData,
+      enabled: formInitializedForId === id,
+    });
+
+  // Initialize form from server data
   useEffect(() => {
-    if (!detailQuery.data || formInitializedForId.current === id) return;
+    if (!detailQuery.data || formInitializedForId === id) return;
     const detail = detailQuery.data;
     setMeetingDate(detail.meetingDate);
     setTopic(detail.topic);
     setDetailsRaw(detail.detailsRaw);
-    setSelectedCategoryIds(detail.categories.map((category) => category.categoryId));
-    setSelectedGroupIds(detail.groups?.map((group) => group.groupId) ?? []);
-    setSelectedPersonIds(detail.attendees.map((attendee) => attendee.personId));
+    setSelectedCategoryIds(detail.categories.map((c) => c.categoryId));
+    setSelectedGroupIds(detail.groups?.map((g) => g.groupId) ?? []);
+    setSelectedPersonIds(detail.attendees.map((a) => a.personId));
     setKeywords(detail.keywords ?? []);
-    formInitializedForId.current = id;
+    setFormInitializedForId(id);
   }, [detailQuery.data, id]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const applyDraft = useCallback(
+    (draft: MeetingMinuteFormData) => {
+      setMeetingDate(draft.meetingDate);
+      setTopic(draft.topic);
+      setDetailsRaw(draft.detailsRaw);
+      setSelectedCategoryIds(draft.categoryIds);
+      setSelectedGroupIds(draft.groupIds);
+      setSelectedPersonIds(draft.personIds);
+      dismissRestoredDraft();
+    },
+    [dismissRestoredDraft]
+  );
 
-    if (!id) {
-      toast({ variant: 'destructive', title: '오류', description: '회의록 ID가 필요합니다.' });
-      return;
-    }
+  const handleFormDataChange = useCallback((partial: Partial<MeetingMinuteFormData>) => {
+    if (partial.meetingDate !== undefined) setMeetingDate(partial.meetingDate);
+    if (partial.topic !== undefined) setTopic(partial.topic);
+    if (partial.detailsRaw !== undefined) setDetailsRaw(partial.detailsRaw);
+    if (partial.categoryIds !== undefined) setSelectedCategoryIds(partial.categoryIds);
+    if (partial.groupIds !== undefined) setSelectedGroupIds(partial.groupIds);
+    if (partial.personIds !== undefined) setSelectedPersonIds(partial.personIds);
+  }, []);
 
-    if (!meetingDate || !topic.trim() || !detailsRaw.trim()) {
+  const handleSubmit = async () => {
+    if (!id) return;
+
+    if (!meetingDate || !topic.trim()) {
       toast({
         variant: 'destructive',
         title: '오류',
-        description: '회의일, 토픽, 회의 내용을 입력해주세요.',
+        description: '회의 날짜와 주제를 입력해주세요.',
       });
       return;
     }
 
-    if (selectedPersonIds.length === 0) {
+    if (!detailsRaw.trim()) {
       toast({
         variant: 'destructive',
         title: '오류',
-        description: '참석자를 한 명 이상 선택해주세요.',
+        description: '회의 내용을 입력해주세요.',
       });
       return;
     }
@@ -86,6 +125,7 @@ export default function MeetingMinuteEdit() {
         },
       });
       setKeywords(result.keywords ?? []);
+      clearDraft();
       navigate(`/meeting-minutes/${id}`, { replace: true });
     } catch {
       // Error is handled by mutation hook toast.
@@ -143,108 +183,58 @@ export default function MeetingMinuteEdit() {
             <p className="page-description">회의록 내용을 수정합니다.</p>
           </div>
         </div>
+        {draftStatus === 'saved' && <p className="text-xs text-muted-foreground">자동 저장됨</p>}
       </div>
 
-      <Card className="mx-auto max-w-2xl">
+      {restoredDraft && formInitializedForId === id && (
+        <div className="mx-auto max-w-2xl mb-4">
+          <div className="flex items-center justify-between rounded-md border border-yellow-300 bg-yellow-50 px-4 py-2 dark:border-yellow-700 dark:bg-yellow-950">
+            <p className="text-sm">이전에 수정 중이던 내용이 있습니다.</p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={dismissRestoredDraft}>
+                무시
+              </Button>
+              <Button size="sm" onClick={() => applyDraft(restoredDraft)}>
+                복원
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Card className={step === 2 ? 'mx-auto max-w-4xl' : 'mx-auto max-w-2xl'}>
         <CardHeader>
-          <CardTitle>회의 정보</CardTitle>
+          <CardTitle>
+            {step === 1 ? '회의 정보' : '회의 내용'}
+            <span className="ml-2 text-sm font-normal text-muted-foreground">({step}/2)</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4" onSubmit={(e) => void handleSubmit(e)}>
-            {detailQuery.data.linkedWorkNoteCount !== undefined && (
-              <p className="text-sm text-muted-foreground">
-                연결된 업무노트: {detailQuery.data.linkedWorkNoteCount}건
-              </p>
-            )}
-
-            <div className="grid gap-2">
-              <Label htmlFor="edit-meeting-date">회의일</Label>
-              <Input
-                id="edit-meeting-date"
-                type="date"
-                value={meetingDate}
-                onChange={(e) => setMeetingDate(e.target.value)}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="edit-meeting-topic">토픽</Label>
-              <Input
-                id="edit-meeting-topic"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="회의 주제를 입력하세요"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="edit-meeting-details">회의 내용</Label>
-              <Textarea
-                id="edit-meeting-details"
-                value={detailsRaw}
-                onChange={(e) => setDetailsRaw(e.target.value)}
-                placeholder="회의 내용을 입력하세요"
-                className="min-h-[160px]"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>업무 구분 (선택사항)</Label>
-              <CategorySelector
-                categories={taskCategories}
-                selectedIds={selectedCategoryIds}
-                onSelectionChange={setSelectedCategoryIds}
-                isLoading={categoriesLoading}
-                idPrefix="edit-meeting-category"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>업무 그룹 (선택사항)</Label>
-              <GroupSelector
-                groups={groups}
-                selectedIds={selectedGroupIds}
-                onSelectionChange={setSelectedGroupIds}
-                isLoading={groupsLoading}
-                idPrefix="edit-meeting-group"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>참석자</Label>
-              <AssigneeSelector
-                persons={persons}
-                selectedPersonIds={selectedPersonIds}
-                onSelectionChange={setSelectedPersonIds}
-                isLoading={personsLoading}
-              />
-            </div>
-
-            {keywords.length > 0 && (
-              <div className="grid gap-2">
-                <Label>키워드</Label>
-                <div className="flex flex-wrap gap-2">
-                  {keywords.map((keyword) => (
-                    <span
-                      key={keyword}
-                      className="rounded-md border px-2 py-1 text-xs text-muted-foreground"
-                    >
-                      {keyword}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-                취소
-              </Button>
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? '저장 중...' : '저장'}
-              </Button>
-            </div>
-          </form>
+          {step === 1 ? (
+            <MeetingMinuteMetadataForm
+              formData={formData}
+              onFormDataChange={handleFormDataChange}
+              onNext={() => setStep(2)}
+              onCancel={() => navigate(-1)}
+              taskCategories={taskCategories}
+              categoriesLoading={categoriesLoading}
+              groups={groups}
+              groupsLoading={groupsLoading}
+              persons={persons}
+              personsLoading={personsLoading}
+              idPrefix="edit-meeting"
+              linkedWorkNoteCount={detailQuery.data.linkedWorkNoteCount}
+            />
+          ) : (
+            <MeetingMinuteContentStep
+              detailsRaw={detailsRaw}
+              onDetailsChange={setDetailsRaw}
+              onBack={() => setStep(1)}
+              onSubmit={() => void handleSubmit()}
+              isPending={updateMutation.isPending}
+              keywords={keywords}
+            />
+          )}
         </CardContent>
       </Card>
     </div>
