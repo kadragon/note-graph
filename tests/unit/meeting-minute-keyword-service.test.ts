@@ -93,6 +93,7 @@ describe('MeetingMinuteKeywordService', () => {
     });
 
     it('falls back to deterministic keywords when AI response is invalid or fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
@@ -123,12 +124,8 @@ describe('MeetingMinuteKeywordService', () => {
         detailsRaw: '이것은 매우 중요한 업무보고 문서이다',
       });
 
-      // 불용어(이것은, 매우, 이다 등)가 제외되어야 함
-      expect(keywords).not.toContain('이것은');
-      expect(keywords).not.toContain('매우');
-      expect(keywords).not.toContain('이다');
-      expect(keywords).toContain('보고서');
-      expect(keywords).toContain('업무보고');
+      // 불용어(이것은, 매우) 제외, 형태소 미분리로 '문서이다'는 포함
+      expect(keywords).toEqual(['보고서', '작성하는', '방법', '중요한', '업무보고', '문서이다']);
     });
 
     it('deterministic fallback filters pure numbers and single-char English tokens', async () => {
@@ -140,11 +137,7 @@ describe('MeetingMinuteKeywordService', () => {
         detailsRaw: '2024 12 triangle 접근방법',
       });
 
-      expect(keywords).not.toContain('2024');
-      expect(keywords).not.toContain('12');
-      expect(keywords).toContain('기획력');
-      expect(keywords).toContain('triangle');
-      expect(keywords).toContain('접근방법');
+      expect(keywords).toEqual(['기획력', '보고서', 'triangle', '접근방법']);
     });
 
     it('logs error with context when GPT call fails', async () => {
