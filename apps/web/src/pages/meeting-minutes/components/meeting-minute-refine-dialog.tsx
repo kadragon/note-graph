@@ -28,17 +28,16 @@ export function MeetingMinuteRefineDialog({
   const [transcript, setTranscript] = useState('');
   const refineMutation = useRefineMeetingMinute();
 
-  const handleRefine = async () => {
-    try {
-      const result = await refineMutation.mutateAsync({
+  const handleRefine = () => {
+    refineMutation
+      .mutateAsync({
         meetingId,
         transcript: transcript.trim(),
+      })
+      .then((result) => {
+        onRefineSuccess(result.refinedContent);
+        onOpenChange(false);
       });
-      onRefineSuccess(result.refinedContent);
-      onOpenChange(false);
-    } catch {
-      // Error handled by mutation hook
-    }
   };
 
   const resetForm = useCallback(() => {

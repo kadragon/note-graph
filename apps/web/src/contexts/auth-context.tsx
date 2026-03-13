@@ -32,12 +32,16 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async () => {
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin,
       },
     });
+    if (error) {
+      console.error('[Auth] signInWithOAuth failed:', error.message);
+      setIsLoading(false);
+    }
   };
 
   const signOut = async () => {

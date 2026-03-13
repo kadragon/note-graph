@@ -6,11 +6,13 @@ export interface SupabaseJwtPayload {
 }
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+let cachedUrl: string | null = null;
 
 function getJWKS(supabaseUrl: string) {
-  if (!jwks) {
+  if (!jwks || cachedUrl !== supabaseUrl) {
     const jwksUrl = new URL('/auth/v1/.well-known/jwks.json', supabaseUrl);
     jwks = createRemoteJWKSet(jwksUrl);
+    cachedUrl = supabaseUrl;
   }
   return jwks;
 }

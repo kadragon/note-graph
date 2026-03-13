@@ -20,7 +20,7 @@ const adminFetch = (path: string, options?: RequestInit) =>
   baseAuthFetch(path, {
     ...options,
     headers: {
-      'Cf-Access-Authenticated-User-Email': 'admin@example.com',
+      'Cf-Access-Authenticated-User-Email': 'test@example.com',
       ...options?.headers,
     },
   });

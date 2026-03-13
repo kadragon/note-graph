@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthGate } from '../auth-gate';
 
@@ -16,8 +16,15 @@ vi.mock('@web/contexts/auth-context', () => ({
   })),
 }));
 
+vi.mock('@web/lib/api', () => ({
+  API: {
+    getMe: vi.fn(),
+  },
+}));
+
 // Import after mock setup so we can control the return value
 import { useAuth } from '@web/contexts/auth-context';
+import { API } from '@web/lib/api';
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -60,7 +67,7 @@ describe('AuthGate', () => {
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 
-  it('renders children when authenticated', () => {
+  it('renders children when authenticated and server validates user', async () => {
     vi.mocked(useAuth).mockReturnValue({
       session: { access_token: 'test-token' } as never,
       user: { email: 'test@example.com' } as never,
@@ -68,6 +75,7 @@ describe('AuthGate', () => {
       signIn: mockSignIn,
       signOut: mockSignOut,
     });
+    vi.mocked(API.getMe).mockResolvedValue({ email: 'test@example.com' });
 
     renderWithProviders(
       <AuthGate>
@@ -75,7 +83,9 @@ describe('AuthGate', () => {
       </AuthGate>
     );
 
-    expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    });
   });
 
   it('calls signIn when not authenticated and not loading', () => {
@@ -114,5 +124,26 @@ describe('AuthGate', () => {
     );
 
     expect(mockSignIn).not.toHaveBeenCalled();
+  });
+
+  it('calls signOut when server rejects user', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      session: { access_token: 'test-token' } as never,
+      user: { email: 'unauthorized@example.com' } as never,
+      isLoading: false,
+      signIn: mockSignIn,
+      signOut: mockSignOut,
+    });
+    vi.mocked(API.getMe).mockRejectedValue(new Error('Access denied'));
+
+    renderWithProviders(
+      <AuthGate>
+        <div>Protected Content</div>
+      </AuthGate>
+    );
+
+    await waitFor(() => {
+      expect(mockSignOut).toHaveBeenCalled();
+    });
   });
 });

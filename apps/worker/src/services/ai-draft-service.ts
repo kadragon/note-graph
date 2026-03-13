@@ -585,7 +585,7 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
 
       return { refinedContent: parsed.refinedContent };
     } catch (error) {
-      console.error('Error parsing refine response:', error);
+      console.error('Error parsing refine response:', error, 'Raw response:', response);
       throw new Error('Failed to parse AI response. Please try again.');
     }
   }

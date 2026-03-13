@@ -135,7 +135,8 @@ export class APIClient {
   async uploadFile<T>(
     endpoint: string,
     file: File,
-    metadata: Record<string, string | undefined> = {}
+    metadata: Record<string, string | undefined> = {},
+    isRetry = false
   ): Promise<T> {
     const formData = new FormData();
     formData.append('file', file);
@@ -154,6 +155,13 @@ export class APIClient {
       body: formData,
     });
 
+    if (response.status === 401 && !isRetry) {
+      const { error } = await supabase.auth.refreshSession();
+      if (!error) {
+        return this.uploadFile<T>(endpoint, file, metadata, true);
+      }
+    }
+
     if (!response.ok) {
       const error = (await response.json().catch(() => ({
         message: '업로드 실패',
@@ -164,10 +172,17 @@ export class APIClient {
     return response.json() as Promise<T>;
   }
 
-  private async _downloadFile(endpoint: string): Promise<Blob> {
+  private async _downloadFile(endpoint: string, isRetry = false): Promise<Blob> {
     const authHeaders = await getAuthHeaders();
 
     const response = await fetch(`${this.baseURL}${endpoint}`, { headers: authHeaders });
+
+    if (response.status === 401 && !isRetry) {
+      const { error } = await supabase.auth.refreshSession();
+      if (!error) {
+        return this._downloadFile(endpoint, true);
+      }
+    }
 
     if (!response.ok) {
       throw new Error(`파일 다운로드 실패: ${response.status}`);
@@ -744,7 +759,8 @@ export class APIClient {
 
   async enhanceWorkNote(
     workId: string,
-    data: EnhanceWorkNoteRequest
+    data: EnhanceWorkNoteRequest,
+    isRetry = false
   ): Promise<EnhanceWorkNoteResponse> {
     const formData = new FormData();
     formData.append('newContent', data.newContent);
@@ -761,6 +777,13 @@ export class APIClient {
       headers: authHeaders,
       body: formData,
     });
+
+    if (response.status === 401 && !isRetry) {
+      const { error } = await supabase.auth.refreshSession();
+      if (!error) {
+        return this.enhanceWorkNote(workId, data, true);
+      }
+    }
 
     if (!response.ok) {
       const error = (await response.json().catch(() => ({

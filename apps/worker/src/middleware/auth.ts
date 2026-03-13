@@ -41,7 +41,11 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
   if (!user) {
     const cfEmail = c.req.header(CF_ACCESS_EMAIL_HEADER);
     if (cfEmail) {
-      user = { email: cfEmail.toLowerCase().trim() };
+      const normalizedEmail = cfEmail.toLowerCase().trim();
+      if (c.env.ALLOWED_USER_EMAIL && normalizedEmail !== c.env.ALLOWED_USER_EMAIL.toLowerCase()) {
+        throw new AuthenticationError('Access denied. Unauthorized user.');
+      }
+      user = { email: normalizedEmail };
     }
   }
 
