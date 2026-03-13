@@ -56,6 +56,28 @@ describe('Authentication Middleware', () => {
       expect(data.user.email).toBe(email);
     });
 
+    it('should normalize test user email to lowercase and trim whitespace', async () => {
+      // Arrange
+      const email = '  DEV@EXAMPLE.COM  ';
+      const devEnv = { ...mockEnv, ENVIRONMENT: 'development' };
+
+      // Act
+      const response = await app.request(
+        '/test',
+        {
+          headers: {
+            'x-test-user-email': email,
+          },
+        },
+        devEnv
+      );
+
+      // Assert
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.user.email).toBe('dev@example.com');
+    });
+
     it('should use default test user when no headers are provided in development mode', async () => {
       // Arrange
       const devEnv = { ...mockEnv, ENVIRONMENT: 'development' };

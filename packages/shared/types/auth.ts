@@ -4,7 +4,7 @@
  */
 
 /**
- * Authenticated user information extracted from Cloudflare Access headers
+ * Authenticated user information extracted from Supabase Auth JWT
  */
 export interface AuthUser {
   email: string;
