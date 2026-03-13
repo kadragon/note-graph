@@ -272,6 +272,104 @@ describe('TodoRepository - Recurrence Logic', () => {
       expect(newTodo?.recurrenceType).toBe('COMPLETION_DATE');
     });
 
+    const completeAndFindNewTodo = async (input: CreateTodoInput) => {
+      const created = await repository.create(testWorkId, input);
+      await repository.update(created.todoId, { status: '완료' });
+      const allTodos = await repository.findByWorkId(testWorkId);
+      return allTodos.find((t) => t.status === '진행중');
+    };
+
+    it('should skip weekends for DAILY + COMPLETION_DATE completed on Friday', async () => {
+      // BASE_NOW is 2025-01-10 (Friday)
+      const pastDueDate = new Date(BASE_NOW.getTime());
+      pastDueDate.setDate(pastDueDate.getDate() - 3);
+
+      const newTodo = await completeAndFindNewTodo({
+        title: 'Daily Skip Weekends Task',
+        dueDate: pastDueDate.toISOString(),
+        repeatRule: 'DAILY',
+        recurrenceType: 'COMPLETION_DATE',
+        skipWeekends: true,
+      });
+
+      expect(newTodo).toBeDefined();
+      const newDueDate = new Date(newTodo!.dueDate as string);
+      // Friday + 1 = Saturday -> skipWeekends -> Monday
+      expect(newDueDate.getUTCDay()).toBe(1); // Monday
+      expect(newDueDate.getUTCDate()).toBe(13); // Jan 13
+    });
+
+    it('should calculate correct next due date for DAILY + COMPLETION_DATE without skipWeekends', async () => {
+      // Defensive copy in calculateNextDueDate is verified structurally;
+      // this test covers the DAILY + COMPLETION_DATE path without skipWeekends.
+      const pastDueDate = new Date(BASE_NOW.getTime());
+      pastDueDate.setDate(pastDueDate.getDate() - 3);
+
+      const newTodo = await completeAndFindNewTodo({
+        title: 'Mutation Check Task',
+        dueDate: pastDueDate.toISOString(),
+        repeatRule: 'DAILY',
+        recurrenceType: 'COMPLETION_DATE',
+        skipWeekends: false,
+      });
+
+      expect(newTodo).toBeDefined();
+      // DAILY + COMPLETION_DATE: Friday + 1 = Saturday
+      const newDueDate = new Date(newTodo!.dueDate as string);
+      expect(newDueDate.getUTCDay()).toBe(6); // Saturday (no skipWeekends)
+      expect(newDueDate.getUTCDate()).toBe(11); // Jan 11
+    });
+
+    it('should skip weekends for DAILY + DUE_DATE when due date is Friday', async () => {
+      const newTodo = await completeAndFindNewTodo({
+        title: 'Daily Skip Weekends DueDate',
+        dueDate: new Date(BASE_NOW.getTime()).toISOString(),
+        repeatRule: 'DAILY',
+        recurrenceType: 'DUE_DATE',
+        skipWeekends: true,
+      });
+
+      expect(newTodo).toBeDefined();
+      const newDueDate = new Date(newTodo!.dueDate as string);
+      // Friday + 1 = Saturday -> Monday
+      expect(newDueDate.getUTCDay()).toBe(1); // Monday
+      expect(newDueDate.getUTCDate()).toBe(13); // Jan 13
+    });
+
+    it('should skip weekends for CUSTOM 2-DAY + skipWeekends on Thursday', async () => {
+      const newTodo = await completeAndFindNewTodo({
+        title: 'Custom Skip Weekends',
+        dueDate: new Date('2025-01-09T12:00:00.000Z').toISOString(),
+        repeatRule: 'CUSTOM',
+        recurrenceType: 'DUE_DATE',
+        customInterval: 2,
+        customUnit: 'DAY',
+        skipWeekends: true,
+      });
+
+      expect(newTodo).toBeDefined();
+      const newDueDate = new Date(newTodo!.dueDate as string);
+      // Thursday + 2 = Saturday -> Monday Jan 13
+      expect(newDueDate.getUTCDay()).toBe(1); // Monday
+      expect(newDueDate.getUTCDate()).toBe(13);
+    });
+
+    it('should not adjust weekday result when skipWeekends is true', async () => {
+      // Monday Jan 6 + 7 = Monday Jan 13 (no adjustment needed)
+      const newTodo = await completeAndFindNewTodo({
+        title: 'Weekly No Adjust',
+        dueDate: new Date('2025-01-06T12:00:00.000Z').toISOString(),
+        repeatRule: 'WEEKLY',
+        recurrenceType: 'DUE_DATE',
+        skipWeekends: true,
+      });
+
+      expect(newTodo).toBeDefined();
+      const newDueDate = new Date(newTodo!.dueDate as string);
+      expect(newDueDate.getUTCDay()).toBe(1); // Monday
+      expect(newDueDate.getUTCDate()).toBe(13);
+    });
+
     it('should include recurring instance in today view when next due date is today', async () => {
       const dueDate = new Date(BASE_NOW.getTime());
       dueDate.setDate(dueDate.getDate() - 1);
