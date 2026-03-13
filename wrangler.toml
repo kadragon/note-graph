@@ -78,6 +78,8 @@ OPENAI_MODEL_EMBEDDING = "text-embedding-3-small"
 OPENAI_MODEL_LIGHTWEIGHT = "gpt-5-mini"
 # Google OAuth (필수)
 GOOGLE_REDIRECT_URI = "https://note.kadragon.work/api/auth/google/callback"
+# Supabase (Auth)
+SUPABASE_URL = "https://gegxehepattzdcgfvzwv.supabase.co"
 
 # ============================================================================
 # Production Environment Variables (use wrangler secret for sensitive data)
@@ -138,3 +140,4 @@ head_sampling_rate = 1
 #    - wrangler secret put OPENAI_API_KEY
 #    - wrangler secret put CF_AIG_AUTHORIZATION (optional, if gateway requires auth)
 #    - wrangler secret put CLOUDFLARE_API_TOKEN (optional, needed for AI Gateway log viewer)
+#    - wrangler secret put ALLOWED_USER_EMAIL

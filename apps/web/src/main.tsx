@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthGate } from '@web/components/auth-gate';
+import { SupabaseAuthProvider } from '@web/contexts/auth-context';
 import { QUERY_CONFIG } from '@web/lib/config';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -22,11 +23,13 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthGate>
-          <App />
-        </AuthGate>
-      </BrowserRouter>
+      <SupabaseAuthProvider>
+        <BrowserRouter>
+          <AuthGate>
+            <App />
+          </AuthGate>
+        </BrowserRouter>
+      </SupabaseAuthProvider>
     </QueryClientProvider>
   </StrictMode>
 );

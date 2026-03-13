@@ -1,169 +1,63 @@
 import { useQuery } from '@tanstack/react-query';
-import { API, cfTokenRefresher } from '@web/lib/api';
-import { Loader2, WifiOff } from 'lucide-react';
+import { useAuth } from '@web/contexts/auth-context';
+import { API } from '@web/lib/api';
+import { Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 interface AuthGateProps {
   children: ReactNode;
 }
 
-type AuthState = 'loading' | 'authenticated' | 'redirecting' | 'offline' | 'error';
-
 /**
- * AuthGate component that verifies authentication before rendering children.
- * If authentication fails due to CF Access, triggers a redirect to login.
- * Distinguishes between network errors (offline/server down) and auth errors.
+ * AuthGate component that verifies Supabase authentication before rendering children.
+ * Automatically redirects to Google OAuth if not authenticated.
+ * After session is established, verifies server-side identity via /api/me.
  */
 export function AuthGate({ children }: AuthGateProps) {
-  const [authState, setAuthState] = useState<AuthState>('loading');
+  const { session, isLoading, signIn, signOut } = useAuth();
 
   const {
-    data: user,
-    isLoading,
-    isError,
-    error,
-    refetch,
+    data: me,
+    isLoading: isMeLoading,
+    error: meError,
   } = useQuery({
-    queryKey: ['auth-check'],
-    queryFn: async () => {
-      const user = await API.getMe();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-      return user;
-    },
+    queryKey: ['me'],
+    queryFn: () => API.getMe(),
+    enabled: !!session,
     retry: 1,
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    retryDelay: 0,
   });
 
-  const handleAuthError = useCallback(async () => {
-    // Check if it's a network error (includes both offline and CORS from CF Access)
-    const isNetworkError = cfTokenRefresher.isNetworkError(error);
-
-    if (!isNetworkError) {
-      // Not a network error - show generic error state
-      setAuthState('error');
-      return;
-    }
-
-    // Check if browser is offline
-    if (!cfTokenRefresher.isOnline()) {
-      setAuthState('offline');
-      return;
-    }
-
-    // Online but getting network errors - likely CF Access redirect
-    // Try to force auth redirect (will verify origin is reachable first)
-    setAuthState('redirecting');
-    const redirected = await cfTokenRefresher.forceAuthRedirect();
-
-    if (!redirected) {
-      // Origin not reachable - server might be down, not an auth issue
-      setAuthState('error');
-    }
-    // If redirected is true, the page will reload and this code won't continue
-  }, [error]);
-
   useEffect(() => {
-    if (isError) {
-      handleAuthError();
+    if (!isLoading && !session) {
+      signIn();
     }
-  }, [isError, handleAuthError]);
+  }, [isLoading, session, signIn]);
 
-  // Listen for online/offline events
+  // Server rejected user (e.g. ALLOWED_USER_EMAIL mismatch)
   useEffect(() => {
-    const handleOnline = () => {
-      if (authState === 'offline') {
-        setAuthState('loading');
-        refetch();
-      }
-    };
-
-    const handleOffline = () => {
-      if (authState === 'loading' || authState === 'error') {
-        setAuthState('offline');
-      }
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [authState, refetch]);
-
-  // Update auth state based on query state
-  useEffect(() => {
-    if (isLoading && authState !== 'redirecting') {
-      setAuthState('loading');
-    } else if (user) {
-      setAuthState('authenticated');
+    if (meError) {
+      signOut();
     }
-  }, [isLoading, user, authState]);
+  }, [meError, signOut]);
 
-  // Show loading state
-  if (authState === 'loading' || authState === 'redirecting') {
+  if (isLoading || !session || isMeLoading) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-sm text-muted-foreground">
-          {authState === 'redirecting' ? '로그인 페이지로 이동 중...' : '인증 확인 중...'}
-        </p>
+        <p className="mt-4 text-sm text-muted-foreground">인증 확인 중...</p>
       </div>
     );
   }
 
-  // Show offline state
-  if (authState === 'offline') {
+  if (!me) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <WifiOff className="h-12 w-12 text-muted-foreground mx-auto" />
-          <p className="text-muted-foreground">인터넷 연결이 끊어졌습니다.</p>
-          <p className="text-sm text-muted-foreground">연결 상태를 확인하고 다시 시도해 주세요.</p>
-          <button
-            type="button"
-            onClick={() => {
-              if (cfTokenRefresher.isOnline()) {
-                setAuthState('loading');
-                refetch();
-              }
-            }}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          >
-            다시 시도
-          </button>
-        </div>
+        <p className="text-sm text-destructive">인증에 실패했습니다. 다시 로그인해주세요.</p>
       </div>
     );
   }
 
-  // Show error state (server error or unreachable)
-  if (authState === 'error') {
-    return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <p className="text-destructive">서버에 연결할 수 없습니다.</p>
-          <p className="text-sm text-muted-foreground">잠시 후 다시 시도해 주세요.</p>
-          <button
-            type="button"
-            onClick={() => {
-              setAuthState('loading');
-              refetch();
-            }}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          >
-            다시 시도
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Authenticated - render children
   return <>{children}</>;
 }

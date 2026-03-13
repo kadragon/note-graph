@@ -27,6 +27,7 @@ export default defineConfig({
     },
   },
   root: './apps/web',
+  envDir: '../../',
   build: {
     outDir: '../../dist/web',
     emptyOutDir: true,

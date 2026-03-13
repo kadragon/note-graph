@@ -6,9 +6,6 @@
 # Find at: https://dash.cloudflare.com/?to=/:account/workers
 CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
 
-# Cloudflare Access (자동 제공, 설정 불필요)
-# ENVIRONMENT: 자동 감지
-
 # Google Drive (필수)
 GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
@@ -19,6 +16,10 @@ GDRIVE_ROOT_FOLDER_ID=your-folder-id
 # 쉼표로 구분된 캘린더 ID 목록. 미설정 시 primary(기본 캘린더)만 사용
 # 예: primary,work@group.calendar.google.com,team@group.calendar.google.com
 # GOOGLE_CALENDAR_IDS=primary
+
+# Supabase Auth (필수)
+SUPABASE_URL=http://127.0.0.1:54321
+ALLOWED_USER_EMAIL=your-email@example.com
 
 # 기타 (선택)
 # OPENAI_API_KEY=your-openai-api-key

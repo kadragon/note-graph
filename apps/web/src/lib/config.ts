@@ -41,26 +41,6 @@ export const SEARCH_CONFIG = {
 } as const;
 
 // -----------------------------------------------------------------------------
-// Cloudflare Access Token Refresh
-// -----------------------------------------------------------------------------
-export const CF_ACCESS_CONFIG = {
-  /** Cooldown between refresh attempts (5 seconds) */
-  REFRESH_COOLDOWN_MS: 5000,
-
-  /** Time for CF Access to set cookie after iframe load */
-  COOKIE_SET_DELAY_MS: 1000,
-
-  /** Fallback timeout for refresh operation */
-  REFRESH_TIMEOUT_MS: 5000,
-
-  /** Maximum consecutive failures before redirect to login */
-  MAX_CONSECUTIVE_FAILURES: 2,
-
-  /** Timeout for checking authentication status */
-  AUTH_CHECK_TIMEOUT_MS: 3000,
-} as const;
-
-// -----------------------------------------------------------------------------
 // PWA Configuration
 // -----------------------------------------------------------------------------
 export const PWA_CONFIG = {

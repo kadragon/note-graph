@@ -1,7 +1,10 @@
 import { MarkdownEditor } from '@web/components/markdown-editor';
 import { Button } from '@web/components/ui/button';
 import { Label } from '@web/components/ui/label';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+
+import { MeetingMinuteRefineDialog } from './meeting-minute-refine-dialog';
 
 interface MeetingMinuteContentStepProps {
   detailsRaw: string;
@@ -10,6 +13,7 @@ interface MeetingMinuteContentStepProps {
   onSubmit: () => void;
   isPending: boolean;
   keywords?: string[];
+  meetingId?: string;
 }
 
 export function MeetingMinuteContentStep({
@@ -19,11 +23,27 @@ export function MeetingMinuteContentStep({
   onSubmit,
   isPending,
   keywords,
+  meetingId,
 }: MeetingMinuteContentStepProps) {
+  const [refineDialogOpen, setRefineDialogOpen] = useState(false);
+
   return (
     <div className="grid gap-4">
       <div className="grid gap-2">
-        <Label>회의 내용</Label>
+        <div className="flex items-center justify-between">
+          <Label>회의 내용</Label>
+          {meetingId && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRefineDialogOpen(true)}
+            >
+              <Sparkles className="h-4 w-4 mr-1" />
+              AI 정리 (녹취본)
+            </Button>
+          )}
+        </div>
         <MarkdownEditor
           value={detailsRaw}
           onChange={onDetailsChange}
@@ -56,6 +76,15 @@ export function MeetingMinuteContentStep({
           {isPending ? '저장 중...' : '저장'}
         </Button>
       </div>
+
+      {meetingId && (
+        <MeetingMinuteRefineDialog
+          meetingId={meetingId}
+          open={refineDialogOpen}
+          onOpenChange={setRefineDialogOpen}
+          onRefineSuccess={(refinedContent) => onDetailsChange(refinedContent)}
+        />
+      )}
     </div>
   );
 }
