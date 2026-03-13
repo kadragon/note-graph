@@ -834,6 +834,16 @@ export class APIClient {
     });
   }
 
+  refineMeetingMinute(meetingId: string, data: { transcript: string }) {
+    return this.request<{ refinedContent: string; originalContent: string }>(
+      `/ai/meeting-minutes/${meetingId}/refine`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
   suggestMeetingMinutes(data: { query: string; limit?: number }) {
     return this.request<{
       meetingReferences: Array<{

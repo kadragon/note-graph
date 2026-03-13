@@ -8,6 +8,7 @@ import { bodyValidator, getValidatedBody } from '../middleware/validation-middle
 import {
   DraftFromTextRequestSchema,
   enhanceWorkNoteRequestSchema,
+  RefineMeetingMinuteRequestSchema,
   TodoSuggestionsRequestSchema,
 } from '../schemas/ai-draft';
 import { AIDraftService } from '../services/ai-draft-service';
@@ -283,6 +284,51 @@ app.post(
         dueDate: todo.dueDate,
       })),
       references,
+    });
+  }
+);
+
+/**
+ * POST /ai/meeting-minutes/:meetingId/refine
+ * Refine meeting minute content using a transcript
+ */
+app.post(
+  '/meeting-minutes/:meetingId/refine',
+  bodyValidator(RefineMeetingMinuteRequestSchema),
+  async (c) => {
+    const meetingId = c.req.param('meetingId')!;
+    const body = getValidatedBody<typeof RefineMeetingMinuteRequestSchema>(c);
+
+    type MeetingMinuteRow = {
+      meetingId: string;
+      topic: string;
+      detailsRaw: string;
+    };
+
+    const db = c.get('db');
+    const { rows } = await db.query<MeetingMinuteRow>(
+      `SELECT meeting_id as "meetingId", topic, details_raw as "detailsRaw"
+       FROM meeting_minutes
+       WHERE meeting_id = $1`,
+      [meetingId]
+    );
+
+    const meetingMinute = rows[0];
+
+    if (!meetingMinute) {
+      throw new NotFoundError('Meeting minute', meetingId);
+    }
+
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
+    const result = await aiDraftService.refineMeetingMinute(
+      meetingMinute.topic,
+      meetingMinute.detailsRaw,
+      body.transcript
+    );
+
+    return c.json({
+      refinedContent: result.refinedContent,
+      originalContent: meetingMinute.detailsRaw,
     });
   }
 );

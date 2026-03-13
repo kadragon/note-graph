@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
 import { createStandardMutation } from '@web/lib/hooks/create-standard-mutation';
 
@@ -59,3 +60,19 @@ export const useDeleteMeetingMinute = createStandardMutation({
     error: '회의록을 삭제할 수 없습니다.',
   },
 });
+
+export function useRefineMeetingMinute() {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ meetingId, transcript }: { meetingId: string; transcript: string }) =>
+      API.refineMeetingMinute(meetingId, { transcript }),
+    onError: () => {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: 'AI 정제에 실패했습니다. 다시 시도해주세요.',
+      });
+    },
+  });
+}
