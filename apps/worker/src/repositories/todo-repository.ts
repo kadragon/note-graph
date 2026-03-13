@@ -86,7 +86,8 @@ export class TodoRepository {
       return null;
     }
 
-    const baseDate = recurrenceType === 'DUE_DATE' ? new Date(dueDate) : completionDate;
+    const baseDate =
+      recurrenceType === 'DUE_DATE' ? new Date(dueDate) : new Date(completionDate.getTime());
 
     switch (repeatRule) {
       case 'DAILY':
