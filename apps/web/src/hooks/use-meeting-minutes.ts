@@ -67,11 +67,11 @@ export function useRefineMeetingMinute() {
   return useMutation({
     mutationFn: ({ meetingId, transcript }: { meetingId: string; transcript: string }) =>
       API.refineMeetingMinute(meetingId, { transcript }),
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         variant: 'destructive',
         title: '오류',
-        description: 'AI 정제에 실패했습니다. 다시 시도해주세요.',
+        description: error.message || 'AI 정제에 실패했습니다. 다시 시도해주세요.',
       });
     },
   });

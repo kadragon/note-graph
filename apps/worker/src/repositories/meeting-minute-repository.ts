@@ -395,6 +395,36 @@ export class MeetingMinuteRepository {
     return result.items;
   }
 
+  async findById(meetingId: string): Promise<MeetingMinute | null> {
+    const row = await this.db.queryOne<{
+      meetingId: string;
+      meetingDate: string;
+      topic: string;
+      detailsRaw: string;
+      keywordsJson: string;
+      createdAt: string;
+      updatedAt: string;
+    }>(
+      `SELECT meeting_id as "meetingId", meeting_date as "meetingDate", topic, details_raw as "detailsRaw",
+              keywords_json as "keywordsJson", created_at as "createdAt", updated_at as "updatedAt"
+       FROM meeting_minutes
+       WHERE meeting_id = $1`,
+      [meetingId]
+    );
+
+    if (!row) return null;
+
+    return {
+      meetingId: row.meetingId,
+      meetingDate: row.meetingDate,
+      topic: row.topic,
+      detailsRaw: row.detailsRaw,
+      keywords: parseKeywordsJson(row.keywordsJson),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
   async delete(meetingId: string): Promise<void> {
     const existing = await this.db.queryOne<{ meeting_id: string }>(
       'SELECT meeting_id FROM meeting_minutes WHERE meeting_id = $1',

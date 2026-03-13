@@ -5,6 +5,7 @@
 
 import type { Context, Next } from 'hono';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
+import { MeetingMinuteRepository } from '../repositories/meeting-minute-repository';
 import {
   DraftFromTextRequestSchema,
   enhanceWorkNoteRequestSchema,
@@ -299,21 +300,8 @@ app.post(
     const meetingId = c.req.param('meetingId')!;
     const body = getValidatedBody<typeof RefineMeetingMinuteRequestSchema>(c);
 
-    type MeetingMinuteRow = {
-      meetingId: string;
-      topic: string;
-      detailsRaw: string;
-    };
-
-    const db = c.get('db');
-    const { rows } = await db.query<MeetingMinuteRow>(
-      `SELECT meeting_id as "meetingId", topic, details_raw as "detailsRaw"
-       FROM meeting_minutes
-       WHERE meeting_id = $1`,
-      [meetingId]
-    );
-
-    const meetingMinute = rows[0];
+    const repository = new MeetingMinuteRepository(c.get('db'));
+    const meetingMinute = await repository.findById(meetingId);
 
     if (!meetingMinute) {
       throw new NotFoundError('Meeting minute', meetingId);

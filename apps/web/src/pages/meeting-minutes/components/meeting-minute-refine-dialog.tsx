@@ -55,7 +55,7 @@ export function MeetingMinuteRefineDialog({
   }, [open, resetForm]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={refineMutation.isPending ? undefined : onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
