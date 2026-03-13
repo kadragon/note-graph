@@ -162,7 +162,7 @@ All page routes are wrapped with `ErrorBoundary` for graceful error recovery:
 ### API Errors
 - Use `ApiError` class for typed error handling
 - Toast notifications for user-facing error messages
-- CF Access token refresh handled automatically
+- Supabase Auth session refresh handled automatically
 
 ## Testing Conventions
 

@@ -180,17 +180,17 @@ export function createTestRequest(
 
 /**
  * Create an authenticated fetch helper.
- * Adds Cloudflare Access email header automatically.
+ * Adds X-Test-User-Email header in development mode.
  */
 export function createAuthFetch(worker: WorkerModule['default'], envOverrides: Partial<Env> = {}) {
-  const env = buildMockEnv(envOverrides);
+  const env = buildMockEnv({ ENVIRONMENT: 'development', ...envOverrides });
   const ctx = makeExecutionContext();
 
   return (input: string, options: RequestInit = {}) => {
     const url = new URL(input, 'http://localhost').href;
     const headers = new Headers(options.headers);
-    if (!headers.has('Cf-Access-Authenticated-User-Email')) {
-      headers.set('Cf-Access-Authenticated-User-Email', 'test@example.com');
+    if (!headers.has('X-Test-User-Email')) {
+      headers.set('X-Test-User-Email', 'test@example.com');
     }
     const body = options.body;
     const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
