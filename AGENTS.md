@@ -39,7 +39,7 @@ This file consolidates governance, specs, and task tracking previously kept unde
 - Platform: Cloudflare Workers.
 - Data: PostgreSQL via Hyperdrive, Vectorize for embeddings, R2 for files, Google Drive for work note attachments.
 - Async: Cloudflare Queues.
-- Auth: Cloudflare Access (Google OAuth).
+- Auth: Supabase Auth (Google OAuth).
 - AI: OpenAI via AI Gateway (chat: gpt-4.5-turbo, embedding: text-embedding-3-small).
 
 ## Core Architecture Decisions

@@ -45,7 +45,7 @@ describe('System API Routes', () => {
       expect(data.code).toBe('UNAUTHORIZED');
     });
 
-    it('should accept authenticated requests with Cloudflare Access headers', async () => {
+    it('should accept authenticated requests', async () => {
       const response = await authFetch('/api/me');
 
       expect(response.status).toBe(200);

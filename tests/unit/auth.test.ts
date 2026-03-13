@@ -34,48 +34,6 @@ describe('Authentication Middleware', () => {
       });
     });
 
-    it('should authenticate with Cloudflare Access header', async () => {
-      // Arrange
-      const email = 'test@example.com';
-
-      // Act
-      const response = await app.request(
-        '/test',
-        {
-          headers: {
-            'cf-access-authenticated-user-email': email,
-          },
-        },
-        mockEnv
-      );
-
-      // Assert
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.user.email).toBe(email);
-    });
-
-    it('should normalize email to lowercase and trim whitespace', async () => {
-      // Arrange
-      const email = '  TEST@EXAMPLE.COM  ';
-
-      // Act
-      const response = await app.request(
-        '/test',
-        {
-          headers: {
-            'cf-access-authenticated-user-email': email,
-          },
-        },
-        mockEnv
-      );
-
-      // Assert
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.user.email).toBe('test@example.com');
-    });
-
     it('should authenticate with test header in development mode', async () => {
       // Arrange
       const email = 'dev@example.com';
@@ -98,6 +56,28 @@ describe('Authentication Middleware', () => {
       expect(data.user.email).toBe(email);
     });
 
+    it('should normalize test user email to lowercase and trim whitespace', async () => {
+      // Arrange
+      const email = '  DEV@EXAMPLE.COM  ';
+      const devEnv = { ...mockEnv, ENVIRONMENT: 'development' };
+
+      // Act
+      const response = await app.request(
+        '/test',
+        {
+          headers: {
+            'x-test-user-email': email,
+          },
+        },
+        devEnv
+      );
+
+      // Assert
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.user.email).toBe('dev@example.com');
+    });
+
     it('should use default test user when no headers are provided in development mode', async () => {
       // Arrange
       const devEnv = { ...mockEnv, ENVIRONMENT: 'development' };
@@ -109,6 +89,25 @@ describe('Authentication Middleware', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.user.email).toBe('dev@localhost');
+    });
+
+    it('should reject CF Access header (no longer supported)', async () => {
+      // Arrange
+      const prodEnv = { ...mockEnv, ENVIRONMENT: 'production' };
+
+      // Act
+      const response = await app.request(
+        '/test',
+        {
+          headers: {
+            'cf-access-authenticated-user-email': 'test@example.com',
+          },
+        },
+        prodEnv
+      );
+
+      // Assert
+      expect(response.status).toBe(401);
     });
 
     it('should reject when no authentication header is provided (production)', async () => {
@@ -137,30 +136,6 @@ describe('Authentication Middleware', () => {
 
       // Assert
       expect(response.status).toBe(401);
-    });
-
-    it('should prefer Cloudflare Access header over test header', async () => {
-      // Arrange
-      const cfEmail = 'cf@example.com';
-      const testEmail = 'test@example.com';
-      const devEnv = { ...mockEnv, ENVIRONMENT: 'development' };
-
-      // Act
-      const response = await app.request(
-        '/test',
-        {
-          headers: {
-            'cf-access-authenticated-user-email': cfEmail,
-            'x-test-user-email': testEmail,
-          },
-        },
-        devEnv
-      );
-
-      // Assert
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.user.email).toBe(cfEmail);
     });
   });
 
@@ -221,16 +196,17 @@ describe('Authentication Handlers', () => {
     it('should return current user information', async () => {
       // Arrange
       const email = 'test@example.com';
+      const devEnv = { ...mockEnv, ENVIRONMENT: 'development' };
 
       // Act
       const response = await app.request(
         '/me',
         {
           headers: {
-            'cf-access-authenticated-user-email': email,
+            'x-test-user-email': email,
           },
         },
-        mockEnv
+        devEnv
       );
 
       // Assert

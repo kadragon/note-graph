@@ -3,7 +3,6 @@ import type { Context, Next } from 'hono';
 import type { AppContext } from '../types/context';
 import { verifySupabaseJwt } from './supabase-auth';
 
-const CF_ACCESS_EMAIL_HEADER = 'cf-access-authenticated-user-email';
 const TEST_USER_EMAIL_HEADER = 'x-test-user-email';
 const DEFAULT_DEV_USER_EMAIL = 'dev@localhost';
 
@@ -12,8 +11,7 @@ const DEFAULT_DEV_USER_EMAIL = 'dev@localhost';
  *
  * Priority:
  * 1. Authorization: Bearer <Supabase JWT>
- * 2. Cf-Access-Authenticated-User-Email (CF Access, transitional)
- * 3. X-Test-User-Email / default (development only)
+ * 2. X-Test-User-Email / default (development only)
  */
 export async function authMiddleware(c: Context<AppContext>, next: Next) {
   let user: AuthUser | null = null;
@@ -37,19 +35,7 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
     }
   }
 
-  // 2. Try CF Access header (transitional)
-  if (!user) {
-    const cfEmail = c.req.header(CF_ACCESS_EMAIL_HEADER);
-    if (cfEmail) {
-      const normalizedEmail = cfEmail.toLowerCase().trim();
-      if (c.env.ALLOWED_USER_EMAIL && normalizedEmail !== c.env.ALLOWED_USER_EMAIL.toLowerCase()) {
-        throw new AuthenticationError('Access denied. Unauthorized user.');
-      }
-      user = { email: normalizedEmail };
-    }
-  }
-
-  // 3. Development fallback
+  // 2. Development fallback
   if (!user && c.env.ENVIRONMENT === 'development') {
     const testEmail = c.req.header(TEST_USER_EMAIL_HEADER) || DEFAULT_DEV_USER_EMAIL;
     user = { email: testEmail.toLowerCase().trim() };

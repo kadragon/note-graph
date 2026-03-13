@@ -16,14 +16,7 @@ import { pglite } from '../pg-setup';
 
 const baseAuthFetch = createAuthFetch(worker);
 
-const adminFetch = (path: string, options?: RequestInit) =>
-  baseAuthFetch(path, {
-    ...options,
-    headers: {
-      'Cf-Access-Authenticated-User-Email': 'test@example.com',
-      ...options?.headers,
-    },
-  });
+const adminFetch = baseAuthFetch;
 
 describe('Admin Embedding Failure Routes', () => {
   beforeEach(async () => {

@@ -22,7 +22,7 @@ Personal work note management system with AI-powered features, built on Cloudfla
 - **Database**: PostgreSQL via Cloudflare Hyperdrive
 - **Vector Search**: Cloudflare Vectorize
 - **AI**: OpenAI models via AI Gateway
-- **Auth**: Cloudflare Access (Google OAuth)
+- **Auth**: Supabase Auth (Google OAuth)
 - **Async Processing**: Scheduled worker jobs + database-backed retry queue
 - **Storage**: Google Drive (업무노트 첨부), Cloudflare R2 (프로젝트 파일/임시 PDF)
 
@@ -93,7 +93,7 @@ note-graph/
 
 #### Phase 6: Deployment & Docs (10h)
 
-- Cloudflare Access 설정
+- Supabase Auth 설정
 - 프로덕션 배포
 - 문서화
 
@@ -160,7 +160,7 @@ bun run dev
    - Update the `HYPERDRIVE` binding with your PostgreSQL connection info
    - Update `AI_GATEWAY_ID` with your gateway name
 
-4. Set up Cloudflare Access for Google OAuth
+4. Set up Supabase Auth for Google OAuth
 
 #### Production Environment
 
