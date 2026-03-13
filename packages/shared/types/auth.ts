@@ -7,15 +7,9 @@
  * Authenticated user information extracted from Cloudflare Access headers
  */
 export interface AuthUser {
-  /**
-   * User email from Cf-Access-Authenticated-User-Email header
-   */
   email: string;
-
-  /**
-   * Optional user name (can be extracted from JWT if needed)
-   */
   name?: string;
+  id?: string;
 }
 
 /**

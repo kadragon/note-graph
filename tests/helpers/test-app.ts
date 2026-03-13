@@ -136,6 +136,8 @@ export function buildMockEnv(overrides: Partial<Env> = {}): Env {
     GOOGLE_REDIRECT_URI: 'https://example.test/oauth/callback',
     GDRIVE_ROOT_FOLDER_ID: 'test-gdrive-root-folder-id',
     CLOUDFLARE_API_TOKEN: 'test-cloudflare-api-token',
+    SUPABASE_URL: 'https://test.supabase.co',
+    ALLOWED_USER_EMAIL: 'test@example.com',
     ...overrides,
   } as Env;
 }

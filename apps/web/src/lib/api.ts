@@ -1,6 +1,6 @@
-import { CF_ACCESS_CONFIG } from '@web/lib/config';
 import { type BackendTodo, transformTodoFromBackend } from '@web/lib/mappers/todo';
 import { type BackendWorkNote, transformWorkNoteFromBackend } from '@web/lib/mappers/work-note';
+import { supabase } from '@web/lib/supabase';
 import type {
   AIGatewayLogQueryParams,
   AIGatewayLogsResponse,
@@ -53,11 +53,6 @@ import type {
   WorkNoteStatistics,
 } from '@web/types/api';
 
-// Trace: SPEC-worknote-attachments-1, TASK-066
-
-/**
- * Custom API error with code for handling specific error types
- */
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -68,235 +63,21 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Cloudflare Access token refresh utility
- * When CF Access token expires, API calls fail with CORS errors
- * because CF returns a redirect without CORS headers.
- * This utility refreshes the token via a hidden iframe.
- */
-class CFAccessTokenRefresher {
-  private isRefreshing = false;
-  private refreshPromise: Promise<boolean> | null = null;
-  private lastRefreshTime = 0;
-  private consecutiveFailures = 0;
-
-  /**
-   * Check if browser is online
-   */
-  isOnline(): boolean {
-    return navigator.onLine;
-  }
-
-  /**
-   * Check if an error is a generic network error (offline, server unreachable)
-   */
-  isNetworkError(error: unknown): boolean {
-    if (!(error instanceof TypeError)) {
-      return false;
-    }
-    const message = error.message.toLowerCase();
-    return (
-      message.includes('failed to fetch') || message.includes('network') || message.includes('cors')
-    );
-  }
-
-  /**
-   * Check if an error is likely a CF Access CORS error (not a generic network issue)
-   * Returns true only if we're online and getting network errors (likely CF Access redirect)
-   */
-  isCFAccessError(error: unknown): boolean {
-    // If offline, it's not a CF Access error - it's a network connectivity issue
-    if (!this.isOnline()) {
-      return false;
-    }
-    return this.isNetworkError(error);
-  }
-
-  /**
-   * Check if we've exceeded retry attempts and should redirect to login
-   */
-  shouldRedirectToLogin(): boolean {
-    // Only redirect if online - offline users should see network error, not login redirect
-    return this.isOnline() && this.consecutiveFailures >= CF_ACCESS_CONFIG.MAX_CONSECUTIVE_FAILURES;
-  }
-
-  /**
-   * Verify that the origin is reachable before forcing auth redirect
-   * This prevents redirect loops when the server is down
-   *
-   * Note: When CF Access token expires, /favicon.ico also returns a CORS error
-   * because CF Access protects all routes. Using mode: 'no-cors' allows us to
-   * detect that the server is responding (opaque response) even when CORS blocks
-   * the actual content.
-   */
-  async verifyOriginReachable(): Promise<boolean> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        CF_ACCESS_CONFIG.AUTH_CHECK_TIMEOUT_MS
-      );
-
-      // mode: 'no-cors' avoids CORS errors and returns an opaque response
-      // when the server responds (even with CF Access redirect)
-      const response = await fetch(`${window.location.origin}/favicon.ico`, {
-        method: 'HEAD',
-        cache: 'no-store',
-        mode: 'no-cors',
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      // If fetch resolves, the server is reachable. Any response (200, 404,
-      // or opaque from CF Access redirect) confirms the origin is live.
-      // The catch block handles genuine network errors.
-      void response;
-      return true;
-    } catch {
-      // With mode: 'no-cors', any error means the server is genuinely unreachable:
-      // - AbortError: timeout (server didn't respond in time)
-      // - TypeError: DNS failure, connection refused, network down
-      // Return false to show "server unreachable" state and avoid redirect loops
-      return false;
-    }
-  }
-
-  /**
-   * Force redirect to trigger Cloudflare Access login
-   * Clears service worker cache to ensure fresh auth flow
-   * Only redirects if we can confirm origin is reachable
-   */
-  async forceAuthRedirect(): Promise<boolean> {
-    // Verify origin is reachable to avoid redirect loop on network outage
-    const originReachable = await this.verifyOriginReachable();
-    if (!originReachable) {
-      // Origin not reachable - this is a network issue, not CF Access
-      return false;
-    }
-
-    // Unregister service worker to clear cached SPA
-    if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((r) => r.unregister()));
-    }
-
-    // Clear caches
-    if ('caches' in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map((name) => caches.delete(name)));
-    }
-
-    // Force full page reload to trigger CF Access
-    window.location.href = `${window.location.origin}/?auth_redirect=1`;
-    return true;
-  }
-
-  /**
-   * Record a successful API call (resets failure counter)
-   */
-  recordSuccess(): void {
-    this.consecutiveFailures = 0;
-  }
-
-  /**
-   * Refresh CF Access token using hidden iframe
-   * Returns true if refresh might have succeeded, false if it definitely failed
-   */
-  async refreshToken(): Promise<boolean> {
-    const now = Date.now();
-
-    // Prevent rapid refresh attempts
-    if (now - this.lastRefreshTime < CF_ACCESS_CONFIG.REFRESH_COOLDOWN_MS) {
-      return false;
-    }
-
-    // If already refreshing, return the existing promise
-    if (this.isRefreshing && this.refreshPromise) {
-      return this.refreshPromise;
-    }
-
-    this.isRefreshing = true;
-    this.lastRefreshTime = now;
-
-    this.refreshPromise = new Promise<boolean>((resolve) => {
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = `${window.location.origin}/`;
-
-      let resolved = false;
-
-      const finalCleanup = (success: boolean) => {
-        if (resolved) return;
-        resolved = true;
-
-        if (iframe.parentNode) {
-          iframe.parentNode.removeChild(iframe);
-        }
-        this.isRefreshing = false;
-        this.refreshPromise = null;
-
-        if (!success) {
-          this.consecutiveFailures++;
-        }
-
-        resolve(success);
-      };
-
-      const fallbackTimeoutId = setTimeout(
-        () => finalCleanup(false),
-        CF_ACCESS_CONFIG.REFRESH_TIMEOUT_MS
-      );
-
-      iframe.onload = () => {
-        clearTimeout(fallbackTimeoutId);
-        // Give CF Access time to set the cookie
-        setTimeout(() => finalCleanup(true), CF_ACCESS_CONFIG.COOKIE_SET_DELAY_MS);
-      };
-
-      iframe.onerror = () => {
-        clearTimeout(fallbackTimeoutId);
-        finalCleanup(false);
-      };
-
-      document.body.appendChild(iframe);
-    });
-
-    return this.refreshPromise;
-  }
+async function getAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
 }
 
-export const cfTokenRefresher = new CFAccessTokenRefresher();
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getAccessToken();
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
 
-/**
- * Backend todo response format
- * Maps to database schema
- */
 export class APIClient {
   private baseURL = '/api';
-
-  /**
-   * Handle CF Access errors with retry logic
-   * Returns the retry result if retried, otherwise throws the error
-   */
-  private async handleCFAccessError<T>(
-    error: unknown,
-    isRetry: boolean,
-    retryFn: () => Promise<T>
-  ): Promise<T> {
-    if (cfTokenRefresher.isCFAccessError(error)) {
-      if (cfTokenRefresher.shouldRedirectToLogin()) {
-        await cfTokenRefresher.forceAuthRedirect();
-        throw error;
-      }
-
-      if (!isRetry) {
-        await cfTokenRefresher.refreshToken();
-        return retryFn();
-      }
-    }
-    throw error;
-  }
 
   private async request<T>(
     endpoint: string,
@@ -312,14 +93,12 @@ export class APIClient {
     options: RequestInit = {},
     isRetry = false
   ): Promise<{ data: T; headers: Headers }> {
+    const authHeaders = await getAuthHeaders();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...options.headers,
     };
-
-    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
-      (headers as Record<string, string>)['X-Test-User-Email'] = 'test@example.com';
-    }
 
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, {
@@ -328,6 +107,13 @@ export class APIClient {
         headers,
       });
 
+      if (response.status === 401 && !isRetry) {
+        const { error } = await supabase.auth.refreshSession();
+        if (!error) {
+          return this.requestWithHeaders<T>(endpoint, options, true);
+        }
+      }
+
       if (!response.ok) {
         const error = (await response.json().catch(() => ({
           message: '알 수 없는 오류가 발생했습니다',
@@ -335,26 +121,21 @@ export class APIClient {
         throw new ApiError(error.message || `HTTP ${response.status}`, error.code);
       }
 
-      // Success - reset failure counter
-      cfTokenRefresher.recordSuccess();
-
       if (response.status === 204) {
         return { data: null as T, headers: response.headers };
       }
 
       return { data: (await response.json()) as T, headers: response.headers };
     } catch (error) {
-      return this.handleCFAccessError(error, isRetry, () =>
-        this.requestWithHeaders<T>(endpoint, options, true)
-      );
+      if (error instanceof ApiError) throw error;
+      throw error;
     }
   }
 
   async uploadFile<T>(
     endpoint: string,
     file: File,
-    metadata: Record<string, string | undefined> = {},
-    isRetry = false
+    metadata: Record<string, string | undefined> = {}
   ): Promise<T> {
     const formData = new FormData();
     formData.append('file', file);
@@ -365,60 +146,34 @@ export class APIClient {
       }
     });
 
-    const headers: Record<string, string> = {};
+    const authHeaders = await getAuthHeaders();
 
-    // In development, use test auth header
-    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
-      headers['X-Test-User-Email'] = 'test@example.com';
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({
+        message: '업로드 실패',
+      }))) as { message?: string };
+      throw new Error(error.message || `HTTP ${response.status}`);
     }
 
-    try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = (await response.json().catch(() => ({
-          message: '업로드 실패',
-        }))) as { message?: string };
-        throw new Error(error.message || `HTTP ${response.status}`);
-      }
-
-      // Success - reset failure counter
-      cfTokenRefresher.recordSuccess();
-
-      return response.json() as Promise<T>;
-    } catch (error) {
-      return this.handleCFAccessError(error, isRetry, () =>
-        this.uploadFile<T>(endpoint, file, metadata, true)
-      );
-    }
+    return response.json() as Promise<T>;
   }
 
-  private async _downloadFile(endpoint: string, isRetry = false): Promise<Blob> {
-    const headers: Record<string, string> = {};
+  private async _downloadFile(endpoint: string): Promise<Blob> {
+    const authHeaders = await getAuthHeaders();
 
-    // In development, use test auth header
-    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
-      headers['X-Test-User-Email'] = 'test@example.com';
+    const response = await fetch(`${this.baseURL}${endpoint}`, { headers: authHeaders });
+
+    if (!response.ok) {
+      throw new Error(`파일 다운로드 실패: ${response.status}`);
     }
 
-    try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, { headers });
-
-      if (!response.ok) {
-        throw new Error(`파일 다운로드 실패: ${response.status}`);
-      }
-
-      // Success - reset failure counter
-      cfTokenRefresher.recordSuccess();
-
-      return response.blob();
-    } catch (error) {
-      return this.handleCFAccessError(error, isRetry, () => this._downloadFile(endpoint, true));
-    }
+    return response.blob();
   }
 
   // Auth
@@ -455,7 +210,6 @@ export class APIClient {
   }
 
   async createWorkNote(data: CreateWorkNoteRequest) {
-    // Transform content to contentRaw for backend
     const { content, relatedPersonIds, relatedWorkIds, groupIds, ...rest } = data;
 
     const payload: Record<string, unknown> = {
@@ -477,10 +231,8 @@ export class APIClient {
   }
 
   async updateWorkNote(workId: string, data: UpdateWorkNoteRequest) {
-    // Transform content to contentRaw for backend if present
     const { content, relatedPersonIds, relatedWorkIds, groupIds, ...rest } = data;
 
-    // Build payload with proper transformations
     const payload: Record<string, unknown> = { ...rest };
 
     if (content !== undefined) {
@@ -531,17 +283,10 @@ export class APIClient {
     });
   }
 
-  /**
-   * Get URL for viewing a work note file inline (for browser preview)
-   */
   getWorkNoteFileViewUrl(workId: string, fileId: string): string {
     return `${this.baseURL}/work-notes/${workId}/files/${fileId}/view`;
   }
 
-  /**
-   * Transforms relatedPersonIds and relatedWorkIds to backend format
-   * Reduces code duplication between createWorkNote and updateWorkNote
-   */
   private appendRelationPayload(
     payload: Record<string, unknown>,
     relatedPersonIds?: string[],
@@ -933,7 +678,6 @@ export class APIClient {
       body: JSON.stringify(data),
     });
 
-    // Validate response structure
     if (
       !response ||
       !Array.isArray(response.workNotes) ||
@@ -943,7 +687,6 @@ export class APIClient {
       throw new Error('Invalid search response from server');
     }
 
-    // Transform backend response to frontend format
     const workNotes: SearchResult[] = response.workNotes.map((item) => ({
       id: item.workNote.workId,
       title: item.workNote.title,
@@ -1001,8 +744,7 @@ export class APIClient {
 
   async enhanceWorkNote(
     workId: string,
-    data: EnhanceWorkNoteRequest,
-    isRetry = false
+    data: EnhanceWorkNoteRequest
   ): Promise<EnhanceWorkNoteResponse> {
     const formData = new FormData();
     formData.append('newContent', data.newContent);
@@ -1012,34 +754,22 @@ export class APIClient {
       formData.append('file', data.file);
     }
 
-    const headers: Record<string, string> = {};
+    const authHeaders = await getAuthHeaders();
 
-    if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
-      headers['X-Test-User-Email'] = 'test@example.com';
+    const response = await fetch(`${this.baseURL}/ai/work-notes/${workId}/enhance`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({
+        message: '업데이트 실패',
+      }))) as { message?: string };
+      throw new Error(error.message || `HTTP ${response.status}`);
     }
 
-    try {
-      const response = await fetch(`${this.baseURL}/ai/work-notes/${workId}/enhance`, {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = (await response.json().catch(() => ({
-          message: '업데이트 실패',
-        }))) as { message?: string };
-        throw new Error(error.message || `HTTP ${response.status}`);
-      }
-
-      cfTokenRefresher.recordSuccess();
-
-      return response.json() as Promise<EnhanceWorkNoteResponse>;
-    } catch (error) {
-      return this.handleCFAccessError(error, isRetry, () =>
-        this.enhanceWorkNote(workId, data, true)
-      );
-    }
+    return response.json() as Promise<EnhanceWorkNoteResponse>;
   }
 
   // PDF Jobs
@@ -1148,7 +878,6 @@ export class APIClient {
 
   // Calendar
   getCalendarEvents(startDate: string, endDate: string) {
-    // Get browser's timezone offset (negate because getTimezoneOffset returns opposite sign)
     const timezoneOffset = -new Date().getTimezoneOffset();
     const queryString = this.buildQueryString({
       startDate,

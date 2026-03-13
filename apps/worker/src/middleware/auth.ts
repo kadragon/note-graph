@@ -1,74 +1,64 @@
-// Trace: SPEC-auth-1, SPEC-refactor-repository-di, TASK-003, TASK-REFACTOR-004
-/**
- * Authentication middleware for Cloudflare Access
- *
- * Extracts user identity from Cloudflare Access headers:
- * - Cf-Access-Authenticated-User-Email: User's email address
- *
- * For development/testing, falls back to X-Test-User-Email header.
- */
-
 import { AuthenticationError, type AuthUser } from '@shared/types/auth';
 import type { Context, Next } from 'hono';
 import type { AppContext } from '../types/context';
+import { verifySupabaseJwt } from './supabase-auth';
 
-/**
- * Cloudflare Access authentication header
- */
 const CF_ACCESS_EMAIL_HEADER = 'cf-access-authenticated-user-email';
-
-/**
- * Development/testing fallback header
- */
 const TEST_USER_EMAIL_HEADER = 'x-test-user-email';
-
-/**
- * Default email for development environment when no headers are present
- */
 const DEFAULT_DEV_USER_EMAIL = 'dev@localhost';
 
 /**
- * Authentication middleware
+ * Authentication middleware.
  *
- * Extracts user identity from Cloudflare Access headers and adds it to context.
- * In development mode, allows X-Test-User-Email header for testing.
- * If no headers are present in development mode, uses a default test user.
- *
- * @throws AuthenticationError if no valid authentication header is found in production
+ * Priority:
+ * 1. Authorization: Bearer <Supabase JWT>
+ * 2. Cf-Access-Authenticated-User-Email (CF Access, transitional)
+ * 3. X-Test-User-Email / default (development only)
  */
 export async function authMiddleware(c: Context<AppContext>, next: Next) {
-  // Try Cloudflare Access header first
-  let email = c.req.header(CF_ACCESS_EMAIL_HEADER);
+  let user: AuthUser | null = null;
 
-  // In development, allow test header or default user as fallback
-  if (!email && c.env.ENVIRONMENT === 'development') {
-    email = c.req.header(TEST_USER_EMAIL_HEADER) || DEFAULT_DEV_USER_EMAIL;
+  // 1. Try Supabase JWT
+  const authHeader = c.req.header('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const claims = await verifySupabaseJwt(token, c.env.SUPABASE_URL);
+    if (claims) {
+      if (
+        c.env.ALLOWED_USER_EMAIL &&
+        claims.email.toLowerCase() !== c.env.ALLOWED_USER_EMAIL.toLowerCase()
+      ) {
+        throw new AuthenticationError('Access denied. Unauthorized user.');
+      }
+      user = {
+        email: claims.email.toLowerCase().trim(),
+        id: claims.sub,
+      };
+    }
   }
 
-  if (!email) {
-    throw new AuthenticationError('Authentication required. Missing Cloudflare Access headers.');
+  // 2. Try CF Access header (transitional)
+  if (!user) {
+    const cfEmail = c.req.header(CF_ACCESS_EMAIL_HEADER);
+    if (cfEmail) {
+      user = { email: cfEmail.toLowerCase().trim() };
+    }
   }
 
-  // Create auth user object
-  const user: AuthUser = {
-    email: email.toLowerCase().trim(),
-    // Name can be extracted from JWT claims if needed in the future
-    name: undefined,
-  };
+  // 3. Development fallback
+  if (!user && c.env.ENVIRONMENT === 'development') {
+    const testEmail = c.req.header(TEST_USER_EMAIL_HEADER) || DEFAULT_DEV_USER_EMAIL;
+    user = { email: testEmail.toLowerCase().trim() };
+  }
 
-  // Add user to context variables
+  if (!user) {
+    throw new AuthenticationError('Authentication required.');
+  }
+
   c.set('user', user);
-
   await next();
 }
 
-/**
- * Get authenticated user from context
- *
- * @param c - Hono context
- * @returns Authenticated user
- * @throws Error if user is not set in context (middleware not applied)
- */
 export function getAuthUser(c: Context): AuthUser {
   const user = c.get('user') as AuthUser | undefined;
   if (!user) {

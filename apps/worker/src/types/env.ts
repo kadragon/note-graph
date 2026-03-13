@@ -24,4 +24,7 @@ export interface Env {
   GDRIVE_ROOT_FOLDER_ID: string; // Parent folder for all work note folders
   // Google Calendar - comma-separated calendar IDs (e.g., "primary,abc123@group.calendar.google.com")
   GOOGLE_CALENDAR_IDS?: string;
+  // Supabase Auth
+  SUPABASE_URL: string;
+  ALLOWED_USER_EMAIL: string;
 }

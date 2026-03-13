@@ -1,3 +1,13 @@
+## Supabase Auth 마이그레이션 — Phase 4: CF Access 제거
+
+> Phase 0~2 완료 후 프로덕션에서 Supabase Auth 안정 확인되면 CF Access를 제거한다.
+
+- [ ] Cloudflare Dashboard에서 `note.kadragon.work` Access Application 삭제
+- [ ] `apps/worker/src/middleware/auth.ts`에서 CF Access 헤더 체크 제거 (Supabase JWT + dev fallback만 유지)
+- [ ] 프론트엔드에서 CF Access 관련 참조 최종 확인 및 제거
+- [ ] `.dev.vars.example`에서 CF Access 관련 주석 정리
+- [ ] `AGENTS.md`에서 "Auth: Cloudflare Access" → "Auth: Supabase Auth (Google OAuth)" 업데이트
+
 ## 회의록 키워드 추출 개선
 
 > GPT 키워드 추출이 폴백으로 빠지는 원인을 파악하고, 프롬프트와 폴백 로직을 모두 개선하여 한국어 회의 내용에서 의미 있는 키워드가 추출되도록 한다.
