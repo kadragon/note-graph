@@ -52,7 +52,7 @@ export default function MeetingMinuteCreate() {
 
   const applyDraft = useCallback(
     (draft: MeetingMinuteFormData) => {
-      setMeetingDate(draft.meetingDate);
+      setMeetingDate(draft.meetingDate.slice(0, 10));
       setTopic(draft.topic);
       setDetailsRaw(draft.detailsRaw);
       setSelectedCategoryIds(draft.categoryIds);
