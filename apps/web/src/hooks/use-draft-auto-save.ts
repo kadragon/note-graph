@@ -10,7 +10,7 @@ interface DraftAutoSaveOptions<T> {
 
 interface DraftAutoSaveReturn<T> {
   restoredDraft: T | null;
-  draftStatus: 'idle' | 'saving' | 'saved' | 'restored';
+  draftStatus: 'idle' | 'saved' | 'restored';
   clearDraft: () => void;
   dismissRestoredDraft: () => void;
 }
@@ -29,8 +29,10 @@ export function useDraftAutoSave<T>({
   enabled = true,
 }: DraftAutoSaveOptions<T>): DraftAutoSaveReturn<T> {
   const [restoredDraft, setRestoredDraft] = useState<T | null>(null);
-  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'restored'>('idle');
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saved' | 'restored'>('idle');
   const initializedRef = useRef(false);
+  const hasUserEditedRef = useRef(false);
+  const saveCountRef = useRef(0);
 
   // Restore draft from localStorage on mount
   useEffect(() => {
@@ -57,6 +59,13 @@ export function useDraftAutoSave<T>({
     // Skip saving if draft was just restored and not yet dismissed
     if (draftStatus === 'restored') return;
 
+    // Skip the first save after enable to avoid persisting initial/empty data
+    saveCountRef.current += 1;
+    if (!hasUserEditedRef.current) {
+      if (saveCountRef.current <= 1) return;
+      hasUserEditedRef.current = true;
+    }
+
     try {
       const draft: StoredDraft<T> = { data: debouncedData, savedAt: Date.now() };
       localStorage.setItem(key, JSON.stringify(draft));
@@ -77,9 +86,14 @@ export function useDraftAutoSave<T>({
   }, [key]);
 
   const dismissRestoredDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore
+    }
     setRestoredDraft(null);
     setDraftStatus('idle');
-  }, []);
+  }, [key]);
 
   return { restoredDraft, draftStatus, clearDraft, dismissRestoredDraft };
 }

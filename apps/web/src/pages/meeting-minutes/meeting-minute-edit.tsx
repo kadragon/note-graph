@@ -7,7 +7,7 @@ import { useTaskCategories } from '@web/hooks/use-task-categories';
 import { useToast } from '@web/hooks/use-toast';
 import { useWorkNoteGroups } from '@web/hooks/use-work-note-groups';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { MeetingMinuteContentStep } from './components/meeting-minute-content-step';
@@ -26,7 +26,7 @@ export default function MeetingMinuteEdit() {
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
-  const formInitializedForId = useRef<string | undefined>(undefined);
+  const [formInitializedForId, setFormInitializedForId] = useState<string | undefined>(undefined);
 
   const updateMutation = useUpdateMeetingMinute();
   const detailQuery = useMeetingMinute(id, Boolean(id));
@@ -52,12 +52,12 @@ export default function MeetingMinuteEdit() {
     useDraftAutoSave<MeetingMinuteFormData>({
       key: draftKey,
       data: formData,
-      enabled: formInitializedForId.current === id,
+      enabled: formInitializedForId === id,
     });
 
   // Initialize form from server data
   useEffect(() => {
-    if (!detailQuery.data || formInitializedForId.current === id) return;
+    if (!detailQuery.data || formInitializedForId === id) return;
     const detail = detailQuery.data;
     setMeetingDate(detail.meetingDate);
     setTopic(detail.topic);
@@ -66,7 +66,7 @@ export default function MeetingMinuteEdit() {
     setSelectedGroupIds(detail.groups?.map((g) => g.groupId) ?? []);
     setSelectedPersonIds(detail.attendees.map((a) => a.personId));
     setKeywords(detail.keywords ?? []);
-    formInitializedForId.current = id;
+    setFormInitializedForId(id);
   }, [detailQuery.data, id]);
 
   const applyDraft = useCallback(
@@ -93,6 +93,15 @@ export default function MeetingMinuteEdit() {
 
   const handleSubmit = async () => {
     if (!id) return;
+
+    if (!meetingDate || !topic.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '회의 날짜와 주제를 입력해주세요.',
+      });
+      return;
+    }
 
     if (!detailsRaw.trim()) {
       toast({
@@ -177,7 +186,7 @@ export default function MeetingMinuteEdit() {
         {draftStatus === 'saved' && <p className="text-xs text-muted-foreground">자동 저장됨</p>}
       </div>
 
-      {restoredDraft && formInitializedForId.current === id && (
+      {restoredDraft && formInitializedForId === id && (
         <div className="mx-auto max-w-2xl mb-4">
           <div className="flex items-center justify-between rounded-md border border-yellow-300 bg-yellow-50 px-4 py-2 dark:border-yellow-700 dark:bg-yellow-950">
             <p className="text-sm">이전에 수정 중이던 내용이 있습니다.</p>

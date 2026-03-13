@@ -73,6 +73,15 @@ export default function MeetingMinuteCreate() {
   }, []);
 
   const handleSubmit = async () => {
+    if (!meetingDate || !topic.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '회의 날짜와 주제를 입력해주세요.',
+      });
+      return;
+    }
+
     if (!detailsRaw.trim()) {
       toast({
         variant: 'destructive',
