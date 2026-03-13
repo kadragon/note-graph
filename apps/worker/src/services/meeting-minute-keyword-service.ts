@@ -40,7 +40,8 @@ export class MeetingMinuteKeywordService {
       const parsed = JSON.parse(response) as KeywordResponse;
       const normalized = this.normalizeKeywords(parsed.keywords);
       return normalized.length > 0 ? normalized : fallbackKeywords;
-    } catch {
+    } catch (error) {
+      console.error('[MeetingMinuteKeywordService] Keyword extraction failed:', error);
       return fallbackKeywords;
     }
   }
@@ -120,6 +121,105 @@ export class MeetingMinuteKeywordService {
     return normalized;
   }
 
+  private static readonly KOREAN_STOPWORDS = new Set([
+    // 대명사
+    '이것',
+    '그것',
+    '저것',
+    '이것은',
+    '그것은',
+    '저것은',
+    '여기',
+    '거기',
+    '저기',
+    '이것이',
+    '그것이',
+    '저것이',
+    '이것을',
+    '그것을',
+    '저것을',
+    // 조사 + 대명사 결합형
+    '이런',
+    '그런',
+    '저런',
+    '어떤',
+    '무슨',
+    '어느',
+    // 부사
+    '매우',
+    '아주',
+    '너무',
+    '정말',
+    '진짜',
+    '상당히',
+    '꽤',
+    '약간',
+    '조금',
+    '이미',
+    '벌써',
+    '아직',
+    '바로',
+    '다시',
+    '또',
+    '더',
+    '덜',
+    '잘',
+    '못',
+    // 접속사/접속 부사
+    '그리고',
+    '그러나',
+    '하지만',
+    '그래서',
+    '따라서',
+    '그런데',
+    '그러므로',
+    '또한',
+    '즉',
+    '및',
+    '혹은',
+    '또는',
+    // 동사/형용사 어간 (단독 출현 시)
+    '있다',
+    '없다',
+    '하다',
+    '되다',
+    '이다',
+    '아니다',
+    '같다',
+    '있는',
+    '없는',
+    '하는',
+    '되는',
+    '같은',
+    '있을',
+    '없을',
+    '해야',
+    '된다',
+    '한다',
+    // 의존 명사 / 불완전 명사
+    '것',
+    '수',
+    '등',
+    '때',
+    '중',
+    '위',
+    '대',
+    '내',
+    // 관형사
+    '모든',
+    '각',
+    '여러',
+    '다른',
+    // 구조 표지
+    'part',
+    'part1',
+    'part2',
+    'part3',
+    'part4',
+    'step',
+    'section',
+  ]);
+
   private extractDeterministicKeywords(input: ExtractKeywordsInput): string[] {
     const normalizedText = `${input.topic} ${input.detailsRaw}`
       .toLowerCase()
@@ -131,22 +231,24 @@ export class MeetingMinuteKeywordService {
       return [];
     }
 
-    const keywords: string[] = [];
-    const seen = new Set<string>();
+    const tokens = normalizedText
+      .split(' ')
+      .filter(
+        (token) =>
+          token.length >= 2 &&
+          !MeetingMinuteKeywordService.KOREAN_STOPWORDS.has(token) &&
+          !/^\d+$/.test(token)
+      );
 
-    for (const token of normalizedText.split(' ')) {
-      if (token.length < 2 || seen.has(token)) {
-        continue;
-      }
-
-      seen.add(token);
-      keywords.push(token);
-
-      if (keywords.length >= MeetingMinuteKeywordService.MAX_KEYWORDS) {
-        break;
-      }
+    // 빈도 기반 정렬
+    const freq = new Map<string, number>();
+    for (const token of tokens) {
+      freq.set(token, (freq.get(token) ?? 0) + 1);
     }
 
-    return keywords;
+    const uniqueTokens = [...new Set(tokens)];
+    uniqueTokens.sort((a, b) => (freq.get(b) ?? 0) - (freq.get(a) ?? 0));
+
+    return uniqueTokens.slice(0, MeetingMinuteKeywordService.MAX_KEYWORDS);
   }
 }

@@ -105,7 +105,11 @@ export class SettingRepository {
     await this.db.executeBatch(
       defaults.map((d) => ({
         sql: `INSERT INTO app_settings (key, value, category, label, description, default_value)
-              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`,
+              VALUES ($1, $2, $3, $4, $5, $6)
+              ON CONFLICT (key) DO UPDATE SET
+                default_value = EXCLUDED.default_value,
+                label = EXCLUDED.label,
+                description = EXCLUDED.description`,
         params: [d.key, d.value, d.category, d.label, d.description, d.value],
       }))
     );
