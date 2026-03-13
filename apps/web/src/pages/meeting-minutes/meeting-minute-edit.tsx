@@ -59,7 +59,7 @@ export default function MeetingMinuteEdit() {
   useEffect(() => {
     if (!detailQuery.data || formInitializedForId === id) return;
     const detail = detailQuery.data;
-    setMeetingDate(detail.meetingDate);
+    setMeetingDate(detail.meetingDate.slice(0, 10));
     setTopic(detail.topic);
     setDetailsRaw(detail.detailsRaw);
     setSelectedCategoryIds(detail.categories.map((c) => c.categoryId));
@@ -71,7 +71,7 @@ export default function MeetingMinuteEdit() {
 
   const applyDraft = useCallback(
     (draft: MeetingMinuteFormData) => {
-      setMeetingDate(draft.meetingDate);
+      setMeetingDate(draft.meetingDate.slice(0, 10));
       setTopic(draft.topic);
       setDetailsRaw(draft.detailsRaw);
       setSelectedCategoryIds(draft.categoryIds);
