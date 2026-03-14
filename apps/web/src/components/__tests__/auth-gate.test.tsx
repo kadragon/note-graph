@@ -22,9 +22,18 @@ vi.mock('@web/lib/api', () => ({
   },
 }));
 
+vi.mock('@web/lib/supabase', () => ({
+  isSupabaseConfigured: true,
+}));
+
+vi.mock('@web/lib/pwa-reload', () => ({
+  forcePwaRefresh: vi.fn(),
+}));
+
 // Import after mock setup so we can control the return value
 import { useAuth } from '@web/contexts/auth-context';
 import { API } from '@web/lib/api';
+import { forcePwaRefresh } from '@web/lib/pwa-reload';
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -46,6 +55,7 @@ function renderWithProviders(ui: React.ReactElement) {
 describe('AuthGate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
   });
 
   it('shows loading state while checking auth', () => {
@@ -145,5 +155,73 @@ describe('AuthGate', () => {
     await waitFor(() => {
       expect(mockSignOut).toHaveBeenCalled();
     });
+  });
+
+  it('calls forcePwaRefresh when Supabase is not configured and no prior attempt', async () => {
+    vi.resetModules();
+    vi.doMock('@web/lib/supabase', () => ({
+      isSupabaseConfigured: false,
+    }));
+    vi.doMock('@web/lib/pwa-reload', () => ({
+      forcePwaRefresh: vi.mocked(forcePwaRefresh),
+    }));
+    const { AuthGate: UnconfiguredAuthGate } = await import('../auth-gate');
+
+    vi.mocked(useAuth).mockReturnValue({
+      session: null,
+      user: null,
+      isLoading: false,
+      signIn: mockSignIn,
+      signOut: mockSignOut,
+    });
+
+    renderWithProviders(
+      <UnconfiguredAuthGate>
+        <div>Protected Content</div>
+      </UnconfiguredAuthGate>
+    );
+
+    expect(forcePwaRefresh).toHaveBeenCalledTimes(1);
+    expect(mockSignIn).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('pwa-force-refresh-attempted')).toBe('1');
+
+    // Reset mock to restore default
+    vi.doMock('@web/lib/supabase', () => ({
+      isSupabaseConfigured: true,
+    }));
+  });
+
+  it('does not call forcePwaRefresh when already attempted in this session', async () => {
+    sessionStorage.setItem('pwa-force-refresh-attempted', '1');
+
+    vi.resetModules();
+    vi.doMock('@web/lib/supabase', () => ({
+      isSupabaseConfigured: false,
+    }));
+    vi.doMock('@web/lib/pwa-reload', () => ({
+      forcePwaRefresh: vi.mocked(forcePwaRefresh),
+    }));
+    const { AuthGate: UnconfiguredAuthGate } = await import('../auth-gate');
+
+    vi.mocked(useAuth).mockReturnValue({
+      session: null,
+      user: null,
+      isLoading: false,
+      signIn: mockSignIn,
+      signOut: mockSignOut,
+    });
+
+    renderWithProviders(
+      <UnconfiguredAuthGate>
+        <div>Protected Content</div>
+      </UnconfiguredAuthGate>
+    );
+
+    expect(forcePwaRefresh).not.toHaveBeenCalled();
+
+    // Reset mock to restore default
+    vi.doMock('@web/lib/supabase', () => ({
+      isSupabaseConfigured: true,
+    }));
   });
 });
