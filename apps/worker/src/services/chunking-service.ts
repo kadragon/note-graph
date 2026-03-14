@@ -178,6 +178,13 @@ export class ChunkingService {
   }
 
   /**
+   * Get minimum chunk size in characters (below this, trailing text merges with previous chunk)
+   */
+  getMinChunkSizeChars(): number {
+    return this.getChunkSizeChars() * this.MIN_CHUNK_RATIO;
+  }
+
+  /**
    * Estimate token count from text
    *
    * @param text - Text to estimate

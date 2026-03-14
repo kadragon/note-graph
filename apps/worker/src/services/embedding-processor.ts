@@ -272,7 +272,7 @@ export class EmbeddingProcessor {
    * Embed only work notes that are not yet embedded
    * Uses batch processing across multiple work notes for efficiency
    *
-   * @param batchSize - Number of notes to fetch per batch (default: 10)
+   * @param batchSize - Max number of notes to process per cron invocation (default: 10)
    * @returns Reindex result statistics
    */
   async embedPending(batchSize: number = 10): Promise<ReindexResult> {
@@ -303,10 +303,11 @@ export class EmbeddingProcessor {
     let allChunks: ChunkToEmbed[] = [];
     let workNoteChunkMap: Map<string, PendingChunkState> = new Map();
 
-    // Process in batches
-    while (result.processed < result.total) {
+    // Process up to batchSize notes per cron invocation to stay within CPU limits
+    while (result.processed < result.total && result.processed < batchSize) {
+      const fetchLimit = batchSize - result.processed;
       // Always fetch from offset 0 since we're updating embedded_at
-      const workNotes = await this.repository.findPendingEmbedding(batchSize, 0);
+      const workNotes = await this.repository.findPendingEmbedding(fetchLimit, 0);
 
       if (workNotes.length === 0) {
         break;
@@ -590,7 +591,7 @@ export class EmbeddingProcessor {
     const chunkSizeChars = this.chunkingService.getChunkSizeChars();
     if (fullTextLength <= chunkSizeChars) return 1;
     const stepChars = this.chunkingService.getStepChars();
-    const minChunkSize = chunkSizeChars * 0.1;
+    const minChunkSize = this.chunkingService.getMinChunkSizeChars();
     let count = 0;
     for (let i = 0; i < fullTextLength; i += stepChars) {
       const remaining = fullTextLength - i;
