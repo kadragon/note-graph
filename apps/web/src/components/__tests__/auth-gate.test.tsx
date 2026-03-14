@@ -22,6 +22,14 @@ vi.mock('@web/lib/api', () => ({
   },
 }));
 
+vi.mock('@web/lib/supabase', () => ({
+  isSupabaseConfigured: true,
+}));
+
+vi.mock('@web/lib/pwa-reload', () => ({
+  forcePwaRefresh: vi.fn(),
+}));
+
 // Import after mock setup so we can control the return value
 import { useAuth } from '@web/contexts/auth-context';
 import { API } from '@web/lib/api';

@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@web/contexts/auth-context';
 import { API } from '@web/lib/api';
+import { forcePwaRefresh } from '@web/lib/pwa-reload';
+import { isSupabaseConfigured } from '@web/lib/supabase';
 import { Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface AuthGateProps {
   children: ReactNode;
@@ -16,6 +18,7 @@ interface AuthGateProps {
  */
 export function AuthGate({ children }: AuthGateProps) {
   const { session, isLoading, signIn, signOut } = useAuth();
+  const refreshAttempted = useRef(false);
 
   const {
     data: me,
@@ -29,8 +32,16 @@ export function AuthGate({ children }: AuthGateProps) {
     retryDelay: 0,
   });
 
+  // If Supabase is not configured (e.g., stale PWA cache), force refresh
   useEffect(() => {
-    if (!isLoading && !session) {
+    if (!isSupabaseConfigured && !refreshAttempted.current) {
+      refreshAttempted.current = true;
+      forcePwaRefresh();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && !session && isSupabaseConfigured) {
       signIn();
     }
   }, [isLoading, session, signIn]);
