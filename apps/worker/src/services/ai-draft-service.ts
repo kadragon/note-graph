@@ -6,7 +6,7 @@
 import type { AIDraftTodo, ReferenceTodo, WorkNoteDraft } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
-import { RateLimitError } from '../types/errors';
+import { AIResponseError, RateLimitError, ValidationError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
 import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { getTodayDateUTC } from '../utils/date';
@@ -645,15 +645,29 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
       if (response.status === 429) {
         throw new RateLimitError('AI 호출 상한을 초과했습니다. 잠시 후 다시 시도해주세요.');
       }
-      throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+      throw new AIResponseError(`OpenAI API error (${response.status}): ${errorText}`);
     }
 
     const data = await response.json<{
-      choices: Array<{ message: { content: string } }>;
+      choices: Array<{
+        message: { content: string | null };
+        finish_reason: string;
+      }>;
+      usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
     }>();
 
     if (!data.choices?.[0]?.message?.content) {
-      throw new Error('No response from GPT');
+      const finishReason = data.choices?.[0]?.finish_reason;
+      console.error('[GPT] Empty response', {
+        finish_reason: finishReason,
+        usage: data.usage,
+        choicesLength: data.choices?.length,
+      });
+
+      if (finishReason === 'length') {
+        throw new ValidationError('AI 응답이 너무 길어 완료되지 못했습니다. 입력을 줄여주세요.');
+      }
+      throw new AIResponseError('AI로부터 응답을 받지 못했습니다. 다시 시도해주세요.');
     }
 
     return data.choices[0].message.content;

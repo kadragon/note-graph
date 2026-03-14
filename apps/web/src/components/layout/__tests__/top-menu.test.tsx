@@ -91,7 +91,7 @@ describe('top-menu', () => {
     expect(workNotesLink).not.toHaveClass('ring-1');
   });
 
-  it('refreshes status and redirects when connect is clicked while disconnected', async () => {
+  it('redirects to authorize when disconnected (no needsReauth)', async () => {
     const user = userEvent.setup();
     const refetch = vi
       .fn()
@@ -100,6 +100,32 @@ describe('top-menu', () => {
     vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
       configured: true,
       data: { connected: false, calendarConnected: false },
+      refetch,
+      isFetching: false,
+    } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
+
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, href: '' },
+    });
+
+    render(<TopMenu />);
+
+    await user.click(screen.getByTestId('google-connect-button'));
+
+    expect(refetch).toHaveBeenCalled();
+    expect(window.location.href).toBe('/api/auth/google/authorize');
+  });
+
+  it('redirects to authorize when needsReauth is true', async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn().mockResolvedValue({
+      data: { connected: true, calendarConnected: false, needsReauth: true },
+    });
+
+    vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
+      configured: true,
+      data: { connected: true, calendarConnected: false, needsReauth: true },
       refetch,
       isFetching: false,
     } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);

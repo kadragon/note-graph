@@ -78,10 +78,11 @@ export default function TopMenu() {
   const handleGoogleReconnect = async () => {
     const nextStatus = await refreshDriveStatus();
     if (
+      nextStatus.data?.needsReauth ||
       !nextStatus.data?.connected ||
-      !nextStatus.data?.calendarConnected ||
-      nextStatus.data?.needsReauth
+      !nextStatus.data?.calendarConnected
     ) {
+      // Use dedicated OAuth flow to (re)authorize without replacing app session
       window.location.href = GOOGLE_AUTH_URL;
     }
   };
@@ -189,6 +190,7 @@ function ManageMenu() {
     (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close popover on route change
   React.useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
