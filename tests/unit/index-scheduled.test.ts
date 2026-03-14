@@ -79,7 +79,7 @@ describe('Worker scheduled handler', () => {
     const scheduledPromise = waitUntil.mock.calls[0]?.[0] as Promise<void>;
     await scheduledPromise;
 
-    expect(embedPendingSpy).toHaveBeenCalledWith(20);
+    expect(embedPendingSpy).toHaveBeenCalledWith(5);
     expect(dbMock.close).toHaveBeenCalled();
   });
 

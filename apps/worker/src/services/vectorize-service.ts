@@ -106,11 +106,11 @@ export class VectorizeService {
   private static encodePersonIdsWithLimit(personIdsString: string, maxBytes: number): string {
     const personIds = personIdsString.split(',');
     const result: string[] = [];
+    const encoder = new TextEncoder();
     let currentLength = 0;
 
     for (const id of personIds) {
       const addition = result.length === 0 ? id : `,${id}`;
-      const encoder = new TextEncoder();
       const newLength = currentLength + encoder.encode(addition).length;
 
       if (newLength <= maxBytes) {
