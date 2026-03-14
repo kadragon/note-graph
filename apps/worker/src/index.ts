@@ -6,11 +6,9 @@
 
 import { AuthenticationError } from '@shared/types/auth';
 import { Hono } from 'hono';
-import { createDatabaseClient } from './adapters/database-factory';
 import { getMeHandler } from './handlers/auth';
 import { authMiddleware } from './middleware/auth';
 import { repositoriesMiddleware } from './middleware/repositories';
-import { SettingRepository } from './repositories/setting-repository';
 import admin from './routes/admin';
 import aiDraft from './routes/ai-draft';
 import { authGoogle } from './routes/auth-google';
@@ -29,8 +27,6 @@ import taskCategories from './routes/task-categories';
 import todos from './routes/todos';
 import workNoteGroups from './routes/work-note-groups';
 import workNotes from './routes/work-notes';
-import { EMBEDDING_FAILURE_REASON, EmbeddingProcessor } from './services/embedding-processor';
-import { SettingService } from './services/setting-service';
 import type { AppContext } from './types/context';
 import type { Env } from './types/env';
 import { DomainError } from './types/errors';
@@ -205,57 +201,6 @@ app.onError((err, c) => {
   );
 });
 
-const SCHEDULED_EMBED_PENDING_BATCH_SIZE = 5;
-
-async function runScheduledEmbedPending(env: Env): Promise<void> {
-  const db = createDatabaseClient(env);
-  try {
-    const settingRepo = new SettingRepository(db);
-    const settingService = new SettingService(settingRepo);
-    await settingService.preload();
-    const processor = new EmbeddingProcessor(db, env, settingService);
-    const result = await processor.embedPending(SCHEDULED_EMBED_PENDING_BATCH_SIZE);
-
-    const skipReasons = {
-      deleted: 0,
-      staleVersion: 0,
-    };
-
-    for (const error of result.errors) {
-      if (error.reason === EMBEDDING_FAILURE_REASON.NOT_FOUND) {
-        skipReasons.deleted++;
-      } else if (error.reason === EMBEDDING_FAILURE_REASON.STALE_VERSION) {
-        skipReasons.staleVersion++;
-      }
-    }
-
-    console.warn('[EmbeddingScheduler] embed-pending run complete', {
-      total: result.total,
-      processed: result.processed,
-      succeeded: result.succeeded,
-      failed: result.failed,
-      skipReasons,
-    });
-  } finally {
-    await db.close?.();
-  }
-}
-
-const worker = {
+export default {
   fetch: app.fetch,
-  scheduled(
-    _controller: ScheduledController,
-    env: Env,
-    ctx: ExecutionContext
-  ): void | Promise<void> {
-    ctx.waitUntil(
-      runScheduledEmbedPending(env).catch((error) => {
-        console.error('[EmbeddingScheduler] embed-pending run failed', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      })
-    );
-  },
 };
-
-export default worker;

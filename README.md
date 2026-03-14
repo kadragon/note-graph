@@ -23,7 +23,7 @@ Personal work note management system with AI-powered features, built on Cloudfla
 - **Vector Search**: Cloudflare Vectorize
 - **AI**: OpenAI models via AI Gateway
 - **Auth**: Supabase Auth (Google OAuth)
-- **Async Processing**: Scheduled worker jobs + database-backed retry queue
+- **Async Processing**: Inline async embedding via `waitUntil()` + 관리자 수동 재처리
 - **Storage**: Google Drive (업무노트 첨부), Cloudflare R2 (프로젝트 파일/임시 PDF)
 
 ## Project Structure
@@ -197,7 +197,7 @@ bun run test:coverage
 
 ## Vector Store Recovery
 
-- 임베딩 동기화는 CRUD 후 비동기로 처리되며, Worker `scheduled` 트리거가 5분마다 `embed-pending` 복구를 수행합니다.
+- 임베딩 동기화는 CRUD 후 `waitUntil()`로 비동기 처리되며, 실패 시 관리자 페이지의 `POST /api/admin/embed-pending` 버튼으로 수동 재처리합니다.
 - 운영 중 Vectorize 오염(고아 청크) 가능성이 의심되면 우선 `POST /api/admin/reindex-all`로 전체 재색인을 수행합니다.
 - 근본 정리가 필요하면 신규 Vectorize 인덱스를 생성한 뒤 바인딩을 전환하고 전체 재색인을 다시 수행하는 인덱스 교체 전략을 권장합니다.
 
