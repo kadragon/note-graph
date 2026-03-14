@@ -13,5 +13,10 @@ if (!isSupabaseConfigured) {
 
 export const supabase: SupabaseClient = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder'
+  supabaseAnonKey || 'placeholder',
+  {
+    auth: {
+      flowType: 'pkce',
+    },
+  }
 );

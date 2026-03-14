@@ -205,7 +205,7 @@ app.onError((err, c) => {
   );
 });
 
-const SCHEDULED_EMBED_PENDING_BATCH_SIZE = 20;
+const SCHEDULED_EMBED_PENDING_BATCH_SIZE = 5;
 
 async function runScheduledEmbedPending(env: Env): Promise<void> {
   const db = createDatabaseClient(env);

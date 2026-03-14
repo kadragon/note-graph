@@ -164,6 +164,20 @@ export class ChunkingService {
   }
 
   /**
+   * Get chunk size in characters
+   */
+  getChunkSizeChars(): number {
+    return this.config.chunkSize * this.CHARS_PER_TOKEN;
+  }
+
+  /**
+   * Get step size in characters (chunk size minus overlap)
+   */
+  getStepChars(): number {
+    return Math.floor(this.getChunkSizeChars() * (1 - this.config.overlapRatio));
+  }
+
+  /**
    * Estimate token count from text
    *
    * @param text - Text to estimate

@@ -585,9 +585,19 @@ export class EmbeddingProcessor {
     }
   }
 
-  estimateChunkCount(workId: string, title: string, contentRaw: string): number {
-    return this.chunkingService.chunkWorkNote(workId, title, contentRaw, { created_at_bucket: '' })
-      .length;
+  estimateChunkCount(_workId: string, title: string, contentRaw: string): number {
+    const fullTextLength = title.length + 2 + contentRaw.length; // "\n\n"
+    const chunkSizeChars = this.chunkingService.getChunkSizeChars();
+    if (fullTextLength <= chunkSizeChars) return 1;
+    const stepChars = this.chunkingService.getStepChars();
+    const minChunkSize = chunkSizeChars * 0.1;
+    let count = 0;
+    for (let i = 0; i < fullTextLength; i += stepChars) {
+      const remaining = fullTextLength - i;
+      if (remaining < minChunkSize && i > 0) break;
+      count++;
+    }
+    return count;
   }
 
   async getMaxKnownChunkCount(workId: string, fallbackCount: number): Promise<number> {
