@@ -260,7 +260,9 @@ export class AIDraftService {
       line += ` [${todo.status}]`;
     }
     if (todo.description) {
-      line += `\n  설명: ${todo.description}`;
+      const desc =
+        todo.description.length > 200 ? `${todo.description.slice(0, 200)}...` : todo.description;
+      line += `\n  설명: ${desc}`;
     }
     return line;
   }
@@ -496,7 +498,7 @@ ${topDueDateLines}`;
             .map((note, idx) => {
               const todosSection =
                 note.todos && note.todos.length > 0
-                  ? `\n할 일 목록:\n${note.todos.map((todo) => `  - ${todo.title}${todo.dueDate ? ` (기한: ${todo.dueDate})` : ''}${todo.status !== '진행중' ? ` [${todo.status}]` : ''}${todo.description ? `\n    설명: ${todo.description}` : ''}`).join('\n')}`
+                  ? `\n할 일 목록:\n${note.todos.map((todo) => this.formatExistingTodo(todo)).join('\n')}`
                   : '';
               return `[참고 노트 ${idx + 1}]
 제목: ${note.title}
