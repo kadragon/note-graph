@@ -6,10 +6,9 @@
 import type { AIDraftTodo, ReferenceTodo, WorkNoteDraft } from '@shared/types/search';
 import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
-import { AIResponseError, RateLimitError, ValidationError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
-import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { getTodayDateUTC } from '../utils/date';
+import { callOpenAIChat } from '../utils/openai-chat';
 import {
   DEFAULT_AI_DRAFT_CREATE_PROMPT,
   DEFAULT_AI_DRAFT_CREATE_WITH_CONTEXT_PROMPT,
@@ -153,23 +152,11 @@ export class AIDraftService {
     options?: DraftGenerationOptions
   ): Promise<WorkNoteDraft> {
     const prompt = this.constructDraftPrompt(inputText, options);
-    const response = await this.callGPT(prompt);
-
-    // Parse JSON response from GPT
-    try {
-      const rawDraft = JSON.parse(response) as RawWorkNoteDraft;
-
-      // Validate required fields
-      if (!rawDraft.title || !rawDraft.content) {
-        throw new Error('Invalid draft: missing title or content');
-      }
-
-      // Transform to proper format with default due dates and personIds
-      return this.transformDraft(rawDraft, options?.personIds);
-    } catch (error) {
-      console.error('Error parsing draft response:', error);
-      throw new Error('Failed to parse AI response. Please try again.');
-    }
+    return this.callGPTAndParseDraft(
+      prompt,
+      '당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.',
+      options?.personIds
+    );
   }
 
   /**
@@ -192,23 +179,11 @@ export class AIDraftService {
     options?: DraftGenerationOptions
   ): Promise<WorkNoteDraft> {
     const prompt = this.constructDraftPromptWithContext(inputText, similarNotes, options);
-    const response = await this.callGPT(prompt);
-
-    // Parse JSON response from GPT
-    try {
-      const rawDraft = JSON.parse(response) as RawWorkNoteDraft;
-
-      // Validate required fields
-      if (!rawDraft.title || !rawDraft.content) {
-        throw new Error('Invalid draft: missing title or content');
-      }
-
-      // Transform to proper format with default due dates and personIds
-      return this.transformDraft(rawDraft, options?.personIds);
-    } catch (error) {
-      console.error('Error parsing draft response:', error);
-      throw new Error('Failed to parse AI response. Please try again.');
-    }
+    return this.callGPTAndParseDraft(
+      prompt,
+      '당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.',
+      options?.personIds
+    );
   }
 
   /**
@@ -224,7 +199,10 @@ export class AIDraftService {
     options?: TodoDueDateContextOption
   ): Promise<AIDraftTodo[]> {
     const prompt = this.constructTodoSuggestionsPrompt(workNote, contextText, options);
-    const response = await this.callGPT(prompt);
+    const response = await this.callGPT(
+      prompt,
+      '당신은 업무노트에 대한 할 일을 제안하는 어시스턴트입니다.'
+    );
 
     // Parse JSON response from GPT
     try {
@@ -288,23 +266,10 @@ export class AIDraftService {
     options?: EnhanceOptions
   ): Promise<WorkNoteDraft> {
     const prompt = this.constructEnhancePrompt(workNote, existingTodos, newContent, options);
-    const response = await this.callGPT(prompt);
-
-    // Parse JSON response from GPT
-    try {
-      const rawDraft = JSON.parse(response) as RawWorkNoteDraft;
-
-      // Validate required fields
-      if (!rawDraft.title || !rawDraft.content) {
-        throw new Error('Invalid draft: missing title or content');
-      }
-
-      // Transform to proper format
-      return this.transformDraft(rawDraft);
-    } catch (error) {
-      console.error('Error parsing enhance response:', error);
-      throw new Error('Failed to parse AI response. Please try again.');
-    }
+    return this.callGPTAndParseDraft(
+      prompt,
+      '당신은 한국 직장에서 업무노트를 업데이트하는 어시스턴트입니다.'
+    );
   }
 
   /**
@@ -496,9 +461,10 @@ ${topDueDateLines}`;
       similarNotes.length > 0
         ? similarNotes
             .map((note, idx) => {
+              const limitedTodos = note.todos?.slice(0, 5) ?? [];
               const todosSection =
-                note.todos && note.todos.length > 0
-                  ? `\n할 일 목록:\n${note.todos.map((todo) => this.formatExistingTodo(todo)).join('\n')}`
+                limitedTodos.length > 0
+                  ? `\n할 일 목록:\n${limitedTodos.map((todo) => this.formatExistingTodo(todo)).join('\n')}`
                   : '';
               return `[참고 노트 ${idx + 1}]
 제목: ${note.title}
@@ -579,7 +545,7 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
     transcript: string
   ): Promise<{ refinedContent: string }> {
     const prompt = this.constructRefinePrompt(topic, detailsRaw, transcript);
-    const response = await this.callGPT(prompt);
+    const response = await this.callGPT(prompt, '당신은 회의록을 정제하는 어시스턴트입니다.');
 
     try {
       const parsed = JSON.parse(response) as { refinedContent: string };
@@ -615,66 +581,54 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
   }
 
   /**
-   * Call GPT-4.5 via AI Gateway
-   *
-   * @param prompt - Prompt for GPT
-   * @returns GPT response text
+   * Call GPT, parse the JSON response as a WorkNoteDraft, and transform it
    */
-  private async callGPT(prompt: string): Promise<string> {
-    const url = getAIGatewayUrl(this.env, 'chat/completions');
+  private async callGPTAndParseDraft(
+    prompt: string,
+    systemRole: string,
+    personIds?: string[]
+  ): Promise<WorkNoteDraft> {
+    const response = await this.callGPT(prompt, systemRole);
 
-    const model = this.getModel();
+    try {
+      const rawDraft = JSON.parse(response) as RawWorkNoteDraft;
 
-    const requestBody = {
-      model,
-      messages: [
-        {
-          role: 'user' as const,
-          content: prompt,
-        },
-      ],
-      max_completion_tokens: AIDraftService.GPT_MAX_COMPLETION_TOKENS,
-      response_format: { type: 'json_object' as const },
-      // Reasoning models (o1, o3, gpt-5) don't support temperature parameter
-      ...(!isReasoningModel(model) && { temperature: 0.7 }),
-    };
+      if (!rawDraft.title || !rawDraft.content) {
+        throw new Error('Invalid draft: missing title or content');
+      }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: getAIGatewayHeaders(this.env),
-      body: JSON.stringify(requestBody),
+      return this.transformDraft(rawDraft, personIds);
+    } catch (error) {
+      console.error('Error parsing draft response:', error);
+      throw new Error('Failed to parse AI response. Please try again.');
+    }
+  }
+
+  /**
+   * Build a stable system message for caching benefit
+   * Contains role, writer context, injection guard - invariant across requests of the same type
+   */
+  private buildSystemMessage(role: string): string {
+    return `${role}\n${this.getWriterContext()}\n\n${this.buildPromptInjectionGuardSection()}\n\nJSON 형식으로만 응답하세요.`;
+  }
+
+  /**
+   * Call GPT via AI Gateway using shared utility
+   * Uses system/user message separation for OpenAI system prompt caching
+   */
+  private async callGPT(prompt: string, systemRole?: string): Promise<string> {
+    const messages = systemRole
+      ? [
+          { role: 'system' as const, content: this.buildSystemMessage(systemRole) },
+          { role: 'user' as const, content: prompt },
+        ]
+      : [{ role: 'user' as const, content: prompt }];
+
+    return callOpenAIChat(this.env, {
+      messages,
+      model: this.getModel(),
+      maxCompletionTokens: AIDraftService.GPT_MAX_COMPLETION_TOKENS,
+      responseFormat: { type: 'json_object' },
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      if (response.status === 429) {
-        throw new RateLimitError('AI 호출 상한을 초과했습니다. 잠시 후 다시 시도해주세요.');
-      }
-      throw new AIResponseError(`OpenAI API error (${response.status}): ${errorText}`);
-    }
-
-    const data = await response.json<{
-      choices: Array<{
-        message: { content: string | null };
-        finish_reason: string;
-      }>;
-      usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
-    }>();
-
-    if (!data.choices?.[0]?.message?.content) {
-      const finishReason = data.choices?.[0]?.finish_reason;
-      console.error('[GPT] Empty response', {
-        finish_reason: finishReason,
-        usage: data.usage,
-        choicesLength: data.choices?.length,
-      });
-
-      if (finishReason === 'length') {
-        throw new ValidationError('AI 응답이 너무 길어 완료되지 못했습니다. 입력을 줄여주세요.');
-      }
-      throw new AIResponseError('AI로부터 응답을 받지 못했습니다. 다시 시도해주세요.');
-    }
-
-    return data.choices[0].message.content;
   }
 }

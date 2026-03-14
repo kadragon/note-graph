@@ -563,7 +563,7 @@ export class WorkNoteService {
         .map((note) => ({
           workId: note.workId,
           title: note.title,
-          content: note.contentRaw,
+          content: note.contentRaw.slice(0, 300),
           category: note.category || undefined,
           similarityScore: workIdScores.get(note.workId) ?? 0,
           todos: todosByWorkId.get(note.workId) || [],
