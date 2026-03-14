@@ -901,7 +901,7 @@ describe('AIDraftService', () => {
 
       // Act & Assert
       await expect(service.generateDraftFromText(inputText)).rejects.toThrow(
-        'No response from GPT'
+        'AI로부터 응답을 받지 못했습니다. 다시 시도해주세요.'
       );
     });
 
@@ -918,7 +918,7 @@ describe('AIDraftService', () => {
 
       // Act & Assert
       await expect(service.generateDraftFromText(inputText)).rejects.toThrow(
-        'No response from GPT'
+        'AI로부터 응답을 받지 못했습니다. 다시 시도해주세요.'
       );
     });
 

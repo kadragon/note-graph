@@ -1,7 +1,7 @@
 // Trace: TASK-016
 // Basic API integration tests for core system routes.
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockDatabaseFactory } from '../helpers/test-app';
 
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
@@ -169,6 +169,129 @@ describe('System API Routes', () => {
           'test@example.com',
         ]);
       }
+    });
+  });
+
+  describe('Google OAuth Store Tokens', () => {
+    afterEach(async () => {
+      await pglite.query(`DELETE FROM google_oauth_tokens WHERE user_email = $1`, [
+        'test@example.com',
+      ]);
+    });
+
+    it('should store provider tokens with accessToken and refreshToken', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: string | URL | Request) => {
+          const url =
+            typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+          if (url.includes('oauth2.googleapis.com/tokeninfo')) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  scope:
+                    'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.readonly',
+                  expires_in: 3600,
+                }),
+                { status: 200 }
+              )
+            );
+          }
+          return Promise.resolve(new Response('Not found', { status: 404 }));
+        })
+      );
+
+      const response = await authFetch('/api/auth/google/store-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: 'provider-access-token',
+          refreshToken: 'provider-refresh-token',
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json<{ success: boolean }>();
+      expect(data.success).toBe(true);
+
+      // Verify tokens were stored
+      const statusResponse = await authFetch('/api/auth/google/status');
+      const status = await statusResponse.json<{ connected: boolean }>();
+      expect(status.connected).toBe(true);
+
+      vi.unstubAllGlobals();
+    });
+
+    it('should preserve existing refresh token when refreshToken is null', async () => {
+      // First, insert existing tokens
+      const now = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + 3600000).toISOString();
+      await pglite.query(
+        `INSERT INTO google_oauth_tokens
+          (user_email, access_token, refresh_token, token_type, expires_at, scope, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          'test@example.com',
+          'old-access-token',
+          'existing-refresh-token',
+          'Bearer',
+          expiresAt,
+          'https://www.googleapis.com/auth/drive',
+          now,
+          now,
+        ]
+      );
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: string | URL | Request) => {
+          const url =
+            typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+          if (url.includes('oauth2.googleapis.com/tokeninfo')) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  scope:
+                    'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.readonly',
+                  expires_in: 3600,
+                }),
+                { status: 200 }
+              )
+            );
+          }
+          return Promise.resolve(new Response('Not found', { status: 404 }));
+        })
+      );
+
+      const response = await authFetch('/api/auth/google/store-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: 'new-access-token',
+          refreshToken: null,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+
+      // Verify refresh token was preserved
+      const result = await pglite.query<{ refresh_token: string }>(
+        `SELECT refresh_token FROM google_oauth_tokens WHERE user_email = $1`,
+        ['test@example.com']
+      );
+      expect(result.rows[0].refresh_token).toBe('existing-refresh-token');
+
+      vi.unstubAllGlobals();
+    });
+
+    it('should return 400 when accessToken is missing', async () => {
+      const response = await authFetch('/api/auth/google/store-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: 'some-token' }),
+      });
+
+      expect(response.status).toBe(400);
     });
   });
 

@@ -1,5 +1,6 @@
 import { Button } from '@web/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@web/components/ui/popover';
+import { useAuth } from '@web/contexts/auth-context';
 import { toast } from '@web/hooks/use-toast';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
@@ -65,6 +66,7 @@ const navGroups = Object.values(
 const GOOGLE_AUTH_URL = '/api/auth/google/authorize';
 
 export default function TopMenu() {
+  const { signIn } = useAuth();
   const {
     configured,
     data: driveStatus,
@@ -77,12 +79,12 @@ export default function TopMenu() {
 
   const handleGoogleReconnect = async () => {
     const nextStatus = await refreshDriveStatus();
-    if (
-      !nextStatus.data?.connected ||
-      !nextStatus.data?.calendarConnected ||
-      nextStatus.data?.needsReauth
-    ) {
+    if (nextStatus.data?.needsReauth) {
+      // needsReauth: refresh token expired, use separate OAuth flow
       window.location.href = GOOGLE_AUTH_URL;
+    } else if (!nextStatus.data?.connected || !nextStatus.data?.calendarConnected) {
+      // Not connected: re-login via Supabase to get provider tokens
+      await signIn();
     }
   };
 
@@ -189,6 +191,7 @@ function ManageMenu() {
     (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close popover on route change
   React.useEffect(() => {
     setOpen(false);
   }, [location.pathname]);

@@ -207,6 +207,16 @@ export class APIClient {
     return { ...data, configured, calendarConnected };
   }
 
+  async storeProviderTokens(supabaseJwt: string, accessToken: string, refreshToken: string | null) {
+    return this.request<{ success: boolean }>('/auth/google/store-tokens', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${supabaseJwt}`,
+      },
+      body: JSON.stringify({ accessToken, refreshToken }),
+    });
+  }
+
   async disconnectGoogle() {
     return this.request<void>('/auth/google/disconnect', {
       method: 'POST',

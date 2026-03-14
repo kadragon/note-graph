@@ -15,6 +15,14 @@ vi.mock('@web/hooks/use-work-notes', () => ({
   useGoogleDriveConfigStatus: vi.fn(),
 }));
 
+const mockSignIn = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('@web/contexts/auth-context', () => ({
+  useAuth: vi.fn(() => ({
+    signIn: mockSignIn,
+  })),
+}));
+
 vi.mock('@web/lib/api', () => ({
   API: {
     disconnectGoogle: vi.fn(),
@@ -91,7 +99,7 @@ describe('top-menu', () => {
     expect(workNotesLink).not.toHaveClass('ring-1');
   });
 
-  it('refreshes status and redirects when connect is clicked while disconnected', async () => {
+  it('calls signIn when connect is clicked while disconnected (no needsReauth)', async () => {
     const user = userEvent.setup();
     const refetch = vi
       .fn()
@@ -100,6 +108,27 @@ describe('top-menu', () => {
     vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
       configured: true,
       data: { connected: false, calendarConnected: false },
+      refetch,
+      isFetching: false,
+    } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
+
+    render(<TopMenu />);
+
+    await user.click(screen.getByTestId('google-connect-button'));
+
+    expect(refetch).toHaveBeenCalled();
+    expect(mockSignIn).toHaveBeenCalled();
+  });
+
+  it('redirects to authorize when needsReauth is true', async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn().mockResolvedValue({
+      data: { connected: true, calendarConnected: false, needsReauth: true },
+    });
+
+    vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
+      configured: true,
+      data: { connected: true, calendarConnected: false, needsReauth: true },
       refetch,
       isFetching: false,
     } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
@@ -115,6 +144,7 @@ describe('top-menu', () => {
 
     expect(refetch).toHaveBeenCalled();
     expect(window.location.href).toBe('/api/auth/google/authorize');
+    expect(mockSignIn).not.toHaveBeenCalled();
   });
 
   it('calls disconnect and refreshes status when disconnect is clicked', async () => {

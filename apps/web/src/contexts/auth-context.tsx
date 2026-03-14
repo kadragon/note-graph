@@ -1,4 +1,5 @@
 import type { Session, User } from '@supabase/supabase-js';
+import { API } from '@web/lib/api';
 import { supabase } from '@web/lib/supabase';
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
 
@@ -24,8 +25,17 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === 'SIGNED_IN' && session?.provider_token && session?.access_token) {
+        API.storeProviderTokens(
+          session.access_token,
+          session.provider_token,
+          session.provider_refresh_token ?? null
+        ).catch((err) => {
+          console.error('[Auth] Failed to store provider token:', err);
+        });
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -36,6 +46,12 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       provider: 'google',
       options: {
         redirectTo: window.location.origin,
+        scopes:
+          'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.readonly',
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       },
     });
     if (error) {

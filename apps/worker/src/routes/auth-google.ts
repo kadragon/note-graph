@@ -68,6 +68,61 @@ authGoogle.get('/callback', async (c) => {
 });
 
 /**
+ * POST /auth/google/store-tokens - Store provider tokens from Supabase OAuth
+ */
+authGoogle.post('/store-tokens', async (c) => {
+  const user = getAuthUser(c);
+  const oauthService = new GoogleOAuthService(c.env, c.get('db'));
+
+  const body = await c.req.json<{
+    accessToken?: string;
+    refreshToken?: string | null;
+  }>();
+
+  if (!body.accessToken) {
+    return c.json({ code: 'VALIDATION_ERROR', message: 'accessToken is required' }, 400);
+  }
+
+  // Verify token scope via Google tokeninfo
+  let scope = '';
+  let expiresIn = 3600;
+  try {
+    const tokenInfoResponse = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?access_token=${body.accessToken}`
+    );
+    if (tokenInfoResponse.ok) {
+      const tokenInfo = (await tokenInfoResponse.json()) as {
+        scope?: string;
+        expires_in?: number;
+      };
+      scope = tokenInfo.scope ?? '';
+      expiresIn = tokenInfo.expires_in ?? 3600;
+    }
+  } catch {
+    // If tokeninfo fails, proceed without scope verification
+  }
+
+  // If refreshToken is null, preserve existing one
+  let refreshToken = body.refreshToken ?? '';
+  if (!body.refreshToken) {
+    const existingTokens = await oauthService.getStoredTokens(user.email);
+    if (existingTokens) {
+      refreshToken = existingTokens.refreshToken;
+    }
+  }
+
+  await oauthService.storeTokens(user.email, {
+    accessToken: body.accessToken,
+    refreshToken,
+    tokenType: 'Bearer',
+    expiresIn,
+    scope,
+  });
+
+  return c.json({ success: true });
+});
+
+/**
  * GET /auth/google/status - Check connection status
  */
 authGoogle.get('/status', async (c) => {
