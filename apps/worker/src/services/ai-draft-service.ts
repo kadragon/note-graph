@@ -76,11 +76,6 @@ export class AIDraftService {
    */
   private static readonly GPT_MAX_COMPLETION_TOKENS = 3000;
 
-  /**
-   * Maximum characters to include from similar note content for context preview
-   */
-  private static readonly SIMILAR_NOTE_CONTENT_PREVIEW_LENGTH = 200;
-
   constructor(
     private env: Env,
     private settingService?: SettingService
@@ -303,7 +298,7 @@ export class AIDraftService {
         ? options.similarNotes
             .map(
               (note, idx) =>
-                `[참고 ${idx + 1}] ${note.title}\n카테고리: ${note.category || '없음'}\n내용 요약: ${note.content.slice(0, AIDraftService.SIMILAR_NOTE_CONTENT_PREVIEW_LENGTH)}...`
+                `[참고 ${idx + 1}] ${note.title}\n카테고리: ${note.category || '없음'}\n내용 요약: ${note.content}`
             )
             .join('\n\n')
         : '';
@@ -469,7 +464,7 @@ ${topDueDateLines}`;
               return `[참고 노트 ${idx + 1}]
 제목: ${note.title}
 카테고리: ${note.category || '없음'}
-내용 요약: ${note.content.slice(0, 300)}...${todosSection}`;
+내용 요약: ${note.content}${todosSection}`;
             })
             .join('\n\n')
         : '';
@@ -605,21 +600,12 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
   }
 
   /**
-   * Build a stable system message for caching benefit
-   * Contains role, writer context, injection guard - invariant across requests of the same type
-   */
-  private buildSystemMessage(role: string): string {
-    return `${role}\n${this.getWriterContext()}\n\n${this.buildPromptInjectionGuardSection()}\n\nJSON 형식으로만 응답하세요.`;
-  }
-
-  /**
    * Call GPT via AI Gateway using shared utility
-   * Uses system/user message separation for OpenAI system prompt caching
    */
   private async callGPT(prompt: string, systemRole?: string): Promise<string> {
     const messages = systemRole
       ? [
-          { role: 'system' as const, content: this.buildSystemMessage(systemRole) },
+          { role: 'system' as const, content: systemRole },
           { role: 'user' as const, content: prompt },
         ]
       : [{ role: 'user' as const, content: prompt }];

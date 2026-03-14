@@ -25,6 +25,43 @@ const dummyEnv = {
   AI_GATEWAY_ID: 'dummy',
 } as unknown as Env;
 
+/**
+ * Create a WorkNoteService with mocked internals for a single matched note.
+ */
+function setupMockedService(opts: {
+  workNotes: Array<Partial<WorkNote> & { workId: string; title: string; contentRaw: string }>;
+  score?: number;
+  todosMap?: Map<string, ReferenceTodo[]>;
+}): WorkNoteService {
+  const service = new WorkNoteService(dummyDb, dummyEnv);
+  const matches = opts.workNotes.map((n, i) => ({
+    id: `${n.workId}#chunk${i}`,
+    score: opts.score ?? 0.9,
+    metadata: {},
+  }));
+
+  (service as unknown as { vectorizeService: unknown }).vectorizeService = {
+    query: vi.fn().mockResolvedValue({ matches }),
+  };
+  (service as unknown as { embeddingService: unknown }).embeddingService = {
+    embed: vi.fn().mockResolvedValue(new Array(1536).fill(0.1)),
+  };
+  (service as unknown as { repository: unknown }).repository = {
+    findByIds: vi.fn().mockResolvedValue(
+      opts.workNotes.map((n) => ({
+        createdAt: '2025-01-01T00:00:00.000Z',
+        updatedAt: '2025-01-02T00:00:00.000Z',
+        embeddedAt: '2025-01-02T00:00:00.000Z',
+        category: null,
+        ...n,
+      }))
+    ),
+    findTodosByWorkIds: vi.fn().mockResolvedValue(opts.todosMap ?? new Map()),
+  } as unknown;
+
+  return service;
+}
+
 describe('WorkNoteService.findSimilarNotes', () => {
   it('returns workId and similarity score for matched notes above threshold', async () => {
     const service = new WorkNoteService(dummyDb, dummyEnv);
@@ -293,72 +330,27 @@ describe('WorkNoteService.findSimilarNotes', () => {
     });
   });
 
-  it('truncates content to 300 characters for long contentRaw', async () => {
-    const service = new WorkNoteService(dummyDb, dummyEnv);
-
+  it('truncates content to 300 characters with ellipsis for long contentRaw', async () => {
     const longContent = '가'.repeat(500); // 500 chars, well over 300
-
-    const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
-    const mockQuery = vi.fn().mockResolvedValue({
-      matches: [{ id: 'WORK-1#chunk0', score: 0.9, metadata: {} }],
+    const service = setupMockedService({
+      workNotes: [
+        { workId: 'WORK-1', title: '장문 업무노트', contentRaw: longContent, category: '기획' },
+      ],
     });
-
-    const mockFindByIds = vi.fn().mockResolvedValue([
-      {
-        workId: 'WORK-1',
-        title: '장문 업무노트',
-        contentRaw: longContent,
-        category: '기획',
-        createdAt: '2025-01-01T00:00:00.000Z',
-        updatedAt: '2025-01-02T00:00:00.000Z',
-        embeddedAt: '2025-01-02T00:00:00.000Z',
-      },
-    ] as WorkNote[]);
-    const mockFindTodosByWorkIds = vi.fn().mockResolvedValue(new Map());
-
-    (service as unknown as { vectorizeService: unknown }).vectorizeService = { query: mockQuery };
-    (service as unknown as { embeddingService: unknown }).embeddingService = { embed: mockEmbed };
-    (service as unknown as { repository: unknown }).repository = {
-      findByIds: mockFindByIds,
-      findTodosByWorkIds: mockFindTodosByWorkIds,
-    } as unknown;
 
     const result = await service.findSimilarNotes('테스트', 3, 0.5);
 
     expect(result).toHaveLength(1);
-    expect(result[0].content.length).toBe(300);
-    expect(result[0].content).toBe(longContent.slice(0, 300));
+    expect(result[0].content).toBe(`${longContent.slice(0, 300)}...`);
   });
 
   it('returns short content unchanged when under 300 characters', async () => {
-    const service = new WorkNoteService(dummyDb, dummyEnv);
-
     const shortContent = '짧은 내용입니다';
-
-    const mockEmbed = vi.fn().mockResolvedValue(new Array(1536).fill(0.1));
-    const mockQuery = vi.fn().mockResolvedValue({
-      matches: [{ id: 'WORK-1#chunk0', score: 0.9, metadata: {} }],
+    const service = setupMockedService({
+      workNotes: [
+        { workId: 'WORK-1', title: '짧은 업무노트', contentRaw: shortContent, category: null },
+      ],
     });
-
-    const mockFindByIds = vi.fn().mockResolvedValue([
-      {
-        workId: 'WORK-1',
-        title: '짧은 업무노트',
-        contentRaw: shortContent,
-        category: null,
-        createdAt: '2025-01-01T00:00:00.000Z',
-        updatedAt: '2025-01-02T00:00:00.000Z',
-        embeddedAt: '2025-01-02T00:00:00.000Z',
-      },
-    ] as WorkNote[]);
-    const mockFindTodosByWorkIds = vi.fn().mockResolvedValue(new Map());
-
-    (service as unknown as { vectorizeService: unknown }).vectorizeService = { query: mockQuery };
-    (service as unknown as { embeddingService: unknown }).embeddingService = { embed: mockEmbed };
-    (service as unknown as { repository: unknown }).repository = {
-      findByIds: mockFindByIds,
-      findTodosByWorkIds: mockFindTodosByWorkIds,
-    } as unknown;
 
     const result = await service.findSimilarNotes('테스트', 3, 0.5);
 

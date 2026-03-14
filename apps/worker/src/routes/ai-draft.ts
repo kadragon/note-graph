@@ -189,13 +189,15 @@ app.post('/work-notes/:workId/enhance', async (c) => {
 
   const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
 
-  // Parallelize: fetch work note, todos, categories, due date context
-  const [workNote, existingTodos, activeCategories, todoDueDateContext] = await Promise.all([
-    workNoteService.findById(workId),
-    todoRepository.findByWorkId(workId),
-    taskCategories.findAll(undefined, 100, true),
-    todoRepository.getOpenTodoDueDateContextForAI(10),
-  ]);
+  // Parallelize: fetch work note, todos, categories, due date context, similar notes
+  const [workNote, existingTodos, activeCategories, todoDueDateContext, similarNotes] =
+    await Promise.all([
+      workNoteService.findById(workId),
+      todoRepository.findByWorkId(workId),
+      taskCategories.findAll(undefined, 100, true),
+      todoRepository.getOpenTodoDueDateContextForAI(10),
+      workNoteService.findSimilarNotes(newContent, SIMILAR_NOTES_TOP_K),
+    ]);
 
   if (!workNote) {
     throw new NotFoundError('Work note', workId);
@@ -208,9 +210,6 @@ app.post('/work-notes/:workId/enhance', async (c) => {
     status: todo.status,
     dueDate: todo.dueDate,
   }));
-
-  // Find similar notes for context
-  const similarNotes = await workNoteService.findSimilarNotes(newContent, SIMILAR_NOTES_TOP_K);
 
   // Generate enhanced draft
   const aiDraftService = new AIDraftService(c.env, c.get('settingService'));

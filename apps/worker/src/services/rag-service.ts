@@ -264,14 +264,7 @@ ${ctx.snippet}
    */
   private async callGPT(prompt: string): Promise<string> {
     return callOpenAIChat(this.env, {
-      messages: [
-        {
-          role: 'system',
-          content:
-            '당신은 업무노트에 대한 질문에 답변하는 어시스턴트입니다.\n답변은 한국어로 작성하고, 간결하게 작성하며, 가능한 경우 특정 업무노트를 참조하세요.',
-        },
-        { role: 'user', content: prompt },
-      ],
+      messages: [{ role: 'user', content: prompt }],
       model: this.getModel(),
       maxCompletionTokens: RagService.GPT_MAX_COMPLETION_TOKENS,
     });

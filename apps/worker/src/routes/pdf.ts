@@ -18,6 +18,7 @@ import { createProtectedRouter } from './_shared/router-factory';
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const SIMILAR_NOTES_TOP_K = 3;
+const PDF_MAX_TEXT_LENGTH = 30_000;
 
 /**
  * Parse draft JSON and extract draft and references
@@ -147,7 +148,6 @@ pdf.post('/', async (c) => {
     let extractedText = await extractionService.extractText(pdfBuffer);
 
     // Truncate long PDF text to avoid exceeding model context window
-    const PDF_MAX_TEXT_LENGTH = 30_000;
     if (extractedText.length > PDF_MAX_TEXT_LENGTH) {
       console.warn(
         `[PDF Processing] Truncating extracted text from ${extractedText.length} to ${PDF_MAX_TEXT_LENGTH} chars for job ${jobId}`
