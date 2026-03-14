@@ -102,7 +102,6 @@ describe('auth-context', () => {
 
     await waitFor(() => {
       expect(API.storeProviderTokens).toHaveBeenCalledWith(
-        'supabase-jwt',
         'google-access-token',
         'google-refresh-token'
       );

@@ -98,8 +98,9 @@ authGoogle.post('/store-tokens', async (c) => {
       scope = tokenInfo.scope ?? '';
       expiresIn = tokenInfo.expires_in ?? 3600;
     }
-  } catch {
-    // If tokeninfo fails, proceed without scope verification
+  } catch (error) {
+    // If tokeninfo fails, proceed without scope verification but log the error
+    console.error('Failed to verify token with Google tokeninfo:', error);
   }
 
   // If refreshToken is null, preserve existing one
@@ -109,6 +110,17 @@ authGoogle.post('/store-tokens', async (c) => {
     if (existingTokens) {
       refreshToken = existingTokens.refreshToken;
     }
+  }
+
+  // Reject if no refresh token available (neither provided nor existing)
+  if (!refreshToken) {
+    return c.json(
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'No refresh token available. Please re-authenticate with full consent.',
+      },
+      400
+    );
   }
 
   await oauthService.storeTokens(user.email, {

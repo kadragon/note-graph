@@ -29,7 +29,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       if (event === 'SIGNED_IN' && session?.provider_token && session?.access_token) {
         API.storeProviderTokens(
-          session.access_token,
           session.provider_token,
           session.provider_refresh_token ?? null
         ).catch((err) => {

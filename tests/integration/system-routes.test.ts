@@ -174,6 +174,7 @@ describe('System API Routes', () => {
 
   describe('Google OAuth Store Tokens', () => {
     afterEach(async () => {
+      vi.unstubAllGlobals();
       await pglite.query(`DELETE FROM google_oauth_tokens WHERE user_email = $1`, [
         'test@example.com',
       ]);
@@ -218,8 +219,6 @@ describe('System API Routes', () => {
       const statusResponse = await authFetch('/api/auth/google/status');
       const status = await statusResponse.json<{ connected: boolean }>();
       expect(status.connected).toBe(true);
-
-      vi.unstubAllGlobals();
     });
 
     it('should preserve existing refresh token when refreshToken is null', async () => {
@@ -280,8 +279,6 @@ describe('System API Routes', () => {
         ['test@example.com']
       );
       expect(result.rows[0].refresh_token).toBe('existing-refresh-token');
-
-      vi.unstubAllGlobals();
     });
 
     it('should return 400 when accessToken is missing', async () => {
@@ -292,6 +289,41 @@ describe('System API Routes', () => {
       });
 
       expect(response.status).toBe(400);
+    });
+
+    it('should return 400 when no refresh token is available', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: string | URL | Request) => {
+          const url =
+            typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+          if (url.includes('oauth2.googleapis.com/tokeninfo')) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  scope: 'https://www.googleapis.com/auth/drive',
+                  expires_in: 3600,
+                }),
+                { status: 200 }
+              )
+            );
+          }
+          return Promise.resolve(new Response('Not found', { status: 404 }));
+        })
+      );
+
+      const response = await authFetch('/api/auth/google/store-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: 'provider-access-token',
+          refreshToken: null,
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      const data = await response.json<{ code: string }>();
+      expect(data.code).toBe('VALIDATION_ERROR');
     });
   });
 
