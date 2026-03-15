@@ -222,7 +222,6 @@ export interface GoogleDriveStatus {
   connected: boolean;
   connectedAt?: string;
   scope?: string;
-  calendarConnected?: boolean;
   /** True if user needs to re-authenticate to get updated scopes (e.g., drive.file -> drive) */
   needsReauth?: boolean;
 }

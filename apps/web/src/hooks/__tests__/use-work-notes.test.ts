@@ -299,7 +299,6 @@ describe('useGoogleDriveStatus', () => {
     const mockStatus = {
       connected: true,
       configured: true,
-      calendarConnected: false,
       connectedAt: '2026-01-15T10:00:00Z',
     };
     vi.mocked(API.getGoogleDriveStatus).mockResolvedValue(mockStatus);
@@ -315,7 +314,7 @@ describe('useGoogleDriveStatus', () => {
   });
 
   it('has staleTime configured for caching', async () => {
-    const mockStatus = { connected: true, configured: true, calendarConnected: false };
+    const mockStatus = { connected: true, configured: true };
     vi.mocked(API.getGoogleDriveStatus).mockResolvedValue(mockStatus);
 
     const queryClient = createTestQueryClient();

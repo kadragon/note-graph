@@ -1,5 +1,6 @@
 import { Button } from '@web/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@web/components/ui/popover';
+import { useAuth } from '@web/contexts/auth-context';
 import { toast } from '@web/hooks/use-toast';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
 import { API } from '@web/lib/api';
@@ -10,7 +11,6 @@ import {
   BookOpen,
   BotMessageSquare,
   Building2,
-  Calendar,
   ClipboardList,
   Cloud,
   FolderOpen,
@@ -19,6 +19,7 @@ import {
   ListTree,
   LogOut,
   NotebookPen,
+  Power,
   Search,
   Settings,
   Settings2,
@@ -65,24 +66,19 @@ const navGroups = Object.values(
 const GOOGLE_AUTH_URL = '/api/auth/google/authorize';
 
 export default function TopMenu() {
+  const { signOut } = useAuth();
   const {
     configured,
     data: driveStatus,
     refetch: refreshDriveStatus,
     isFetching: isDriveChecking,
   } = useGoogleDriveConfigStatus();
-  const isDriveConnected = driveStatus?.connected ?? false;
-  const isCalendarConnected = driveStatus?.calendarConnected ?? false;
+  const isGoogleConnected = driveStatus?.connected ?? false;
   const needsReauth = driveStatus?.needsReauth ?? false;
 
   const handleGoogleReconnect = async () => {
     const nextStatus = await refreshDriveStatus();
-    if (
-      nextStatus.data?.needsReauth ||
-      !nextStatus.data?.connected ||
-      !nextStatus.data?.calendarConnected
-    ) {
-      // Use dedicated OAuth flow to (re)authorize without replacing app session
+    if (nextStatus.data?.needsReauth || !nextStatus.data?.connected) {
       window.location.href = GOOGLE_AUTH_URL;
     }
   };
@@ -95,6 +91,21 @@ export default function TopMenu() {
       toast({
         title: '연결 해제 실패',
         description: 'Google 연결 해제 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleFullLogout = async () => {
+    try {
+      if (isGoogleConnected) {
+        await API.disconnectGoogle();
+      }
+      await signOut();
+    } catch {
+      toast({
+        title: '로그아웃 실패',
+        description: '로그아웃 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
     }
@@ -123,22 +134,15 @@ export default function TopMenu() {
           <Cloud
             className={cn(
               'h-4 w-4',
-              isDriveConnected && !needsReauth ? 'text-emerald-600' : 'text-muted-foreground'
+              isGoogleConnected && !needsReauth ? 'text-emerald-600' : 'text-muted-foreground'
             )}
             aria-label={
-              !isDriveConnected
-                ? 'Drive 미연결'
+              !isGoogleConnected
+                ? 'Google 미연결'
                 : needsReauth
-                  ? 'Drive 재연결 필요'
-                  : 'Drive 연결됨'
+                  ? 'Google 재연결 필요'
+                  : 'Google 연결됨'
             }
-          />
-          <Calendar
-            className={cn(
-              'h-4 w-4',
-              isCalendarConnected ? 'text-emerald-600' : 'text-muted-foreground'
-            )}
-            aria-label={isCalendarConnected ? '캘린더 연결됨' : '캘린더 미연결'}
           />
         </div>
         <NavLink
@@ -170,13 +174,24 @@ export default function TopMenu() {
           variant="outline"
           size="icon"
           className="h-8 w-8"
-          disabled={!isDriveConnected && !isCalendarConnected}
+          disabled={!isGoogleConnected}
           data-testid="google-disconnect-button"
           onClick={handleGoogleDisconnect}
           aria-label="Google 연결 해제"
           title="Google 연결 해제"
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          data-testid="full-logout-button"
+          onClick={handleFullLogout}
+          aria-label="전체 로그아웃"
+          title="전체 로그아웃"
+        >
+          <Power className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
     </div>

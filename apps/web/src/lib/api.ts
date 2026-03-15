@@ -202,9 +202,7 @@ export class APIClient {
       await this.requestWithHeaders<GoogleDriveStatus>('/auth/google/status');
     const configuredHeader = headers.get('X-Google-Drive-Configured');
     const configured = configuredHeader !== 'false';
-    const calendarConnected =
-      data.scope?.includes('https://www.googleapis.com/auth/calendar.readonly') ?? false;
-    return { ...data, configured, calendarConnected };
+    return { ...data, configured };
   }
 
   async storeProviderTokens(accessToken: string, refreshToken: string | null) {

@@ -4,9 +4,18 @@
 
 import { getAuthUser } from '../middleware/auth';
 import { GoogleOAuthService, hasSufficientDriveScope } from '../services/google-oauth-service';
-import { createProtectedRouter } from './_shared/router-factory';
+import { createErrorHandledRouter, createProtectedRouter } from './_shared/router-factory';
 
 const authGoogle = createProtectedRouter();
+
+/**
+ * Unprotected router for OAuth callback.
+ * The callback is a browser redirect from Google — it cannot carry
+ * an Authorization header, so it must be unprotected.
+ * Security: the `state` parameter (set during the protected /authorize step)
+ * carries the user email, and the authorization code is single-use.
+ */
+const authGooglePublic = createErrorHandledRouter();
 
 /**
  * GET /auth/google/authorize - Start OAuth flow
@@ -27,8 +36,7 @@ authGoogle.get('/authorize', async (c) => {
  * GET /auth/google/callback - OAuth callback
  * Exchanges authorization code for tokens
  */
-authGoogle.get('/callback', async (c) => {
-  const user = getAuthUser(c);
+authGooglePublic.get('/callback', async (c) => {
   const oauthService = new GoogleOAuthService(c.env, c.get('db'));
 
   const code = c.req.query('code');
@@ -44,20 +52,19 @@ authGoogle.get('/callback', async (c) => {
     return c.redirect('/?google_auth_error=no_code');
   }
 
-  // Verify state matches user
-  if (state) {
-    const decodedState = atob(state);
-    if (decodedState !== user.email) {
-      return c.redirect('/?google_auth_error=state_mismatch');
-    }
+  // State is required — it carries the user email from the protected /authorize step
+  if (!state) {
+    return c.redirect('/?google_auth_error=missing_state');
   }
+
+  const userEmail = atob(state);
 
   try {
     // Exchange code for tokens
     const tokens = await oauthService.exchangeCodeForTokens(code);
 
     // Store tokens
-    await oauthService.storeTokens(user.email, tokens);
+    await oauthService.storeTokens(userEmail, tokens);
 
     // Redirect to success page
     return c.redirect('/?google_auth_success=true');
@@ -177,4 +184,4 @@ authGoogle.post('/disconnect', async (c) => {
   return c.json({ success: true });
 });
 
-export { authGoogle };
+export { authGoogle, authGooglePublic };
