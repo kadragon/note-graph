@@ -18,6 +18,7 @@ import { createProtectedRouter } from './_shared/router-factory';
 // Configuration constants
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const SIMILAR_NOTES_TOP_K = 3;
+const PDF_MAX_TEXT_LENGTH = 30_000;
 
 /**
  * Parse draft JSON and extract draft and references
@@ -144,10 +145,20 @@ pdf.post('/', async (c) => {
   try {
     // Validate PDF
     extractionService.validatePdfBuffer(pdfBuffer);
-    const extractedText = await extractionService.extractText(pdfBuffer);
-    const todoDueDateContext = await todoRepository.getOpenTodoDueDateContextForAI(10);
+    let extractedText = await extractionService.extractText(pdfBuffer);
+
+    // Truncate long PDF text to avoid exceeding model context window
+    if (extractedText.length > PDF_MAX_TEXT_LENGTH) {
+      console.warn(
+        `[PDF Processing] Truncating extracted text from ${extractedText.length} to ${PDF_MAX_TEXT_LENGTH} chars for job ${jobId}`
+      );
+      extractedText = extractedText.slice(0, PDF_MAX_TEXT_LENGTH);
+    }
     const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
-    const similarNotes = await workNoteService.findSimilarNotes(extractedText, SIMILAR_NOTES_TOP_K);
+    const [todoDueDateContext, similarNotes] = await Promise.all([
+      todoRepository.getOpenTodoDueDateContextForAI(10),
+      workNoteService.findSimilarNotes(extractedText, SIMILAR_NOTES_TOP_K),
+    ]);
     const draft =
       similarNotes.length > 0
         ? await aiDraftService.generateDraftFromTextWithContext(extractedText, similarNotes, {

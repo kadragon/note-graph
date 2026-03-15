@@ -3,9 +3,8 @@ import type { RagContextSnippet, RagQueryFilters, RagQueryResponse } from '@shar
 import type { WorkNote } from '@shared/types/work-note';
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
-import { RateLimitError } from '../types/errors';
-import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
 import { pgPlaceholders } from '../utils/db-utils';
+import { callOpenAIChat } from '../utils/openai-chat';
 import { ChunkingService } from './chunking-service';
 import { OpenAIEmbeddingService } from './openai-embedding-service';
 import { DEFAULT_RAG_QUERY_PROMPT } from './setting-defaults';
@@ -260,48 +259,14 @@ ${ctx.snippet}
   }
 
   /**
-   * Call GPT-4.5 via AI Gateway
+   * Call GPT via AI Gateway using shared utility
+   * Uses system/user message separation for OpenAI system prompt caching
    */
   private async callGPT(prompt: string): Promise<string> {
-    const url = getAIGatewayUrl(this.env, 'chat/completions');
-
-    const model = this.getModel();
-
-    const requestBody = {
-      model,
-      messages: [
-        {
-          role: 'user' as const,
-          content: prompt,
-        },
-      ],
-      max_completion_tokens: RagService.GPT_MAX_COMPLETION_TOKENS,
-      // Reasoning models (o1, o3, gpt-5) don't support temperature parameter
-      ...(!isReasoningModel(model) && { temperature: 0.7 }),
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: getAIGatewayHeaders(this.env),
-      body: JSON.stringify(requestBody),
+    return callOpenAIChat(this.env, {
+      messages: [{ role: 'user', content: prompt }],
+      model: this.getModel(),
+      maxCompletionTokens: RagService.GPT_MAX_COMPLETION_TOKENS,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      if (response.status === 429) {
-        throw new RateLimitError('AI 호출 상한을 초과했습니다. 잠시 후 다시 시도해주세요.');
-      }
-      throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
-    }
-
-    const data = await response.json<{
-      choices: Array<{ message: { content: string } }>;
-    }>();
-
-    if (!data.choices?.[0]?.message?.content) {
-      throw new Error('No response from GPT');
-    }
-
-    return data.choices[0].message.content;
   }
 }
