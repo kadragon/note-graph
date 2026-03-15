@@ -230,6 +230,26 @@ describe('top-menu', () => {
     expect(mockSignOut).toHaveBeenCalled();
   });
 
+  it('full logout still signs out when Google disconnect fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(API.disconnectGoogle).mockRejectedValue(new Error('disconnect error'));
+    mockSignOut.mockResolvedValue(undefined);
+
+    vi.mocked(useGoogleDriveConfigStatus).mockReturnValue({
+      configured: true,
+      data: { connected: true },
+      refetch: vi.fn(),
+      isFetching: false,
+    } as unknown as ReturnType<typeof useGoogleDriveConfigStatus>);
+
+    render(<TopMenu />);
+
+    await user.click(screen.getByTestId('full-logout-button'));
+
+    expect(API.disconnectGoogle).toHaveBeenCalled();
+    expect(mockSignOut).toHaveBeenCalled();
+  });
+
   it('shows error toast when full logout fails', async () => {
     const user = userEvent.setup();
     mockSignOut.mockRejectedValue(new Error('signout error'));

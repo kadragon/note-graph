@@ -25,8 +25,8 @@ authGoogle.get('/authorize', async (c) => {
   const user = getAuthUser(c);
   const oauthService = new GoogleOAuthService(c.env, c.get('db'));
 
-  // Use user email as state for verification
-  const state = btoa(user.email);
+  // HMAC-sign the email so the unprotected callback can trust it
+  const state = await signState(user.email, c.env.GOOGLE_CLIENT_SECRET);
   const authUrl = oauthService.getAuthorizationUrl(state);
 
   return c.redirect(authUrl);
@@ -52,12 +52,17 @@ authGooglePublic.get('/callback', async (c) => {
     return c.redirect('/?google_auth_error=no_code');
   }
 
-  // State is required — it carries the user email from the protected /authorize step
+  // State is required — it carries the HMAC-signed user email from the protected /authorize step
   if (!state) {
     return c.redirect('/?google_auth_error=missing_state');
   }
 
-  const userEmail = atob(state);
+  let userEmail: string;
+  try {
+    userEmail = await verifyState(state, c.env.GOOGLE_CLIENT_SECRET);
+  } catch {
+    return c.redirect('/?google_auth_error=invalid_state');
+  }
 
   try {
     // Exchange code for tokens
@@ -183,5 +188,38 @@ authGoogle.post('/disconnect', async (c) => {
 
   return c.json({ success: true });
 });
+
+// --- HMAC helpers for OAuth state ---
+
+async function getHmacKey(secret: string): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  return crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  );
+}
+
+async function signState(email: string, secret: string): Promise<string> {
+  const key = await getHmacKey(secret);
+  const enc = new TextEncoder();
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(email));
+  const sigHex = [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return btoa(JSON.stringify({ email, sig: sigHex }));
+}
+
+async function verifyState(state: string, secret: string): Promise<string> {
+  const { email, sig } = JSON.parse(atob(state)) as { email: string; sig: string };
+  const key = await getHmacKey(secret);
+  const enc = new TextEncoder();
+  const sigBytes = new Uint8Array(sig.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
+  const valid = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(email));
+  if (!valid) {
+    throw new Error('Invalid state signature');
+  }
+  return email;
+}
 
 export { authGoogle, authGooglePublic };

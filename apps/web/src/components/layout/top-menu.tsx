@@ -99,7 +99,9 @@ export default function TopMenu() {
   const handleFullLogout = async () => {
     try {
       if (isGoogleConnected) {
-        await API.disconnectGoogle();
+        await API.disconnectGoogle().catch(() => {
+          // Best-effort: proceed with sign out even if disconnect fails
+        });
       }
       await signOut();
     } catch {
