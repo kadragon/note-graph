@@ -4,9 +4,18 @@
 
 import { getAuthUser } from '../middleware/auth';
 import { GoogleOAuthService, hasSufficientDriveScope } from '../services/google-oauth-service';
-import { createProtectedRouter } from './_shared/router-factory';
+import { createErrorHandledRouter, createProtectedRouter } from './_shared/router-factory';
 
 const authGoogle = createProtectedRouter();
+
+/**
+ * Unprotected router for OAuth callback.
+ * The callback is a browser redirect from Google — it cannot carry
+ * an Authorization header, so it must be unprotected.
+ * Security: the `state` parameter (set during the protected /authorize step)
+ * carries the user email, and the authorization code is single-use.
+ */
+const authGooglePublic = createErrorHandledRouter();
 
 /**
  * GET /auth/google/authorize - Start OAuth flow
@@ -16,8 +25,8 @@ authGoogle.get('/authorize', async (c) => {
   const user = getAuthUser(c);
   const oauthService = new GoogleOAuthService(c.env, c.get('db'));
 
-  // Use user email as state for verification
-  const state = btoa(user.email);
+  // HMAC-sign the email so the unprotected callback can trust it
+  const state = await signState(user.email, c.env.GOOGLE_CLIENT_SECRET);
   const authUrl = oauthService.getAuthorizationUrl(state);
 
   return c.redirect(authUrl);
@@ -27,8 +36,7 @@ authGoogle.get('/authorize', async (c) => {
  * GET /auth/google/callback - OAuth callback
  * Exchanges authorization code for tokens
  */
-authGoogle.get('/callback', async (c) => {
-  const user = getAuthUser(c);
+authGooglePublic.get('/callback', async (c) => {
   const oauthService = new GoogleOAuthService(c.env, c.get('db'));
 
   const code = c.req.query('code');
@@ -44,12 +52,16 @@ authGoogle.get('/callback', async (c) => {
     return c.redirect('/?google_auth_error=no_code');
   }
 
-  // Verify state matches user
-  if (state) {
-    const decodedState = atob(state);
-    if (decodedState !== user.email) {
-      return c.redirect('/?google_auth_error=state_mismatch');
-    }
+  // State is required — it carries the HMAC-signed user email from the protected /authorize step
+  if (!state) {
+    return c.redirect('/?google_auth_error=missing_state');
+  }
+
+  let userEmail: string;
+  try {
+    userEmail = await verifyState(state, c.env.GOOGLE_CLIENT_SECRET);
+  } catch {
+    return c.redirect('/?google_auth_error=invalid_state');
   }
 
   try {
@@ -57,7 +69,7 @@ authGoogle.get('/callback', async (c) => {
     const tokens = await oauthService.exchangeCodeForTokens(code);
 
     // Store tokens
-    await oauthService.storeTokens(user.email, tokens);
+    await oauthService.storeTokens(userEmail, tokens);
 
     // Redirect to success page
     return c.redirect('/?google_auth_success=true');
@@ -177,4 +189,37 @@ authGoogle.post('/disconnect', async (c) => {
   return c.json({ success: true });
 });
 
-export { authGoogle };
+// --- HMAC helpers for OAuth state ---
+
+async function getHmacKey(secret: string): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  return crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  );
+}
+
+async function signState(email: string, secret: string): Promise<string> {
+  const key = await getHmacKey(secret);
+  const enc = new TextEncoder();
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(email));
+  const sigHex = [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return btoa(JSON.stringify({ email, sig: sigHex }));
+}
+
+async function verifyState(state: string, secret: string): Promise<string> {
+  const { email, sig } = JSON.parse(atob(state)) as { email: string; sig: string };
+  const key = await getHmacKey(secret);
+  const enc = new TextEncoder();
+  const sigBytes = new Uint8Array(sig.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
+  const valid = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(email));
+  if (!valid) {
+    throw new Error('Invalid state signature');
+  }
+  return email;
+}
+
+export { authGoogle, authGooglePublic };
