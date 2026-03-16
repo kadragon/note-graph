@@ -9,7 +9,7 @@ import {
 import { Label } from '@web/components/ui/label';
 import { Textarea } from '@web/components/ui/textarea';
 import { useRefineMeetingMinute } from '@web/hooks/use-meeting-minutes';
-import { Sparkles } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 interface MeetingMinuteRefineDialogProps {
@@ -26,23 +26,29 @@ export function MeetingMinuteRefineDialog({
   onRefineSuccess,
 }: MeetingMinuteRefineDialogProps) {
   const [transcript, setTranscript] = useState('');
-  const refineMutation = useRefineMeetingMinute();
+  const { mutateAsync, isPending, isPolling, startPolling, cancelPolling } =
+    useRefineMeetingMinute();
 
   const handleRefine = () => {
-    refineMutation
-      .mutateAsync({
-        meetingId,
-        transcript: transcript.trim(),
-      })
+    mutateAsync({
+      meetingId,
+      transcript: transcript.trim(),
+    })
       .then((result) => {
-        onRefineSuccess(result.refinedContent);
-        onOpenChange(false);
+        startPolling(result.jobId, (refinedContent) => {
+          onRefineSuccess(refinedContent);
+          onOpenChange(false);
+        });
+      })
+      .catch(() => {
+        // onError in the mutation hook already shows a toast
       });
   };
 
   const resetForm = useCallback(() => {
     setTranscript('');
-  }, []);
+    cancelPolling();
+  }, [cancelPolling]);
 
   useEffect(() => {
     if (!open) {
@@ -54,7 +60,7 @@ export function MeetingMinuteRefineDialog({
   }, [open, resetForm]);
 
   return (
-    <Dialog open={open} onOpenChange={refineMutation.isPending ? undefined : onOpenChange}>
+    <Dialog open={open} onOpenChange={isPending ? undefined : onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -76,24 +82,27 @@ export function MeetingMinuteRefineDialog({
               onChange={(e) => setTranscript(e.target.value)}
               placeholder="회의 녹취본(전사본)을 붙여넣으세요"
               className="min-h-[200px]"
-              disabled={refineMutation.isPending}
+              disabled={isPending}
             />
           </div>
 
+          {isPolling && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              AI가 회의록을 분석하고 있습니다...
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={refineMutation.isPending}
-            >
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
               취소
             </Button>
-            <Button
-              onClick={() => void handleRefine()}
-              disabled={refineMutation.isPending || !transcript.trim()}
-            >
-              {refineMutation.isPending ? (
-                '처리 중...'
+            <Button onClick={() => void handleRefine()} disabled={isPending || !transcript.trim()}>
+              {isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  처리 중...
+                </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />

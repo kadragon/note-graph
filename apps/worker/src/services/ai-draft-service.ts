@@ -75,6 +75,7 @@ export class AIDraftService {
    * Set to 3000 to allow comprehensive responses for work note drafts
    */
   private static readonly GPT_MAX_COMPLETION_TOKENS = 3000;
+  private static readonly REFINE_MAX_COMPLETION_TOKENS = 16000;
 
   constructor(
     private env: Env,
@@ -540,7 +541,11 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
     transcript: string
   ): Promise<{ refinedContent: string }> {
     const prompt = this.constructRefinePrompt(topic, detailsRaw, transcript);
-    const response = await this.callGPT(prompt, '당신은 회의록을 정제하는 어시스턴트입니다.');
+    const response = await this.callGPT(
+      prompt,
+      '당신은 회의록을 정제하는 어시스턴트입니다.',
+      AIDraftService.REFINE_MAX_COMPLETION_TOKENS
+    );
 
     try {
       const parsed = JSON.parse(response) as { refinedContent: string };
@@ -602,7 +607,11 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
   /**
    * Call GPT via AI Gateway using shared utility
    */
-  private async callGPT(prompt: string, systemRole?: string): Promise<string> {
+  private async callGPT(
+    prompt: string,
+    systemRole?: string,
+    maxCompletionTokens?: number
+  ): Promise<string> {
     const messages = systemRole
       ? [
           { role: 'system' as const, content: systemRole },
@@ -613,7 +622,7 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
     return callOpenAIChat(this.env, {
       messages,
       model: this.getModel(),
-      maxCompletionTokens: AIDraftService.GPT_MAX_COMPLETION_TOKENS,
+      maxCompletionTokens: maxCompletionTokens ?? AIDraftService.GPT_MAX_COMPLETION_TOKENS,
       responseFormat: { type: 'json_object' },
     });
   }
