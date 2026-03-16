@@ -3,7 +3,9 @@
  * AI-powered work note draft generation routes
  */
 
+import { nanoid } from 'nanoid';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
+import { AiJobRepository } from '../repositories/ai-job-repository';
 import { MeetingMinuteRepository } from '../repositories/meeting-minute-repository';
 import {
   DraftFromTextRequestSchema,
@@ -14,8 +16,11 @@ import {
 import { AIDraftService } from '../services/ai-draft-service';
 import { FileTextExtractionService } from '../services/file-text-extraction-service';
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
+import type { SettingService } from '../services/setting-service';
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext } from '../types/context';
+import type { DatabaseClient } from '../types/database';
+import type { Env } from '../types/env';
 import { NotFoundError } from '../types/errors';
 import { createProtectedRouter } from './_shared/router-factory';
 
@@ -252,7 +257,7 @@ app.post('/work-notes/:workId/enhance', async (c) => {
 
 /**
  * POST /ai/meeting-minutes/:meetingId/refine
- * Refine meeting minute content using a transcript
+ * Start async meeting minute refinement job
  */
 app.post(
   '/meeting-minutes/:meetingId/refine',
@@ -261,25 +266,69 @@ app.post(
     const meetingId = c.req.param('meetingId')!;
     const body = getValidatedBody<typeof RefineMeetingMinuteRequestSchema>(c);
 
-    const repository = new MeetingMinuteRepository(c.get('db'));
+    const db = c.get('db');
+    const repository = new MeetingMinuteRepository(db);
     const meetingMinute = await repository.findById(meetingId);
 
     if (!meetingMinute) {
       throw new NotFoundError('Meeting minute', meetingId);
     }
 
-    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
-    const result = await aiDraftService.refineMeetingMinute(
-      meetingMinute.topic,
-      meetingMinute.detailsRaw,
-      body.transcript
+    const jobId = `AIJOB-${nanoid()}`;
+    const aiJobRepository = new AiJobRepository(db);
+    await aiJobRepository.create(jobId, 'meeting_minute_refine');
+
+    c.executionCtx.waitUntil(
+      runRefineJob(
+        db,
+        c.env,
+        c.get('settingService'),
+        jobId,
+        meetingMinute.topic,
+        meetingMinute.detailsRaw,
+        body.transcript
+      )
     );
 
-    return c.json({
-      refinedContent: result.refinedContent,
-      originalContent: meetingMinute.detailsRaw,
-    });
+    return c.json({ jobId }, 202);
   }
 );
+
+/**
+ * GET /ai/jobs/:jobId
+ * Poll async AI job status
+ */
+app.get('/jobs/:jobId', async (c) => {
+  const jobId = c.req.param('jobId')!;
+  const aiJobRepository = new AiJobRepository(c.get('db'));
+  const job = await aiJobRepository.findById(jobId);
+
+  if (!job) {
+    throw new NotFoundError('AI job', jobId);
+  }
+
+  return c.json({ status: job.status, result: job.result, error: job.error });
+});
+
+async function runRefineJob(
+  db: DatabaseClient,
+  env: Env,
+  settingService: SettingService,
+  jobId: string,
+  topic: string,
+  detailsRaw: string,
+  transcript: string
+): Promise<void> {
+  const aiJobRepository = new AiJobRepository(db);
+  try {
+    const aiDraftService = new AIDraftService(env, settingService);
+    const result = await aiDraftService.refineMeetingMinute(topic, detailsRaw, transcript);
+    await aiJobRepository.complete(jobId, result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[runRefineJob] Failed:', message);
+    await aiJobRepository.fail(jobId, message);
+  }
+}
 
 export default app;

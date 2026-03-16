@@ -600,12 +600,15 @@ export class APIClient {
   }
 
   refineMeetingMinute(meetingId: string, data: { transcript: string }) {
-    return this.request<{ refinedContent: string; originalContent: string }>(
-      `/ai/meeting-minutes/${meetingId}/refine`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
+    return this.request<{ jobId: string }>(`/ai/meeting-minutes/${meetingId}/refine`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  getAiJobStatus(jobId: string) {
+    return this.request<{ status: string; result: unknown; error: string | null }>(
+      `/ai/jobs/${jobId}`
     );
   }
 
