@@ -75,6 +75,7 @@ export class AIDraftService {
    * Set to 3000 to allow comprehensive responses for work note drafts
    */
   private static readonly GPT_MAX_COMPLETION_TOKENS = 3000;
+  private static readonly REFINE_MAX_COMPLETION_TOKENS = 16000;
 
   constructor(
     private env: Env,
@@ -543,7 +544,7 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
     const response = await this.callGPT(
       prompt,
       '당신은 회의록을 정제하는 어시스턴트입니다.',
-      16000
+      AIDraftService.REFINE_MAX_COMPLETION_TOKENS
     );
 
     try {

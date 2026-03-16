@@ -63,18 +63,20 @@ export const useDeleteMeetingMinute = createStandardMutation({
 });
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_TIMEOUT_MS = 60000;
+const POLL_TIMEOUT_MS = 120_000;
 
 export function useRefineMeetingMinute() {
   const { toast } = useToast();
   const [isPolling, setIsPolling] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelledRef = useRef(false);
 
   const cleanup = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    cancelledRef.current = true;
+    if (pollingTimerRef.current) {
+      clearTimeout(pollingTimerRef.current);
+      pollingTimerRef.current = null;
     }
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -99,6 +101,7 @@ export function useRefineMeetingMinute() {
 
   const startPolling = useCallback(
     (jobId: string, onSuccess: (refinedContent: string) => void) => {
+      cancelledRef.current = false;
       setIsPolling(true);
 
       timeoutRef.current = setTimeout(() => {
@@ -110,15 +113,23 @@ export function useRefineMeetingMinute() {
         });
       }, POLL_TIMEOUT_MS);
 
-      intervalRef.current = setInterval(async () => {
+      const poll = async () => {
+        if (cancelledRef.current) return;
         try {
           const job = await API.getAiJobStatus(jobId);
+          if (cancelledRef.current) return;
 
           if (job.status === 'completed') {
             cleanup();
             const result = job.result as { refinedContent: string } | null;
             if (result?.refinedContent) {
               onSuccess(result.refinedContent);
+            } else {
+              toast({
+                variant: 'destructive',
+                title: '오류',
+                description: 'AI 정제 결과가 비어 있습니다. 다시 시도해주세요.',
+              });
             }
           } else if (job.status === 'failed') {
             cleanup();
@@ -127,8 +138,11 @@ export function useRefineMeetingMinute() {
               title: '오류',
               description: job.error || 'AI 정제에 실패했습니다. 다시 시도해주세요.',
             });
+          } else {
+            pollingTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
           }
-        } catch {
+        } catch (error) {
+          console.error('[useRefineMeetingMinute] Polling failed:', error);
           cleanup();
           toast({
             variant: 'destructive',
@@ -136,7 +150,9 @@ export function useRefineMeetingMinute() {
             description: '작업 상태를 확인할 수 없습니다.',
           });
         }
-      }, POLL_INTERVAL_MS);
+      };
+
+      pollingTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
     },
     [cleanup, toast]
   );

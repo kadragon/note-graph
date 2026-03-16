@@ -64,4 +64,12 @@ export class AiJobRepository {
       [error, jobId]
     );
   }
+
+  async deleteOlderThan(hours: number): Promise<number> {
+    const result = await this.db.execute(
+      `DELETE FROM ai_jobs WHERE created_at < now() - make_interval(hours => $1)`,
+      [hours]
+    );
+    return result.rowCount;
+  }
 }

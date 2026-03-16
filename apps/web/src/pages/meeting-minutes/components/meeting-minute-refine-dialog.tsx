@@ -33,12 +33,16 @@ export function MeetingMinuteRefineDialog({
     mutateAsync({
       meetingId,
       transcript: transcript.trim(),
-    }).then((result) => {
-      startPolling(result.jobId, (refinedContent) => {
-        onRefineSuccess(refinedContent);
-        onOpenChange(false);
+    })
+      .then((result) => {
+        startPolling(result.jobId, (refinedContent) => {
+          onRefineSuccess(refinedContent);
+          onOpenChange(false);
+        });
+      })
+      .catch(() => {
+        // onError in the mutation hook already shows a toast
       });
-    });
   };
 
   const resetForm = useCallback(() => {

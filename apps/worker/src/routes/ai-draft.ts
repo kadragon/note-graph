@@ -4,9 +4,11 @@
  */
 
 import { nanoid } from 'nanoid';
+import { createDatabaseClient } from '../adapters/database-factory';
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import { AiJobRepository } from '../repositories/ai-job-repository';
 import { MeetingMinuteRepository } from '../repositories/meeting-minute-repository';
+import { SettingRepository } from '../repositories/setting-repository';
 import {
   DraftFromTextRequestSchema,
   enhanceWorkNoteRequestSchema,
@@ -16,10 +18,9 @@ import {
 import { AIDraftService } from '../services/ai-draft-service';
 import { FileTextExtractionService } from '../services/file-text-extraction-service';
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
-import type { SettingService } from '../services/setting-service';
+import { SettingService } from '../services/setting-service';
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext } from '../types/context';
-import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
 import { NotFoundError } from '../types/errors';
 import { createProtectedRouter } from './_shared/router-factory';
@@ -278,16 +279,15 @@ app.post(
     const aiJobRepository = new AiJobRepository(db);
     await aiJobRepository.create(jobId, 'meeting_minute_refine');
 
+    // Opportunistic cleanup: remove jobs older than 24 hours
     c.executionCtx.waitUntil(
-      runRefineJob(
-        db,
-        c.env,
-        c.get('settingService'),
-        jobId,
-        meetingMinute.topic,
-        meetingMinute.detailsRaw,
-        body.transcript
-      )
+      aiJobRepository.deleteOlderThan(24).catch((err) => {
+        console.error('[ai-jobs] Cleanup failed:', err);
+      })
+    );
+
+    c.executionCtx.waitUntil(
+      runRefineJob(c.env, jobId, meetingMinute.topic, meetingMinute.detailsRaw, body.transcript)
     );
 
     return c.json({ jobId }, 202);
@@ -311,16 +311,19 @@ app.get('/jobs/:jobId', async (c) => {
 });
 
 async function runRefineJob(
-  db: DatabaseClient,
   env: Env,
-  settingService: SettingService,
   jobId: string,
   topic: string,
   detailsRaw: string,
   transcript: string
 ): Promise<void> {
+  const db = createDatabaseClient(env);
   const aiJobRepository = new AiJobRepository(db);
   try {
+    const settingRepo = new SettingRepository(db);
+    const settingService = new SettingService(settingRepo);
+    await settingService.preload();
+
     const aiDraftService = new AIDraftService(env, settingService);
     const result = await aiDraftService.refineMeetingMinute(topic, detailsRaw, transcript);
     await aiJobRepository.complete(jobId, result);
@@ -328,6 +331,8 @@ async function runRefineJob(
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[runRefineJob] Failed:', message);
     await aiJobRepository.fail(jobId, message);
+  } finally {
+    await db.close?.();
   }
 }
 
