@@ -4,26 +4,11 @@ import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { Checkbox } from '@web/components/ui/checkbox';
 import { TODO_STATUS } from '@web/constants/todo-status';
+import { rehypePlugins, remarkPlugins } from '@web/lib/markdown-plugins';
 import { cn, formatDateWithYear, preserveLineBreaksForMarkdown } from '@web/lib/utils';
 import type { Todo, TodoStatus } from '@web/types/api';
 import { Pencil, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
-
-const sanitizeSchema = {
-  ...defaultSchema,
-  attributes: {
-    ...defaultSchema.attributes,
-    code: [...(defaultSchema.attributes?.code || []), ['className', /^language-/]],
-    span: [...(defaultSchema.attributes?.span || []), ['className', /^hljs-/]],
-  },
-};
-
-const remarkPlugins = [remarkGfm];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const rehypePlugins: any[] = [rehypeHighlight, [rehypeSanitize, sanitizeSchema]];
 
 interface TodoListItemProps {
   todo: Todo;
