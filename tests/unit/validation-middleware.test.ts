@@ -89,7 +89,7 @@ describe('Validation Middleware', () => {
       get: vi.fn().mockReturnValue(undefined),
     } as unknown as Context;
 
-    const schema = z.object({ name: z.string() });
+    const _schema = z.object({ name: z.string() });
 
     expect(() => getValidatedBody<typeof schema>(mockContext)).toThrow(
       'Validated body not found in context. Did you forget to apply bodyValidator middleware before this handler?'
@@ -101,7 +101,7 @@ describe('Validation Middleware', () => {
       get: vi.fn().mockReturnValue(undefined),
     } as unknown as Context;
 
-    const schema = z.object({ page: z.string() });
+    const _schema = z.object({ page: z.string() });
 
     expect(() => getValidatedQuery<typeof schema>(mockContext)).toThrow(
       'Validated query not found in context. Did you forget to apply queryValidator middleware before this handler?'

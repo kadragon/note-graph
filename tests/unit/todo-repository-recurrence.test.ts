@@ -274,7 +274,7 @@ describe('TodoRepository - Recurrence Logic', () => {
       });
 
       expect(newTodo).toBeDefined();
-      const newDueDate = new Date(newTodo!.dueDate as string);
+      const newDueDate = new Date(newTodo?.dueDate as string);
       // Friday + 1 = Saturday -> skipWeekends -> Monday
       expect(newDueDate.getUTCDay()).toBe(1); // Monday
       expect(newDueDate.getUTCDate()).toBe(13); // Jan 13
@@ -296,7 +296,7 @@ describe('TodoRepository - Recurrence Logic', () => {
 
       expect(newTodo).toBeDefined();
       // DAILY + COMPLETION_DATE: Friday + 1 = Saturday
-      const newDueDate = new Date(newTodo!.dueDate as string);
+      const newDueDate = new Date(newTodo?.dueDate as string);
       expect(newDueDate.getUTCDay()).toBe(6); // Saturday (no skipWeekends)
       expect(newDueDate.getUTCDate()).toBe(11); // Jan 11
     });
@@ -311,7 +311,7 @@ describe('TodoRepository - Recurrence Logic', () => {
       });
 
       expect(newTodo).toBeDefined();
-      const newDueDate = new Date(newTodo!.dueDate as string);
+      const newDueDate = new Date(newTodo?.dueDate as string);
       // Friday + 1 = Saturday -> Monday
       expect(newDueDate.getUTCDay()).toBe(1); // Monday
       expect(newDueDate.getUTCDate()).toBe(13); // Jan 13
@@ -329,7 +329,7 @@ describe('TodoRepository - Recurrence Logic', () => {
       });
 
       expect(newTodo).toBeDefined();
-      const newDueDate = new Date(newTodo!.dueDate as string);
+      const newDueDate = new Date(newTodo?.dueDate as string);
       // Thursday + 2 = Saturday -> Monday Jan 13
       expect(newDueDate.getUTCDay()).toBe(1); // Monday
       expect(newDueDate.getUTCDate()).toBe(13);
@@ -346,7 +346,7 @@ describe('TodoRepository - Recurrence Logic', () => {
       });
 
       expect(newTodo).toBeDefined();
-      const newDueDate = new Date(newTodo!.dueDate as string);
+      const newDueDate = new Date(newTodo?.dueDate as string);
       expect(newDueDate.getUTCDay()).toBe(1); // Monday
       expect(newDueDate.getUTCDate()).toBe(13);
     });
@@ -373,7 +373,7 @@ describe('TodoRepository - Recurrence Logic', () => {
         const newTodo = allTodos.find((t) => t.status === '진행중');
 
         expect(newTodo).toBeDefined();
-        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        const newDueDate = new REAL_DATE(newTodo?.dueDate as string);
         // KST Jan 11 + 1 = Jan 12 at UTC midnight
         expect(newDueDate.getUTCDate()).toBe(12);
         expect(newDueDate.getUTCMonth()).toBe(0); // January
@@ -395,7 +395,7 @@ describe('TodoRepository - Recurrence Logic', () => {
         const newTodo = allTodos.find((t) => t.status === '진행중');
 
         expect(newTodo).toBeDefined();
-        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        const newDueDate = new REAL_DATE(newTodo?.dueDate as string);
         // KST Jan 11 + 1 = Jan 12 at UTC midnight
         expect(newDueDate.getUTCDate()).toBe(12);
         expect(newDueDate.getUTCMonth()).toBe(0);
@@ -417,7 +417,7 @@ describe('TodoRepository - Recurrence Logic', () => {
         const newTodo = allTodos.find((t) => t.status === '진행중');
 
         expect(newTodo).toBeDefined();
-        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        const newDueDate = new REAL_DATE(newTodo?.dueDate as string);
         expect(newDueDate.getUTCDate()).toBe(12);
       });
 
@@ -437,7 +437,7 @@ describe('TodoRepository - Recurrence Logic', () => {
         const newTodo = allTodos.find((t) => t.status === '진행중');
 
         expect(newTodo).toBeDefined();
-        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        const newDueDate = new REAL_DATE(newTodo?.dueDate as string);
         expect(newDueDate.getUTCDate()).toBe(11);
       });
 
@@ -457,7 +457,7 @@ describe('TodoRepository - Recurrence Logic', () => {
         const newTodo = allTodos.find((t) => t.status === '진행중');
 
         expect(newTodo).toBeDefined();
-        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        const newDueDate = new REAL_DATE(newTodo?.dueDate as string);
         expect(newDueDate.getUTCDate()).toBe(18);
       });
     });

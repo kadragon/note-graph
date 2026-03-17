@@ -82,16 +82,23 @@ import type {
 } from '@shared/types/work-note';
 import type { WorkNoteGroup, WorkNoteGroupWorkNote } from '@shared/types/work-note-group';
 
-export type { Department, TaskCategory };
-export type { AppSetting, OpenAIModel };
-export type { WorkNoteGroup, WorkNoteGroupWorkNote };
-export type { EmploymentStatus, Person, PersonDeptHistory };
-export type { AIGatewayLogItem, AIGatewayLogsPagination, AIGatewayLogsResponse };
 export type {
+  AIGatewayLogItem,
+  AIGatewayLogsPagination,
+  AIGatewayLogsResponse,
+  AppSetting,
+  Department,
   DriveFileListItem,
+  EmploymentStatus,
+  OpenAIModel,
+  Person,
+  PersonDeptHistory,
+  TaskCategory,
   WorkNoteFile,
   WorkNoteFileMigrationResult,
   WorkNoteFilesListResponse,
+  WorkNoteGroup,
+  WorkNoteGroupWorkNote,
 };
 // Legacy response type (deprecated - use WorkNoteFilesListResponse)
 export interface WorkNoteFilesResponse {

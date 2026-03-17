@@ -60,7 +60,7 @@ departments.get('/:deptName', async (c) => {
  * PUT /departments/:deptName - Update department
  */
 departments.put('/:deptName', bodyValidator(updateDepartmentSchema), async (c) => {
-  const deptName = c.req.param('deptName')!;
+  const deptName = c.req.param('deptName') as string;
   const data = getValidatedBody<typeof updateDepartmentSchema>(c);
   const { departments: repository } = c.get('repositories');
   const department = await repository.update(deptName, data);

@@ -57,7 +57,7 @@ settings.get('/:key{.+}', async (c) => {
  * PUT /settings/:key - Update setting value
  */
 settings.put('/:key{.+}', bodyValidator(updateSettingSchema), async (c) => {
-  const key = c.req.param('key')!;
+  const key = c.req.param('key') as string;
   const data = getValidatedBody<typeof updateSettingSchema>(c);
   const { settings: repository } = c.get('repositories');
   const setting = await repository.upsert(key, data.value);

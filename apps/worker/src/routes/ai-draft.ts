@@ -119,7 +119,7 @@ app.post(
   '/work-notes/:workId/todo-suggestions',
   bodyValidator(TodoSuggestionsRequestSchema),
   async (c) => {
-    const workId = c.req.param('workId')!;
+    const workId = c.req.param('workId') as string;
     const body = getValidatedBody<typeof TodoSuggestionsRequestSchema>(c);
     const { todos: todoRepository } = c.get('repositories');
 
@@ -148,7 +148,7 @@ app.post(
  * Enhance existing work note with new content (text and/or file)
  */
 app.post('/work-notes/:workId/enhance', async (c) => {
-  const workId = c.req.param('workId')!;
+  const workId = c.req.param('workId') as string;
   const { taskCategories, todos: todoRepository } = c.get('repositories');
 
   // Parse multipart form data

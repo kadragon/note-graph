@@ -214,6 +214,7 @@ async function verifyState(state: string, secret: string): Promise<string> {
   const { email, sig } = JSON.parse(atob(state)) as { email: string; sig: string };
   const key = await getHmacKey(secret);
   const enc = new TextEncoder();
+  // biome-ignore lint/style/noNonNullAssertion: sig is a hex string, match always succeeds
   const sigBytes = new Uint8Array(sig.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
   const valid = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(email));
   if (!valid) {

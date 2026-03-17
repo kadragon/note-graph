@@ -12,5 +12,5 @@ const sanitizeSchema = {
 };
 
 export const remarkPlugins = [remarkGfm];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: rehype plugin tuple types are not expressible without any
 export const rehypePlugins: any[] = [rehypeHighlight, [rehypeSanitize, sanitizeSchema]];

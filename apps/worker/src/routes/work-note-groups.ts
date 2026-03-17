@@ -39,7 +39,7 @@ workNoteGroups.get('/:groupId', async (c) => {
 });
 
 workNoteGroups.put('/:groupId', bodyValidator(updateWorkNoteGroupSchema), async (c) => {
-  const groupId = c.req.param('groupId')!;
+  const groupId = c.req.param('groupId') as string;
   const data = getValidatedBody<typeof updateWorkNoteGroupSchema>(c);
   const { workNoteGroups: repository } = c.get('repositories');
   const group = await repository.update(groupId, data);
