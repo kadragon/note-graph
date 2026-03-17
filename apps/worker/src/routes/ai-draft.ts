@@ -310,6 +310,29 @@ app.get('/jobs/:jobId', async (c) => {
   return c.json({ status: job.status, result: job.result, error: job.error });
 });
 
+async function updateJobStatus(
+  env: Env,
+  update: (repo: AiJobRepository) => Promise<void>
+): Promise<void> {
+  const db = createDatabaseClient(env);
+  try {
+    await update(new AiJobRepository(db));
+  } finally {
+    await db.close?.();
+  }
+}
+
+async function safeUpdateJobStatus(
+  env: Env,
+  update: (repo: AiJobRepository) => Promise<void>
+): Promise<void> {
+  try {
+    await updateJobStatus(env, update);
+  } catch (err) {
+    console.error('[safeUpdateJobStatus] DB update failed:', err);
+  }
+}
+
 async function runRefineJob(
   env: Env,
   jobId: string,
@@ -317,22 +340,30 @@ async function runRefineJob(
   detailsRaw: string,
   transcript: string
 ): Promise<void> {
-  const db = createDatabaseClient(env);
-  const aiJobRepository = new AiJobRepository(db);
   try {
-    const settingRepo = new SettingRepository(db);
-    const settingService = new SettingService(settingRepo);
-    await settingService.preload();
+    // Phase 1: preload settings then close DB before long GPT call
+    let settingService: SettingService;
+    {
+      const db = createDatabaseClient(env);
+      try {
+        const settingRepo = new SettingRepository(db);
+        settingService = new SettingService(settingRepo);
+        await settingService.preload();
+      } finally {
+        await db.close?.();
+      }
+    }
 
+    // Phase 2: GPT call (no DB connection held)
     const aiDraftService = new AIDraftService(env, settingService);
     const result = await aiDraftService.refineMeetingMinute(topic, detailsRaw, transcript);
-    await aiJobRepository.complete(jobId, result);
+
+    // Phase 3: fresh DB connection to persist result (errors propagate)
+    await updateJobStatus(env, (repo) => repo.complete(jobId, result));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[runRefineJob] Failed:', message);
-    await aiJobRepository.fail(jobId, message);
-  } finally {
-    await db.close?.();
+    await safeUpdateJobStatus(env, (repo) => repo.fail(jobId, message));
   }
 }
 

@@ -17,6 +17,7 @@ export interface OpenAIChatOptions {
   maxCompletionTokens: number;
   temperature?: number;
   responseFormat?: { type: 'json_object' };
+  timeoutMs?: number;
 }
 
 /**
@@ -48,6 +49,7 @@ export async function callOpenAIChat(env: Env, options: OpenAIChatOptions): Prom
     method: 'POST',
     headers: getAIGatewayHeaders(env),
     body: JSON.stringify(requestBody),
+    signal: AbortSignal.timeout(options.timeoutMs ?? 90_000),
   });
 
   if (!response.ok) {
