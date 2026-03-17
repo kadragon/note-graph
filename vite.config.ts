@@ -33,32 +33,20 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'query-vendor': ['@tanstack/react-query'],
-          'ui-vendor': [
-            '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-label',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-scroll-area',
-            '@radix-ui/react-select',
-            '@radix-ui/react-separator',
-            '@radix-ui/react-slot',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-toast',
-            'cmdk',
-          ],
-          'icon-vendor': ['lucide-react'],
-          'utility-vendor': [
-            'class-variance-authority',
-            'clsx',
-            'tailwind-merge',
-            'date-fns',
-            'nanoid',
-            'zod',
-          ],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (/[\\/](react|react-dom|react-router-dom)[\\/]/.test(id))
+              return 'react-vendor';
+            if (id.includes('@tanstack/react-query')) return 'query-vendor';
+            if (/[\\/](@radix-ui|cmdk)[\\/]/.test(id)) return 'ui-vendor';
+            if (id.includes('lucide-react')) return 'icon-vendor';
+            if (
+              /[\\/](class-variance-authority|clsx|tailwind-merge|date-fns|nanoid|zod)[\\/]/.test(
+                id,
+              )
+            )
+              return 'utility-vendor';
+          }
         },
       },
     },
