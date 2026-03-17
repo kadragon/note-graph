@@ -221,7 +221,6 @@ app.post('/work-notes/:workId/enhance', async (c) => {
       similarNotes,
       activeCategories: activeCategoryNames,
       todoDueDateContext,
-      personIds: existingPersonIds,
     }
   );
 

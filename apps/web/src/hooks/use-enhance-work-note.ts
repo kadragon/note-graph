@@ -108,9 +108,9 @@ export function useEnhanceWorkNoteForm(
     if (draftCategoryName && taskCategories.length > 0) {
       const matchingCategory = taskCategories.find((cat) => cat.name === draftCategoryName);
       if (matchingCategory) {
-        setSelectedCategoryIds([matchingCategory.categoryId]);
-      } else {
-        setSelectedCategoryIds([]);
+        setSelectedCategoryIds((prev) =>
+          prev.includes(matchingCategory.categoryId) ? prev : [...prev, matchingCategory.categoryId]
+        );
       }
     }
   }, [draftCategoryName, taskCategories]);
@@ -144,7 +144,6 @@ export function useEnhanceWorkNoteForm(
     const {
       enhancedDraft,
       existingCategoryIds = [],
-      existingPersonIds = [],
       existingTodos: existingTodosList,
       references: aiReferences,
     } = response;
@@ -152,19 +151,11 @@ export function useEnhanceWorkNoteForm(
     setTitle(enhancedDraft.title);
     setContent(enhancedDraft.content);
 
-    // Use existing category IDs as base, then merge AI-suggested category via name matching
+    // Use existing category IDs if available, also keep AI-suggested category for potential addition
     if (existingCategoryIds.length > 0) {
       setSelectedCategoryIds(existingCategoryIds);
-      setDraftCategoryName(null);
-    } else {
-      setDraftCategoryName(enhancedDraft.category || null);
     }
-
-    // Use existing person IDs as base, merge with AI-suggested ones
-    const mergedPersonIds = Array.from(
-      new Set([...existingPersonIds, ...(enhancedDraft.relatedPersonIds || [])])
-    );
-    setSelectedPersonIds(mergedPersonIds);
+    setDraftCategoryName(enhancedDraft.category || null);
 
     setExistingTodos(existingTodosList);
     setReferences(aiReferences);
