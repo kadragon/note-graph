@@ -141,12 +141,31 @@ export function useEnhanceWorkNoteForm(
   }, []);
 
   const populateFromEnhanceResponse = useCallback((response: EnhanceWorkNoteResponse) => {
-    const { enhancedDraft, existingTodos: existingTodosList, references: aiReferences } = response;
+    const {
+      enhancedDraft,
+      existingCategoryIds = [],
+      existingPersonIds = [],
+      existingTodos: existingTodosList,
+      references: aiReferences,
+    } = response;
 
     setTitle(enhancedDraft.title);
     setContent(enhancedDraft.content);
-    setDraftCategoryName(enhancedDraft.category || null);
-    setSelectedPersonIds(enhancedDraft.relatedPersonIds || []);
+
+    // Use existing category IDs as base, then merge AI-suggested category via name matching
+    if (existingCategoryIds.length > 0) {
+      setSelectedCategoryIds(existingCategoryIds);
+      setDraftCategoryName(null);
+    } else {
+      setDraftCategoryName(enhancedDraft.category || null);
+    }
+
+    // Use existing person IDs as base, merge with AI-suggested ones
+    const mergedPersonIds = Array.from(
+      new Set([...existingPersonIds, ...(enhancedDraft.relatedPersonIds || [])])
+    );
+    setSelectedPersonIds(mergedPersonIds);
+
     setExistingTodos(existingTodosList);
     setReferences(aiReferences);
     setSelectedReferenceIds(aiReferences.map((reference) => reference.workId));

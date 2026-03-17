@@ -202,6 +202,8 @@ export interface ExistingTodoSummary {
  */
 export interface EnhanceWorkNoteResponse {
   enhancedDraft: WorkNoteDraft;
+  existingCategoryIds: string[];
+  existingPersonIds: string[];
   originalContent: string;
   existingTodos: ExistingTodoSummary[];
   references: SimilarWorkNoteReference[];

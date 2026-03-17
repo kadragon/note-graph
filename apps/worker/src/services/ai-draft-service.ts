@@ -61,6 +61,7 @@ interface EnhanceOptions extends TodoDueDateContextOption {
     similarityScore?: number;
   }>;
   activeCategories?: string[];
+  personIds?: string[];
 }
 
 /**
@@ -261,7 +262,8 @@ export class AIDraftService {
     const prompt = this.constructEnhancePrompt(workNote, existingTodos, newContent, options);
     return this.callGPTAndParseDraft(
       prompt,
-      '당신은 한국 직장에서 업무노트를 업데이트하는 어시스턴트입니다.'
+      '당신은 한국 직장에서 업무노트를 업데이트하는 어시스턴트입니다.',
+      options?.personIds
     );
   }
 

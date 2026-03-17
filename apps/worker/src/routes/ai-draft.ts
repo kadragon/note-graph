@@ -187,10 +187,10 @@ app.post('/work-notes/:workId/enhance', async (c) => {
 
   const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
 
-  // Parallelize: fetch work note, todos, categories, due date context, similar notes
+  // Parallelize: fetch work note (with details), todos, categories, due date context, similar notes
   const [workNote, existingTodos, activeCategories, todoDueDateContext, similarNotes] =
     await Promise.all([
-      workNoteService.findById(workId),
+      workNoteService.findByIdWithDetails(workId),
       todoRepository.findByWorkId(workId),
       taskCategories.findAll(undefined, 100, true),
       todoRepository.getOpenTodoDueDateContextForAI(10),
@@ -202,6 +202,8 @@ app.post('/work-notes/:workId/enhance', async (c) => {
   }
 
   const activeCategoryNames = activeCategories.map((cat) => cat.name);
+  const existingPersonIds = workNote.persons.map((p) => p.personId);
+  const existingCategoryIds = workNote.categories.map((c) => c.categoryId);
   const todoReferences = existingTodos.map((todo) => ({
     title: todo.title,
     description: todo.description,
@@ -219,6 +221,7 @@ app.post('/work-notes/:workId/enhance', async (c) => {
       similarNotes,
       activeCategories: activeCategoryNames,
       todoDueDateContext,
+      personIds: existingPersonIds,
     }
   );
 
@@ -236,6 +239,8 @@ app.post('/work-notes/:workId/enhance', async (c) => {
 
   return c.json({
     enhancedDraft,
+    existingCategoryIds,
+    existingPersonIds,
     originalContent: workNote.contentRaw,
     existingTodos: existingTodos.map((todo) => ({
       todoId: todo.todoId,
