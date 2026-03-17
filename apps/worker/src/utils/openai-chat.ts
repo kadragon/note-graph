@@ -48,6 +48,7 @@ export async function callOpenAIChat(env: Env, options: OpenAIChatOptions): Prom
     method: 'POST',
     headers: getAIGatewayHeaders(env),
     body: JSON.stringify(requestBody),
+    signal: AbortSignal.timeout(90_000),
   });
 
   if (!response.ok) {

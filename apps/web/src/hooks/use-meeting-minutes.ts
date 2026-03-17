@@ -63,7 +63,7 @@ export const useDeleteMeetingMinute = createStandardMutation({
 });
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_TIMEOUT_MS = 120_000;
+const POLL_TIMEOUT_MS = 150_000;
 
 export function useRefineMeetingMinute() {
   const { toast } = useToast();
