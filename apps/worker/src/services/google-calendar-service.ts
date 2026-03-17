@@ -54,7 +54,7 @@ export class GoogleCalendarService {
     userEmail: string,
     startDate: string,
     endDate: string,
-    timezoneOffset = 0
+    timezoneOffset = 540
   ): Promise<CalendarEvent[]> {
     const accessToken = await this.getAccessToken(userEmail);
 

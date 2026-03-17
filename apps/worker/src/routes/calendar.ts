@@ -32,7 +32,7 @@ calendar.get('/events', async (c) => {
   }
 
   // Parse timezone offset (in minutes, e.g., 540 for KST +09:00)
-  const timezoneOffset = Number(timezoneOffsetParam ?? 0);
+  const timezoneOffset = Number(timezoneOffsetParam ?? 540);
   if (Number.isNaN(timezoneOffset)) {
     throw new DomainError('Invalid timezoneOffset parameter', 'VALIDATION_ERROR', 400);
   }

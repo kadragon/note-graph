@@ -86,8 +86,15 @@ export class TodoRepository {
       return null;
     }
 
-    const baseDate =
-      recurrenceType === 'DUE_DATE' ? new Date(dueDate) : new Date(completionDate.getTime());
+    let baseDate: Date;
+    if (recurrenceType === 'DUE_DATE') {
+      baseDate = new Date(dueDate);
+    } else {
+      // COMPLETION_DATE: normalize to KST date at UTC midnight so that
+      // date arithmetic is consistent regardless of the UTC hour of completion.
+      const parts = this.getDatePartsForOffset(completionDate);
+      baseDate = new Date(Date.UTC(parts.year, parts.month, parts.day));
+    }
 
     switch (repeatRule) {
       case 'DAILY':

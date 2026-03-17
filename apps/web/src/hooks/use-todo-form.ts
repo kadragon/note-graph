@@ -6,7 +6,13 @@ import type {
 } from '@web/types/api';
 import { useCallback, useMemo, useState } from 'react';
 
-const getTodayString = (): string => new Date().toISOString().split('T')[0];
+const getTodayString = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export interface TodoFormValues {
   title: string;
