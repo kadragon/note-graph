@@ -1,29 +1,9 @@
 import { getTodayDateForOffset, getTodayDateUTC } from '@worker/utils/date';
 import { afterEach, describe, expect, it } from 'vitest';
-
-const REAL_DATE = Date;
-
-const useFixedDateAt = (isoString: string) => {
-  const fixedTime = new REAL_DATE(isoString);
-  class MockDate extends REAL_DATE {
-    constructor(...args: unknown[]) {
-      if (args.length === 0) {
-        super(fixedTime.getTime());
-        return;
-      }
-      // @ts-expect-error allow variadic Date constructor args
-      super(...args);
-    }
-    static now() {
-      return fixedTime.getTime();
-    }
-  }
-  // @ts-expect-error override global Date
-  globalThis.Date = MockDate;
-};
+import { restoreDate, useFixedDateAt } from '../helpers/mock-date';
 
 afterEach(() => {
-  globalThis.Date = REAL_DATE;
+  restoreDate();
 });
 
 describe('getTodayDateForOffset', () => {

@@ -4,34 +4,15 @@
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { CreateTodoInput } from '@worker/schemas/todo';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { REAL_DATE, restoreDate, useFixedDateAt } from '../helpers/mock-date';
 import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
-const REAL_DATE = Date;
-const BASE_NOW = new REAL_DATE('2025-01-10T12:00:00.000Z');
+const BASE_NOW_ISO = '2025-01-10T12:00:00.000Z';
+const BASE_NOW = new REAL_DATE(BASE_NOW_ISO);
 
 const useFixedDate = () => {
-  class MockDate extends REAL_DATE {
-    constructor(...args: unknown[]) {
-      if (args.length === 0) {
-        super(BASE_NOW.getTime());
-        return;
-      }
-      // @ts-expect-error allow variadic Date constructor args
-      super(...args);
-    }
-
-    static now() {
-      return BASE_NOW.getTime();
-    }
-  }
-
-  // @ts-expect-error override global Date for deterministic tests
-  globalThis.Date = MockDate;
-};
-
-const restoreDate = () => {
-  globalThis.Date = REAL_DATE;
+  useFixedDateAt(BASE_NOW_ISO);
 };
 
 beforeAll(() => {
@@ -371,25 +352,6 @@ describe('TodoRepository - Recurrence Logic', () => {
     });
 
     describe('KST boundary - COMPLETION_DATE should use KST date', () => {
-      const useFixedDateAt = (isoString: string) => {
-        const fixedTime = new REAL_DATE(isoString);
-        class BoundaryMockDate extends REAL_DATE {
-          constructor(...args: unknown[]) {
-            if (args.length === 0) {
-              super(fixedTime.getTime());
-              return;
-            }
-            // @ts-expect-error allow variadic Date constructor args
-            super(...args);
-          }
-          static now() {
-            return fixedTime.getTime();
-          }
-        }
-        // @ts-expect-error override global Date
-        globalThis.Date = BoundaryMockDate;
-      };
-
       afterEach(() => {
         // Restore to the base mock
         useFixedDate();

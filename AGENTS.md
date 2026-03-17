@@ -1,5 +1,8 @@
 # AGENTS.md
 
+## Product Context
+- This is a single-user, KST-only (UTC+9) application. All server-side timezone defaults (e.g. `timezoneOffset = 540`) assume KST. Multi-timezone support is not a current requirement.
+
 ## Operational Constraints
 - Workers test coverage remains blocked by `node:inspector` runtime limitations; treat coverage runs as non-authoritative until runtime/tooling support changes.
 - Drive-only work note attachments require Google OAuth env vars and `GDRIVE_ROOT_FOLDER_ID`; missing values must fail fast to avoid writing into unexpected Drive locations.
