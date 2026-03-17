@@ -108,9 +108,9 @@ export function useEnhanceWorkNoteForm(
     if (draftCategoryName && taskCategories.length > 0) {
       const matchingCategory = taskCategories.find((cat) => cat.name === draftCategoryName);
       if (matchingCategory) {
-        setSelectedCategoryIds([matchingCategory.categoryId]);
-      } else {
-        setSelectedCategoryIds([]);
+        setSelectedCategoryIds((prev) =>
+          prev.includes(matchingCategory.categoryId) ? prev : [...prev, matchingCategory.categoryId]
+        );
       }
     }
   }, [draftCategoryName, taskCategories]);
@@ -141,12 +141,22 @@ export function useEnhanceWorkNoteForm(
   }, []);
 
   const populateFromEnhanceResponse = useCallback((response: EnhanceWorkNoteResponse) => {
-    const { enhancedDraft, existingTodos: existingTodosList, references: aiReferences } = response;
+    const {
+      enhancedDraft,
+      existingCategoryIds = [],
+      existingTodos: existingTodosList,
+      references: aiReferences,
+    } = response;
 
     setTitle(enhancedDraft.title);
     setContent(enhancedDraft.content);
+
+    // Use existing category IDs if available, also keep AI-suggested category for potential addition
+    if (existingCategoryIds.length > 0) {
+      setSelectedCategoryIds(existingCategoryIds);
+    }
     setDraftCategoryName(enhancedDraft.category || null);
-    setSelectedPersonIds(enhancedDraft.relatedPersonIds || []);
+
     setExistingTodos(existingTodosList);
     setReferences(aiReferences);
     setSelectedReferenceIds(aiReferences.map((reference) => reference.workId));

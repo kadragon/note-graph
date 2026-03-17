@@ -34,6 +34,8 @@ describe('useEnhanceWorkNote', () => {
         category: '업무',
         todos: [],
       },
+      existingCategoryIds: [],
+      existingPersonIds: [],
       originalContent: '원본 내용',
       existingTodos: [],
       references: [],
@@ -69,6 +71,8 @@ describe('useEnhanceWorkNote', () => {
         category: '업무',
         todos: [],
       },
+      existingCategoryIds: [],
+      existingPersonIds: [],
       originalContent: '원본 내용',
       existingTodos: [],
       references: [],
@@ -179,6 +183,8 @@ describe('useEnhanceWorkNoteForm', () => {
           category: '업무',
           todos: [{ title: '새 할일', description: '설명', dueDate: '2024-02-01' }],
         },
+        existingCategoryIds: [],
+        existingPersonIds: [],
         originalContent: '원본 내용',
         existingTodos: [
           {
@@ -198,6 +204,70 @@ describe('useEnhanceWorkNoteForm', () => {
     expect(result.current.state.suggestedNewTodos).toHaveLength(1);
     expect(result.current.state.existingTodos).toHaveLength(1);
     expect(result.current.state.existingTodos[0].title).toBe('기존 할일');
+  });
+
+  it('uses existing category IDs and merges AI-suggested category', () => {
+    const existingCategory = createTaskCategory({
+      categoryId: 'cat-existing',
+      name: '기존카테고리',
+      isActive: true,
+    });
+    const aiCategory = createTaskCategory({
+      categoryId: 'cat-ai',
+      name: 'AI추천카테고리',
+      isActive: true,
+    });
+
+    vi.mocked(useTaskCategories).mockReturnValue({
+      data: [existingCategory, aiCategory],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useTaskCategories>);
+
+    const { result } = renderHookWithClient(() => useEnhanceWorkNoteForm('work-1'));
+
+    act(() => {
+      result.current.actions.populateFromEnhanceResponse({
+        enhancedDraft: {
+          title: '제목',
+          content: '내용',
+          category: 'AI추천카테고리',
+          todos: [],
+        },
+        existingCategoryIds: ['cat-existing'],
+        existingPersonIds: [],
+        originalContent: '원본 내용',
+        existingTodos: [],
+        references: [],
+      });
+    });
+
+    // Should contain both existing and AI-suggested categories
+    expect(result.current.state.selectedCategoryIds).toContain('cat-existing');
+    expect(result.current.state.selectedCategoryIds).toContain('cat-ai');
+  });
+
+  it('does not include existing person IDs in selectedPersonIds to preserve roles', () => {
+    const { result } = renderHookWithClient(() => useEnhanceWorkNoteForm('work-1'));
+
+    act(() => {
+      result.current.actions.populateFromEnhanceResponse({
+        enhancedDraft: {
+          title: '제목',
+          content: '내용',
+          category: '',
+          todos: [],
+        },
+        existingCategoryIds: [],
+        existingPersonIds: ['person-owner-1', 'person-related-1'],
+        originalContent: '원본 내용',
+        existingTodos: [],
+        references: [],
+      });
+    });
+
+    // Existing person IDs should NOT be in selectedPersonIds
+    // to avoid overwriting OWNER roles to RELATED on submit
+    expect(result.current.state.selectedPersonIds).toEqual([]);
   });
 
   it('stores AI references and initializes all as selected', () => {
@@ -226,6 +296,8 @@ describe('useEnhanceWorkNoteForm', () => {
           category: '',
           todos: [],
         },
+        existingCategoryIds: [],
+        existingPersonIds: [],
         originalContent: '원본 내용',
         existingTodos: [],
         references,
@@ -247,6 +319,8 @@ describe('useEnhanceWorkNoteForm', () => {
           category: '',
           todos: [],
         },
+        existingCategoryIds: [],
+        existingPersonIds: [],
         originalContent: '원본 내용',
         existingTodos: [],
         references: [
@@ -291,6 +365,8 @@ describe('useEnhanceWorkNoteForm', () => {
           category: '',
           todos: [],
         },
+        existingCategoryIds: [],
+        existingPersonIds: [],
         originalContent: '',
         existingTodos: [],
         references: [
@@ -329,6 +405,8 @@ describe('useEnhanceWorkNoteForm', () => {
           category: '',
           todos: [],
         },
+        existingCategoryIds: [],
+        existingPersonIds: [],
         originalContent: '',
         existingTodos: [],
         references: [
@@ -366,6 +444,8 @@ describe('useEnhanceWorkNoteForm', () => {
           category: '',
           todos: [],
         },
+        existingCategoryIds: [],
+        existingPersonIds: [],
         originalContent: '',
         existingTodos: [],
         references: [],
@@ -406,6 +486,8 @@ describe('useEnhanceWorkNoteForm', () => {
             { title: '할일 2', description: '', dueDate: '2024-02-02' },
           ],
         },
+        existingCategoryIds: [],
+        existingPersonIds: [],
         originalContent: '',
         existingTodos: [],
         references: [],
@@ -442,6 +524,8 @@ describe('useEnhanceWorkNoteForm', () => {
           category: '',
           todos: [],
         },
+        existingCategoryIds: [],
+        existingPersonIds: [],
         originalContent: '',
         existingTodos: [],
         references: [],

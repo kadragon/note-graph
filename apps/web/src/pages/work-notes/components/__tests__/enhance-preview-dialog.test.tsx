@@ -122,6 +122,8 @@ describe('EnhancePreviewDialog', () => {
       category: '기본',
       todos: [],
     },
+    existingCategoryIds: [] as string[],
+    existingPersonIds: [] as string[],
     originalContent: '원본 내용',
     existingTodos: [],
     references: [],
