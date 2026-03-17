@@ -4,34 +4,15 @@
 import { TodoRepository } from '@worker/repositories/todo-repository';
 import type { CreateTodoInput } from '@worker/schemas/todo';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { REAL_DATE, restoreDate, useFixedDateAt } from '../helpers/mock-date';
 import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
-const REAL_DATE = Date;
-const BASE_NOW = new REAL_DATE('2025-01-10T12:00:00.000Z');
+const BASE_NOW_ISO = '2025-01-10T12:00:00.000Z';
+const BASE_NOW = new REAL_DATE(BASE_NOW_ISO);
 
 const useFixedDate = () => {
-  class MockDate extends REAL_DATE {
-    constructor(...args: unknown[]) {
-      if (args.length === 0) {
-        super(BASE_NOW.getTime());
-        return;
-      }
-      // @ts-expect-error allow variadic Date constructor args
-      super(...args);
-    }
-
-    static now() {
-      return BASE_NOW.getTime();
-    }
-  }
-
-  // @ts-expect-error override global Date for deterministic tests
-  globalThis.Date = MockDate;
-};
-
-const restoreDate = () => {
-  globalThis.Date = REAL_DATE;
+  useFixedDateAt(BASE_NOW_ISO);
 };
 
 beforeAll(() => {
@@ -368,6 +349,117 @@ describe('TodoRepository - Recurrence Logic', () => {
       const newDueDate = new Date(newTodo!.dueDate as string);
       expect(newDueDate.getUTCDay()).toBe(1); // Monday
       expect(newDueDate.getUTCDate()).toBe(13);
+    });
+
+    describe('KST boundary - COMPLETION_DATE should use KST date', () => {
+      afterEach(() => {
+        // Restore to the base mock
+        useFixedDate();
+      });
+
+      it('should produce same KST next-day regardless of UTC hour (before KST 9AM)', async () => {
+        // UTC 2025-01-10T23:30:00Z = KST 2025-01-11T08:30:00 (before 9AM KST)
+        // KST date is Jan 11; DAILY → next = Jan 12
+        useFixedDateAt('2025-01-10T23:30:00.000Z');
+
+        const created = await repository.create(testWorkId, {
+          title: 'KST Before 9AM',
+          dueDate: '2025-01-05T00:00:00.000Z',
+          repeatRule: 'DAILY',
+          recurrenceType: 'COMPLETION_DATE',
+        });
+        await repository.update(created.todoId, { status: '완료' });
+        const allTodos = await repository.findByWorkId(testWorkId);
+        const newTodo = allTodos.find((t) => t.status === '진행중');
+
+        expect(newTodo).toBeDefined();
+        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        // KST Jan 11 + 1 = Jan 12 at UTC midnight
+        expect(newDueDate.getUTCDate()).toBe(12);
+        expect(newDueDate.getUTCMonth()).toBe(0); // January
+      });
+
+      it('should produce same KST next-day regardless of UTC hour (after KST 9AM)', async () => {
+        // UTC 2025-01-11T00:30:00Z = KST 2025-01-11T09:30:00 (after 9AM KST)
+        // KST date is still Jan 11; DAILY → next = Jan 12
+        useFixedDateAt('2025-01-11T00:30:00.000Z');
+
+        const created = await repository.create(testWorkId, {
+          title: 'KST After 9AM',
+          dueDate: '2025-01-05T00:00:00.000Z',
+          repeatRule: 'DAILY',
+          recurrenceType: 'COMPLETION_DATE',
+        });
+        await repository.update(created.todoId, { status: '완료' });
+        const allTodos = await repository.findByWorkId(testWorkId);
+        const newTodo = allTodos.find((t) => t.status === '진행중');
+
+        expect(newTodo).toBeDefined();
+        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        // KST Jan 11 + 1 = Jan 12 at UTC midnight
+        expect(newDueDate.getUTCDate()).toBe(12);
+        expect(newDueDate.getUTCMonth()).toBe(0);
+      });
+
+      it('should handle KST midnight boundary (UTC 15:00 = KST 00:00 next day)', async () => {
+        // UTC 2025-01-10T15:00:00Z = KST 2025-01-11T00:00:00
+        // KST date is Jan 11; DAILY → next = Jan 12
+        useFixedDateAt('2025-01-10T15:00:00.000Z');
+
+        const created = await repository.create(testWorkId, {
+          title: 'KST Midnight Boundary',
+          dueDate: '2025-01-05T00:00:00.000Z',
+          repeatRule: 'DAILY',
+          recurrenceType: 'COMPLETION_DATE',
+        });
+        await repository.update(created.todoId, { status: '완료' });
+        const allTodos = await repository.findByWorkId(testWorkId);
+        const newTodo = allTodos.find((t) => t.status === '진행중');
+
+        expect(newTodo).toBeDefined();
+        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        expect(newDueDate.getUTCDate()).toBe(12);
+      });
+
+      it('should handle KST just-before-midnight (UTC 14:59 = KST 23:59)', async () => {
+        // UTC 2025-01-10T14:59:00Z = KST 2025-01-10T23:59:00
+        // KST date is Jan 10; DAILY → next = Jan 11
+        useFixedDateAt('2025-01-10T14:59:00.000Z');
+
+        const created = await repository.create(testWorkId, {
+          title: 'KST Before Midnight',
+          dueDate: '2025-01-05T00:00:00.000Z',
+          repeatRule: 'DAILY',
+          recurrenceType: 'COMPLETION_DATE',
+        });
+        await repository.update(created.todoId, { status: '완료' });
+        const allTodos = await repository.findByWorkId(testWorkId);
+        const newTodo = allTodos.find((t) => t.status === '진행중');
+
+        expect(newTodo).toBeDefined();
+        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        expect(newDueDate.getUTCDate()).toBe(11);
+      });
+
+      it('WEEKLY COMPLETION_DATE at KST boundary should advance by 7 days from KST date', async () => {
+        // UTC 2025-01-10T23:00:00Z = KST 2025-01-11T08:00:00 (Saturday)
+        // KST date is Jan 11; WEEKLY → next = Jan 18
+        useFixedDateAt('2025-01-10T23:00:00.000Z');
+
+        const created = await repository.create(testWorkId, {
+          title: 'Weekly KST Boundary',
+          dueDate: '2025-01-01T00:00:00.000Z',
+          repeatRule: 'WEEKLY',
+          recurrenceType: 'COMPLETION_DATE',
+        });
+        await repository.update(created.todoId, { status: '완료' });
+        const allTodos = await repository.findByWorkId(testWorkId);
+        const newTodo = allTodos.find((t) => t.status === '진행중');
+
+        expect(newTodo).toBeDefined();
+        const newDueDate = new REAL_DATE(newTodo!.dueDate as string);
+        expect(newDueDate.getUTCDate()).toBe(18);
+      });
     });
 
     it('should include recurring instance in today view when next due date is today', async () => {

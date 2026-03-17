@@ -7,7 +7,7 @@ import type { AIDraftTodo, ReferenceTodo, WorkNoteDraft } from '@shared/types/se
 import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
-import { getTodayDateUTC } from '../utils/date';
+import { getTodayDateForOffset } from '../utils/date';
 import { callOpenAIChat } from '../utils/openai-chat';
 import {
   DEFAULT_AI_DRAFT_CREATE_PROMPT,
@@ -112,13 +112,13 @@ export class AIDraftService {
 
   /**
    * Transform raw LLM todo to proper AIDraftTodo format
-   * Defaults null/undefined due dates to today's date (UTC)
+   * Defaults null/undefined due dates to today's date (KST)
    */
   private transformTodo(rawTodo: RawAIDraftTodo): AIDraftTodo {
     return {
       title: rawTodo.title,
       description: rawTodo.description,
-      dueDate: rawTodo.dueDateSuggestion || getTodayDateUTC(),
+      dueDate: rawTodo.dueDateSuggestion || getTodayDateForOffset(),
       repeatRule: rawTodo.repeatRule,
     };
   }
