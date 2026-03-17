@@ -32,4 +32,4 @@ afterAll(async () => {
   }
 });
 
-export { testPgDb, pglite };
+export { pglite, testPgDb };

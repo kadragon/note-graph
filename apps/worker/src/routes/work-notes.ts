@@ -81,7 +81,7 @@ workNotes.get('/:workId', async (c) => {
  * Automatically re-chunks and re-embeds for RAG (in background)
  */
 workNotes.put('/:workId', bodyValidator(updateWorkNoteSchema), async (c) => {
-  const workId = c.req.param('workId')!;
+  const workId = c.req.param('workId') as string;
   const data = getValidatedBody<typeof updateWorkNoteSchema>(c);
   const service = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
   const { workNote, embeddingPromise } = await service.update(workId, data, {
@@ -101,7 +101,7 @@ workNotes.put('/:workId', bodyValidator(updateWorkNoteSchema), async (c) => {
  * Automatically deletes all chunks from Vectorize
  */
 workNotes.delete('/:workId', async (c) => {
-  const workId = c.req.param('workId')!;
+  const workId = c.req.param('workId') as string;
   const user = getAuthUser(c);
   const service = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
   const { cleanupPromise } = await service.delete(workId, user.email);
@@ -114,7 +114,7 @@ workNotes.delete('/:workId', async (c) => {
  * GET /work-notes/:workId/todos - Get todos for work note
  */
 workNotes.get('/:workId/todos', async (c) => {
-  const workId = c.req.param('workId')!;
+  const workId = c.req.param('workId') as string;
   const { todos: repository } = c.get('repositories');
   const todos = await repository.findByWorkId(workId);
 
@@ -126,7 +126,7 @@ workNotes.get('/:workId/todos', async (c) => {
  * Re-embeds the parent work note to include new todo in vector store
  */
 workNotes.post('/:workId/todos', bodyValidator(createTodoSchema), async (c) => {
-  const workId = c.req.param('workId')!;
+  const workId = c.req.param('workId') as string;
   const data = getValidatedBody<typeof createTodoSchema>(c);
   const { todos: repository } = c.get('repositories');
   const todo = await repository.create(workId, data);
@@ -144,7 +144,7 @@ workNotes.post('/:workId/todos', bodyValidator(createTodoSchema), async (c) => {
  * Uses Drive folder as source of truth - no individual DB tracking
  */
 workNotes.post('/:workId/files', async (c) => {
-  const workId = c.req.param('workId')!;
+  const workId = c.req.param('workId') as string;
   const user = getAuthUser(c);
 
   // Verify work note exists before accepting upload

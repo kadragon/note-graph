@@ -237,7 +237,7 @@ describe('PGlite smoke test', () => {
     const match = rows.find((row) => row.id === 'wn-fts-cte-test');
     expect(rows.length).toBeGreaterThanOrEqual(1);
     expect(match).toBeDefined();
-    expect(match!.rank).toBeLessThan(0);
+    expect(match?.rank).toBeLessThan(0);
   });
 
   it('FTS query works with buildMeetingMinuteFtsCte', async () => {
@@ -257,6 +257,6 @@ describe('PGlite smoke test', () => {
     const match = rows.find((row) => row.id === 'mm-fts-cte-test');
     expect(rows.length).toBeGreaterThanOrEqual(1);
     expect(match).toBeDefined();
-    expect(match!.rank).toBeLessThan(0);
+    expect(match?.rank).toBeLessThan(0);
   });
 });

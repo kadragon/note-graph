@@ -67,7 +67,7 @@ export default function MeetingMinuteEdit() {
     setSelectedPersonIds(detail.attendees.map((a) => a.personId));
     setKeywords(detail.keywords ?? []);
     setFormInitializedForId(id);
-  }, [detailQuery.data, id]);
+  }, [detailQuery.data, id, formInitializedForId]);
 
   const applyDraft = useCallback(
     (draft: MeetingMinuteFormData) => {

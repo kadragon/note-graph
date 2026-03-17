@@ -121,7 +121,7 @@ meetingMinutes.post('/suggest', bodyValidator(suggestMeetingMinutesSchema), asyn
 });
 
 meetingMinutes.get('/:meetingId', async (c) => {
-  const meetingId = c.req.param('meetingId')!;
+  const meetingId = c.req.param('meetingId') as string;
   const db = c.get('db');
 
   const row = await db.queryOne<{
@@ -192,7 +192,7 @@ meetingMinutes.get('/:meetingId', async (c) => {
 });
 
 meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), async (c) => {
-  const meetingId = c.req.param('meetingId')!;
+  const meetingId = c.req.param('meetingId') as string;
   const data = getValidatedBody<typeof updateMeetingMinuteSchema>(c);
   const db = c.get('db');
 
@@ -275,7 +275,7 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
 });
 
 meetingMinutes.delete('/:meetingId', async (c) => {
-  const meetingId = c.req.param('meetingId')!;
+  const meetingId = c.req.param('meetingId') as string;
   const repository = new MeetingMinuteRepository(c.get('db'));
   await repository.delete(meetingId);
   return c.body(null, 204);

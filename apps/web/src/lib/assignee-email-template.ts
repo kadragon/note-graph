@@ -9,7 +9,7 @@ const DEFAULT_TEMPLATE = `안녕하세요. {{ASSIGNEE_NAME}} {{HONORIFIC}}, 전�
 강동욱 드림.`;
 
 export function resolveHonorific(position?: string | null): string {
-  if (position && position.endsWith('주사')) return '팀장님';
+  if (position?.endsWith('주사')) return '팀장님';
   return '선생님';
 }
 

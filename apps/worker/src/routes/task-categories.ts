@@ -64,7 +64,7 @@ taskCategories.get('/:categoryId', async (c) => {
  * PUT /task-categories/:categoryId - Update task category
  */
 taskCategories.put('/:categoryId', bodyValidator(updateTaskCategorySchema), async (c) => {
-  const categoryId = c.req.param('categoryId')!;
+  const categoryId = c.req.param('categoryId') as string;
   const data = getValidatedBody<typeof updateTaskCategorySchema>(c);
   const { taskCategories: repository } = c.get('repositories');
   const category = await repository.update(categoryId, data);

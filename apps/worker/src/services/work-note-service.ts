@@ -186,7 +186,7 @@ export class WorkNoteService {
 
     // Phase 3: Delete storage objects using previously collected info (no DB queries needed)
     const fileCleanupPromise = fileInfo
-      ? this.fileService!.deleteWorkNoteStorageObjects(fileInfo).catch((error) => {
+      ? this.fileService?.deleteWorkNoteStorageObjects(fileInfo).catch((error) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
 
           console.error('[WorkNoteService] Failed to delete work note files:', {
