@@ -1,12 +1,7 @@
 // Lazy-loaded markdown component for bundle size optimization
 
+import { rehypePlugins, remarkPlugins } from '@web/lib/markdown-plugins';
 import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
-
-const remarkPlugins = [remarkGfm];
-const rehypePlugins = [rehypeSanitize, rehypeHighlight];
 
 interface LazyMarkdownProps {
   children: string;

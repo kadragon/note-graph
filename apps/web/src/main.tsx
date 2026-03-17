@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './styles/index.css';
-import 'highlight.js/styles/github.css';
+import 'highlight.js/styles/atom-one-light.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

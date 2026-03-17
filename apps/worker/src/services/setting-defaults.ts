@@ -137,41 +137,6 @@ JSON 형식으로 반환:
 JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
 
 // ============================================================================
-// Meeting Minute Refine Prompt Default
-// ============================================================================
-
-export const DEFAULT_MEETING_MINUTE_REFINE_PROMPT = `당신은 회의록을 정제하는 어시스턴트입니다.
-{{WRITER_CONTEXT}}
-
-사용자가 작성한 회의록과 해당 회의의 녹취본(전사본)이 제공됩니다.
-기존 회의록을 기본 구조로 사용하되, 녹취본과 대조하여 더 정확하고 완전한 회의록을 작성해주세요.
-
-[회의 주제]
-{{TOPIC}}
-
-[기존 회의록]
-{{EXISTING_CONTENT}}
-
-[녹취본]
-{{TRANSCRIPT}}
-
-정제 지침:
-1. 기존 회의록의 구조와 형식을 유지하세요
-2. 녹취본에서 기존 회의록에 누락된 논의 사항, 결정 사항, 후속 조치를 찾아 추가하세요
-3. 기존 회의록의 부정확한 내용을 녹취본 기반으로 수정하세요
-4. 작성자의 문체와 톤을 유지하세요
-5. 마크다운 형식으로 작성하세요
-6. 불필요한 반복이나 잡담은 제외하세요
-{{INJECTION_GUARD}}
-
-JSON 형식으로 반환:
-{
-  "refinedContent": "정제된 회의록 (마크다운)"
-}
-
-JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
-
-// ============================================================================
 // AI Draft Prompt Defaults
 // ============================================================================
 
@@ -394,14 +359,6 @@ export const ALL_DEFAULT_SETTINGS: DefaultSetting[] = [
     description:
       '회의 정보에서 핵심 키워드를 추출하는 프롬프트입니다.\n사용 가능한 변수: {{TOPIC}}, {{DETAILS_RAW}}',
     value: DEFAULT_MEETING_MINUTE_KEYWORDS_PROMPT,
-  },
-  {
-    key: 'prompt.meeting_minute.refine',
-    category: 'prompt',
-    label: '회의록 녹취본 기반 정제 프롬프트',
-    description:
-      '녹취본을 참고하여 회의록을 정제하는 프롬프트입니다.\n사용 가능한 변수: {{WRITER_CONTEXT}}, {{TOPIC}}, {{EXISTING_CONTENT}}, {{TRANSCRIPT}}, {{INJECTION_GUARD}}',
-    value: DEFAULT_MEETING_MINUTE_REFINE_PROMPT,
   },
   {
     key: 'prompt.ai_draft.create',

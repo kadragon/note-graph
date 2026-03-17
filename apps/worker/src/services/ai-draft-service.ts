@@ -14,7 +14,6 @@ import {
   DEFAULT_AI_DRAFT_CREATE_WITH_CONTEXT_PROMPT,
   DEFAULT_AI_DRAFT_ENHANCE_PROMPT,
   DEFAULT_AI_DRAFT_TODO_SUGGESTIONS_PROMPT,
-  DEFAULT_MEETING_MINUTE_REFINE_PROMPT,
   DEFAULT_WRITER_CONTEXT,
 } from './setting-defaults';
 import type { SettingService } from './setting-service';
@@ -75,8 +74,6 @@ export class AIDraftService {
    * Set to 3000 to allow comprehensive responses for work note drafts
    */
   private static readonly GPT_MAX_COMPLETION_TOKENS = 3000;
-  private static readonly REFINE_MAX_COMPLETION_TOKENS = 16000;
-
   constructor(
     private env: Env,
     private settingService?: SettingService
@@ -523,59 +520,6 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
         : '',
       TODO_DUE_DATE_CONTEXT: this.buildTodoDueDateContextSection(options?.todoDueDateContext),
       DUE_DATE_GUIDANCE: this.buildDueDateDecisionGuidanceSection(),
-      INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
-    });
-  }
-
-  /**
-   * Refine meeting minute content using a transcript
-   *
-   * @param topic - Meeting topic
-   * @param detailsRaw - Existing meeting minute content
-   * @param transcript - Transcript text to compare against
-   * @returns Refined meeting minute content
-   */
-  async refineMeetingMinute(
-    topic: string,
-    detailsRaw: string,
-    transcript: string
-  ): Promise<{ refinedContent: string }> {
-    const prompt = this.constructRefinePrompt(topic, detailsRaw, transcript);
-    const response = await this.callGPT(
-      prompt,
-      '당신은 회의록을 정제하는 어시스턴트입니다.',
-      AIDraftService.REFINE_MAX_COMPLETION_TOKENS
-    );
-
-    try {
-      const parsed = JSON.parse(response) as { refinedContent: string };
-
-      if (!parsed.refinedContent) {
-        throw new Error('Invalid response: missing refinedContent');
-      }
-
-      return { refinedContent: parsed.refinedContent };
-    } catch (error) {
-      console.error('Error parsing refine response:', error, 'Raw response:', response);
-      throw new Error('Failed to parse AI response. Please try again.');
-    }
-  }
-
-  /**
-   * Construct prompt for meeting minute refinement
-   */
-  private constructRefinePrompt(topic: string, detailsRaw: string, transcript: string): string {
-    const template =
-      this.settingService?.getValue(
-        'prompt.meeting_minute.refine',
-        DEFAULT_MEETING_MINUTE_REFINE_PROMPT
-      ) ?? DEFAULT_MEETING_MINUTE_REFINE_PROMPT;
-
-    return this.renderTemplate(template, {
-      WRITER_CONTEXT: this.getWriterContext(),
-      TOPIC: this.wrapUserContent('user_input_topic', topic),
-      EXISTING_CONTENT: this.wrapUserContent('user_input_existing_content', detailsRaw),
-      TRANSCRIPT: this.wrapUserContent('user_input_transcript', transcript),
       INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
     });
   }
