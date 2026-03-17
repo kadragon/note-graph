@@ -233,7 +233,6 @@ export default function MeetingMinuteEdit() {
               onSubmit={() => void handleSubmit()}
               isPending={updateMutation.isPending}
               keywords={keywords}
-              meetingId={id}
             />
           )}
         </CardContent>

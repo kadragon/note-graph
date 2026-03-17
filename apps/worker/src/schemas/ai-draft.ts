@@ -31,12 +31,3 @@ export const enhanceWorkNoteRequestSchema = z.object({
 });
 
 export type EnhanceWorkNoteRequest = z.infer<typeof enhanceWorkNoteRequestSchema>;
-
-/**
- * Refine meeting minute request schema
- */
-export const RefineMeetingMinuteRequestSchema = z.object({
-  transcript: z.string().min(1, 'Transcript is required').max(100000, 'Transcript is too long'),
-});
-
-export type RefineMeetingMinuteRequest = z.infer<typeof RefineMeetingMinuteRequestSchema>;

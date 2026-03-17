@@ -82,9 +82,9 @@
     --chart-3: 275 30% 62%;
     --chart-4: 40 50% 62%;
     --chart-5: 355 40% 62%;
-    /* GitHub code block theme colors */
+    /* Code block theme colors */
     --code-bg: #eef1f6;
-    --code-text: #24292f;
+    --code-text: #383a42;
     --code-inline-bg: rgba(148, 163, 184, 0.15);
   }
 }
@@ -186,9 +186,9 @@
   background: transparent;
 }
 
-/* GitHub theme adjustments for syntax highlighting */
+/* Let atom-one-light theme handle syntax colors — only reset layout */
 :is(.prose, .prose-xs, .prose-sm) .hljs {
-  color: var(--code-text);
+  background: transparent;
 }
 
 /* Improved table styling */

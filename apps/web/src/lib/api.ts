@@ -599,19 +599,6 @@ export class APIClient {
     });
   }
 
-  refineMeetingMinute(meetingId: string, data: { transcript: string }) {
-    return this.request<{ jobId: string }>(`/ai/meeting-minutes/${meetingId}/refine`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  getAiJobStatus(jobId: string) {
-    return this.request<{ status: string; result: unknown; error: string | null }>(
-      `/ai/jobs/${jobId}`
-    );
-  }
-
   suggestMeetingMinutes(data: { query: string; limit?: number }) {
     return this.request<{
       meetingReferences: Array<{
