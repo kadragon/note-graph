@@ -8,6 +8,7 @@ export const cacheHeaders: MiddlewareHandler<AppContext> = async (c, next) => {
   await next();
 
   if (c.req.method !== 'GET') return;
+  if (!c.res.ok) return;
 
   const path = c.req.path.replace(/^\/api/, '');
 
@@ -20,4 +21,6 @@ export const cacheHeaders: MiddlewareHandler<AppContext> = async (c, next) => {
     c.header('Cache-Control', 'private, max-age=10, stale-while-revalidate=60');
     return;
   }
+
+  c.header('Cache-Control', 'no-store');
 };

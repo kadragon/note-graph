@@ -77,6 +77,7 @@ export default function WorkNoteDetail() {
   const [deleteTodoId, setDeleteTodoId] = useState<string | null>(null);
 
   const [aiEmailLoading, setAiEmailLoading] = useState<string | null>(null);
+  const aiEmailLoadingRef = useRef(false);
 
   const [enhanceInputOpen, setEnhanceInputOpen] = useState(false);
   const [enhancePreviewOpen, setEnhancePreviewOpen] = useState(false);
@@ -228,7 +229,8 @@ export default function WorkNoteDetail() {
       position?: string | null,
       dept?: string | null
     ) => {
-      if (!id || aiEmailLoading) return;
+      if (!id || aiEmailLoadingRef.current) return;
+      aiEmailLoadingRef.current = true;
       setAiEmailLoading(personId);
       try {
         const result = await API.generateEmailReply(id, {
@@ -237,11 +239,19 @@ export default function WorkNoteDetail() {
           assigneeDept: dept ?? undefined,
         });
         const text = `제목: ${result.subject}\n\n${result.body}`;
-        await navigator.clipboard.writeText(text);
-        toast({
-          title: 'AI 이메일을 복사했습니다.',
-          description: `${assigneeName} 담당자용 AI 회신 메일을 클립보드에 저장했어요.`,
-        });
+        try {
+          await navigator.clipboard.writeText(text);
+          toast({
+            title: 'AI 이메일을 복사했습니다.',
+            description: `${assigneeName} 담당자용 AI 회신 메일을 클립보드에 저장했어요.`,
+          });
+        } catch {
+          toast({
+            variant: 'destructive',
+            title: '클립보드에 복사할 수 없습니다.',
+            description: 'AI 이메일이 생성되었지만 클립보드에 복사하지 못했습니다.',
+          });
+        }
       } catch (error) {
         console.error('AI email reply failed:', error);
         toast({
@@ -250,10 +260,11 @@ export default function WorkNoteDetail() {
           description: '다시 시도해주세요.',
         });
       } finally {
+        aiEmailLoadingRef.current = false;
         setAiEmailLoading(null);
       }
     },
-    [id, aiEmailLoading, toast]
+    [id, toast]
   );
 
   const createTodoMutation = useMutation({

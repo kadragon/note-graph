@@ -293,7 +293,10 @@ export class AIDraftService {
       ASSIGNEE_DEPT: assignee.dept || '(미지정)',
       HONORIFIC: honorific,
       WORK_NOTE_TITLE: this.wrapUserContent('user_input_work_note_title', workNote.title),
-      WORK_NOTE_CONTENT: this.wrapUserContent('user_input_work_note_content', workNote.contentRaw),
+      WORK_NOTE_CONTENT: this.wrapUserContent(
+        'user_input_work_note_content',
+        workNote.contentRaw || '(내용 없음)'
+      ),
       TODOS_SECTION: todosSection,
       INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
     });
