@@ -102,7 +102,6 @@ export class APIClient {
 
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, {
-        cache: 'no-store',
         ...options,
         headers,
       });
@@ -788,6 +787,17 @@ export class APIClient {
     }
 
     return response.json() as Promise<EnhanceWorkNoteResponse>;
+  }
+
+  // AI Email Reply
+  generateEmailReply(
+    workId: string,
+    data: { assigneeName: string; assigneePosition?: string; assigneeDept?: string }
+  ) {
+    return this.request<{ subject: string; body: string }>(`/ai/work-notes/${workId}/email-reply`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // PDF Jobs

@@ -31,3 +31,14 @@ export const enhanceWorkNoteRequestSchema = z.object({
 });
 
 export type EnhanceWorkNoteRequest = z.infer<typeof enhanceWorkNoteRequestSchema>;
+
+/**
+ * Email reply generation request schema
+ */
+export const EmailReplyRequestSchema = z.object({
+  assigneeName: z.string().min(1),
+  assigneePosition: z.string().optional(),
+  assigneeDept: z.string().optional(),
+});
+
+export type EmailReplyRequest = z.infer<typeof EmailReplyRequestSchema>;
