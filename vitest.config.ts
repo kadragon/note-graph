@@ -48,9 +48,7 @@ export default defineConfig({
           exclude: ["tests/integration/supabase-*.test.ts"],
           setupFiles: ["./tests/pg-setup.ts"],
           pool: "forks",
-          poolOptions: {
-            forks: { maxForks: 4 },
-          },
+          maxWorkers: 4,
           globals: true,
         },
       },
@@ -60,6 +58,7 @@ export default defineConfig({
           name: "worker-pure",
           include: ["tests/unit/**/*.test.ts", "tests/search.test.ts"],
           exclude: [...dbUnitTests, "tests/integration/supabase-*.test.ts"],
+          maxWorkers: 4,
           globals: true,
         },
       },
