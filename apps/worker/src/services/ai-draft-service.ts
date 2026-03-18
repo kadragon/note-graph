@@ -98,19 +98,18 @@ export class AIDraftService {
     );
   }
 
+  private getModelFromConfig(configKey: string, envVar: string): string {
+    return this.settingService?.getConfigOrEnv(configKey, envVar) ?? envVar;
+  }
+
   private getModel(): string {
-    return (
-      this.settingService?.getConfigOrEnv('config.openai_model_chat', this.env.OPENAI_MODEL_CHAT) ??
-      this.env.OPENAI_MODEL_CHAT
-    );
+    return this.getModelFromConfig('config.openai_model_chat', this.env.OPENAI_MODEL_CHAT);
   }
 
   private getLightweightModel(): string {
-    return (
-      this.settingService?.getConfigOrEnv(
-        'config.openai_model_lightweight',
-        this.env.OPENAI_MODEL_LIGHTWEIGHT
-      ) ?? this.env.OPENAI_MODEL_LIGHTWEIGHT
+    return this.getModelFromConfig(
+      'config.openai_model_lightweight',
+      this.env.OPENAI_MODEL_LIGHTWEIGHT
     );
   }
 
