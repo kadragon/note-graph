@@ -1,11 +1,14 @@
 import { AssigneeSelector } from '@web/components/assignee-selector';
 import { DraftEditorForm } from '@web/components/draft-editor-form';
+import { StepProgressIndicator } from '@web/components/step-progress-indicator';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { Label } from '@web/components/ui/label';
 import { Textarea } from '@web/components/ui/textarea';
 import { useGenerateDraftWithSimilar } from '@web/hooks/use-ai-draft';
 import { useAIDraftForm } from '@web/hooks/use-ai-draft-form';
+import type { ProgressStep } from '@web/hooks/use-step-progress';
+import { useStepProgress } from '@web/hooks/use-step-progress';
 import { useToast } from '@web/hooks/use-toast';
 import { ArrowLeft, FileEdit, Sparkles } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
@@ -20,6 +23,13 @@ export default function WorkNoteCreateFromText() {
 
   const generateMutation = useGenerateDraftWithSimilar();
   const { toast } = useToast();
+
+  const textSteps: ProgressStep[] = [
+    { label: '유사 업무노트 및 회의록 검색 중...', durationMs: 3000 },
+    { label: 'AI 초안 생성 중...', durationMs: 0 },
+  ];
+
+  const progress = useStepProgress({ steps: textSteps, isActive: generateMutation.isPending });
 
   const { state, actions, data } = useAIDraftForm({
     onWorkNoteCreated: (workNote) => {
@@ -111,6 +121,13 @@ export default function WorkNoteCreateFromText() {
                     />
                   )}
                 </div>
+
+                {generateMutation.isPending && (
+                  <StepProgressIndicator
+                    steps={progress.steps}
+                    currentStepIndex={progress.currentStepIndex}
+                  />
+                )}
 
                 <div className="flex gap-2 justify-end">
                   <Button type="button" variant="outline" onClick={handleCancel}>
