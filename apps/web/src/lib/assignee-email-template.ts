@@ -1,6 +1,6 @@
 // Trace: spec_id=SPEC-worknote-email-copy-001 task_id=TASK-0071
 
-const DEFAULT_TEMPLATE = `안녕하세요. {{ASSIGNEE_NAME}} {{HONORIFIC}}, 전산정보원 강동욱입니다.
+const DEFAULT_TEMPLATE = `안녕하세요. {{ASSIGNEE_NAME}} {{HONORIFIC}}, 정보전산원 강동욱입니다.
 
 {{WORK_NOTE_TITLE}} 관련하여,
 
