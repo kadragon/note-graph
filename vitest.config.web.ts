@@ -21,9 +21,7 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**'],
     setupFiles: ['./apps/web/src/test/setup.tsx'],
     pool: 'threads',
-    poolOptions: {
-      threads: { maxThreads: 6 },
-    },
+    maxWorkers: 6,
     globals: true,
   },
 });

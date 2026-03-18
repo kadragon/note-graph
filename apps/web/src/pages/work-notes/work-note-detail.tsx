@@ -76,6 +76,9 @@ export default function WorkNoteDetail() {
   const [editTodoDialogOpen, setEditTodoDialogOpen] = useState(false);
   const [deleteTodoId, setDeleteTodoId] = useState<string | null>(null);
 
+  const [aiEmailLoading, setAiEmailLoading] = useState<string | null>(null);
+  const aiEmailLoadingRef = useRef(false);
+
   const [enhanceInputOpen, setEnhanceInputOpen] = useState(false);
   const [enhancePreviewOpen, setEnhancePreviewOpen] = useState(false);
   const [enhanceResponse, setEnhanceResponse] = useState<EnhanceWorkNoteResponse | null>(null);
@@ -217,6 +220,51 @@ export default function WorkNoteDetail() {
       }
     },
     [toast, workNote?.title, emailTemplateSetting?.value, templateLoading, templateError]
+  );
+
+  const handleAIEmailReply = useCallback(
+    async (
+      personId: string,
+      assigneeName: string,
+      position?: string | null,
+      dept?: string | null
+    ) => {
+      if (!id || aiEmailLoadingRef.current) return;
+      aiEmailLoadingRef.current = true;
+      setAiEmailLoading(personId);
+      try {
+        const result = await API.generateEmailReply(id, {
+          assigneeName,
+          assigneePosition: position ?? undefined,
+          assigneeDept: dept ?? undefined,
+        });
+        const text = `제목: ${result.subject}\n\n${result.body}`;
+        try {
+          await navigator.clipboard.writeText(text);
+          toast({
+            title: 'AI 이메일을 복사했습니다.',
+            description: `${assigneeName} 담당자용 AI 회신 메일을 클립보드에 저장했어요.`,
+          });
+        } catch {
+          toast({
+            variant: 'destructive',
+            title: '클립보드에 복사할 수 없습니다.',
+            description: 'AI 이메일이 생성되었지만 클립보드에 복사하지 못했습니다.',
+          });
+        }
+      } catch (error) {
+        console.error('AI email reply failed:', error);
+        toast({
+          variant: 'destructive',
+          title: 'AI 이메일 생성에 실패했습니다.',
+          description: '다시 시도해주세요.',
+        });
+      } finally {
+        aiEmailLoadingRef.current = false;
+        setAiEmailLoading(null);
+      }
+    },
+    [id, toast]
   );
 
   const createTodoMutation = useMutation({
@@ -593,6 +641,29 @@ export default function WorkNoteDetail() {
                           }
                         >
                           <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          aria-label="AI 이메일 생성"
+                          title="AI 이메일 생성"
+                          disabled={aiEmailLoading !== null}
+                          onClick={() =>
+                            handleAIEmailReply(
+                              person.personId,
+                              person.personName,
+                              person.currentPosition,
+                              person.currentDept
+                            )
+                          }
+                        >
+                          {aiEmailLoading === person.personId ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5" />
+                          )}
                         </Button>
                       </div>
                     ))

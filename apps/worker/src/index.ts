@@ -8,6 +8,7 @@ import { AuthenticationError } from '@shared/types/auth';
 import { Hono } from 'hono';
 import { getMeHandler } from './handlers/auth';
 import { authMiddleware } from './middleware/auth';
+import { cacheHeaders } from './middleware/cache-headers';
 import { repositoriesMiddleware } from './middleware/repositories';
 import admin from './routes/admin';
 import aiDraft from './routes/ai-draft';
@@ -56,6 +57,9 @@ const api = new Hono<AppContext>().basePath('/api');
 
 // Inject repositories for all API routes
 api.use('*', repositoriesMiddleware);
+
+// Add Cache-Control headers to GET responses
+api.use('*', cacheHeaders);
 
 // API info endpoint
 api.get('/', (c) => {

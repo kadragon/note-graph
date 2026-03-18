@@ -14,6 +14,7 @@ import {
   DEFAULT_AI_DRAFT_CREATE_WITH_CONTEXT_PROMPT,
   DEFAULT_AI_DRAFT_ENHANCE_PROMPT,
   DEFAULT_AI_DRAFT_TODO_SUGGESTIONS_PROMPT,
+  DEFAULT_AI_EMAIL_REPLY_PROMPT,
   DEFAULT_WRITER_CONTEXT,
 } from './setting-defaults';
 import type { SettingService } from './setting-service';
@@ -43,6 +44,17 @@ interface RawWorkNoteDraft {
 
 interface TodoDueDateContextOption {
   todoDueDateContext?: OpenTodoDueDateContextForAI;
+}
+
+export interface AIEmailReplyResult {
+  subject: string;
+  body: string;
+}
+
+interface EmailReplyAssignee {
+  name: string;
+  position?: string;
+  dept?: string;
 }
 
 interface DraftGenerationOptions extends TodoDueDateContextOption {
@@ -212,6 +224,82 @@ export class AIDraftService {
       console.error('Error parsing todo suggestions:', error);
       throw new Error('Failed to parse AI response. Please try again.');
     }
+  }
+
+  /**
+   * Generate email reply for a work note assignee
+   */
+  async generateEmailReply(
+    workNote: WorkNote,
+    todos: Array<{
+      title: string;
+      description?: string | null;
+      status: string;
+      dueDate?: string | null;
+    }>,
+    assignee: EmailReplyAssignee
+  ): Promise<AIEmailReplyResult> {
+    const prompt = this.constructEmailReplyPrompt(workNote, todos, assignee);
+    const response = await this.callGPT(
+      prompt,
+      '당신은 한국 공공기관에서 업무 이메일을 작성하는 어시스턴트입니다.',
+      1500
+    );
+
+    try {
+      const parsed = JSON.parse(response) as AIEmailReplyResult;
+      if (!parsed.subject || !parsed.body) {
+        throw new Error('Invalid response: missing subject or body');
+      }
+      return { subject: parsed.subject, body: parsed.body };
+    } catch (error) {
+      console.error('Error parsing email reply response:', error);
+      throw new Error('Failed to parse AI response. Please try again.');
+    }
+  }
+
+  private constructEmailReplyPrompt(
+    workNote: WorkNote,
+    todos: Array<{
+      title: string;
+      description?: string | null;
+      status: string;
+      dueDate?: string | null;
+    }>,
+    assignee: EmailReplyAssignee
+  ): string {
+    const template =
+      this.settingService?.getValue('prompt.ai_email_reply', DEFAULT_AI_EMAIL_REPLY_PROMPT) ??
+      DEFAULT_AI_EMAIL_REPLY_PROMPT;
+
+    const honorific = assignee.position?.endsWith('주사') ? '팀장님' : '선생님';
+
+    // Format todos: completed first, then in-progress
+    const sortedTodos = [...todos].sort((a, b) => {
+      if (a.status === '완료' && b.status !== '완료') return -1;
+      if (a.status !== '완료' && b.status === '완료') return 1;
+      return 0;
+    });
+    const todosRaw = sortedTodos.map((todo) => this.formatExistingTodo(todo)).join('\n');
+    const todosSection =
+      todos.length > 0
+        ? `\n\n[할일 목록]\n${this.wrapUserContent('user_input_todos', todosRaw)}`
+        : '';
+
+    return this.renderTemplate(template, {
+      WRITER_CONTEXT: this.getWriterContext(),
+      ASSIGNEE_NAME: assignee.name,
+      ASSIGNEE_POSITION: assignee.position || '(미지정)',
+      ASSIGNEE_DEPT: assignee.dept || '(미지정)',
+      HONORIFIC: honorific,
+      WORK_NOTE_TITLE: this.wrapUserContent('user_input_work_note_title', workNote.title),
+      WORK_NOTE_CONTENT: this.wrapUserContent(
+        'user_input_work_note_content',
+        workNote.contentRaw || '(내용 없음)'
+      ),
+      TODOS_SECTION: todosSection,
+      INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
+    });
   }
 
   /**

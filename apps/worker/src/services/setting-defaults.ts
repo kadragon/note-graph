@@ -312,6 +312,43 @@ JSON 배열로 반환:
 JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
 
 // ============================================================================
+// AI Email Reply Prompt Default
+// ============================================================================
+
+export const DEFAULT_AI_EMAIL_REPLY_PROMPT = `{{WRITER_CONTEXT}}
+
+다음 업무노트와 할일 정보를 바탕으로, 담당자에게 보내는 업무 이메일 회신을 작성해주세요.
+
+[담당자 정보]
+이름: {{ASSIGNEE_NAME}}
+직위: {{ASSIGNEE_POSITION}}
+부서: {{ASSIGNEE_DEPT}}
+경칭: {{HONORIFIC}}
+
+[업무노트]
+제목: {{WORK_NOTE_TITLE}}
+내용:
+{{WORK_NOTE_CONTENT}}
+{{TODOS_SECTION}}
+
+작성 규칙:
+1. 비전산직 공무원이 이해할 수 있도록 기술 용어를 배제하세요.
+2. 공문서 어투를 사용하되, 이메일에 적합한 자연스러운 문체를 유지하세요.
+3. 상황(처리 완료 안내, 진행 상황 안내, 자료/협조 요청, 확인 요청 등)에 맞는 톤과 내용을 자동으로 판단하세요.
+4. 담당자 경칭은 "{{HONORIFIC}}"을 사용하세요.
+5. subject(제목)는 "[업무명] 관련 안내" 형태로 간결하게 작성하세요.
+6. body(본문)는 인사 → 본문 → 마무리 순서로 구성하세요.
+{{INJECTION_GUARD}}
+
+JSON 형식으로 반환:
+{
+  "subject": "이메일 제목",
+  "body": "이메일 본문"
+}
+
+JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
+
+// ============================================================================
 // Template Defaults
 // ============================================================================
 
@@ -391,6 +428,16 @@ export const ALL_DEFAULT_SETTINGS: DefaultSetting[] = [
     description:
       '업무노트 기반으로 할 일을 제안하는 프롬프트입니다.\n사용 가능한 변수: {{WRITER_CONTEXT}}, {{WORK_NOTE_TITLE}}, {{WORK_NOTE_CONTENT}}, {{WORK_NOTE_CATEGORY}}, {{ADDITIONAL_CONTEXT}}, {{TODO_DUE_DATE_CONTEXT}}, {{DUE_DATE_GUIDANCE}}, {{INJECTION_GUARD}}',
     value: DEFAULT_AI_DRAFT_TODO_SUGGESTIONS_PROMPT,
+  },
+
+  // AI Email Reply
+  {
+    key: 'prompt.ai_email_reply',
+    category: 'prompt',
+    label: 'AI 이메일 회신 생성 프롬프트',
+    description:
+      'AI가 업무노트 기반으로 이메일 회신을 생성하는 프롬프트입니다.\n사용 가능한 변수: {{WRITER_CONTEXT}}, {{ASSIGNEE_NAME}}, {{ASSIGNEE_POSITION}}, {{ASSIGNEE_DEPT}}, {{HONORIFIC}}, {{WORK_NOTE_TITLE}}, {{WORK_NOTE_CONTENT}}, {{TODOS_SECTION}}, {{INJECTION_GUARD}}',
+    value: DEFAULT_AI_EMAIL_REPLY_PROMPT,
   },
 
   // Daily Report

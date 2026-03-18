@@ -9,8 +9,13 @@
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
-    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/fonts-archive/D2Coding/subsets/D2Coding-dynamic-subset.css" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" media="print" onload="this.media='all'" />
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/fonts-archive/D2Coding/subsets/D2Coding-dynamic-subset.css" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+      <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/fonts-archive/D2Coding/subsets/D2Coding-dynamic-subset.css" />
+    </noscript>
   </head>
   <body>
     <div id="root"></div>

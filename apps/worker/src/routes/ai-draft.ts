@@ -6,6 +6,7 @@
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import {
   DraftFromTextRequestSchema,
+  EmailReplyRequestSchema,
   enhanceWorkNoteRequestSchema,
   TodoSuggestionsRequestSchema,
 } from '../schemas/ai-draft';
@@ -250,6 +251,43 @@ app.post('/work-notes/:workId/enhance', async (c) => {
     })),
     references,
   });
+});
+
+/**
+ * POST /ai/work-notes/:workId/email-reply
+ * Generate AI email reply for a work note assignee
+ */
+app.post('/work-notes/:workId/email-reply', bodyValidator(EmailReplyRequestSchema), async (c) => {
+  const workId = c.req.param('workId') as string;
+  const body = getValidatedBody<typeof EmailReplyRequestSchema>(c);
+  const { todos: todoRepository } = c.get('repositories');
+
+  const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
+
+  const [workNote, todos] = await Promise.all([
+    workNoteService.findById(workId),
+    todoRepository.findByWorkId(workId),
+  ]);
+
+  if (!workNote) {
+    throw new NotFoundError('Work note', workId);
+  }
+
+  const todoReferences = todos.map((todo) => ({
+    title: todo.title,
+    description: todo.description,
+    status: todo.status,
+    dueDate: todo.dueDate,
+  }));
+
+  const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
+  const result = await aiDraftService.generateEmailReply(workNote, todoReferences, {
+    name: body.assigneeName,
+    position: body.assigneePosition,
+    dept: body.assigneeDept,
+  });
+
+  return c.json(result);
 });
 
 export default app;

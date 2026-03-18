@@ -40,6 +40,23 @@ export const pwaOptions: Partial<VitePWAOptions> = {
     navigateFallbackDenylist: [/^\/api\//, /^\/health$/],
     runtimeCaching: [
       {
+        urlPattern: ({ url }) =>
+          [
+            '/api/persons',
+            '/api/departments',
+            '/api/task-categories',
+            '/api/work-note-groups',
+          ].includes(url.pathname),
+        handler: 'StaleWhileRevalidate',
+        options: {
+          cacheName: 'reference-data',
+          expiration: {
+            maxEntries: 10,
+            maxAgeSeconds: 60 * 60,
+          },
+        },
+      },
+      {
         urlPattern: ({ url }) => url.pathname.startsWith('/api'),
         handler: 'NetworkOnly',
       },
