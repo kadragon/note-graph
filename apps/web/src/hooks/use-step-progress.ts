@@ -28,8 +28,13 @@ export function useStepProgress({ steps, isActive }: UseStepProgressOptions) {
       return;
     }
 
+    if (currentStepIndex >= steps.length) {
+      setCurrentStepIndex(0);
+      return;
+    }
+
     const step = steps[currentStepIndex];
-    if (!step || step.durationMs === 0) return;
+    if (step.durationMs === 0) return;
 
     timerRef.current = setTimeout(() => {
       setCurrentStepIndex((prev) => Math.min(prev + 1, steps.length - 1));

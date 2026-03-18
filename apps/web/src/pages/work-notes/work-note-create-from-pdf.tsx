@@ -15,6 +15,12 @@ import { ArrowLeft, FileText } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const pdfSteps: ProgressStep[] = [
+  { label: 'PDF 텍스트 추출 중...', durationMs: 2000 },
+  { label: '유사 업무노트 검색 중...', durationMs: 3000 },
+  { label: 'AI 초안 생성 중...', durationMs: 0 },
+];
+
 export default function WorkNoteCreateFromPDF() {
   const navigate = useNavigate();
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -25,12 +31,6 @@ export default function WorkNoteCreateFromPDF() {
   const uploadMutation = useUploadPDF();
   const { data: job } = usePDFJob(currentJobId, !!currentJobId && uploadMutation.isSuccess);
   const { toast } = useToast();
-
-  const pdfSteps: ProgressStep[] = [
-    { label: 'PDF 텍스트 추출 중...', durationMs: 2000 },
-    { label: '유사 업무노트 검색 중...', durationMs: 3000 },
-    { label: 'AI 초안 생성 중...', durationMs: 0 },
-  ];
 
   const isProcessing =
     !!currentJobId && (job?.status === 'PENDING' || job?.status === 'PROCESSING');

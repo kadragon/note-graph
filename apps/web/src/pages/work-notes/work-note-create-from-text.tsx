@@ -14,6 +14,11 @@ import { ArrowLeft, FileEdit, Sparkles } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const textSteps: ProgressStep[] = [
+  { label: '유사 업무노트 및 회의록 검색 중...', durationMs: 3000 },
+  { label: 'AI 초안 생성 중...', durationMs: 0 },
+];
+
 export default function WorkNoteCreateFromText() {
   const navigate = useNavigate();
   const [inputText, setInputText] = useState('');
@@ -23,11 +28,6 @@ export default function WorkNoteCreateFromText() {
 
   const generateMutation = useGenerateDraftWithSimilar();
   const { toast } = useToast();
-
-  const textSteps: ProgressStep[] = [
-    { label: '유사 업무노트 및 회의록 검색 중...', durationMs: 3000 },
-    { label: 'AI 초안 생성 중...', durationMs: 0 },
-  ];
 
   const progress = useStepProgress({ steps: textSteps, isActive: generateMutation.isPending });
 
