@@ -1,5 +1,6 @@
 // Trace: TASK-D.1
 
+import { StepProgressIndicator } from '@web/components/step-progress-indicator';
 import { Button } from '@web/components/ui/button';
 import {
   Dialog,
@@ -12,12 +13,14 @@ import { Input } from '@web/components/ui/input';
 import { Label } from '@web/components/ui/label';
 import { Textarea } from '@web/components/ui/textarea';
 import { useEnhanceWorkNote } from '@web/hooks/use-enhance-work-note';
+import type { ProgressStep } from '@web/hooks/use-step-progress';
+import { useStepProgress } from '@web/hooks/use-step-progress';
 import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
 import { FILE_UPLOAD_CONFIG } from '@web/lib/config';
 import type { EnhanceWorkNoteResponse } from '@web/types/api';
 import { Paperclip, Sparkles, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface EnhanceWorkNoteDialogProps {
   workId: string;
@@ -44,6 +47,23 @@ export function EnhanceWorkNoteDialog({
 
   const enhanceMutation = useEnhanceWorkNote();
   const { toast } = useToast();
+
+  const enhanceSteps: ProgressStep[] = useMemo(
+    () =>
+      selectedFile
+        ? [
+            { label: '파일 분석 중...', durationMs: 2000 },
+            { label: '유사 업무노트 검색 중...', durationMs: 3000 },
+            { label: 'AI 업데이트 생성 중...', durationMs: 0 },
+          ]
+        : [
+            { label: '유사 업무노트 검색 중...', durationMs: 3000 },
+            { label: 'AI 업데이트 생성 중...', durationMs: 0 },
+          ],
+    [selectedFile]
+  );
+
+  const progress = useStepProgress({ steps: enhanceSteps, isActive: enhanceMutation.isPending });
 
   const handleGenerate = async () => {
     if (!newContent.trim() && !selectedFile) {
@@ -188,6 +208,13 @@ export function EnhanceWorkNoteDialog({
               PDF, TXT, MD 파일 지원 (최대 {FILE_UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB)
             </p>
           </div>
+
+          {enhanceMutation.isPending && (
+            <StepProgressIndicator
+              steps={progress.steps}
+              currentStepIndex={progress.currentStepIndex}
+            />
+          )}
 
           <div className="flex justify-end gap-2">
             <Button

@@ -1,16 +1,25 @@
 import { DraftEditorForm } from '@web/components/draft-editor-form';
+import { StepProgressIndicator } from '@web/components/step-progress-indicator';
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { useAIDraftForm } from '@web/hooks/use-ai-draft-form';
 import { usePDFJob, useUploadPDF } from '@web/hooks/use-pdf';
+import type { ProgressStep } from '@web/hooks/use-step-progress';
+import { useStepProgress } from '@web/hooks/use-step-progress';
 import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
 import { autoAttachPdf } from '@web/lib/auto-attach-pdf';
 import { FileDropzone } from '@web/pages/pdf-upload/components/file-dropzone';
-import { ArrowLeft, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, FileText } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+const pdfSteps: ProgressStep[] = [
+  { label: 'PDF 텍스트 추출 중...', durationMs: 2000 },
+  { label: '유사 업무노트 검색 중...', durationMs: 3000 },
+  { label: 'AI 초안 생성 중...', durationMs: 0 },
+];
 
 export default function WorkNoteCreateFromPDF() {
   const navigate = useNavigate();
@@ -22,6 +31,10 @@ export default function WorkNoteCreateFromPDF() {
   const uploadMutation = useUploadPDF();
   const { data: job } = usePDFJob(currentJobId, !!currentJobId && uploadMutation.isSuccess);
   const { toast } = useToast();
+
+  const isProcessing =
+    !!currentJobId && (job?.status === 'PENDING' || job?.status === 'PROCESSING');
+  const progress = useStepProgress({ steps: pdfSteps, isActive: isProcessing });
 
   const { state, actions, data } = useAIDraftForm({
     onWorkNoteCreated: async (workNote) => {
@@ -122,15 +135,14 @@ export default function WorkNoteCreateFromPDF() {
                           {(uploadedFile.size / 1024).toFixed(2)} KB
                         </p>
                       </div>
-                      {job?.status === 'PENDING' || job?.status === 'PROCESSING' ? (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          처리 중
-                        </Badge>
-                      ) : job?.status === 'ERROR' ? (
-                        <Badge variant="destructive">실패</Badge>
-                      ) : null}
+                      {job?.status === 'ERROR' ? <Badge variant="destructive">실패</Badge> : null}
                     </div>
+                    {isProcessing && (
+                      <StepProgressIndicator
+                        steps={progress.steps}
+                        currentStepIndex={progress.currentStepIndex}
+                      />
+                    )}
                     {job?.errorMessage && (
                       <p className="text-sm text-destructive mt-2">{job.errorMessage}</p>
                     )}
