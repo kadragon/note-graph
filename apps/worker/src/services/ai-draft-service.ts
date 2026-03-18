@@ -105,6 +105,15 @@ export class AIDraftService {
     );
   }
 
+  private getLightweightModel(): string {
+    return (
+      this.settingService?.getConfigOrEnv(
+        'config.openai_model_lightweight',
+        this.env.OPENAI_MODEL_LIGHTWEIGHT
+      ) ?? this.env.OPENAI_MODEL_LIGHTWEIGHT
+    );
+  }
+
   private renderTemplate(template: string, vars: Record<string, string>): string {
     const result = template.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] ?? match);
 
@@ -243,7 +252,8 @@ export class AIDraftService {
     const response = await this.callGPT(
       prompt,
       '당신은 한국 공공기관에서 업무 이메일을 작성하는 어시스턴트입니다.',
-      1500
+      800,
+      this.getLightweightModel()
     );
 
     try {
@@ -642,7 +652,8 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
   private async callGPT(
     prompt: string,
     systemRole?: string,
-    maxCompletionTokens?: number
+    maxCompletionTokens?: number,
+    model?: string
   ): Promise<string> {
     const messages = systemRole
       ? [
@@ -653,7 +664,7 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
 
     return callOpenAIChat(this.env, {
       messages,
-      model: this.getModel(),
+      model: model ?? this.getModel(),
       maxCompletionTokens: maxCompletionTokens ?? AIDraftService.GPT_MAX_COMPLETION_TOKENS,
       responseFormat: { type: 'json_object' },
     });
