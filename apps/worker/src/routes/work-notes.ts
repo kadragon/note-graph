@@ -24,7 +24,6 @@ import type { AppContext, AppVariables } from '../types/context';
 import { getR2Bucket } from '../utils/r2-access';
 import { missingParamJson, notFoundJson } from './_shared/route-responses';
 import { createProtectedRouter } from './_shared/router-factory';
-import { triggerReembed } from './_shared/trigger-reembed';
 
 type WorkNotesContext = {
   Bindings: AppContext['Bindings'];
@@ -130,11 +129,6 @@ workNotes.post('/:workId/todos', bodyValidator(createTodoSchema), async (c) => {
   const data = getValidatedBody<typeof createTodoSchema>(c);
   const { todos: repository } = c.get('repositories');
   const todo = await repository.create(workId, data);
-
-  // Re-embed work note to include new todo in vector store (async, non-blocking)
-  c.executionCtx.waitUntil(
-    triggerReembed(c.get('db'), c.env, workId, todo.todoId, 'creation', c.get('settingService'))
-  );
 
   return c.json(todo, 201);
 });

@@ -520,6 +520,49 @@ describe('WorkNoteService.delete', () => {
   });
 });
 
+describe('WorkNoteService.update passes previousWorkNote to repository', () => {
+  it('passes previousWorkNote to repository.update when needsReEmbedding', async () => {
+    const service = new WorkNoteService(dummyDb, dummyEnv);
+
+    const previousWorkNote: WorkNote = {
+      workId: 'WORK-1',
+      title: 'Old Title',
+      contentRaw: 'Old Content',
+      category: null,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      embeddedAt: null,
+    };
+    const updatedWorkNote: WorkNote = {
+      ...previousWorkNote,
+      title: 'New Title',
+      updatedAt: '2025-01-02T00:00:00.000Z',
+    };
+
+    const findById = vi.fn().mockResolvedValue(previousWorkNote);
+    const repositoryUpdate = vi.fn().mockResolvedValue(updatedWorkNote);
+    const estimateChunkCount = vi.fn().mockReturnValue(1);
+    const getMaxKnownChunkCount = vi.fn().mockResolvedValue(1);
+
+    (service as unknown as { repository: unknown }).repository = {
+      findById,
+      update: repositoryUpdate,
+    };
+    (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = {
+      estimateChunkCount,
+      getMaxKnownChunkCount,
+    };
+
+    await service.update('WORK-1', { title: 'New Title' }, { skipEmbedding: true });
+
+    expect(repositoryUpdate).toHaveBeenCalledWith(
+      'WORK-1',
+      { title: 'New Title' },
+      previousWorkNote
+    );
+  });
+});
+
 describe('WorkNoteService embedding guards and deterministic stale deletion', () => {
   it('deletes stale chunk IDs by deterministic range', async () => {
     const service = new WorkNoteService(dummyDb, dummyEnv);
