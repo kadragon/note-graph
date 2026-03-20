@@ -538,8 +538,12 @@ export class WorkNoteRepository {
   /**
    * Update work note and create new version with automatic pruning
    */
-  async update(workId: string, data: UpdateWorkNoteInput): Promise<WorkNote> {
-    const existing = await this.findById(workId);
+  async update(
+    workId: string,
+    data: UpdateWorkNoteInput,
+    previousWorkNote?: WorkNote
+  ): Promise<WorkNote> {
+    const existing = previousWorkNote ?? (await this.findById(workId));
     if (!existing) {
       throw new NotFoundError('Work note', workId);
     }

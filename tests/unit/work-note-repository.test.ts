@@ -4,7 +4,7 @@
 import { WorkNoteRepository } from '@worker/repositories/work-note-repository';
 import type { CreateWorkNoteInput, UpdateWorkNoteInput } from '@worker/schemas/work-note';
 import { NotFoundError } from '@worker/types/errors';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { pgCleanupAll } from '../helpers/pg-test-utils';
 import { pglite, testPgDb } from '../pg-setup';
 
@@ -438,6 +438,21 @@ describe('WorkNoteRepository', () => {
 
       const updatedNote = await repository.findById(existingWorkId);
       expect(updatedNote?.updatedAt).not.toBe(forcedUpdatedAt);
+    });
+
+    it('should skip internal findById when previousWorkNote is provided', async () => {
+      const findByIdSpy = vi.spyOn(repository, 'findById');
+
+      const existing = await repository.findById(existingWorkId);
+      findByIdSpy.mockClear();
+
+      const result = await repository.update(existingWorkId, { title: 'Via Previous' }, existing!);
+
+      expect(findByIdSpy).not.toHaveBeenCalled();
+      expect(result.title).toBe('Via Previous');
+
+      const found = await repository.findById(existingWorkId);
+      expect(found?.title).toBe('Via Previous');
     });
 
     it('should handle empty persons array', async () => {

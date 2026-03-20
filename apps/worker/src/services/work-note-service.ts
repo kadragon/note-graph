@@ -126,8 +126,9 @@ export class WorkNoteService {
       data.persons !== undefined;
 
     let maxKnownChunkCount = 0;
+    let previousWorkNote: WorkNote | undefined;
     if (needsReEmbedding) {
-      const previousWorkNote = await this.repository.findById(workId);
+      previousWorkNote = (await this.repository.findById(workId)) ?? undefined;
       const previousChunkCount = previousWorkNote
         ? this.embeddingProcessor.estimateChunkCount(
             workId,
@@ -141,7 +142,7 @@ export class WorkNoteService {
       );
     }
 
-    const workNote = await this.repository.update(workId, data);
+    const workNote = await this.repository.update(workId, data, previousWorkNote);
 
     if (!needsReEmbedding) {
       return { workNote };
@@ -334,7 +335,7 @@ export class WorkNoteService {
 
   /**
    * Common chunking and embedding logic
-   * Shared between create, update, and reembedOnly operations
+   * Shared between create and update operations
    *
    * @param workNote - Work note to chunk and embed
    * @param personIds - Person IDs associated with the work note
@@ -431,46 +432,6 @@ export class WorkNoteService {
     }
 
     await this.embeddingProcessor.deleteChunkRange(workId, 0, maxChunkCount);
-  }
-
-  /**
-   * Re-embed work note without modifying any database fields
-   * Used when todo changes or other non-content updates require vector store refresh
-   *
-   * This method:
-   * - Reads current work note data from DB
-   * - Re-chunks and re-embeds into vector store
-   * - Updates only embedded_at timestamp
-   * - Does NOT create version history or modify updated_at
-   *
-   * @param workId - Work note ID to re-embed
-   */
-  async reembedOnly(workId: string): Promise<void> {
-    const workNote = await this.repository.findById(workId);
-
-    if (!workNote) {
-      throw new Error(`Work note ${workId} not found`);
-    }
-
-    // Get work note details for person_ids
-    const details = await this.repository.findByIdWithDetails(workId);
-    const personIds = details?.persons.map((p) => p.personId) || [];
-    const currentChunkCount = this.embeddingProcessor.estimateChunkCount(
-      workId,
-      workNote.title,
-      workNote.contentRaw
-    );
-    const maxKnownChunkCount = await this.embeddingProcessor.getMaxKnownChunkCount(
-      workId,
-      currentChunkCount
-    );
-
-    // Use shared chunking and embedding logic with stale chunk deletion
-    await this.performChunkingAndEmbedding(workNote, personIds, {
-      deleteStaleChunks: true,
-      previousChunkCount: maxKnownChunkCount,
-      expectedUpdatedAt: workNote.updatedAt,
-    });
   }
 
   private async ensureEmbeddingTargetIsCurrent(
