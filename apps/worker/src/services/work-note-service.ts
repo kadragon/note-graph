@@ -119,20 +119,31 @@ export class WorkNoteService {
     data: UpdateWorkNoteInput,
     options?: { skipEmbedding?: boolean }
   ): Promise<{ workNote: WorkNote; embeddingPromise?: Promise<void> }> {
-    const previousWorkNote = await this.repository.findById(workId);
-    const previousChunkCount = previousWorkNote
-      ? this.embeddingProcessor.estimateChunkCount(
-          workId,
-          previousWorkNote.title,
-          previousWorkNote.contentRaw
-        )
-      : 0;
-    const maxKnownChunkCount = await this.embeddingProcessor.getMaxKnownChunkCount(
-      workId,
-      previousChunkCount
-    );
+    const needsReEmbedding =
+      data.title !== undefined || data.contentRaw !== undefined || data.category !== undefined;
+
+    let maxKnownChunkCount = 0;
+    if (needsReEmbedding) {
+      const previousWorkNote = await this.repository.findById(workId);
+      const previousChunkCount = previousWorkNote
+        ? this.embeddingProcessor.estimateChunkCount(
+            workId,
+            previousWorkNote.title,
+            previousWorkNote.contentRaw
+          )
+        : 0;
+      maxKnownChunkCount = await this.embeddingProcessor.getMaxKnownChunkCount(
+        workId,
+        previousChunkCount
+      );
+    }
 
     const workNote = await this.repository.update(workId, data);
+
+    if (!needsReEmbedding) {
+      return { workNote };
+    }
+
     const embeddingResult = await this.handleEmbedding(
       this.rechunkAndEmbedWorkNote(workNote, data, maxKnownChunkCount),
       workNote,

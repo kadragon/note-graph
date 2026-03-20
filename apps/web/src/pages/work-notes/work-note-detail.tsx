@@ -43,6 +43,13 @@ const LazyMarkdown = lazy(() =>
   import('@web/components/lazy-markdown').then((mod) => ({ default: mod.LazyMarkdown }))
 );
 
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((v, i) => v === sortedB[i]);
+}
+
 import { EnhancePreviewDialog } from './components/enhance-preview-dialog';
 import { EnhanceWorkNoteDialog } from './components/enhance-work-note-dialog';
 import { RecurringTodoGroup } from './components/recurring-todo-group';
@@ -387,23 +394,43 @@ export default function WorkNoteDetail() {
       });
       return;
     }
+
+    const data: import('@web/types/api').UpdateWorkNoteRequest = {};
+
+    const trimmedTitle = editTitle.trim();
+    const trimmedContent = editContent.trim();
+    if (trimmedTitle !== workNote.title) data.title = trimmedTitle;
+    if (trimmedContent !== workNote.content) data.content = trimmedContent;
+
+    const origCategoryIds = workNote.categories?.map((c) => c.categoryId) || [];
+    if (!arraysEqual(editCategoryIds, origCategoryIds)) data.categoryIds = editCategoryIds;
+
+    const origGroupIds = workNote.groups?.map((g) => g.groupId) || [];
+    if (!arraysEqual(editGroupIds, origGroupIds)) data.groupIds = editGroupIds;
+
+    const origPersonIds = workNote.persons?.map((p) => p.personId) || [];
+    if (!arraysEqual(editPersonIds, origPersonIds)) data.relatedPersonIds = editPersonIds;
+
+    if (relatedWorkNotesLoaded) {
+      const origWorkIds = workNote.relatedWorkNotes?.map((n) => n.relatedWorkId) || [];
+      const currentWorkIds = editRelatedWorkNotes.map((note) => note.relatedWorkId);
+      if (!arraysEqual(currentWorkIds, origWorkIds)) data.relatedWorkIds = currentWorkIds;
+
+      const origMeetingIds = workNote.relatedMeetingMinutes?.map((m) => m.meetingId) || [];
+      const currentMeetingIds = editRelatedMeetings.map((m) => m.meetingId);
+      if (!arraysEqual(currentMeetingIds, origMeetingIds))
+        data.relatedMeetingIds = currentMeetingIds;
+    }
+
+    if (Object.keys(data).length === 0) {
+      setIsEditing(false);
+      return;
+    }
+
     try {
-      const relatedWorkIds = relatedWorkNotesLoaded
-        ? editRelatedWorkNotes.map((note) => note.relatedWorkId)
-        : undefined;
       await updateMutation.mutateAsync({
         workId: workNote.id,
-        data: {
-          title: editTitle.trim(),
-          content: editContent.trim(),
-          categoryIds: editCategoryIds.length > 0 ? editCategoryIds : undefined,
-          groupIds: editGroupIds,
-          relatedPersonIds: editPersonIds,
-          ...(relatedWorkNotesLoaded ? { relatedWorkIds } : {}),
-          relatedMeetingIds: relatedWorkNotesLoaded
-            ? editRelatedMeetings.map((m) => m.meetingId)
-            : undefined,
-        },
+        data,
       });
       setIsEditing(false);
     } catch {
