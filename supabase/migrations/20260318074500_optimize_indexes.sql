@@ -24,12 +24,22 @@ DROP INDEX IF EXISTS idx_work_note_person_role;
 DROP INDEX IF EXISTS idx_work_note_files_deleted_at;
 DROP INDEX IF EXISTS idx_work_note_files_storage_type;
 
--- 4. Add missing composite indexes (and drop subsumed single-column indexes)
+-- 4. Replace with better composite indexes
 DROP INDEX IF EXISTS idx_todos_work_id;
 CREATE INDEX idx_todos_work_status ON todos(work_id, status);
 
--- Replace (person_id, is_active) with covering index including sort column
 DROP INDEX IF EXISTS idx_person_dept_history_person_active;
 DROP INDEX IF EXISTS idx_person_dept_history_person_id;
 CREATE INDEX idx_person_dept_history_person_active_date
   ON person_dept_history(person_id, is_active, start_date DESC);
+
+-- 5. Drop additional unused indexes (confirmed scan=0)
+DROP INDEX IF EXISTS idx_persons_phone_ext;
+DROP INDEX IF EXISTS idx_persons_employment_status;
+DROP INDEX IF EXISTS idx_work_note_person_dept_at_time;
+DROP INDEX IF EXISTS idx_todos_created_at;
+DROP INDEX IF EXISTS idx_pdf_jobs_created_at;
+
+-- 6. Add missing FK covering index (flagged by advisor)
+CREATE INDEX idx_daily_reports_previous_report_id
+  ON daily_reports(previous_report_id);

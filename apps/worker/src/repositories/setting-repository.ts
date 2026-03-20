@@ -102,16 +102,23 @@ export class SettingRepository {
   async ensureDefaults(defaults: DefaultSetting[]): Promise<void> {
     if (defaults.length === 0) return;
 
-    await this.db.executeBatch(
-      defaults.map((d) => ({
-        sql: `INSERT INTO app_settings (key, value, category, label, description, default_value)
-              VALUES ($1, $2, $3, $4, $5, $6)
-              ON CONFLICT (key) DO UPDATE SET
-                default_value = EXCLUDED.default_value,
-                label = EXCLUDED.label,
-                description = EXCLUDED.description`,
-        params: [d.key, d.value, d.category, d.label, d.description, d.value],
-      }))
+    const placeholders: string[] = [];
+    const params: (string | null)[] = [];
+
+    for (const [i, d] of defaults.entries()) {
+      const o = i * 6;
+      placeholders.push(`($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6})`);
+      params.push(d.key, d.value, d.category, d.label, d.description, d.value);
+    }
+
+    await this.db.execute(
+      `INSERT INTO app_settings (key, value, category, label, description, default_value)
+       VALUES ${placeholders.join(', ')}
+       ON CONFLICT (key) DO UPDATE SET
+         default_value = EXCLUDED.default_value,
+         label = EXCLUDED.label,
+         description = EXCLUDED.description`,
+      params
     );
   }
 }
