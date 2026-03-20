@@ -38,9 +38,7 @@ DROP INDEX IF EXISTS idx_persons_phone_ext;
 DROP INDEX IF EXISTS idx_persons_employment_status;
 DROP INDEX IF EXISTS idx_work_note_person_dept_at_time;
 DROP INDEX IF EXISTS idx_todos_created_at;
-DROP INDEX IF EXISTS idx_todos_status_due_created;
 DROP INDEX IF EXISTS idx_pdf_jobs_created_at;
-DROP INDEX IF EXISTS idx_work_note_files_work_uploaded_live;
 
 -- 6. Add missing FK covering index (flagged by advisor)
 CREATE INDEX idx_daily_reports_previous_report_id
