@@ -120,7 +120,10 @@ export class WorkNoteService {
     options?: { skipEmbedding?: boolean }
   ): Promise<{ workNote: WorkNote; embeddingPromise?: Promise<void> }> {
     const needsReEmbedding =
-      data.title !== undefined || data.contentRaw !== undefined || data.category !== undefined;
+      data.title !== undefined ||
+      data.contentRaw !== undefined ||
+      data.category !== undefined ||
+      data.persons !== undefined;
 
     let maxKnownChunkCount = 0;
     if (needsReEmbedding) {

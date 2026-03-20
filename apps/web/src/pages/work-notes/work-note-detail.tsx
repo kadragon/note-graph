@@ -43,13 +43,6 @@ const LazyMarkdown = lazy(() =>
   import('@web/components/lazy-markdown').then((mod) => ({ default: mod.LazyMarkdown }))
 );
 
-function arraysEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const sortedA = [...a].sort();
-  const sortedB = [...b].sort();
-  return sortedA.every((v, i) => v === sortedB[i]);
-}
-
 import { EnhancePreviewDialog } from './components/enhance-preview-dialog';
 import { EnhanceWorkNoteDialog } from './components/enhance-work-note-dialog';
 import { RecurringTodoGroup } from './components/recurring-todo-group';
@@ -57,6 +50,13 @@ import { TodoCreationForm } from './components/todo-creation-form';
 import { TodoListItem } from './components/todo-list-item';
 import { WorkNoteEditForm } from './components/work-note-edit-form';
 import { WorkNoteFileList } from './components/work-note-file-list';
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((v, i) => v === sortedB[i]);
+}
 
 type RelatedWorkNote = NonNullable<WorkNote['relatedWorkNotes']>[number];
 type RelatedMeeting = NonNullable<WorkNote['relatedMeetingMinutes']>[number];
