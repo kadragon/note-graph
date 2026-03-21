@@ -5,6 +5,7 @@ import { PdfExtractionService } from '@worker/services/pdf-extraction-service';
 import { WorkNoteService } from '@worker/services/work-note-service';
 import type { OpenTodoDueDateContextForAI } from '@worker/types/todo-due-date-context';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { parseBufferedSSE } from '../helpers/buffered-sse';
 import { mockDatabaseFactory } from '../helpers/test-app';
 
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
@@ -53,7 +54,7 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json<{ draft: WorkNoteDraft }>();
+    const data = await parseBufferedSSE<{ draft: WorkNoteDraft }>(response);
     expect(data.draft.title).toBe('AI 제목');
     expect(dueContextSpy).toHaveBeenCalledWith(10);
     expect(generateSpy).toHaveBeenCalled();
@@ -84,6 +85,7 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     });
 
     expect(response.status).toBe(200);
+    await parseBufferedSSE(response); // consume stream so async work completes
     expect(dueContextSpy).toHaveBeenCalledWith(10);
     expect(generateSpy).toHaveBeenCalled();
     const options = generateSpy.mock.calls[0]?.[2];
@@ -117,7 +119,7 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json<{
+    const data = await parseBufferedSSE<{
       meetingReferences?: Array<{
         meetingId: string;
         meetingDate: string;
@@ -125,7 +127,7 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
         keywords: string[];
         score: number;
       }>;
-    }>();
+    }>(response);
 
     expect(data.meetingReferences).toHaveLength(1);
     expect(data.meetingReferences?.[0]).toMatchObject({
@@ -194,12 +196,12 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json<{
+    const data = await parseBufferedSSE<{
       meetingReferences?: Array<{
         meetingId: string;
         score: number;
       }>;
-    }>();
+    }>(response);
 
     // R3 (staffing only) should be filtered out by minScore threshold
     expect(data.meetingReferences).toHaveLength(2);
@@ -220,9 +222,9 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     });
 
     expect(response.status).toBe(200);
-    const data = await response.json<{
+    const data = await parseBufferedSSE<{
       meetingReferences?: Array<{ meetingId: string }>;
-    }>();
+    }>(response);
 
     expect(data.meetingReferences).toEqual([]);
   });
@@ -248,6 +250,7 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     });
 
     expect(response.status).toBe(200);
+    await parseBufferedSSE(response); // consume stream so async work completes
     expect(dueContextSpy).toHaveBeenCalledWith(10);
     expect(suggestionSpy).toHaveBeenCalled();
     const options = suggestionSpy.mock.calls[0]?.[2];
@@ -280,6 +283,7 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     });
 
     expect(response.status).toBe(200);
+    await parseBufferedSSE(response); // consume stream so async work completes
     expect(dueContextSpy).toHaveBeenCalledWith(10);
     expect(enhanceSpy).toHaveBeenCalled();
     const options = enhanceSpy.mock.calls[0]?.[3];

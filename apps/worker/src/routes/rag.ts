@@ -4,6 +4,7 @@ import { bodyValidator, getValidatedBody } from '../middleware/validation-middle
 import { RagQueryRequestSchema } from '../schemas/rag';
 import { RagService } from '../services/rag-service';
 import { BadRequestError } from '../types/errors';
+import { createBufferedSSEResponse } from '../utils/buffered-sse';
 import { createProtectedRouter } from './_shared/router-factory';
 
 const app = createProtectedRouter();
@@ -29,15 +30,15 @@ app.post('/query', bodyValidator(RagQueryRequestSchema), async (c) => {
   // Execute RAG query
   const ragService = new RagService(c.get('db'), c.env, c.get('settingService'));
 
-  const result = await ragService.query(body.query, {
-    scope: body.scope,
-    personId: body.personId,
-    deptName: body.deptName,
-    workId: body.workId,
-    topK: body.topK,
+  return createBufferedSSEResponse(async () => {
+    return ragService.query(body.query, {
+      scope: body.scope,
+      personId: body.personId,
+      deptName: body.deptName,
+      workId: body.workId,
+      topK: body.topK,
+    });
   });
-
-  return c.json(result);
 });
 
 export default app;

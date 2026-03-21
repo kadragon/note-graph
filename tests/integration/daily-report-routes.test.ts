@@ -1,5 +1,6 @@
 import type { DailyReport } from '@shared/types/daily-report';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { parseBufferedSSE } from '../helpers/buffered-sse';
 import { mockDatabaseFactory } from '../helpers/test-app';
 
 vi.mock('@worker/adapters/database-factory', () => mockDatabaseFactory());
@@ -108,8 +109,8 @@ describe('Daily Report API Routes', () => {
       body: JSON.stringify({ date: '2025-01-10', timezoneOffset: 540 }),
     });
 
-    expect(response.status).toBe(201);
-    const data = (await response.json()) as DailyReport;
+    expect(response.status).toBe(200);
+    const data = await parseBufferedSSE<DailyReport>(response);
     expect(data.todosSnapshot.today.map((todo) => todo.id)).toEqual(['TODO-OVERDUE', 'TODO-TODAY']);
     expect(data.todosSnapshot.backlog.map((todo) => todo.id)).toEqual(['TODO-OVERDUE']);
     // 2025-01-10 is a Friday; with the fix, upcoming now includes the next week's todos

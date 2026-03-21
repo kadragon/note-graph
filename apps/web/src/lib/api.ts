@@ -131,6 +131,111 @@ export class APIClient {
     }
   }
 
+  /**
+   * Fetch a buffered SSE endpoint that sends heartbeat comments followed by a
+   * single JSON `data:` event and an `event: done` marker.
+   */
+  private async fetchBufferedSSE<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    isRetry = false
+  ): Promise<T> {
+    const authHeaders = await getAuthHeaders();
+    const headers: HeadersInit = {
+      ...(!options.body || typeof options.body === 'string'
+        ? { 'Content-Type': 'application/json' }
+        : {}),
+      ...authHeaders,
+      ...options.headers,
+    };
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (response.status === 401 && !isRetry) {
+      const { error } = await supabase.auth.refreshSession();
+      if (!error) {
+        return this.fetchBufferedSSE<T>(endpoint, options, true);
+      }
+    }
+
+    if (!response.ok) {
+      const text = await response.text();
+      let message = `HTTP ${response.status}`;
+      let code: string | undefined;
+      try {
+        const parsed = JSON.parse(text) as { message?: string; code?: string };
+        if (parsed.message) message = parsed.message;
+        code = parsed.code;
+      } catch {
+        // non-JSON error body
+      }
+      throw new ApiError(message, code);
+    }
+
+    if (!response.body) {
+      throw new ApiError('응답에 내용이 없습니다.');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result: T | undefined;
+    let streamError: string | null = null;
+    let currentEventType: string | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop()!;
+
+      for (const line of lines) {
+        if (line === '' || line.startsWith(':')) {
+          currentEventType = null;
+          continue;
+        }
+        if (line.startsWith('event: ')) {
+          currentEventType = line.slice(7);
+          continue;
+        }
+        if (line.startsWith('data: ')) {
+          const payload = line.slice(6);
+          if (currentEventType === 'error') {
+            try {
+              const errData = JSON.parse(payload) as { message?: string };
+              streamError = errData.message ?? 'AI 요청 실패';
+            } catch {
+              streamError = payload;
+            }
+            continue;
+          }
+          if (currentEventType === 'done') {
+            continue;
+          }
+          // Main result payload (no event type prefix)
+          try {
+            result = JSON.parse(payload) as T;
+          } catch {
+            streamError = 'AI 응답을 파싱할 수 없습니다.';
+          }
+        }
+      }
+    }
+
+    if (streamError) {
+      throw new ApiError(streamError);
+    }
+    if (result === undefined) {
+      throw new ApiError('AI 응답을 받지 못했습니다.');
+    }
+    return result;
+  }
+
   async uploadFile<T>(
     endpoint: string,
     file: File,
@@ -730,7 +835,7 @@ export class APIClient {
 
   // RAG
   ragQuery(data: RAGQueryRequest) {
-    return this.request<RAGResponse>('/rag/query', {
+    return this.fetchBufferedSSE<RAGResponse>('/rag/query', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -738,24 +843,23 @@ export class APIClient {
 
   // AI Draft
   generateDraft(data: AIGenerateDraftRequest) {
-    return this.request<AIGenerateDraftResponse>('/ai/work-notes/draft-from-text', {
+    return this.fetchBufferedSSE<AIGenerateDraftResponse>('/ai/work-notes/draft-from-text', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   generateDraftWithSimilar(data: AIGenerateDraftRequest) {
-    return this.request<AIGenerateDraftResponse>('/ai/work-notes/draft-from-text-with-similar', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    return this.fetchBufferedSSE<AIGenerateDraftResponse>(
+      '/ai/work-notes/draft-from-text-with-similar',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
   }
 
-  async enhanceWorkNote(
-    workId: string,
-    data: EnhanceWorkNoteRequest,
-    isRetry = false
-  ): Promise<EnhanceWorkNoteResponse> {
+  enhanceWorkNote(workId: string, data: EnhanceWorkNoteRequest): Promise<EnhanceWorkNoteResponse> {
     const formData = new FormData();
     formData.append('newContent', data.newContent);
     formData.append('generateNewTodos', String(data.generateNewTodos ?? true));
@@ -764,29 +868,10 @@ export class APIClient {
       formData.append('file', data.file);
     }
 
-    const authHeaders = await getAuthHeaders();
-
-    const response = await fetch(`${this.baseURL}/ai/work-notes/${workId}/enhance`, {
+    return this.fetchBufferedSSE<EnhanceWorkNoteResponse>(`/ai/work-notes/${workId}/enhance`, {
       method: 'POST',
-      headers: authHeaders,
       body: formData,
     });
-
-    if (response.status === 401 && !isRetry) {
-      const { error } = await supabase.auth.refreshSession();
-      if (!error) {
-        return this.enhanceWorkNote(workId, data, true);
-      }
-    }
-
-    if (!response.ok) {
-      const error = (await response.json().catch(() => ({
-        message: '업데이트 실패',
-      }))) as { message?: string };
-      throw new Error(error.message || `HTTP ${response.status}`);
-    }
-
-    return response.json() as Promise<EnhanceWorkNoteResponse>;
   }
 
   // AI Email Reply (SSE streaming)
@@ -982,7 +1067,7 @@ export class APIClient {
 
   generateDailyReport(date: string) {
     const timezoneOffset = -new Date().getTimezoneOffset();
-    return this.request<DailyReport>('/daily-reports/generate', {
+    return this.fetchBufferedSSE<DailyReport>('/daily-reports/generate', {
       method: 'POST',
       body: JSON.stringify({ date, timezoneOffset }),
     });
