@@ -811,17 +811,27 @@ export class APIClient {
     }
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => ({
-        message: 'AI 이메일 생성 실패',
-      }))) as { message?: string };
-      throw new Error(error.message || `HTTP ${response.status}`);
+      const text = await response.text();
+      let message = `HTTP ${response.status}`;
+      try {
+        const parsed = JSON.parse(text) as { message?: string };
+        if (parsed.message) message = parsed.message;
+      } catch {
+        // non-JSON error body
+      }
+      throw new Error(message);
     }
 
-    const reader = response.body!.getReader();
+    if (!response.body) {
+      throw new Error('AI 응답에 내용이 없습니다. 다시 시도해주세요.');
+    }
+
+    const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let accumulated = '';
     let streamError: string | null = null;
+    let currentEventType: string | null = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -831,29 +841,33 @@ export class APIClient {
       const lines = buffer.split('\n');
       buffer = lines.pop()!;
 
-      let nextIsError = false;
       for (const line of lines) {
-        if (line === 'event: error') {
-          nextIsError = true;
+        if (line === '') {
+          currentEventType = null;
           continue;
         }
-        if (line === 'event: done') {
+        if (line.startsWith('event: ')) {
+          currentEventType = line.slice(7);
           continue;
         }
         if (line.startsWith('data: ')) {
           const payload = line.slice(6);
-          if (nextIsError) {
+          if (currentEventType === 'error') {
             try {
               const errData = JSON.parse(payload) as { message?: string };
               streamError = errData.message ?? 'AI 이메일 생성 실패';
             } catch {
               streamError = payload;
             }
-            nextIsError = false;
             continue;
           }
-          if (payload !== '{}') {
-            accumulated += payload;
+          if (currentEventType === 'done') {
+            continue;
+          }
+          try {
+            accumulated += JSON.parse(payload) as string;
+          } catch {
+            // skip unparseable token
           }
         }
       }

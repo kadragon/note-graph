@@ -155,7 +155,10 @@ export function createSSEProxy(upstreamResponse: Response): Response {
   const writer = writable.getWriter();
 
   const pump = async () => {
-    const reader = upstreamResponse.body!.getReader();
+    if (!upstreamResponse.body) {
+      throw new Error('Upstream response has no body.');
+    }
+    const reader = upstreamResponse.body.getReader();
     let buffer = '';
 
     try {
@@ -200,22 +203,30 @@ export function createSSEProxy(upstreamResponse: Response): Response {
 
             const token = choice?.delta?.content;
             if (token) {
-              await writer.write(encoder.encode(`data: ${token}\n\n`));
+              await writer.write(encoder.encode(`data: ${JSON.stringify(token)}\n\n`));
             }
-          } catch {
-            // Skip unparseable lines
+          } catch (e) {
+            console.error('[SSE Proxy] Failed to parse stream chunk:', { payload, error: e });
           }
         }
       }
-    } finally {
       await writer.close();
+    } catch (err) {
+      console.error('[SSE Proxy] Stream error:', err);
+      try {
+        await writer.write(
+          encoder.encode(
+            `event: error\ndata: ${JSON.stringify({ message: 'Stream interrupted' })}\n\n`
+          )
+        );
+      } catch {
+        // writer may already be broken
+      }
+      await writer.abort(err).catch(() => {});
     }
   };
 
-  pump().catch((err) => {
-    console.error('[SSE Proxy] Stream error:', err);
-    writer.close().catch(() => {});
-  });
+  pump().catch(() => {});
 
   return new Response(readable, {
     headers: {
