@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true $CLAUDE_FILE_PATHS 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATHS\" | grep -qE '(\\.dev\\.vars|bun\\.lock)$' && echo 'BLOCK: This file is protected from edits' || true"
+          }
+        ]
+      }
+    ]
+  }
+}
