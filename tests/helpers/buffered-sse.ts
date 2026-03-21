@@ -10,7 +10,10 @@ export async function parseBufferedSSE<T>(response: Response): Promise<T> {
   let currentEventType: string | null = null;
 
   for (const line of lines) {
-    if (line === '' || line.startsWith(':')) {
+    if (line.startsWith(':')) {
+      continue;
+    }
+    if (line === '') {
       currentEventType = null;
       continue;
     }

@@ -132,14 +132,16 @@ app.post(
 
     const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
 
-    const workNote = await workNoteService.findById(workId);
+    const [workNote, todoDueDateContext] = await Promise.all([
+      workNoteService.findById(workId),
+      todoRepository.getOpenTodoDueDateContextForAI(10),
+    ]);
+
     if (!workNote) {
       throw new NotFoundError('Work note', workId);
     }
 
     return createBufferedSSEResponse(async () => {
-      const todoDueDateContext = await todoRepository.getOpenTodoDueDateContextForAI(10);
-
       const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
       return aiDraftService.generateTodoSuggestions(workNote, body.contextText, {
         todoDueDateContext,
@@ -192,20 +194,18 @@ app.post('/work-notes/:workId/enhance', async (c) => {
 
   const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
 
-  return createBufferedSSEResponse(async () => {
-    // Parallelize: fetch work note (with details), todos, categories, due date context, similar notes
-    const [workNote, existingTodos, activeCategories, todoDueDateContext, similarNotes] =
-      await Promise.all([
-        workNoteService.findByIdWithDetails(workId),
-        todoRepository.findByWorkId(workId),
-        taskCategories.findAll(undefined, 100, true),
-        todoRepository.getOpenTodoDueDateContextForAI(10),
-        workNoteService.findSimilarNotes(newContent, SIMILAR_NOTES_TOP_K),
-      ]);
+  const workNote = await workNoteService.findByIdWithDetails(workId);
+  if (!workNote) {
+    throw new NotFoundError('Work note', workId);
+  }
 
-    if (!workNote) {
-      throw new NotFoundError('Work note', workId);
-    }
+  return createBufferedSSEResponse(async () => {
+    const [existingTodos, activeCategories, todoDueDateContext, similarNotes] = await Promise.all([
+      todoRepository.findByWorkId(workId),
+      taskCategories.findAll(undefined, 100, true),
+      todoRepository.getOpenTodoDueDateContextForAI(10),
+      workNoteService.findSimilarNotes(newContent, SIMILAR_NOTES_TOP_K),
+    ]);
 
     const activeCategoryNames = activeCategories.map((cat) => cat.name);
     const existingPersonIds = workNote.persons.map((p) => p.personId);

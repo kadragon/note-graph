@@ -195,7 +195,10 @@ export class APIClient {
       buffer = lines.pop()!;
 
       for (const line of lines) {
-        if (line === '' || line.startsWith(':')) {
+        if (line.startsWith(':')) {
+          continue;
+        }
+        if (line === '') {
           currentEventType = null;
           continue;
         }
