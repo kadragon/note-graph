@@ -5,3 +5,10 @@
 - [x] repository.update()가 optional로 previousWorkNote를 받아 내부 findById를 skip하도록 변경
 - [x] service.update()에서 needsReEmbedding 시 조회한 previousWorkNote를 repository.update()에 전달
 - [x] 기존 테스트 통과 확인
+
+## Review Backlog
+
+### PR #380 — Switch AI email reply to SSE streaming (2026-03-21)
+
+- [ ] SSE 스트리밍 응답에 `X-Accel-Buffering: no` 헤더 추가 (nginx 프록시 대응) — `apps/worker/src/utils/openai-chat.ts:createSSEProxy` (source: Claude)
+- [ ] `callOpenAIChatStream` 토큰 사용량 로깅 포맷을 `callOpenAIChat`과 통일 — `apps/worker/src/utils/openai-chat.ts` (source: Claude)

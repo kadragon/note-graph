@@ -789,15 +789,99 @@ export class APIClient {
     return response.json() as Promise<EnhanceWorkNoteResponse>;
   }
 
-  // AI Email Reply
-  generateEmailReply(
+  // AI Email Reply (SSE streaming)
+  async generateEmailReply(
     workId: string,
-    data: { assigneeName: string; assigneePosition?: string; assigneeDept?: string }
-  ) {
-    return this.request<{ subject: string; body: string }>(`/ai/work-notes/${workId}/email-reply`, {
+    data: { assigneeName: string; assigneePosition?: string; assigneeDept?: string },
+    isRetry = false
+  ): Promise<{ subject: string; body: string }> {
+    const authHeaders = await getAuthHeaders();
+
+    const response = await fetch(`${this.baseURL}/ai/work-notes/${workId}/email-reply`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(data),
     });
+
+    if (response.status === 401 && !isRetry) {
+      const { error } = await supabase.auth.refreshSession();
+      if (!error) {
+        return this.generateEmailReply(workId, data, true);
+      }
+    }
+
+    if (!response.ok) {
+      const text = await response.text();
+      let message = `HTTP ${response.status}`;
+      try {
+        const parsed = JSON.parse(text) as { message?: string };
+        if (parsed.message) message = parsed.message;
+      } catch {
+        // non-JSON error body
+      }
+      throw new Error(message);
+    }
+
+    if (!response.body) {
+      throw new Error('AI 응답에 내용이 없습니다. 다시 시도해주세요.');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let accumulated = '';
+    let streamError: string | null = null;
+    let currentEventType: string | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop()!;
+
+      for (const line of lines) {
+        if (line === '') {
+          currentEventType = null;
+          continue;
+        }
+        if (line.startsWith('event: ')) {
+          currentEventType = line.slice(7);
+          continue;
+        }
+        if (line.startsWith('data: ')) {
+          const payload = line.slice(6);
+          if (currentEventType === 'error') {
+            try {
+              const errData = JSON.parse(payload) as { message?: string };
+              streamError = errData.message ?? 'AI 이메일 생성 실패';
+            } catch {
+              streamError = payload;
+            }
+            continue;
+          }
+          if (currentEventType === 'done') {
+            continue;
+          }
+          try {
+            accumulated += JSON.parse(payload) as string;
+          } catch {
+            // skip unparseable token
+          }
+        }
+      }
+    }
+
+    if (streamError) {
+      throw new Error(streamError);
+    }
+
+    try {
+      return JSON.parse(accumulated) as { subject: string; body: string };
+    } catch {
+      throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
+    }
   }
 
   // PDF Jobs

@@ -8,7 +8,7 @@ import type { WorkNote } from '@shared/types/work-note';
 import type { Env } from '../types/env';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
 import { getTodayDateForOffset } from '../utils/date';
-import { callOpenAIChat } from '../utils/openai-chat';
+import { callOpenAIChat, callOpenAIChatStream } from '../utils/openai-chat';
 import {
   DEFAULT_AI_DRAFT_CREATE_PROMPT,
   DEFAULT_AI_DRAFT_CREATE_WITH_CONTEXT_PROMPT,
@@ -265,6 +265,36 @@ export class AIDraftService {
       console.error('Error parsing email reply response:', error);
       throw new Error('Failed to parse AI response. Please try again.');
     }
+  }
+
+  /**
+   * Generate email reply as an SSE stream (returns raw upstream Response)
+   */
+  async generateEmailReplyStream(
+    workNote: WorkNote,
+    todos: Array<{
+      title: string;
+      description?: string | null;
+      status: string;
+      dueDate?: string | null;
+    }>,
+    assignee: EmailReplyAssignee
+  ): Promise<Response> {
+    const prompt = this.constructEmailReplyPrompt(workNote, todos, assignee);
+    const systemRole = '당신은 한국 공공기관에서 업무 이메일을 작성하는 어시스턴트입니다.';
+    const model = this.getLightweightModel();
+
+    const messages = [
+      { role: 'system' as const, content: systemRole },
+      { role: 'user' as const, content: prompt },
+    ];
+
+    return callOpenAIChatStream(this.env, {
+      messages,
+      model,
+      maxCompletionTokens: 800,
+      responseFormat: { type: 'json_object' },
+    });
   }
 
   private constructEmailReplyPrompt(
