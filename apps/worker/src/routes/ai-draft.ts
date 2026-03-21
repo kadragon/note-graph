@@ -16,6 +16,7 @@ import { MeetingMinuteReferenceService } from '../services/meeting-minute-refere
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext } from '../types/context';
 import { NotFoundError } from '../types/errors';
+import { createSSEProxy } from '../utils/openai-chat';
 import { createProtectedRouter } from './_shared/router-factory';
 
 // Configuration constants
@@ -281,13 +282,13 @@ app.post('/work-notes/:workId/email-reply', bodyValidator(EmailReplyRequestSchem
   }));
 
   const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
-  const result = await aiDraftService.generateEmailReply(workNote, todoReferences, {
+  const upstreamResponse = await aiDraftService.generateEmailReplyStream(workNote, todoReferences, {
     name: body.assigneeName,
     position: body.assigneePosition,
     dept: body.assigneeDept,
   });
 
-  return c.json(result);
+  return createSSEProxy(upstreamResponse);
 });
 
 export default app;
