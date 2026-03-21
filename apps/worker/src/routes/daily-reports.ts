@@ -12,6 +12,7 @@ import {
 import { DailyReportRepository } from '../repositories/daily-report-repository';
 import { generateDailyReportSchema, getDailyReportsQuerySchema } from '../schemas/daily-report';
 import { DailyReportService } from '../services/daily-report-service';
+import { createBufferedSSEResponse } from '../utils/buffered-sse';
 import { createProtectedRouter } from './_shared/router-factory';
 
 const dailyReports = createProtectedRouter();
@@ -48,8 +49,10 @@ dailyReports.post('/generate', bodyValidator(generateDailyReportSchema), async (
   const { date, timezoneOffset } = getValidatedBody<typeof generateDailyReportSchema>(c);
   const user = getAuthUser(c);
   const service = new DailyReportService(c.env, c.get('db'), c.get('settingService'));
-  const report = await service.generateReport(user.email, date, timezoneOffset ?? 540);
-  return c.json(report, 201);
+
+  return createBufferedSSEResponse(async () => {
+    return service.generateReport(user.email, date, timezoneOffset ?? 540);
+  });
 });
 
 export default dailyReports;

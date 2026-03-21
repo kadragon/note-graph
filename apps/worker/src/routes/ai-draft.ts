@@ -16,6 +16,7 @@ import { MeetingMinuteReferenceService } from '../services/meeting-minute-refere
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext } from '../types/context';
 import { NotFoundError } from '../types/errors';
+import { createBufferedSSEResponse } from '../utils/buffered-sse';
 import { createSSEProxy } from '../utils/openai-chat';
 import { createProtectedRouter } from './_shared/router-factory';
 
@@ -34,22 +35,24 @@ app.post('/work-notes/draft-from-text', bodyValidator(DraftFromTextRequestSchema
   const body = getValidatedBody<typeof DraftFromTextRequestSchema>(c);
   const { taskCategories, todos: todoRepository } = c.get('repositories');
 
-  const [activeCategories, todoDueDateContext] = await Promise.all([
-    taskCategories.findAll(undefined, 100, true),
-    todoRepository.getOpenTodoDueDateContextForAI(10),
-  ]);
-  const activeCategoryNames = activeCategories.map((cat) => cat.name);
+  return createBufferedSSEResponse(async () => {
+    const [activeCategories, todoDueDateContext] = await Promise.all([
+      taskCategories.findAll(undefined, 100, true),
+      todoRepository.getOpenTodoDueDateContextForAI(10),
+    ]);
+    const activeCategoryNames = activeCategories.map((cat) => cat.name);
 
-  const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
-  const draft = await aiDraftService.generateDraftFromText(body.inputText, {
-    category: body.category,
-    personIds: body.personIds,
-    deptName: body.deptName,
-    activeCategories: activeCategoryNames,
-    todoDueDateContext,
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
+    const draft = await aiDraftService.generateDraftFromText(body.inputText, {
+      category: body.category,
+      personIds: body.personIds,
+      deptName: body.deptName,
+      activeCategories: activeCategoryNames,
+      todoDueDateContext,
+    });
+
+    return { draft, references: [] };
   });
-
-  return c.json({ draft, references: [] });
 });
 
 /**
@@ -65,50 +68,52 @@ app.post(
     const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
     const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.get('db'));
 
-    const [activeCategories, todoDueDateContext, similarNotes, scoredMeetingReferences] =
-      await Promise.all([
-        taskCategories.findAll(undefined, 100, true),
-        todoRepository.getOpenTodoDueDateContextForAI(10),
-        workNoteService.findSimilarNotes(body.inputText, SIMILAR_NOTES_TOP_K),
-        meetingMinuteReferenceService
-          .search(body.inputText, MEETING_REFERENCES_TOP_K, MEETING_REFERENCES_MIN_SCORE)
-          .catch((error) => {
-            console.error('[ai-draft] Meeting minute reference search failed:', error);
-            return [] as Awaited<ReturnType<MeetingMinuteReferenceService['search']>>;
-          }),
-      ]);
-    const activeCategoryNames = activeCategories.map((cat) => cat.name);
+    return createBufferedSSEResponse(async () => {
+      const [activeCategories, todoDueDateContext, similarNotes, scoredMeetingReferences] =
+        await Promise.all([
+          taskCategories.findAll(undefined, 100, true),
+          todoRepository.getOpenTodoDueDateContextForAI(10),
+          workNoteService.findSimilarNotes(body.inputText, SIMILAR_NOTES_TOP_K),
+          meetingMinuteReferenceService
+            .search(body.inputText, MEETING_REFERENCES_TOP_K, MEETING_REFERENCES_MIN_SCORE)
+            .catch((error) => {
+              console.error('[ai-draft] Meeting minute reference search failed:', error);
+              return [] as Awaited<ReturnType<MeetingMinuteReferenceService['search']>>;
+            }),
+        ]);
+      const activeCategoryNames = activeCategories.map((cat) => cat.name);
 
-    // Generate AI draft with similar notes as context
-    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
-    const draft =
-      similarNotes.length > 0
-        ? await aiDraftService.generateDraftFromTextWithContext(body.inputText, similarNotes, {
-            category: body.category,
-            personIds: body.personIds,
-            deptName: body.deptName,
-            activeCategories: activeCategoryNames,
-            todoDueDateContext,
-          })
-        : await aiDraftService.generateDraftFromText(body.inputText, {
-            category: body.category,
-            personIds: body.personIds,
-            deptName: body.deptName,
-            activeCategories: activeCategoryNames,
-            todoDueDateContext,
-          });
+      // Generate AI draft with similar notes as context
+      const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
+      const draft =
+        similarNotes.length > 0
+          ? await aiDraftService.generateDraftFromTextWithContext(body.inputText, similarNotes, {
+              category: body.category,
+              personIds: body.personIds,
+              deptName: body.deptName,
+              activeCategories: activeCategoryNames,
+              todoDueDateContext,
+            })
+          : await aiDraftService.generateDraftFromText(body.inputText, {
+              category: body.category,
+              personIds: body.personIds,
+              deptName: body.deptName,
+              activeCategories: activeCategoryNames,
+              todoDueDateContext,
+            });
 
-    const references = similarNotes.map((note) => ({
-      workId: note.workId,
-      title: note.title,
-      category: note.category,
-      similarityScore: note.similarityScore,
-    }));
+      const references = similarNotes.map((note) => ({
+        workId: note.workId,
+        title: note.title,
+        category: note.category,
+        similarityScore: note.similarityScore,
+      }));
 
-    return c.json({
-      draft,
-      references,
-      meetingReferences: scoredMeetingReferences,
+      return {
+        draft,
+        references,
+        meetingReferences: scoredMeetingReferences,
+      };
     });
   }
 );
@@ -136,12 +141,12 @@ app.post(
       throw new NotFoundError('Work note', workId);
     }
 
-    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
-    const todos = await aiDraftService.generateTodoSuggestions(workNote, body.contextText, {
-      todoDueDateContext,
+    return createBufferedSSEResponse(async () => {
+      const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
+      return aiDraftService.generateTodoSuggestions(workNote, body.contextText, {
+        todoDueDateContext,
+      });
     });
-
-    return c.json(todos);
   }
 );
 
@@ -189,68 +194,68 @@ app.post('/work-notes/:workId/enhance', async (c) => {
 
   const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
 
-  // Parallelize: fetch work note (with details), todos, categories, due date context, similar notes
-  const [workNote, existingTodos, activeCategories, todoDueDateContext, similarNotes] =
-    await Promise.all([
-      workNoteService.findByIdWithDetails(workId),
+  const workNote = await workNoteService.findByIdWithDetails(workId);
+  if (!workNote) {
+    throw new NotFoundError('Work note', workId);
+  }
+
+  return createBufferedSSEResponse(async () => {
+    const [existingTodos, activeCategories, todoDueDateContext, similarNotes] = await Promise.all([
       todoRepository.findByWorkId(workId),
       taskCategories.findAll(undefined, 100, true),
       todoRepository.getOpenTodoDueDateContextForAI(10),
       workNoteService.findSimilarNotes(newContent, SIMILAR_NOTES_TOP_K),
     ]);
 
-  if (!workNote) {
-    throw new NotFoundError('Work note', workId);
-  }
-
-  const activeCategoryNames = activeCategories.map((cat) => cat.name);
-  const existingPersonIds = workNote.persons.map((p) => p.personId);
-  const existingCategoryIds = workNote.categories.map((c) => c.categoryId);
-  const todoReferences = existingTodos.map((todo) => ({
-    title: todo.title,
-    description: todo.description,
-    status: todo.status,
-    dueDate: todo.dueDate,
-  }));
-
-  // Generate enhanced draft
-  const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
-  const enhancedDraft = await aiDraftService.enhanceExistingWorkNote(
-    workNote,
-    todoReferences,
-    newContent,
-    {
-      similarNotes,
-      activeCategories: activeCategoryNames,
-      todoDueDateContext,
-    }
-  );
-
-  // If generateNewTodos is false, clear the todos array
-  if (!generateNewTodos) {
-    enhancedDraft.todos = [];
-  }
-
-  const references = similarNotes.map((note) => ({
-    workId: note.workId,
-    title: note.title,
-    category: note.category,
-    similarityScore: note.similarityScore,
-  }));
-
-  return c.json({
-    enhancedDraft,
-    existingCategoryIds,
-    existingPersonIds,
-    originalContent: workNote.contentRaw,
-    existingTodos: existingTodos.map((todo) => ({
-      todoId: todo.todoId,
+    const activeCategoryNames = activeCategories.map((cat) => cat.name);
+    const existingPersonIds = workNote.persons.map((p) => p.personId);
+    const existingCategoryIds = workNote.categories.map((c) => c.categoryId);
+    const todoReferences = existingTodos.map((todo) => ({
       title: todo.title,
       description: todo.description,
       status: todo.status,
       dueDate: todo.dueDate,
-    })),
-    references,
+    }));
+
+    // Generate enhanced draft
+    const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
+    const enhancedDraft = await aiDraftService.enhanceExistingWorkNote(
+      workNote,
+      todoReferences,
+      newContent,
+      {
+        similarNotes,
+        activeCategories: activeCategoryNames,
+        todoDueDateContext,
+      }
+    );
+
+    // If generateNewTodos is false, clear the todos array
+    if (!generateNewTodos) {
+      enhancedDraft.todos = [];
+    }
+
+    const references = similarNotes.map((note) => ({
+      workId: note.workId,
+      title: note.title,
+      category: note.category,
+      similarityScore: note.similarityScore,
+    }));
+
+    return {
+      enhancedDraft,
+      existingCategoryIds,
+      existingPersonIds,
+      originalContent: workNote.contentRaw,
+      existingTodos: existingTodos.map((todo) => ({
+        todoId: todo.todoId,
+        title: todo.title,
+        description: todo.description,
+        status: todo.status,
+        dueDate: todo.dueDate,
+      })),
+      references,
+    };
   });
 });
 

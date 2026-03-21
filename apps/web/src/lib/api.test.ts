@@ -4,6 +4,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { API } from './api';
 
+/** Build a mock fetch Response whose body is a buffered SSE stream. */
+function mockSSEResponse(data: unknown) {
+  const payload = `data: ${JSON.stringify(data)}\nevent: done\ndata: done\n\n`;
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(payload));
+      controller.close();
+    },
+  });
+  return { ok: true, status: 200, body };
+}
+
 describe('API.createDepartment', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -685,10 +697,8 @@ describe('API.enhanceWorkNote', () => {
   });
 
   it('sends multipart form data to correct endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockSSEResponse({
         enhancedDraft: {
           title: '향상된 제목',
           content: '향상된 내용',
@@ -698,8 +708,8 @@ describe('API.enhanceWorkNote', () => {
         originalContent: '원본 내용',
         existingTodos: [],
         references: [],
-      }),
-    });
+      })
+    );
 
     (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
 
@@ -723,10 +733,8 @@ describe('API.enhanceWorkNote', () => {
   });
 
   it('appends file to form data when provided', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockSSEResponse({
         enhancedDraft: {
           title: '향상된 제목',
           content: '향상된 내용',
@@ -736,8 +744,8 @@ describe('API.enhanceWorkNote', () => {
         originalContent: '원본 내용',
         existingTodos: [],
         references: [],
-      }),
-    });
+      })
+    );
 
     (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
 
@@ -756,10 +764,8 @@ describe('API.enhanceWorkNote', () => {
   });
 
   it('returns enhance response with all fields', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockSSEResponse({
         enhancedDraft: {
           title: '향상된 제목',
           content: '향상된 내용',
@@ -791,8 +797,8 @@ describe('API.enhanceWorkNote', () => {
             similarityScore: 0.85,
           },
         ],
-      }),
-    });
+      })
+    );
 
     (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
 

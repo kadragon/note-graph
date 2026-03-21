@@ -8,8 +8,8 @@ import { TodoRepository } from '../repositories/todo-repository';
 import { dailyReportAIAnalysisSchema } from '../schemas/daily-report';
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
-import { AIResponseError, RateLimitError } from '../types/errors';
-import { getAIGatewayHeaders, getAIGatewayUrl, isReasoningModel } from '../utils/ai-gateway';
+import { AIResponseError } from '../types/errors';
+import { callOpenAIChat } from '../utils/openai-chat';
 import { GoogleCalendarService } from './google-calendar-service';
 import { DEFAULT_DAILY_REPORT_PROMPT, DEFAULT_WRITER_CONTEXT } from './setting-defaults';
 import type { SettingService } from './setting-service';
@@ -183,38 +183,12 @@ export class DailyReportService {
       .replace('{{BACKLOG_TODOS}}', backlogTodosSection)
       .replace('{{PREVIOUS_REPORT}}', previousAnalysisSection);
 
-    const url = getAIGatewayUrl(this.env, 'chat/completions');
-    const model = this.getModel();
-    const requestBody = {
-      model,
-      messages: [{ role: 'user' as const, content: prompt }],
-      max_completion_tokens: GPT_MAX_COMPLETION_TOKENS,
-      response_format: { type: 'json_object' as const },
-      ...(!isReasoningModel(model) && { temperature: 0.7 }),
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: getAIGatewayHeaders(this.env),
-      body: JSON.stringify(requestBody),
+    const content = await callOpenAIChat(this.env, {
+      messages: [{ role: 'user', content: prompt }],
+      model: this.getModel(),
+      maxCompletionTokens: GPT_MAX_COMPLETION_TOKENS,
+      responseFormat: { type: 'json_object' },
     });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        throw new RateLimitError('AI API rate limit exceeded. Please try again later.');
-      }
-      const errorBody = await response.text().catch(() => '');
-      console.error(`[DailyReportService] OpenAI API error ${response.status}:`, errorBody);
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json<{
-      choices: Array<{ message: { content: string } }>;
-    }>();
-    const content = data.choices[0]?.message.content;
-    if (!content) {
-      throw new Error('AI 응답이 비어 있습니다. 다시 시도해 주세요.');
-    }
 
     try {
       const parsed = JSON.parse(content);
