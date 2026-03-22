@@ -36,6 +36,7 @@ import {
   ExternalLink,
   FolderOpen,
   Loader2,
+  RefreshCw,
   Settings,
   Trash2,
   Upload,
@@ -95,7 +96,7 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
     }
   }, []);
 
-  const { data, isLoading } = useWorkNoteFiles(workId);
+  const { data, isLoading, isFetching, refetch } = useWorkNoteFiles(workId);
   const { data: driveStatus } = useGoogleDriveStatus();
   const uploadMutation = useUploadWorkNoteFile();
   const deleteMutation = useDeleteWorkNoteFile();
@@ -250,6 +251,22 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
                   : 'R2 파일 Google Drive로 옮기기'}
               </Button>
             )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+              title="파일 목록 새로고침"
+            >
+              {isFetching ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              <span className="sr-only">파일 목록 새로고침</span>
+            </Button>
             <input
               ref={fileInputRef}
               type="file"

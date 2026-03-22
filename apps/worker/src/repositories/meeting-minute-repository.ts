@@ -174,6 +174,9 @@ export class MeetingMinuteRepository {
       params.push(nextKeywordsText);
     }
 
+    // Reset embedding on any content change
+    fields.push('embedded_at = NULL');
+
     params.push(meetingId);
     await this.db.execute(
       `UPDATE meeting_minutes
@@ -436,5 +439,87 @@ export class MeetingMinuteRepository {
     }
 
     await this.db.execute('DELETE FROM meeting_minutes WHERE meeting_id = $1', [meetingId]);
+  }
+
+  // ============================================================================
+  // Embedding support
+  // ============================================================================
+
+  async clearEmbeddedAt(meetingId: string): Promise<void> {
+    await this.db.execute(
+      'UPDATE meeting_minutes SET embedded_at = NULL, updated_at = $1 WHERE meeting_id = $2',
+      [new Date().toISOString(), meetingId]
+    );
+  }
+
+  async updateEmbeddedAt(meetingId: string): Promise<void> {
+    await this.db.execute('UPDATE meeting_minutes SET embedded_at = $1 WHERE meeting_id = $2', [
+      new Date().toISOString(),
+      meetingId,
+    ]);
+  }
+
+  async updateEmbeddedAtIfUpdatedAtMatches(
+    meetingId: string,
+    expectedUpdatedAt: string
+  ): Promise<boolean> {
+    const result = await this.db.execute(
+      `UPDATE meeting_minutes SET embedded_at = $1 WHERE meeting_id = $2 AND updated_at = $3`,
+      [new Date().toISOString(), meetingId, expectedUpdatedAt]
+    );
+    return result.rowCount > 0;
+  }
+
+  async findPendingEmbedding(limit: number = 10): Promise<MeetingMinute[]> {
+    const rows = await this.db.query<{
+      meetingId: string;
+      meetingDate: string;
+      topic: string;
+      detailsRaw: string;
+      keywordsJson: string;
+      createdAt: string;
+      updatedAt: string;
+    }>(
+      `SELECT meeting_id as "meetingId", meeting_date as "meetingDate", topic, details_raw as "detailsRaw",
+              keywords_json as "keywordsJson", created_at as "createdAt", updated_at as "updatedAt"
+       FROM meeting_minutes
+       WHERE embedded_at IS NULL
+       ORDER BY created_at ASC
+       LIMIT $1`,
+      [limit]
+    );
+
+    return rows.rows.map((row) => ({
+      meetingId: row.meetingId,
+      meetingDate: row.meetingDate,
+      topic: row.topic,
+      detailsRaw: row.detailsRaw,
+      keywords: parseKeywordsJson(row.keywordsJson),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
+  }
+
+  async getEmbeddingStats(): Promise<{ total: number; embedded: number; pending: number }> {
+    const result = await this.db.queryOne<{ total: number; embedded: number; pending: number }>(
+      `SELECT
+         COUNT(*) as total,
+         SUM(CASE WHEN embedded_at IS NOT NULL THEN 1 ELSE 0 END) as embedded,
+         SUM(CASE WHEN embedded_at IS NULL THEN 1 ELSE 0 END) as pending
+       FROM meeting_minutes`
+    );
+    return {
+      total: result?.total || 0,
+      embedded: result?.embedded || 0,
+      pending: result?.pending || 0,
+    };
+  }
+
+  async findAttendeePersonIds(meetingId: string): Promise<string[]> {
+    const rows = await this.db.query<{ personId: string }>(
+      'SELECT person_id as "personId" FROM meeting_minute_person WHERE meeting_id = $1',
+      [meetingId]
+    );
+    return rows.rows.map((r) => r.personId);
   }
 }

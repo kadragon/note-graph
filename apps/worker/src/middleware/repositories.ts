@@ -12,7 +12,7 @@
  *
  * @description
  * **Repository Instantiation:**
- * - Instantiates repositories (departments, embeddingRetryQueue, pdfJobs, persons, taskCategories, todos, workNoteGroups)
+ * - Instantiates repositories (departments, pdfJobs, persons, taskCategories, todos, workNoteGroups)
  * - Creates a special PersonRepository variant with autoCreateDepartment option
  * - All repositories require a valid database connection via Hyperdrive
  *
@@ -33,7 +33,6 @@
 import type { Context, Next } from 'hono';
 import { createDatabaseClient } from '../adapters/database-factory';
 import { DepartmentRepository } from '../repositories/department-repository';
-import { EmbeddingRetryQueueRepository } from '../repositories/embedding-retry-queue-repository';
 import { PdfJobRepository } from '../repositories/pdf-job-repository';
 import { PersonRepository } from '../repositories/person-repository';
 import { SettingRepository } from '../repositories/setting-repository';
@@ -49,7 +48,6 @@ export async function repositoriesMiddleware(c: Context<AppContext>, next: Next)
 
   const repositories: Repositories = {
     departments: new DepartmentRepository(db),
-    embeddingRetryQueue: new EmbeddingRetryQueueRepository(db),
     pdfJobs: new PdfJobRepository(db),
     persons: new PersonRepository(db),
     personsWithAutoCreateDepartment: new PersonRepository(db, {

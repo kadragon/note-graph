@@ -585,6 +585,7 @@ describe('WorkNoteService embedding guards and deterministic stale deletion', ()
       findById,
       updateEmbeddedAtIfUpdatedAtMatches,
       getDeptNameForPerson,
+      findTodosByWorkIds: vi.fn().mockResolvedValue(new Map()),
     };
     (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = {
       upsertChunks,
@@ -662,6 +663,7 @@ describe('WorkNoteService embedding guards and deterministic stale deletion', ()
       findById,
       getDeptNameForPerson,
       updateEmbeddedAtIfUpdatedAtMatches,
+      findTodosByWorkIds: vi.fn().mockResolvedValue(new Map()),
     };
     (service as unknown as { embeddingProcessor: unknown }).embeddingProcessor = {
       upsertChunks,

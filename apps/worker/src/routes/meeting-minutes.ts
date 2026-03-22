@@ -13,6 +13,7 @@ import {
   listMeetingMinutesQuerySchema,
   updateMeetingMinuteSchema,
 } from '../schemas/meeting-minute';
+import { EmbeddingProcessor } from '../services/embedding-processor';
 import { MeetingMinuteKeywordService } from '../services/meeting-minute-keyword-service';
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import type { AppContext, AppVariables } from '../types/context';
@@ -276,8 +277,28 @@ meetingMinutes.put('/:meetingId', bodyValidator(updateMeetingMinuteSchema), asyn
 
 meetingMinutes.delete('/:meetingId', async (c) => {
   const meetingId = c.req.param('meetingId') as string;
-  const repository = new MeetingMinuteRepository(c.get('db'));
+  const db = c.get('db');
+
+  // Get chunk count estimate before deletion
+  const repository = new MeetingMinuteRepository(db);
+  const existing = await repository.findById(meetingId);
+
   await repository.delete(meetingId);
+
+  // Clean up Vectorize chunks in background
+  if (existing) {
+    const processor = new EmbeddingProcessor(db, c.env, c.get('settingService'));
+    const chunkCount = processor.estimateChunkCount(meetingId, existing.topic, existing.detailsRaw);
+    c.executionCtx.waitUntil(
+      processor.deleteChunkRange(meetingId, 0, chunkCount).catch((error) => {
+        console.error('[MeetingMinutes] Failed to delete chunks:', {
+          meetingId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      })
+    );
+  }
+
   return c.body(null, 204);
 });
 

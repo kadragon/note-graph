@@ -64,6 +64,14 @@ export class WorkNoteService {
   }
 
   /**
+   * Clear embedded_at to mark work note as needing re-embedding.
+   * Used when associated data (e.g. todos) changes.
+   */
+  async clearEmbeddedAt(workId: string): Promise<void> {
+    return this.repository.clearEmbeddedAt(workId);
+  }
+
+  /**
    * Find work note by ID
    */
   async findById(workId: string): Promise<WorkNote | null> {
@@ -363,12 +371,20 @@ export class WorkNoteService {
       created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
     };
 
-    // Chunk work note content
+    // Fetch todos for embedding context
+    const todosByWorkId = await this.repository.findTodosByWorkIds([workNote.workId]);
+    const todos = todosByWorkId.get(workNote.workId) || [];
+    const todoTexts = todos.map((t) =>
+      t.description ? `- ${t.title}: ${t.description}` : `- ${t.title}`
+    );
+
+    // Chunk work note content (including todos)
     const chunks = this.chunkingService.chunkWorkNote(
       workNote.workId,
       workNote.title,
       workNote.contentRaw,
-      metadata
+      metadata,
+      todoTexts
     );
 
     // Prepare chunks for embedding
