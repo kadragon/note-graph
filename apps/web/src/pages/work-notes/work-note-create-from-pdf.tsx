@@ -1,8 +1,10 @@
+import { AgentProgressDisplay } from '@web/components/agent-progress-display';
 import { DraftEditorForm } from '@web/components/draft-editor-form';
 import { StepProgressIndicator } from '@web/components/step-progress-indicator';
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
+import { useAgentDraft } from '@web/hooks/use-agent-draft';
 import { useAIDraftForm } from '@web/hooks/use-ai-draft-form';
 import { usePDFJob, useUploadPDF } from '@web/hooks/use-pdf';
 import type { ProgressStep } from '@web/hooks/use-step-progress';
@@ -11,7 +13,7 @@ import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
 import { autoAttachPdf } from '@web/lib/auto-attach-pdf';
 import { FileDropzone } from '@web/pages/pdf-upload/components/file-dropzone';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft, Bot, FileText } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,15 +28,21 @@ export default function WorkNoteCreateFromPDF() {
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [draftPopulated, setDraftPopulated] = useState(false);
+  const [useAgent, setUseAgent] = useState(true);
   const createdWorkNoteIdRef = useRef<string | null>(null);
 
   const uploadMutation = useUploadPDF();
-  const { data: job } = usePDFJob(currentJobId, !!currentJobId && uploadMutation.isSuccess);
+  const { data: job } = usePDFJob(
+    currentJobId,
+    !!currentJobId && uploadMutation.isSuccess && !useAgent
+  );
+  const agent = useAgentDraft();
   const { toast } = useToast();
 
-  const isProcessing =
-    !!currentJobId && (job?.status === 'PENDING' || job?.status === 'PROCESSING');
-  const progress = useStepProgress({ steps: pdfSteps, isActive: isProcessing });
+  const isProcessing = useAgent
+    ? agent.isPending
+    : !!currentJobId && (job?.status === 'PENDING' || job?.status === 'PROCESSING');
+  const progress = useStepProgress({ steps: pdfSteps, isActive: isProcessing && !useAgent });
 
   const { state, actions, data } = useAIDraftForm({
     onWorkNoteCreated: async (workNote) => {
@@ -63,13 +71,13 @@ export default function WorkNoteCreateFromPDF() {
     },
   });
 
-  // Update form when draft is ready (only once)
+  // Update form when draft is ready (non-agent mode, only once)
   useEffect(() => {
-    if (job?.status === 'READY' && job.draft && !draftPopulated) {
+    if (!useAgent && job?.status === 'READY' && job.draft && !draftPopulated) {
       actions.populateDraft(job.draft, job.references);
       setDraftPopulated(true);
     }
-  }, [job, draftPopulated, actions]);
+  }, [useAgent, job, draftPopulated, actions]);
 
   const handleFileSelect = async (file: File) => {
     if (file.size > 10 * 1024 * 1024) {
@@ -81,17 +89,28 @@ export default function WorkNoteCreateFromPDF() {
       return;
     }
     setUploadedFile(file);
-    try {
-      const result = await uploadMutation.mutateAsync(file);
-      setCurrentJobId(result.jobId);
-    } catch {
-      // Error handled by mutation hook
+
+    if (useAgent) {
+      const result = await agent.generateFromPDF(file);
+      if (result) {
+        actions.populateDraft(result.draft, result.references, result.meetingReferences);
+        setDraftPopulated(true);
+      }
+    } else {
+      try {
+        const result = await uploadMutation.mutateAsync(file);
+        setCurrentJobId(result.jobId);
+      } catch {
+        // Error handled by mutation hook
+      }
     }
   };
 
   const handleCancel = useCallback(() => {
     navigate(-1);
   }, [navigate]);
+
+  const hasDraft = useAgent ? draftPopulated : job?.status === 'READY' && !!job.draft;
 
   return (
     <div className="page-container">
@@ -119,11 +138,11 @@ export default function WorkNoteCreateFromPDF() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {!job?.draft && (
+            {!hasDraft && (
               <div className="space-y-3">
                 <FileDropzone
                   onFileSelect={(file) => void handleFileSelect(file)}
-                  disabled={uploadMutation.isPending || !!currentJobId}
+                  disabled={useAgent ? agent.isPending : !!currentJobId}
                 />
 
                 {uploadedFile && (
@@ -135,21 +154,35 @@ export default function WorkNoteCreateFromPDF() {
                           {(uploadedFile.size / 1024).toFixed(2)} KB
                         </p>
                       </div>
-                      {job?.status === 'ERROR' ? <Badge variant="destructive">실패</Badge> : null}
+                      {!useAgent && job?.status === 'ERROR' ? (
+                        <Badge variant="destructive">실패</Badge>
+                      ) : null}
                     </div>
-                    {isProcessing && (
+                    {isProcessing && useAgent && <AgentProgressDisplay events={agent.progress} />}
+                    {isProcessing && !useAgent && (
                       <StepProgressIndicator
                         steps={progress.steps}
                         currentStepIndex={progress.currentStepIndex}
                       />
                     )}
-                    {job?.errorMessage && (
+                    {!useAgent && job?.errorMessage && (
                       <p className="text-sm text-destructive mt-2">{job.errorMessage}</p>
                     )}
                   </Card>
                 )}
 
-                <div className="flex justify-end">
+                <div className="flex gap-2 justify-end items-center">
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground mr-auto cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={useAgent}
+                      onChange={(e) => setUseAgent(e.target.checked)}
+                      disabled={useAgent ? agent.isPending : !!currentJobId}
+                      className="rounded"
+                    />
+                    <Bot className="h-4 w-4" />
+                    에이전트 모드
+                  </label>
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     취소
                   </Button>
@@ -157,7 +190,7 @@ export default function WorkNoteCreateFromPDF() {
               </div>
             )}
 
-            {job?.status === 'READY' && job.draft && (
+            {hasDraft && (
               <DraftEditorForm
                 state={state}
                 actions={actions}

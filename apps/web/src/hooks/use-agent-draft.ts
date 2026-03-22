@@ -13,6 +13,26 @@ export function useAgentDraft() {
   const [isPending, setIsPending] = useState(false);
   const abortRef = useRef(false);
 
+  const onProgress = useCallback((event: AgentProgressEvent) => {
+    if (!abortRef.current) {
+      setProgress((prev) => [...prev, event]);
+    }
+  }, []);
+
+  const handleError = useCallback(
+    (error: unknown) => {
+      if (!abortRef.current) {
+        toast({
+          variant: 'destructive',
+          title: '오류',
+          description:
+            error instanceof Error ? error.message : 'AI 에이전트 초안 생성에 실패했습니다.',
+        });
+      }
+    },
+    [toast]
+  );
+
   const generate = useCallback(
     async (data: AIGenerateDraftRequest): Promise<AIGenerateDraftResponse | null> => {
       setIsPending(true);
@@ -20,27 +40,36 @@ export function useAgentDraft() {
       abortRef.current = false;
 
       try {
-        const result = await API.generateAgentDraft(data, (event) => {
-          if (!abortRef.current) {
-            setProgress((prev) => [...prev, event]);
-          }
-        });
-        return result;
+        return await API.generateAgentDraft(data, onProgress);
       } catch (error) {
-        if (!abortRef.current) {
-          toast({
-            variant: 'destructive',
-            title: '오류',
-            description:
-              error instanceof Error ? error.message : 'AI 에이전트 초안 생성에 실패했습니다.',
-          });
-        }
+        handleError(error);
         return null;
       } finally {
         setIsPending(false);
       }
     },
-    [toast]
+    [onProgress, handleError]
+  );
+
+  const generateFromPDF = useCallback(
+    async (
+      file: File,
+      metadata?: { category?: string; personIds?: string[]; deptName?: string }
+    ): Promise<AIGenerateDraftResponse | null> => {
+      setIsPending(true);
+      setProgress([]);
+      abortRef.current = false;
+
+      try {
+        return await API.generateAgentDraftFromPDF(file, metadata, onProgress);
+      } catch (error) {
+        handleError(error);
+        return null;
+      } finally {
+        setIsPending(false);
+      }
+    },
+    [onProgress, handleError]
   );
 
   const reset = useCallback(() => {
@@ -49,5 +78,5 @@ export function useAgentDraft() {
     setIsPending(false);
   }, []);
 
-  return { generate, reset, progress, isPending };
+  return { generate, generateFromPDF, reset, progress, isPending };
 }

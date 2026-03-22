@@ -15,9 +15,10 @@ import { AgentDraftService } from '../services/agent-draft-service';
 import { AIDraftService } from '../services/ai-draft-service';
 import { FileTextExtractionService } from '../services/file-text-extraction-service';
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
+import { PdfExtractionService } from '../services/pdf-extraction-service';
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext } from '../types/context';
-import { NotFoundError } from '../types/errors';
+import { BadRequestError, NotFoundError } from '../types/errors';
 import { createAgentSSEResponse, createBufferedSSEResponse } from '../utils/buffered-sse';
 import { createSSEProxy } from '../utils/openai-chat';
 import { createProtectedRouter } from './_shared/router-factory';
@@ -26,6 +27,8 @@ import { createProtectedRouter } from './_shared/router-factory';
 const SIMILAR_NOTES_TOP_K = 3;
 const MEETING_REFERENCES_TOP_K = 5;
 const MEETING_REFERENCES_MIN_SCORE = 0.3;
+const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const PDF_MAX_TEXT_LENGTH = 30_000;
 
 const app = createProtectedRouter<AppContext>();
 
@@ -152,6 +155,96 @@ app.post('/work-notes/agent-draft', bodyValidator(AgentDraftRequestSchema), asyn
         category: body.category,
         personIds: body.personIds,
         deptName: body.deptName,
+        activeCategories: activeCategories.map((cat) => cat.name),
+        todoDueDateContext,
+      },
+      sendProgress
+    );
+  });
+});
+
+/**
+ * POST /ai/work-notes/agent-draft-from-pdf
+ * Generate work note draft from uploaded PDF using an agentic loop with tool calling.
+ * Accepts multipart form data with the PDF file and optional metadata.
+ */
+app.post('/work-notes/agent-draft-from-pdf', async (c) => {
+  const formData = await c.req.formData();
+  const file = formData.get('file');
+
+  if (!file || typeof file === 'string') {
+    throw new BadRequestError('PDF file is required');
+  }
+
+  const fileBlob = file as Blob;
+
+  if (fileBlob.type !== 'application/pdf') {
+    throw new BadRequestError('파일은 PDF 형식이어야 합니다');
+  }
+
+  if (fileBlob.size > MAX_PDF_SIZE_BYTES) {
+    return c.json(
+      { error: 'PAYLOAD_TOO_LARGE', message: 'PDF 파일 크기는 10MB를 초과할 수 없습니다' },
+      413
+    );
+  }
+
+  // Extract metadata from form data
+  const category = formData.get('category');
+  const personIds = formData.get('personIds');
+  const deptName = formData.get('deptName');
+
+  const metadata = {
+    category: category && typeof category === 'string' ? category : undefined,
+    personIds:
+      personIds && typeof personIds === 'string'
+        ? personIds
+            .split(',')
+            .map((id) => id.trim())
+            .filter(Boolean)
+        : undefined,
+    deptName: deptName && typeof deptName === 'string' ? deptName : undefined,
+  };
+
+  // Extract text from PDF before entering SSE stream
+  const pdfBuffer = await fileBlob.arrayBuffer();
+  const extractionService = new PdfExtractionService();
+  extractionService.validatePdfBuffer(pdfBuffer);
+  let extractedText = await extractionService.extractText(pdfBuffer);
+
+  if (extractedText.length > PDF_MAX_TEXT_LENGTH) {
+    extractedText = extractedText.slice(0, PDF_MAX_TEXT_LENGTH);
+  }
+
+  const { taskCategories, todos: todoRepository } = c.get('repositories');
+
+  return createAgentSSEResponse(async (sendProgress) => {
+    sendProgress({
+      step: 'analyzing',
+      message: 'PDF에서 텍스트를 추출했습니다. 분석을 시작합니다...',
+    });
+
+    const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
+    const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.get('db'));
+
+    const [activeCategories, todoDueDateContext] = await Promise.all([
+      taskCategories.findAll(undefined, 100, true),
+      todoRepository.getOpenTodoDueDateContextForAI(10),
+    ]);
+
+    const agentService = new AgentDraftService(
+      c.env,
+      workNoteService,
+      meetingMinuteReferenceService,
+      c.get('settingService')
+    );
+
+    return agentService.generateDraft(
+      extractedText,
+      {
+        category: metadata.category,
+        personIds: metadata.personIds,
+        deptName: metadata.deptName,
         activeCategories: activeCategories.map((cat) => cat.name),
         todoDueDateContext,
       },
