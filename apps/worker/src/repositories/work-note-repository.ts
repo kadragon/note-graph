@@ -568,7 +568,11 @@ export class WorkNoteRepository {
       updateFields.push(`category = $${paramIndex++}`);
       updateParams.push(data.category || null);
     }
-    if (updateFields.length > 0) {
+    const hasContentChange = updateFields.length > 0;
+    // persons 변경도 임베딩 갱신이 필요 (메타데이터에 person_ids, dept_name 포함)
+    const needsEmbeddingReset = hasContentChange || data.persons !== undefined;
+
+    if (needsEmbeddingReset) {
       updateFields.push(`updated_at = $${paramIndex++}`);
       updateFields.push('embedded_at = NULL');
       updateParams.push(now);
@@ -578,8 +582,10 @@ export class WorkNoteRepository {
         sql: `UPDATE work_notes SET ${updateFields.join(', ')} WHERE work_id = $${paramIndex}`,
         params: updateParams,
       });
+    }
 
-      // Get next version number
+    // Version history only for content/title/category changes
+    if (hasContentChange) {
       const versionCountResult = await this.db.queryOne<{ nextVersion: number }>(
         `SELECT COALESCE(MAX(version_no), 0) + 1 as "nextVersion" FROM work_note_versions WHERE work_id = $1`,
         [workId]
@@ -778,8 +784,8 @@ export class WorkNoteRepository {
       title: data.title !== undefined ? data.title : existing.title,
       contentRaw: data.contentRaw !== undefined ? data.contentRaw : existing.contentRaw,
       category: data.category !== undefined ? data.category || null : existing.category,
-      updatedAt: updateFields.length > 0 ? now : existing.updatedAt,
-      embeddedAt: updateFields.length > 0 ? null : existing.embeddedAt,
+      updatedAt: needsEmbeddingReset ? now : existing.updatedAt,
+      embeddedAt: needsEmbeddingReset ? null : existing.embeddedAt,
     };
   }
 
@@ -826,6 +832,17 @@ export class WorkNoteRepository {
     );
 
     return result?.current_dept || null;
+  }
+
+  /**
+   * Clear embedded_at to mark work note as needing re-embedding.
+   * Used when associated data (e.g. todos) changes.
+   */
+  async clearEmbeddedAt(workId: string): Promise<void> {
+    await this.db.execute(
+      'UPDATE work_notes SET embedded_at = NULL, updated_at = $1 WHERE work_id = $2',
+      [new Date().toISOString(), workId]
+    );
   }
 
   /**

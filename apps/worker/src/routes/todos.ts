@@ -9,6 +9,7 @@ import {
   getValidatedQuery,
   queryValidator,
 } from '../middleware/validation-middleware';
+import { WorkNoteRepository } from '../repositories/work-note-repository';
 import { batchPostponeTodosSchema, listTodosQuerySchema, updateTodoSchema } from '../schemas/todo';
 import { createProtectedRouter } from './_shared/router-factory';
 
@@ -47,6 +48,10 @@ todos.patch('/:todoId', bodyValidator(updateTodoSchema), async (c) => {
   const { todos: repository } = c.get('repositories');
   const todo = await repository.update(todoId, data);
 
+  // Mark parent work note for re-embedding (cron will process)
+  const workNoteRepo = new WorkNoteRepository(c.get('db'));
+  await workNoteRepo.clearEmbeddedAt(todo.workId);
+
   return c.json(todo);
 });
 
@@ -58,7 +63,11 @@ todos.delete('/:todoId', async (c) => {
   const todoId = c.req.param('todoId');
   const { todos: repository } = c.get('repositories');
 
-  await repository.delete(todoId);
+  const workId = await repository.delete(todoId);
+
+  // Mark parent work note for re-embedding (cron will process)
+  const workNoteRepo = new WorkNoteRepository(c.get('db'));
+  await workNoteRepo.clearEmbeddedAt(workId);
 
   return c.body(null, 204);
 });

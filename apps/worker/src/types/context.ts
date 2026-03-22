@@ -5,7 +5,6 @@
 
 import type { AuthUser } from '@shared/types/auth';
 import type { DepartmentRepository } from '../repositories/department-repository';
-import type { EmbeddingRetryQueueRepository } from '../repositories/embedding-retry-queue-repository';
 import type { PdfJobRepository } from '../repositories/pdf-job-repository';
 import type { PersonRepository } from '../repositories/person-repository';
 import type { SettingRepository } from '../repositories/setting-repository';
@@ -18,7 +17,6 @@ import type { Env } from './env';
 
 export interface Repositories {
   departments: DepartmentRepository;
-  embeddingRetryQueue: EmbeddingRetryQueueRepository;
   pdfJobs: PdfJobRepository;
   persons: PersonRepository;
   personsWithAutoCreateDepartment: PersonRepository;

@@ -6,6 +6,7 @@
 
 import { AuthenticationError } from '@shared/types/auth';
 import { Hono } from 'hono';
+import { createDatabaseClient } from './adapters/database-factory';
 import { getMeHandler } from './handlers/auth';
 import { authMiddleware } from './middleware/auth';
 import { cacheHeaders } from './middleware/cache-headers';
@@ -28,6 +29,7 @@ import taskCategories from './routes/task-categories';
 import todos from './routes/todos';
 import workNoteGroups from './routes/work-note-groups';
 import workNotes from './routes/work-notes';
+import { EmbeddingProcessor } from './services/embedding-processor';
 import type { AppContext } from './types/context';
 import type { Env } from './types/env';
 import { DomainError } from './types/errors';
@@ -208,4 +210,29 @@ app.onError((err, c) => {
 
 export default {
   fetch: app.fetch,
+
+  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
+    const db = createDatabaseClient(env);
+    try {
+      const processor = new EmbeddingProcessor(db, env);
+
+      // Process pending work notes
+      const workResult = await processor.embedPending(10);
+      if (workResult.processed > 0) {
+        console.warn(
+          `[Scheduled] Work notes: ${workResult.succeeded}/${workResult.processed} succeeded, ${workResult.failed} failed`
+        );
+      }
+
+      // Process pending meeting minutes
+      const meetingResult = await processor.embedPendingMeetings(10);
+      if (meetingResult.processed > 0) {
+        console.warn(
+          `[Scheduled] Meetings: ${meetingResult.succeeded}/${meetingResult.processed} succeeded, ${meetingResult.failed} failed`
+        );
+      }
+    } finally {
+      await db.close?.();
+    }
+  },
 };

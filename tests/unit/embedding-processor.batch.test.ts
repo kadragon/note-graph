@@ -22,6 +22,7 @@ interface TestEmbeddingProcessor extends EmbeddingProcessor {
   repository: {
     findByIdWithDetails: ReturnType<typeof vi.fn>;
     findByIdsWithDetails: ReturnType<typeof vi.fn>;
+    findTodosByWorkIds: ReturnType<typeof vi.fn>;
     getDeptNameForPerson: ReturnType<typeof vi.fn>;
     getVersions: ReturnType<typeof vi.fn>;
     findById: ReturnType<typeof vi.fn>;
@@ -42,6 +43,7 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
     (processor as TestEmbeddingProcessor).repository = {
       findByIdWithDetails: vi.fn(),
       findByIdsWithDetails: vi.fn(),
+      findTodosByWorkIds: vi.fn().mockResolvedValue(new Map()),
       getDeptNameForPerson: vi.fn(),
       getVersions: vi.fn().mockResolvedValue([]),
       findById: vi.fn(),

@@ -47,16 +47,21 @@ export class ChunkingService {
    * @param title - Work note title
    * @param content - Work note content
    * @param metadata - Additional metadata (person_ids, dept_name, category, etc.)
+   * @param todoTexts - Optional todo texts to include in the embedding
    * @returns Array of text chunks with metadata
    */
   chunkWorkNote(
     workId: string,
     title: string,
     content: string,
-    metadata: Omit<ChunkMetadata, 'work_id' | 'scope' | 'chunk_index'>
+    metadata: Omit<ChunkMetadata, 'work_id' | 'scope' | 'chunk_index'>,
+    todoTexts?: string[]
   ): TextChunk[] {
-    // Combine title and content for complete context
-    const fullText = `${title}\n\n${content}`;
+    // Combine title, content, and todo texts for complete context
+    let fullText = `${title}\n\n${content}`;
+    if (todoTexts && todoTexts.length > 0) {
+      fullText += `\n\n## 할일\n${todoTexts.join('\n')}`;
+    }
 
     // Convert to pseudo-tokens (character-based approximation)
     const chunkSizeChars = this.config.chunkSize * this.CHARS_PER_TOKEN;
@@ -93,6 +98,70 @@ export class ChunkingService {
         metadata: {
           work_id: workId,
           scope: 'WORK',
+          chunk_index: chunkIndex,
+          ...metadata,
+        },
+      });
+
+      chunkIndex++;
+    }
+
+    return chunks;
+  }
+
+  /**
+   * Chunk meeting minute content into overlapping segments
+   *
+   * @param meetingId - Meeting minute ID
+   * @param topic - Meeting topic
+   * @param detailsRaw - Meeting details
+   * @param keywords - Meeting keywords
+   * @param metadata - Additional metadata (person_ids, dept_name, category, etc.)
+   * @returns Array of text chunks with metadata
+   */
+  chunkMeetingMinute(
+    meetingId: string,
+    topic: string,
+    detailsRaw: string,
+    keywords: string[],
+    metadata: Omit<ChunkMetadata, 'work_id' | 'scope' | 'chunk_index'>
+  ): TextChunk[] {
+    let fullText = `${topic}\n\n${detailsRaw}`;
+    if (keywords.length > 0) {
+      fullText += `\n\n키워드: ${keywords.join(', ')}`;
+    }
+
+    const chunkSizeChars = this.config.chunkSize * this.CHARS_PER_TOKEN;
+    const stepChars = Math.floor(chunkSizeChars * (1 - this.config.overlapRatio));
+
+    const chunks: TextChunk[] = [];
+
+    if (fullText.length <= chunkSizeChars) {
+      chunks.push({
+        text: fullText,
+        metadata: {
+          work_id: meetingId,
+          scope: 'MEETING',
+          chunk_index: 0,
+          ...metadata,
+        },
+      });
+      return chunks;
+    }
+
+    let chunkIndex = 0;
+    for (let i = 0; i < fullText.length; i += stepChars) {
+      const chunkText = fullText.slice(i, i + chunkSizeChars);
+
+      if (chunkText.length < chunkSizeChars * this.MIN_CHUNK_RATIO && i > 0) {
+        break;
+      }
+
+      chunks.push({
+        text: chunkText,
+        metadata: {
+          work_id: meetingId,
+          scope: 'MEETING',
           chunk_index: chunkIndex,
           ...metadata,
         },

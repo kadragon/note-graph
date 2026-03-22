@@ -4,6 +4,10 @@
 import type { ChunkMetadata } from '@shared/types/search';
 import type { WorkNote, WorkNoteDetail } from '@shared/types/work-note';
 import { format } from 'date-fns';
+import {
+  type MeetingMinute,
+  MeetingMinuteRepository,
+} from '../repositories/meeting-minute-repository';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
 import type { DatabaseClient } from '../types/database';
 import type { Env } from '../types/env';
@@ -71,6 +75,7 @@ class EmbeddingSkipError extends Error {
 export class EmbeddingProcessor {
   private db: DatabaseClient;
   private repository: WorkNoteRepository;
+  private meetingRepo: MeetingMinuteRepository;
   private chunkingService: ChunkingService;
   private vectorizeService: VectorizeService;
   private embeddingService: OpenAIEmbeddingService;
@@ -78,6 +83,7 @@ export class EmbeddingProcessor {
   constructor(db: DatabaseClient, env: Env, settingService?: SettingService) {
     this.db = db;
     this.repository = new WorkNoteRepository(db);
+    this.meetingRepo = new MeetingMinuteRepository(db);
     this.chunkingService = new ChunkingService();
 
     this.embeddingService = new OpenAIEmbeddingService(env, settingService);
@@ -142,19 +148,26 @@ export class EmbeddingProcessor {
         break;
       }
 
-      // Batch fetch all details upfront to avoid N+1 queries
+      // Batch fetch all details and todos upfront to avoid N+1 queries
       const workIds = notes.map((wn) => wn.workId);
-      const detailsMap = await this.repository.findByIdsWithDetails(workIds);
+      const [detailsMap, todosByWorkId] = await Promise.all([
+        this.repository.findByIdsWithDetails(workIds),
+        this.repository.findTodosByWorkIds(workIds),
+      ]);
 
       for (const workNote of notes) {
         result.processed++;
 
         try {
-          // Get pre-fetched details
+          // Get pre-fetched details and todos
           const details = detailsMap.get(workNote.workId);
+          const todos = todosByWorkId.get(workNote.workId) || [];
+          const todoTexts = todos.map((t) =>
+            t.description ? `- ${t.title}: ${t.description}` : `- ${t.title}`
+          );
 
           // Prepare chunks using batch-fetched details
-          const chunks = this.prepareWorkNoteChunksWithDetails(workNote, details);
+          const chunks = this.prepareWorkNoteChunksWithDetails(workNote, details, todoTexts);
           const chunksToEmbed = chunks.map((chunk) => ({
             id: chunk.id,
             text: chunk.text,
@@ -232,6 +245,13 @@ export class EmbeddingProcessor {
     const personIds = details?.persons.map((p) => p.personId) || [];
     const deptName = await this.repository.getDeptNameForPerson(personIds[0] || '');
 
+    // Fetch todos for embedding context
+    const todosByWorkId = await this.repository.findTodosByWorkIds([workNote.workId]);
+    const todos = todosByWorkId.get(workNote.workId) || [];
+    const todoTexts = todos.map((t) =>
+      t.description ? `- ${t.title}: ${t.description}` : `- ${t.title}`
+    );
+
     const metadata = {
       person_ids: personIds.length > 0 ? VectorizeService.encodePersonIds(personIds) : undefined,
       dept_name: deptName || undefined,
@@ -239,12 +259,13 @@ export class EmbeddingProcessor {
       created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
     };
 
-    // Chunk work note content
+    // Chunk work note content (including todos)
     const chunks = this.chunkingService.chunkWorkNote(
       workNote.workId,
       workNote.title,
       workNote.contentRaw,
-      metadata
+      metadata,
+      todoTexts
     );
 
     // Prepare chunks for embedding
@@ -322,17 +343,24 @@ export class EmbeddingProcessor {
         break;
       }
 
-      // Batch fetch all details upfront to avoid N+1 queries
+      // Batch fetch all details and todos upfront to avoid N+1 queries
       const workIds = validWorkNotes.map((wn) => wn.workId);
-      const detailsMap = await this.repository.findByIdsWithDetails(workIds);
+      const [detailsMap, todosByWorkId] = await Promise.all([
+        this.repository.findByIdsWithDetails(workIds),
+        this.repository.findTodosByWorkIds(workIds),
+      ]);
 
       for (const workNote of validWorkNotes) {
         try {
-          // Get pre-fetched details
+          // Get pre-fetched details and todos
           const details = detailsMap.get(workNote.workId);
+          const todos = todosByWorkId.get(workNote.workId) || [];
+          const todoTexts = todos.map((t) =>
+            t.description ? `- ${t.title}: ${t.description}` : `- ${t.title}`
+          );
 
           // Prepare chunks for this work note using batch-fetched details
-          const chunks = this.prepareWorkNoteChunksWithDetails(workNote, details);
+          const chunks = this.prepareWorkNoteChunksWithDetails(workNote, details, todoTexts);
 
           // Track chunk IDs for this work note
           const chunkIds = chunks.map((c) => c.id);
@@ -402,7 +430,8 @@ export class EmbeddingProcessor {
    */
   private prepareWorkNoteChunksWithDetails(
     workNote: WorkNote,
-    details: WorkNoteDetail | undefined
+    details: WorkNoteDetail | undefined,
+    todoTexts?: string[]
   ): ChunkToEmbed[] {
     const personIds = details?.persons.map((p) => p.personId) || [];
     // Use first person's current department (single-department-per-note assumption)
@@ -415,12 +444,13 @@ export class EmbeddingProcessor {
       created_at_bucket: format(new Date(workNote.createdAt), 'yyyy-MM-dd'),
     };
 
-    // Chunk work note content - chunking service creates full metadata
+    // Chunk work note content (including todos) - chunking service creates full metadata
     const chunks = this.chunkingService.chunkWorkNote(
       workNote.workId,
       workNote.title,
       workNote.contentRaw,
-      metadata
+      metadata,
+      todoTexts
     );
 
     // Use chunking service's metadata directly
@@ -586,8 +616,16 @@ export class EmbeddingProcessor {
     }
   }
 
-  estimateChunkCount(_workId: string, title: string, contentRaw: string): number {
-    const fullTextLength = title.length + 2 + contentRaw.length; // "\n\n"
+  estimateChunkCount(
+    _workId: string,
+    title: string,
+    contentRaw: string,
+    extraText?: string
+  ): number {
+    let fullTextLength = title.length + 2 + contentRaw.length; // "\n\n"
+    if (extraText) {
+      fullTextLength += extraText.length;
+    }
     const chunkSizeChars = this.chunkingService.getChunkSizeChars();
     if (fullTextLength <= chunkSizeChars) return 1;
     const stepChars = this.chunkingService.getStepChars();
@@ -665,9 +703,126 @@ export class EmbeddingProcessor {
   }
 
   /**
-   * Get embedding statistics
+   * Get embedding statistics for work notes and meeting minutes
    */
-  async getEmbeddingStats(): Promise<{ total: number; embedded: number; pending: number }> {
-    return this.repository.getEmbeddingStats();
+  async getEmbeddingStats(): Promise<{
+    workNotes: { total: number; embedded: number; pending: number };
+    meetings: { total: number; embedded: number; pending: number };
+  }> {
+    const [workNotes, meetings] = await Promise.all([
+      this.repository.getEmbeddingStats(),
+      this.meetingRepo.getEmbeddingStats(),
+    ]);
+    return { workNotes, meetings };
+  }
+
+  // ============================================================================
+  // Meeting minute embedding
+  // ============================================================================
+
+  /**
+   * Embed pending meeting minutes
+   */
+  async embedPendingMeetings(batchSize: number = 10): Promise<ReindexResult> {
+    const result: ReindexResult = {
+      total: 0,
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    const stats = await this.meetingRepo.getEmbeddingStats();
+    result.total = stats.pending;
+
+    if (result.total === 0) {
+      return result;
+    }
+
+    console.warn(
+      `[EmbeddingProcessor] Starting batch embedding of ${result.total} pending meeting minutes`
+    );
+
+    const meetings = await this.meetingRepo.findPendingEmbedding(batchSize);
+
+    for (const meeting of meetings) {
+      result.processed++;
+
+      try {
+        await this.embedMeetingMinute(meeting);
+        result.succeeded++;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        result.failed++;
+        result.errors.push({
+          workId: meeting.meetingId,
+          error: errorMessage,
+          reason: this.classifyFailureReason(error),
+        });
+        console.error(
+          `[EmbeddingProcessor] Failed to embed meeting ${meeting.meetingId}: ${errorMessage}`
+        );
+      }
+    }
+
+    if (result.processed > 0) {
+      console.warn(
+        `[EmbeddingProcessor] Meeting embedding: ${result.succeeded}/${result.processed} succeeded, ${result.failed} failed`
+      );
+    }
+
+    return result;
+  }
+
+  /**
+   * Embed a single meeting minute into vector store
+   */
+  private async embedMeetingMinute(meeting: MeetingMinute): Promise<void> {
+    const attendeePersonIds = await this.meetingRepo.findAttendeePersonIds(meeting.meetingId);
+
+    const metadata = {
+      person_ids:
+        attendeePersonIds.length > 0
+          ? VectorizeService.encodePersonIds(attendeePersonIds)
+          : undefined,
+      category: undefined,
+      created_at_bucket: meeting.meetingDate, // YYYY-MM-DD already
+    };
+
+    const chunks = this.chunkingService.chunkMeetingMinute(
+      meeting.meetingId,
+      meeting.topic,
+      meeting.detailsRaw,
+      meeting.keywords,
+      metadata
+    );
+
+    const chunksToEmbed = chunks.map((chunk, index) => ({
+      id: ChunkingService.generateChunkId(meeting.meetingId, index),
+      text: chunk.text,
+      metadata: chunk.metadata,
+    }));
+
+    const keywordText =
+      meeting.keywords.length > 0 ? `\n\n키워드: ${meeting.keywords.join(', ')}` : undefined;
+    const previousChunkCount = this.estimateChunkCount(
+      meeting.meetingId,
+      meeting.topic,
+      meeting.detailsRaw,
+      keywordText
+    );
+
+    await this.upsertChunks(chunksToEmbed);
+    await this.deleteStaleChunks(meeting.meetingId, chunksToEmbed.length, previousChunkCount);
+
+    const updated = await this.meetingRepo.updateEmbeddedAtIfUpdatedAtMatches(
+      meeting.meetingId,
+      meeting.updatedAt
+    );
+    if (!updated) {
+      console.warn(
+        `[EmbeddingProcessor] Meeting ${meeting.meetingId} was modified during embedding, skipping mark`
+      );
+    }
   }
 }

@@ -130,6 +130,10 @@ workNotes.post('/:workId/todos', bodyValidator(createTodoSchema), async (c) => {
   const { todos: repository } = c.get('repositories');
   const todo = await repository.create(workId, data);
 
+  // Mark parent work note for re-embedding (cron will process)
+  const service = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
+  await service.clearEmbeddedAt(workId);
+
   return c.json(todo, 201);
 });
 

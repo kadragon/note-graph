@@ -173,10 +173,15 @@ export interface AIDraftMeetingReference {
 }
 
 // Vector Store types
-export interface EmbeddingStats {
+export interface EmbeddingCategoryStats {
   total: number;
   embedded: number;
   pending: number;
+}
+
+export interface EmbeddingStats {
+  workNotes: EmbeddingCategoryStats;
+  meetings: EmbeddingCategoryStats;
 }
 
 export interface BatchProcessResult {

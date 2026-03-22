@@ -30,8 +30,7 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
     // Only poll when there are pending embeddings
     refetchInterval: (query) => {
       const data = query.state.data;
-      // Stop polling when pending is 0
-      if (data && data.pending === 0) {
+      if (data && data.workNotes.pending === 0 && data.meetings.pending === 0) {
         return false;
       }
       return 5000; // Poll every 5 seconds when pending > 0
@@ -75,9 +74,10 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
 
   const isProcessing = embedPendingMutation.isPending || reindexAllMutation.isPending;
 
-  // Simplified percentage calculation
-  const total = stats?.total ?? 0;
-  const embedded = stats?.embedded ?? 0;
+  // Aggregate stats across work notes and meetings
+  const total = (stats?.workNotes.total ?? 0) + (stats?.meetings.total ?? 0);
+  const embedded = (stats?.workNotes.embedded ?? 0) + (stats?.meetings.embedded ?? 0);
+  const pending = (stats?.workNotes.pending ?? 0) + (stats?.meetings.pending ?? 0);
   const embeddingPercentage = total > 0 ? Math.round((embedded / total) * 100) : 0;
 
   return (
@@ -85,7 +85,7 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
       {!isEmbedded && (
         <div>
           <h1 className="page-title">벡터 스토어 관리</h1>
-          <p className="page-description">업무노트 임베딩 현황을 확인하고 관리합니다</p>
+          <p className="page-description">업무노트 및 회의록 임베딩 현황을 확인하고 관리합니다</p>
         </div>
       )}
 
@@ -93,14 +93,19 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
       <div className="grid gap-4 md:grid-cols-3 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">전체 업무노트</CardTitle>
+            <CardTitle className="text-sm font-medium">전체 문서</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {isLoadingStats ? (
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
-              <div className="text-2xl font-bold">{stats?.total ?? 0}</div>
+              <>
+                <div className="text-2xl font-bold">{total}</div>
+                <p className="text-xs text-muted-foreground">
+                  업무노트 {stats?.workNotes.total ?? 0} / 회의록 {stats?.meetings.total ?? 0}
+                </p>
+              </>
             )}
           </CardContent>
         </Card>
@@ -115,7 +120,7 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-green-600">{stats?.embedded ?? 0}</div>
+                <div className="text-2xl font-bold text-green-600">{embedded}</div>
                 <p className="text-xs text-muted-foreground">{embeddingPercentage}% 완료</p>
               </>
             )}
@@ -132,10 +137,8 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-yellow-600">{stats?.pending ?? 0}</div>
-                {(stats?.pending ?? 0) > 0 && (
-                  <p className="text-xs text-muted-foreground">처리 필요</p>
-                )}
+                <div className="text-2xl font-bold text-yellow-600">{pending}</div>
+                {pending > 0 && <p className="text-xs text-muted-foreground">처리 필요</p>}
               </>
             )}
           </CardContent>
@@ -143,7 +146,7 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
       </div>
 
       {/* Progress Bar */}
-      {stats && stats.total > 0 && (
+      {stats && total > 0 && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-sm font-medium">임베딩 진행률</CardTitle>
@@ -156,7 +159,7 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
               />
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              {stats.embedded} / {stats.total} ({embeddingPercentage}%)
+              {embedded} / {total} ({embeddingPercentage}%)
             </p>
           </CardContent>
         </Card>
@@ -172,7 +175,7 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
           <div className="flex flex-col gap-4 sm:flex-row">
             <Button
               onClick={() => embedPendingMutation.mutate()}
-              disabled={isProcessing || (stats?.pending ?? 0) === 0}
+              disabled={isProcessing || pending === 0}
               className="flex-1"
             >
               {embedPendingMutation.isPending ? (
@@ -198,10 +201,10 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
                 <AlertDialogHeader>
                   <AlertDialogTitle>전체 재인덱싱</AlertDialogTitle>
                   <AlertDialogDescription>
-                    모든 업무노트를 다시 임베딩합니다. 이 작업은 시간이 오래 걸릴 수 있습니다.
-                    {stats && stats.total > 0 && (
+                    모든 문서를 다시 임베딩합니다. 이 작업은 시간이 오래 걸릴 수 있습니다.
+                    {stats && total > 0 && (
                       <span className="block mt-2 font-medium">
-                        총 {stats.total}개의 업무노트가 재인덱싱됩니다.
+                        총 {total}개의 문서가 재인덱싱됩니다.
                       </span>
                     )}
                   </AlertDialogDescription>
@@ -216,27 +219,27 @@ export default function VectorStore({ embedded: isEmbedded = false }: { embedded
             </AlertDialog>
           </div>
 
-          {(stats?.pending ?? 0) > 0 && (
+          {pending > 0 && (
             <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg">
               <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
                 <p className="font-medium text-yellow-800">
-                  {stats?.pending}개의 업무노트가 임베딩 대기 중입니다
+                  {pending}개의 문서가 임베딩 대기 중입니다
                 </p>
                 <p className="text-yellow-700 mt-1">
-                  "미완료 임베딩 처리" 버튼을 클릭하여 벡터 스토어에 저장하세요.
+                  5분마다 자동 처리됩니다. 즉시 처리하려면 "미완료 임베딩 처리" 버튼을 클릭하세요.
                 </p>
               </div>
             </div>
           )}
 
-          {stats && stats.pending === 0 && stats.total > 0 && (
+          {stats && pending === 0 && total > 0 && (
             <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
               <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-green-800">모든 업무노트가 벡터화되었습니다</p>
+                <p className="font-medium text-green-800">모든 문서가 벡터화되었습니다</p>
                 <p className="text-green-700 mt-1">
-                  AI 검색 및 챗봇에서 모든 업무노트를 활용할 수 있습니다.
+                  AI 검색에서 업무노트와 회의록을 모두 활용할 수 있습니다.
                 </p>
               </div>
             </div>

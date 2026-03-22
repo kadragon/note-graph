@@ -1,7 +1,7 @@
 // Trace: SPEC-worknote-1, TASK-004, TASK-016
 // Unit tests for Zod validation schemas
 
-import { adminBatchQuerySchema, adminEmbeddingFailuresQuerySchema } from '@worker/schemas/admin';
+import { adminBatchQuerySchema } from '@worker/schemas/admin';
 import { enhanceWorkNoteRequestSchema } from '@worker/schemas/ai-draft';
 import { createDepartmentSchema, updateDepartmentSchema } from '@worker/schemas/department';
 import {
@@ -93,18 +93,6 @@ describe('Schema Validation', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.batchSize).toBe(10);
-      }
-    });
-
-    it('adminEmbeddingFailuresQuerySchema applies defaults and clamps negatives', () => {
-      const result = adminEmbeddingFailuresQuerySchema.safeParse({
-        limit: '-3',
-        offset: '-10',
-      });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.limit).toBe(1);
-        expect(result.data.offset).toBe(0);
       }
     });
   });

@@ -25,10 +25,10 @@ routes = [
 ]
 
 # ============================================================================
-# Triggers (empty — clears any previously registered cron schedules)
+# Triggers — cron schedules for background jobs
 # ============================================================================
 [triggers]
-crons = []
+crons = ["*/5 * * * *"]  # Every 5 minutes: embed pending work notes & meeting minutes
 
 # ============================================================================
 # Smart Placement
