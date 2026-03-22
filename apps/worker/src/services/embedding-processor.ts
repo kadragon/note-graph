@@ -607,8 +607,9 @@ export class EmbeddingProcessor {
       state.expectedUpdatedAt
     );
     if (!updated) {
-      console.warn(
-        `[EmbeddingProcessor] Meeting ${meetingId} was modified during embedding, skipping mark`
+      throw new EmbeddingSkipError(
+        EMBEDDING_FAILURE_REASON.STALE_VERSION,
+        `Meeting ${meetingId} was modified during embedding, skipping mark`
       );
     }
   }
@@ -792,7 +793,7 @@ export class EmbeddingProcessor {
     let allChunks: ChunkToEmbed[] = [];
     let chunkMap: Map<string, PendingChunkState> = new Map();
     // Keep meeting references for finalization (stale chunk estimation needs original data)
-    const meetingMap = new Map<string, MeetingMinute>();
+    let meetingMap = new Map<string, MeetingMinute>();
 
     const meetings = await this.meetingRepo.findPendingEmbedding(batchSize);
 
@@ -835,6 +836,7 @@ export class EmbeddingProcessor {
 
           allChunks = [];
           chunkMap = new Map();
+          meetingMap = new Map();
 
           console.warn(`[EmbeddingProcessor] Progress: ${result.processed}/${result.total}`);
         }

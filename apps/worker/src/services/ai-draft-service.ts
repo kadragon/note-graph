@@ -106,7 +106,7 @@ export class AIDraftService {
     return this.getModelFromConfig('config.openai_model_chat', this.env.OPENAI_MODEL_CHAT);
   }
 
-  private getLightweightModel(): string {
+  getLightweightModel(): string {
     return this.getModelFromConfig(
       'config.openai_model_lightweight',
       this.env.OPENAI_MODEL_LIGHTWEIGHT

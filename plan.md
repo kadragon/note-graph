@@ -26,3 +26,8 @@
 
 - [x] `useAgentDraft`의 `reset()`에 AbortController 추가하여 실제 fetch 취소 구현 — `apps/web/src/hooks/use-agent-draft.ts` (source: Claude)
 - [x] `fetchAgentSSE` SSE 파서에서 `currentEventType`을 data 처리 후에도 리셋 (방어적 코딩) — `apps/web/src/lib/api.ts` (source: Claude)
+
+### PR #384 — Batch meeting embedding and SSE improvements (2026-03-22)
+
+- [ ] `processChunkBatch` 에러 타입의 `workId` 필드명을 제네릭 `itemId`로 변경 — `embedding-processor.ts` (source: Claude)
+- [ ] `openai-chat.test.ts`에 model 파라미터 로깅 검증 테스트 추가 — `tests/unit/openai-chat.test.ts` (source: Claude)

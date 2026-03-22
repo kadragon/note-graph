@@ -335,7 +335,7 @@ app.post('/work-notes/:workId/email-reply', bodyValidator(EmailReplyRequestSchem
     dept: body.assigneeDept,
   });
 
-  return createSSEProxy(upstreamResponse, c.env.OPENAI_MODEL_LIGHTWEIGHT);
+  return createSSEProxy(upstreamResponse, aiDraftService.getLightweightModel());
 });
 
 export default app;

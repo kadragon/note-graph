@@ -174,11 +174,12 @@ export class MeetingMinuteRepository {
       params.push(nextKeywordsText);
     }
 
-    // Reset embedding only when content actually changes
+    // Reset embedding when content or attendees change (attendees affect person_ids metadata)
     const contentChanged =
       (data.topic !== undefined && data.topic !== existing.topic) ||
       (data.detailsRaw !== undefined && data.detailsRaw !== existing.detailsRaw) ||
-      (data.keywords !== undefined && nextKeywordsJson !== existing.keywordsJson);
+      (data.keywords !== undefined && nextKeywordsJson !== existing.keywordsJson) ||
+      data.attendeePersonIds !== undefined;
     if (contentChanged) {
       fields.push('embedded_at = NULL');
     }
