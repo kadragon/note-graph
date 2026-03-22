@@ -142,7 +142,7 @@ export default function WorkNoteCreateFromPDF() {
               <div className="space-y-3">
                 <FileDropzone
                   onFileSelect={(file) => void handleFileSelect(file)}
-                  disabled={isProcessing || (!useAgent && !!currentJobId)}
+                  disabled={useAgent ? agent.isPending : !!currentJobId}
                 />
 
                 {uploadedFile && (
@@ -177,7 +177,7 @@ export default function WorkNoteCreateFromPDF() {
                       type="checkbox"
                       checked={useAgent}
                       onChange={(e) => setUseAgent(e.target.checked)}
-                      disabled={isProcessing}
+                      disabled={useAgent ? agent.isPending : !!currentJobId}
                       className="rounded"
                     />
                     <Bot className="h-4 w-4" />
