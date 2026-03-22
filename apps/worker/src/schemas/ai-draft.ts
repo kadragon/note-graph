@@ -42,3 +42,15 @@ export const EmailReplyRequestSchema = z.object({
 });
 
 export type EmailReplyRequest = z.infer<typeof EmailReplyRequestSchema>;
+
+/**
+ * Agent draft request schema
+ */
+export const AgentDraftRequestSchema = z.object({
+  inputText: z.string().min(1, 'Input text is required'),
+  category: z.string().optional(),
+  personIds: z.array(z.string()).optional(),
+  deptName: z.string().optional(),
+});
+
+export type AgentDraftRequest = z.infer<typeof AgentDraftRequestSchema>;

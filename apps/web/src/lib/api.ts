@@ -2,6 +2,7 @@ import { type BackendTodo, transformTodoFromBackend } from '@web/lib/mappers/tod
 import { type BackendWorkNote, transformWorkNoteFromBackend } from '@web/lib/mappers/work-note';
 import { supabase } from '@web/lib/supabase';
 import type {
+  AgentProgressEvent,
   AIGatewayLogQueryParams,
   AIGatewayLogsResponse,
   AIGenerateDraftRequest,
@@ -236,6 +237,113 @@ export class APIClient {
     if (result === undefined) {
       throw new ApiError('AI 응답을 받지 못했습니다.');
     }
+    return result;
+  }
+
+  /**
+   * SSE client for agent endpoints that emit `event: progress` events
+   * during execution and a final `data:` result.
+   */
+  private async fetchAgentSSE<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    onProgress?: (event: AgentProgressEvent) => void,
+    isRetry = false
+  ): Promise<T> {
+    const authHeaders = await getAuthHeaders();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+      ...options.headers,
+    };
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (response.status === 401 && !isRetry) {
+      const { error } = await supabase.auth.refreshSession();
+      if (!error) {
+        return this.fetchAgentSSE<T>(endpoint, options, onProgress, true);
+      }
+    }
+
+    if (!response.ok) {
+      const text = await response.text();
+      let message = `HTTP ${response.status}`;
+      try {
+        const parsed = JSON.parse(text) as { message?: string };
+        if (parsed.message) message = parsed.message;
+      } catch {
+        // non-JSON error body
+      }
+      throw new ApiError(message);
+    }
+
+    if (!response.body) {
+      throw new ApiError('응답에 내용이 없습니다.');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result: T | undefined;
+    let streamError: string | null = null;
+    let currentEventType: string | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (line.startsWith(':')) continue;
+        if (line === '') {
+          currentEventType = null;
+          continue;
+        }
+        if (line.startsWith('event: ')) {
+          currentEventType = line.slice(7);
+          continue;
+        }
+        if (line.startsWith('data: ')) {
+          const payload = line.slice(6);
+          if (currentEventType === 'error') {
+            try {
+              const errData = JSON.parse(payload) as { message?: string };
+              streamError = errData.message ?? 'AI 요청 실패';
+            } catch {
+              streamError = payload;
+            }
+            continue;
+          }
+          if (currentEventType === 'done') continue;
+          if (currentEventType === 'progress') {
+            if (onProgress) {
+              try {
+                onProgress(JSON.parse(payload) as AgentProgressEvent);
+              } catch {
+                // ignore malformed progress events
+              }
+            }
+            continue;
+          }
+          // Main result payload (no event type prefix)
+          try {
+            result = JSON.parse(payload) as T;
+          } catch {
+            streamError = 'AI 응답을 파싱할 수 없습니다.';
+          }
+        }
+      }
+    }
+
+    if (streamError) throw new ApiError(streamError);
+    if (result === undefined) throw new ApiError('AI 응답을 받지 못했습니다.');
     return result;
   }
 
@@ -859,6 +967,20 @@ export class APIClient {
         method: 'POST',
         body: JSON.stringify(data),
       }
+    );
+  }
+
+  generateAgentDraft(
+    data: AIGenerateDraftRequest,
+    onProgress?: (event: AgentProgressEvent) => void
+  ) {
+    return this.fetchAgentSSE<AIGenerateDraftResponse>(
+      '/ai/work-notes/agent-draft',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+      onProgress
     );
   }
 

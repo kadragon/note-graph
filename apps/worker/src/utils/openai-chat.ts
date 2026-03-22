@@ -20,6 +20,56 @@ export interface OpenAIChatOptions {
   timeoutMs?: number;
 }
 
+// --- Tool calling types ---
+
+export interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+export interface OpenAIChatToolMessage {
+  role: 'tool';
+  tool_call_id: string;
+  content: string;
+}
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
+export interface OpenAIChatAssistantMessage {
+  role: 'assistant';
+  content: string | null;
+  tool_calls?: ToolCall[];
+}
+
+export type OpenAIChatMessageWithTools =
+  | OpenAIChatMessage
+  | OpenAIChatToolMessage
+  | OpenAIChatAssistantMessage;
+
+export interface OpenAIChatWithToolsOptions {
+  messages: OpenAIChatMessageWithTools[];
+  model: string;
+  maxCompletionTokens: number;
+  tools: ToolDefinition[];
+  temperature?: number;
+  responseFormat?: { type: 'json_object' };
+  timeoutMs?: number;
+}
+
+export interface OpenAIChatWithToolsResult {
+  content: string | null;
+  toolCalls?: ToolCall[];
+  finishReason: string;
+}
+
 /**
  * Call OpenAI chat completions API via AI Gateway
  *
@@ -234,4 +284,78 @@ export function createSSEProxy(upstreamResponse: Response): Response {
       'Cache-Control': 'no-cache',
     },
   });
+}
+
+/**
+ * Call OpenAI chat completions API with tool/function calling support.
+ *
+ * Returns a structured result including tool_calls when the model
+ * decides to invoke tools, or content when it produces a final answer.
+ */
+export async function callOpenAIChatWithTools(
+  env: Env,
+  options: OpenAIChatWithToolsOptions
+): Promise<OpenAIChatWithToolsResult> {
+  const url = getAIGatewayUrl(env, 'chat/completions');
+
+  const requestBody = {
+    model: options.model,
+    messages: options.messages,
+    max_completion_tokens: options.maxCompletionTokens,
+    tools: options.tools,
+    ...(options.responseFormat && { response_format: options.responseFormat }),
+    ...(!isReasoningModel(options.model) && {
+      temperature: options.temperature ?? 0.7,
+    }),
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: getAIGatewayHeaders(env),
+    body: JSON.stringify(requestBody),
+    signal: AbortSignal.timeout(options.timeoutMs ?? 90_000),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    if (response.status === 429) {
+      throw new RateLimitError('AI 호출 상한을 초과했습니다. 잠시 후 다시 시도해주세요.');
+    }
+    throw new AIResponseError(`OpenAI API error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json<{
+    choices: Array<{
+      message: {
+        content: string | null;
+        tool_calls?: ToolCall[];
+      };
+      finish_reason: string;
+    }>;
+    usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+  }>();
+
+  if (data.usage) {
+    console.log('[OpenAI Tools] Token usage:', {
+      model: options.model,
+      prompt_tokens: data.usage.prompt_tokens,
+      completion_tokens: data.usage.completion_tokens,
+      total_tokens: data.usage.total_tokens,
+    });
+  }
+
+  const choice = data.choices?.[0];
+  if (!choice) {
+    throw new AIResponseError('AI로부터 응답을 받지 못했습니다. 다시 시도해주세요.');
+  }
+
+  if (choice.finish_reason === 'length') {
+    throw new ValidationError('AI 응답이 너무 길어 완료되지 못했습니다. 입력을 줄여주세요.');
+  }
+
+  return {
+    content: choice.message.content,
+    toolCalls: choice.message.tool_calls,
+    finishReason: choice.finish_reason,
+  };
 }

@@ -172,6 +172,12 @@ export interface AIDraftMeetingReference {
   score: number;
 }
 
+export interface AgentProgressEvent {
+  step: 'analyzing' | 'tool_call' | 'tool_result' | 'synthesizing';
+  tool?: string;
+  message: string;
+}
+
 // Vector Store types
 export interface EmbeddingCategoryStats {
   total: number;
