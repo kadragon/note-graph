@@ -302,7 +302,7 @@ export async function callOpenAIChatWithTools(
     model: options.model,
     messages: options.messages,
     max_completion_tokens: options.maxCompletionTokens,
-    tools: options.tools,
+    ...(options.tools.length > 0 && { tools: options.tools }),
     ...(options.responseFormat && { response_format: options.responseFormat }),
     ...(!isReasoningModel(options.model) && {
       temperature: options.temperature ?? 0.7,

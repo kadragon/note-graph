@@ -37,7 +37,8 @@ function AgentProgressDisplay({ events }: { events: AgentProgressEvent[] }) {
         const isLatest = index === events.length - 1;
         return (
           <div
-            key={`${event.step}-${event.message}`}
+            // biome-ignore lint/suspicious/noArrayIndexKey: append-only list, never reorders
+            key={index}
             className="flex items-center gap-2 transition-all duration-300"
           >
             {isLatest ? (

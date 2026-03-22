@@ -127,11 +127,13 @@ export class AgentDraftService {
     const collectedMeetingRefs: MeetingMinuteReference[] = [];
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
+      const isLastIteration = i === MAX_ITERATIONS - 1;
       const result = await callOpenAIChatWithTools(this.env, {
         messages,
         model,
         maxCompletionTokens: MAX_COMPLETION_TOKENS,
-        tools: TOOLS,
+        tools: isLastIteration ? [] : TOOLS,
+        responseFormat: isLastIteration ? { type: 'json_object' } : undefined,
       });
 
       // If the model wants to call tools
@@ -207,7 +209,8 @@ export class AgentDraftService {
       messages,
       model,
       maxCompletionTokens: MAX_COMPLETION_TOKENS,
-      tools: [], // No tools — force content response
+      tools: [],
+      responseFormat: { type: 'json_object' },
     });
 
     if (!finalResult.content) {
@@ -229,13 +232,24 @@ export class AgentDraftService {
     collectedReferences: AgentDraftResult['references'],
     collectedMeetingRefs: MeetingMinuteReference[]
   ): Promise<{ content: string; summary: string }> {
-    const args = JSON.parse(toolCall.function.arguments);
+    let args: Record<string, unknown>;
+    try {
+      args = JSON.parse(toolCall.function.arguments);
+    } catch {
+      return { content: '도구 인자 파싱에 실패했습니다.', summary: '인자 파싱 오류' };
+    }
 
     switch (toolCall.function.name) {
       case 'search_similar_notes':
-        return this.executeSearchSimilarNotes(args, collectedReferences);
+        return this.executeSearchSimilarNotes(
+          args as { query: string; topK?: number },
+          collectedReferences
+        );
       case 'search_meeting_minutes':
-        return this.executeSearchMeetingMinutes(args, collectedMeetingRefs);
+        return this.executeSearchMeetingMinutes(
+          args as { query: string; topK?: number },
+          collectedMeetingRefs
+        );
       default:
         return { content: '알 수 없는 도구입니다.', summary: '알 수 없는 도구' };
     }
@@ -246,7 +260,7 @@ export class AgentDraftService {
     collectedReferences: AgentDraftResult['references']
   ): Promise<{ content: string; summary: string }> {
     try {
-      const topK = args.topK ?? 3;
+      const topK = Math.min(args.topK ?? 3, 10);
       const results = await this.workNoteService.findSimilarNotes(args.query, topK);
 
       if (results.length === 0) {
@@ -287,7 +301,7 @@ export class AgentDraftService {
     collectedMeetingRefs: MeetingMinuteReference[]
   ): Promise<{ content: string; summary: string }> {
     try {
-      const topK = args.topK ?? 3;
+      const topK = Math.min(args.topK ?? 3, 10);
       const results = await this.meetingMinuteReferenceService.search(args.query, topK, 0.3);
 
       if (results.length === 0) {
@@ -404,7 +418,12 @@ ${dueDateContext}
     const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/(\{[\s\S]*\})/);
     const jsonStr = jsonMatch?.[1]?.trim() || content.trim();
 
-    const raw = JSON.parse(jsonStr) as RawAgentDraft;
+    let raw: RawAgentDraft;
+    try {
+      raw = JSON.parse(jsonStr) as RawAgentDraft;
+    } catch {
+      throw new Error('AI 응답을 JSON으로 파싱할 수 없습니다. 다시 시도해주세요.');
+    }
 
     if (!raw.title || !raw.content) {
       throw new Error('Invalid draft: missing title or content');

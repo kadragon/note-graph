@@ -326,8 +326,8 @@ export class APIClient {
             if (onProgress) {
               try {
                 onProgress(JSON.parse(payload) as AgentProgressEvent);
-              } catch {
-                // ignore malformed progress events
+              } catch (e) {
+                console.warn('Failed to parse agent progress event:', payload, e);
               }
             }
             continue;
