@@ -174,8 +174,14 @@ export class MeetingMinuteRepository {
       params.push(nextKeywordsText);
     }
 
-    // Reset embedding on any content change
-    fields.push('embedded_at = NULL');
+    // Reset embedding only when content actually changes
+    const contentChanged =
+      (data.topic !== undefined && data.topic !== existing.topic) ||
+      (data.detailsRaw !== undefined && data.detailsRaw !== existing.detailsRaw) ||
+      (data.keywords !== undefined && nextKeywordsJson !== existing.keywordsJson);
+    if (contentChanged) {
+      fields.push('embedded_at = NULL');
+    }
 
     params.push(meetingId);
     await this.db.execute(
@@ -521,5 +527,26 @@ export class MeetingMinuteRepository {
       [meetingId]
     );
     return rows.rows.map((r) => r.personId);
+  }
+
+  async findAttendeePersonIdsByMeetingIds(meetingIds: string[]): Promise<Map<string, string[]>> {
+    const result = new Map<string, string[]>();
+    if (meetingIds.length === 0) return result;
+
+    const placeholders = meetingIds.map((_, i) => `$${i + 1}`).join(',');
+    const rows = await this.db.query<{ meetingId: string; personId: string }>(
+      `SELECT meeting_id as "meetingId", person_id as "personId"
+       FROM meeting_minute_person
+       WHERE meeting_id IN (${placeholders})`,
+      meetingIds
+    );
+
+    for (const row of rows.rows) {
+      const list = result.get(row.meetingId) || [];
+      list.push(row.personId);
+      result.set(row.meetingId, list);
+    }
+
+    return result;
   }
 }

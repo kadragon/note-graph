@@ -67,6 +67,7 @@ export function createBufferedSSEResponse<T>(
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
+      'X-Accel-Buffering': 'no',
     },
   });
 }
@@ -126,6 +127,7 @@ export function createAgentSSEResponse<T>(
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
+      'X-Accel-Buffering': 'no',
     },
   });
 }

@@ -197,7 +197,7 @@ export async function callOpenAIChatStream(
  * On finish:       event: done\ndata: {}
  * On truncation:   event: error\ndata: {"message":"..."}
  */
-export function createSSEProxy(upstreamResponse: Response): Response {
+export function createSSEProxy(upstreamResponse: Response, model?: string): Response {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
@@ -238,7 +238,12 @@ export function createSSEProxy(upstreamResponse: Response): Response {
             };
 
             if (chunk.usage) {
-              console.log('[OpenAI Stream] Token usage:', chunk.usage);
+              console.log('[OpenAI Stream] Token usage:', {
+                model,
+                prompt_tokens: chunk.usage.prompt_tokens,
+                completion_tokens: chunk.usage.completion_tokens,
+                total_tokens: chunk.usage.total_tokens,
+              });
             }
 
             const choice = chunk.choices?.[0];
@@ -282,6 +287,7 @@ export function createSSEProxy(upstreamResponse: Response): Response {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
+      'X-Accel-Buffering': 'no',
     },
   });
 }

@@ -10,14 +10,19 @@
 
 ### PR #380 — Switch AI email reply to SSE streaming (2026-03-21)
 
-- [ ] SSE 스트리밍 응답에 `X-Accel-Buffering: no` 헤더 추가 (nginx 프록시 대응) — `apps/worker/src/utils/openai-chat.ts:createSSEProxy` (source: Claude)
-- [ ] `callOpenAIChatStream` 토큰 사용량 로깅 포맷을 `callOpenAIChat`과 통일 — `apps/worker/src/utils/openai-chat.ts` (source: Claude)
+- [x] SSE 스트리밍 응답에 `X-Accel-Buffering: no` 헤더 추가 (nginx 프록시 대응) — `apps/worker/src/utils/openai-chat.ts:createSSEProxy` (source: Claude)
+- [x] `callOpenAIChatStream` 토큰 사용량 로깅 포맷을 `callOpenAIChat`과 통일 — `apps/worker/src/utils/openai-chat.ts` (source: Claude)
 
 ### PR #382 — Add meeting minutes embedding support (2026-03-22)
 
-- [ ] `embedPendingMeetings`를 work note처럼 배치 전략으로 변경 (순차→배치) — `embedding-processor.ts:767` (source: Gemini)
-- [ ] 스케줄 핸들러에서 `embedPending`/`embedPendingMeetings`를 `Promise.all`로 병렬 실행 — `index.ts:216-236` (source: Gemini)
-- [ ] 미팅 업데이트 시 콘텐츠 미변경 시에도 `embedded_at = NULL` 리셋되는 문제 — `meeting-minute-repository.ts:177` (source: Claude)
-- [ ] `chunkMeetingMinute`와 `chunkWorkNote` 간 중복 로직 공통 헬퍼 추출 — `chunking-service.ts:109-175` (source: Claude, Gemini)
-- [ ] `embedPendingMeetings`와 `embedPending` 간 중복 로직 제네릭 추상화 — `embedding-processor.ts:808` (source: Gemini)
-- [ ] Todo 텍스트가 `estimateChunkCount`에 미반영 (chunk boundary 근처 orphaned chunk 가능) — `chunking-service.ts:60-63` (source: Codex)
+- [x] `embedPendingMeetings`를 work note처럼 배치 전략으로 변경 (순차→배치) — `embedding-processor.ts:767` (source: Gemini)
+- [x] 스케줄 핸들러에서 `embedPending`/`embedPendingMeetings`를 `Promise.all`로 병렬 실행 — `index.ts:216-236` (source: Gemini)
+- [x] 미팅 업데이트 시 콘텐츠 미변경 시에도 `embedded_at = NULL` 리셋되는 문제 — `meeting-minute-repository.ts:177` (source: Claude)
+- [x] `chunkMeetingMinute`와 `chunkWorkNote` 간 중복 로직 공통 헬퍼 추출 — `chunking-service.ts:109-175` (source: Claude, Gemini)
+- [x] `embedPendingMeetings`와 `embedPending` 간 중복 로직 제네릭 추상화 — `embedding-processor.ts:808` (source: Gemini)
+- [x] Todo 텍스트가 `estimateChunkCount`에 미반영 (chunk boundary 근처 orphaned chunk 가능) — `chunking-service.ts:60-63` (source: Codex)
+
+### PR #383 — Add agentic draft generation with tool-calling loop (2026-03-22)
+
+- [x] `useAgentDraft`의 `reset()`에 AbortController 추가하여 실제 fetch 취소 구현 — `apps/web/src/hooks/use-agent-draft.ts` (source: Claude)
+- [x] `fetchAgentSSE` SSE 파서에서 `currentEventType`을 data 처리 후에도 리셋 (방어적 코딩) — `apps/web/src/lib/api.ts` (source: Claude)

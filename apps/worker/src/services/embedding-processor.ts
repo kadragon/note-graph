@@ -374,7 +374,11 @@ export class EmbeddingProcessor {
 
           // Process batch when we reach the limit
           if (allChunks.length >= MAX_CHUNKS_PER_BATCH) {
-            const batchResult = await this.processBatch(allChunks, workNoteChunkMap);
+            const batchResult = await this.processChunkBatch(
+              allChunks,
+              workNoteChunkMap,
+              (workId, state) => this.finalizeWorkNote(workId, state)
+            );
             result.succeeded += batchResult.succeeded;
             result.failed += batchResult.failed;
             result.errors.push(...batchResult.errors);
@@ -410,7 +414,11 @@ export class EmbeddingProcessor {
 
     // Process remaining chunks
     if (allChunks.length > 0) {
-      const batchResult = await this.processBatch(allChunks, workNoteChunkMap);
+      const batchResult = await this.processChunkBatch(
+        allChunks,
+        workNoteChunkMap,
+        (workId, state) => this.finalizeWorkNote(workId, state)
+      );
       result.succeeded += batchResult.succeeded;
       result.failed += batchResult.failed;
       result.errors.push(...batchResult.errors);
@@ -463,11 +471,14 @@ export class EmbeddingProcessor {
   }
 
   /**
-   * Process a batch of chunks from multiple work notes
+   * Process a batch of chunks from multiple items (work notes or meetings).
+   * After bulk-upserting all chunks, runs a per-item finalizer (e.g. stale-chunk
+   * cleanup + embedded_at update) in parallel.
    */
-  private async processBatch(
+  private async processChunkBatch(
     chunks: ChunkToEmbed[],
-    workNoteChunkMap: Map<string, PendingChunkState>
+    chunkMap: Map<string, PendingChunkState>,
+    finalizeItem: (itemId: string, state: PendingChunkState) => Promise<void>
   ): Promise<{
     processed: number;
     succeeded: number;
@@ -481,7 +492,7 @@ export class EmbeddingProcessor {
       errors: [] as Array<{ workId: string; error: string; reason: EmbeddingFailureReason }>,
     };
 
-    const workIds = Array.from(workNoteChunkMap.keys());
+    const itemIds = Array.from(chunkMap.keys());
 
     try {
       // Batch embed all chunks at once
@@ -493,47 +504,22 @@ export class EmbeddingProcessor {
 
       await this.upsertChunks(chunksForVectorize);
 
-      // Update embedded_at for all work notes in this batch (in parallel)
-      const updatePromises = workIds.map(async (workId) => {
-        const chunkState = workNoteChunkMap.get(workId);
+      // Finalize each item in this batch (in parallel)
+      const finalizePromises = itemIds.map(async (itemId) => {
+        const chunkState = chunkMap.get(itemId);
         if (!chunkState) {
-          throw new Error(`Missing chunk state for work note ${workId}`);
+          throw new Error(`Missing chunk state for item ${itemId}`);
         }
-
-        const newChunkCount = chunkState.chunkIds.length;
-        const previousChunkCount = await this.getMaxKnownChunkCount(workId, newChunkCount);
-
-        // Delete stale chunks deterministically
-        await this.deleteStaleChunks(workId, newChunkCount, previousChunkCount);
-
-        // Update timestamp only if this is still the current version
-        const updated = await this.repository.updateEmbeddedAtIfUpdatedAtMatches(
-          workId,
-          chunkState.expectedUpdatedAt
-        );
-        if (!updated) {
-          const current = await this.repository.findById(workId);
-          if (!current) {
-            throw new EmbeddingSkipError(
-              EMBEDDING_FAILURE_REASON.NOT_FOUND,
-              `Work note ${workId} not found`
-            );
-          }
-          throw new EmbeddingSkipError(
-            EMBEDDING_FAILURE_REASON.STALE_VERSION,
-            `Work note ${workId} is stale (expected ${chunkState.expectedUpdatedAt}, got ${current.updatedAt})`
-          );
-        }
-
-        return workId;
+        await finalizeItem(itemId, chunkState);
+        return itemId;
       });
 
-      const results = await Promise.allSettled(updatePromises);
+      const results = await Promise.allSettled(finalizePromises);
 
       for (let i = 0; i < results.length; i++) {
         const result = results[i];
-        const workId = workIds[i];
-        if (!result || !workId) continue;
+        const itemId = itemIds[i];
+        if (!result || !itemId) continue;
 
         batchResult.processed++;
 
@@ -544,20 +530,20 @@ export class EmbeddingProcessor {
             result.reason instanceof Error ? result.reason.message : String(result.reason);
           batchResult.failed++;
           batchResult.errors.push({
-            workId,
+            workId: itemId,
             error: errorMessage,
             reason: this.classifyFailureReason(result.reason),
           });
         }
       }
     } catch (error) {
-      // If batch embedding fails, mark all work notes as failed
+      // If batch embedding fails, mark all items as failed
       const errorMessage = error instanceof Error ? error.message : String(error);
-      for (const workId of workIds) {
+      for (const itemId of itemIds) {
         batchResult.failed++;
         batchResult.processed++;
         batchResult.errors.push({
-          workId,
+          workId: itemId,
           error: errorMessage,
           reason: this.classifyFailureReason(error, EMBEDDING_FAILURE_REASON.UPSERT_FAILED),
         });
@@ -566,6 +552,65 @@ export class EmbeddingProcessor {
     }
 
     return batchResult;
+  }
+
+  /**
+   * Finalize a work note after batch embedding: delete stale chunks and update embedded_at.
+   */
+  private async finalizeWorkNote(workId: string, state: PendingChunkState): Promise<void> {
+    const newChunkCount = state.chunkIds.length;
+    const previousChunkCount = await this.getMaxKnownChunkCount(workId, newChunkCount);
+
+    await this.deleteStaleChunks(workId, newChunkCount, previousChunkCount);
+
+    const updated = await this.repository.updateEmbeddedAtIfUpdatedAtMatches(
+      workId,
+      state.expectedUpdatedAt
+    );
+    if (!updated) {
+      const current = await this.repository.findById(workId);
+      if (!current) {
+        throw new EmbeddingSkipError(
+          EMBEDDING_FAILURE_REASON.NOT_FOUND,
+          `Work note ${workId} not found`
+        );
+      }
+      throw new EmbeddingSkipError(
+        EMBEDDING_FAILURE_REASON.STALE_VERSION,
+        `Work note ${workId} is stale (expected ${state.expectedUpdatedAt}, got ${current.updatedAt})`
+      );
+    }
+  }
+
+  /**
+   * Finalize a meeting after batch embedding: delete stale chunks and update embedded_at.
+   */
+  private async finalizeMeeting(
+    meetingId: string,
+    state: PendingChunkState,
+    meeting: MeetingMinute
+  ): Promise<void> {
+    const newChunkCount = state.chunkIds.length;
+    const keywordText =
+      meeting.keywords.length > 0 ? `\n\n키워드: ${meeting.keywords.join(', ')}` : undefined;
+    const previousChunkCount = this.estimateChunkCount(
+      meetingId,
+      meeting.topic,
+      meeting.detailsRaw,
+      keywordText
+    );
+
+    await this.deleteStaleChunks(meetingId, newChunkCount, previousChunkCount);
+
+    const updated = await this.meetingRepo.updateEmbeddedAtIfUpdatedAtMatches(
+      meetingId,
+      state.expectedUpdatedAt
+    );
+    if (!updated) {
+      console.warn(
+        `[EmbeddingProcessor] Meeting ${meetingId} was modified during embedding, skipping mark`
+      );
+    }
   }
 
   /**
@@ -721,7 +766,7 @@ export class EmbeddingProcessor {
   // ============================================================================
 
   /**
-   * Embed pending meeting minutes
+   * Embed pending meeting minutes using batch processing
    */
   async embedPendingMeetings(batchSize: number = 10): Promise<ReindexResult> {
     const result: ReindexResult = {
@@ -743,26 +788,81 @@ export class EmbeddingProcessor {
       `[EmbeddingProcessor] Starting batch embedding of ${result.total} pending meeting minutes`
     );
 
+    const failedIds = new Set<string>();
+    let allChunks: ChunkToEmbed[] = [];
+    let chunkMap: Map<string, PendingChunkState> = new Map();
+    // Keep meeting references for finalization (stale chunk estimation needs original data)
+    const meetingMap = new Map<string, MeetingMinute>();
+
     const meetings = await this.meetingRepo.findPendingEmbedding(batchSize);
 
+    // Batch fetch all attendee person IDs upfront to avoid N+1 queries
+    const meetingIds = meetings.map((m) => m.meetingId);
+    const attendeeMap = await this.meetingRepo.findAttendeePersonIdsByMeetingIds(meetingIds);
+
     for (const meeting of meetings) {
-      result.processed++;
+      if (failedIds.has(meeting.meetingId)) continue;
 
       try {
-        await this.embedMeetingMinute(meeting);
-        result.succeeded++;
+        const attendeePersonIds = attendeeMap.get(meeting.meetingId) || [];
+        const chunks = this.prepareMeetingChunks(meeting, attendeePersonIds);
+
+        const chunkIds = chunks.map((c) => c.id);
+        chunkMap.set(meeting.meetingId, {
+          chunkIds,
+          expectedUpdatedAt: meeting.updatedAt,
+        });
+        meetingMap.set(meeting.meetingId, meeting);
+
+        allChunks.push(...chunks);
+
+        if (allChunks.length >= MAX_CHUNKS_PER_BATCH) {
+          const currentMeetingMap = meetingMap;
+          const batchResult = await this.processChunkBatch(
+            allChunks,
+            chunkMap,
+            (meetingId, state) =>
+              this.finalizeMeeting(meetingId, state, currentMeetingMap.get(meetingId)!)
+          );
+          result.succeeded += batchResult.succeeded;
+          result.failed += batchResult.failed;
+          result.errors.push(...batchResult.errors);
+          result.processed += batchResult.processed;
+
+          for (const err of batchResult.errors) {
+            failedIds.add(err.workId);
+          }
+
+          allChunks = [];
+          chunkMap = new Map();
+
+          console.warn(`[EmbeddingProcessor] Progress: ${result.processed}/${result.total}`);
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         result.failed++;
+        result.processed++;
         result.errors.push({
           workId: meeting.meetingId,
           error: errorMessage,
-          reason: this.classifyFailureReason(error),
+          reason: this.classifyFailureReason(error, EMBEDDING_FAILURE_REASON.PREPARE_FAILED),
         });
+        failedIds.add(meeting.meetingId);
         console.error(
-          `[EmbeddingProcessor] Failed to embed meeting ${meeting.meetingId}: ${errorMessage}`
+          `[EmbeddingProcessor] Failed to prepare meeting ${meeting.meetingId}: ${errorMessage}`
         );
       }
+    }
+
+    // Process remaining chunks
+    if (allChunks.length > 0) {
+      const batchResult = await this.processChunkBatch(allChunks, chunkMap, (meetingId, state) =>
+        this.finalizeMeeting(meetingId, state, meetingMap.get(meetingId)!)
+      );
+      result.succeeded += batchResult.succeeded;
+      result.failed += batchResult.failed;
+      result.errors.push(...batchResult.errors);
+      result.processed += batchResult.processed;
     }
 
     if (result.processed > 0) {
@@ -775,11 +875,12 @@ export class EmbeddingProcessor {
   }
 
   /**
-   * Embed a single meeting minute into vector store
+   * Prepare chunks for a meeting minute, returning ChunkToEmbed items for batching.
    */
-  private async embedMeetingMinute(meeting: MeetingMinute): Promise<void> {
-    const attendeePersonIds = await this.meetingRepo.findAttendeePersonIds(meeting.meetingId);
-
+  private prepareMeetingChunks(
+    meeting: MeetingMinute,
+    attendeePersonIds: string[]
+  ): ChunkToEmbed[] {
     const metadata = {
       person_ids:
         attendeePersonIds.length > 0
@@ -797,32 +898,11 @@ export class EmbeddingProcessor {
       metadata
     );
 
-    const chunksToEmbed = chunks.map((chunk, index) => ({
+    return chunks.map((chunk, index) => ({
       id: ChunkingService.generateChunkId(meeting.meetingId, index),
       text: chunk.text,
-      metadata: chunk.metadata,
+      metadata: chunk.metadata as ChunkToEmbed['metadata'],
+      workId: meeting.meetingId,
     }));
-
-    const keywordText =
-      meeting.keywords.length > 0 ? `\n\n키워드: ${meeting.keywords.join(', ')}` : undefined;
-    const previousChunkCount = this.estimateChunkCount(
-      meeting.meetingId,
-      meeting.topic,
-      meeting.detailsRaw,
-      keywordText
-    );
-
-    await this.upsertChunks(chunksToEmbed);
-    await this.deleteStaleChunks(meeting.meetingId, chunksToEmbed.length, previousChunkCount);
-
-    const updated = await this.meetingRepo.updateEmbeddedAtIfUpdatedAtMatches(
-      meeting.meetingId,
-      meeting.updatedAt
-    );
-    if (!updated) {
-      console.warn(
-        `[EmbeddingProcessor] Meeting ${meeting.meetingId} was modified during embedding, skipping mark`
-      );
-    }
   }
 }

@@ -211,13 +211,21 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
         },
       ];
 
-      // Act - call processBatch directly
-      const processBatch = (
+      // Act - call processChunkBatch directly with a finalizer matching work note behavior
+      const processChunkBatch = (
         processor as unknown as {
-          processBatch: (typeof processor)['processBatch' & keyof typeof processor];
+          processChunkBatch: (...args: unknown[]) => Promise<unknown>;
         }
-      ).processBatch.bind(processor);
-      const resultPromise = processBatch(chunks, workNoteChunkMap);
+      ).processChunkBatch.bind(processor);
+      const finalizeWorkNote = (
+        processor as unknown as {
+          finalizeWorkNote: (
+            workId: string,
+            state: { chunkIds: string[]; expectedUpdatedAt: string }
+          ) => Promise<void>;
+        }
+      ).finalizeWorkNote.bind(processor);
+      const resultPromise = processChunkBatch(chunks, workNoteChunkMap, finalizeWorkNote);
       await vi.runAllTimersAsync();
       const result = await resultPromise;
 
