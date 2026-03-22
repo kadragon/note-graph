@@ -64,8 +64,15 @@ describe('vector-store page', () => {
     } as unknown as ReturnType<typeof useQueryClient>);
   });
 
+  function makeStats(total: number, embedded: number, pending: number) {
+    return {
+      workNotes: { total, embedded, pending },
+      meetings: { total: 0, embedded: 0, pending: 0 },
+    };
+  }
+
   function setupMocks(options: {
-    stats?: { total: number; embedded: number; pending: number } | undefined;
+    stats?: ReturnType<typeof makeStats> | undefined;
     isLoading?: boolean;
     embedPendingIsPending?: boolean;
     reindexAllIsPending?: boolean;
@@ -94,11 +101,13 @@ describe('vector-store page', () => {
   }
 
   it('renders page title and description', () => {
-    setupMocks({ stats: { total: 0, embedded: 0, pending: 0 } });
+    setupMocks({ stats: makeStats(0, 0, 0) });
     render(<VectorStore />);
 
     expect(screen.getByText('벡터 스토어 관리')).toBeInTheDocument();
-    expect(screen.getByText('업무노트 임베딩 현황을 확인하고 관리합니다')).toBeInTheDocument();
+    expect(
+      screen.getByText('업무노트 및 회의록 임베딩 현황을 확인하고 관리합니다')
+    ).toBeInTheDocument();
   });
 
   it('shows loading spinners when stats are loading', () => {
@@ -110,7 +119,7 @@ describe('vector-store page', () => {
   });
 
   it('displays stats correctly when data is loaded', () => {
-    setupMocks({ stats: { total: 100, embedded: 75, pending: 25 } });
+    setupMocks({ stats: makeStats(100, 75, 25) });
     render(<VectorStore />);
 
     expect(screen.getByText('100')).toBeInTheDocument();
@@ -120,7 +129,7 @@ describe('vector-store page', () => {
   });
 
   it('shows progress bar with correct percentage when total > 0', () => {
-    setupMocks({ stats: { total: 100, embedded: 50, pending: 50 } });
+    setupMocks({ stats: makeStats(100, 50, 50) });
     render(<VectorStore />);
 
     expect(screen.getByText('임베딩 진행률')).toBeInTheDocument();
@@ -128,34 +137,36 @@ describe('vector-store page', () => {
   });
 
   it('does not show progress bar when total is 0', () => {
-    setupMocks({ stats: { total: 0, embedded: 0, pending: 0 } });
+    setupMocks({ stats: makeStats(0, 0, 0) });
     render(<VectorStore />);
 
     expect(screen.queryByText('임베딩 진행률')).not.toBeInTheDocument();
   });
 
   it('shows pending warning when there are pending embeddings', () => {
-    setupMocks({ stats: { total: 100, embedded: 80, pending: 20 } });
+    setupMocks({ stats: makeStats(100, 80, 20) });
     render(<VectorStore />);
 
-    expect(screen.getByText('20개의 업무노트가 임베딩 대기 중입니다')).toBeInTheDocument();
+    expect(screen.getByText('20개의 문서가 임베딩 대기 중입니다')).toBeInTheDocument();
     expect(
-      screen.getByText('"미완료 임베딩 처리" 버튼을 클릭하여 벡터 스토어에 저장하세요.')
+      screen.getByText(
+        '5분마다 자동 처리됩니다. 즉시 처리하려면 "미완료 임베딩 처리" 버튼을 클릭하세요.'
+      )
     ).toBeInTheDocument();
   });
 
   it('shows success message when all embeddings are complete', () => {
-    setupMocks({ stats: { total: 100, embedded: 100, pending: 0 } });
+    setupMocks({ stats: makeStats(100, 100, 0) });
     render(<VectorStore />);
 
-    expect(screen.getByText('모든 업무노트가 벡터화되었습니다')).toBeInTheDocument();
+    expect(screen.getByText('모든 문서가 벡터화되었습니다')).toBeInTheDocument();
     expect(
-      screen.getByText('AI 검색 및 챗봇에서 모든 업무노트를 활용할 수 있습니다.')
+      screen.getByText('AI 검색에서 업무노트와 회의록을 모두 활용할 수 있습니다.')
     ).toBeInTheDocument();
   });
 
   it('disables embed pending button when pending is 0', () => {
-    setupMocks({ stats: { total: 100, embedded: 100, pending: 0 } });
+    setupMocks({ stats: makeStats(100, 100, 0) });
     render(<VectorStore />);
 
     const embedButton = screen.getByRole('button', { name: /미완료 임베딩 처리/ });
@@ -163,7 +174,7 @@ describe('vector-store page', () => {
   });
 
   it('enables embed pending button when pending > 0', () => {
-    setupMocks({ stats: { total: 100, embedded: 80, pending: 20 } });
+    setupMocks({ stats: makeStats(100, 80, 20) });
     render(<VectorStore />);
 
     const embedButton = screen.getByRole('button', { name: /미완료 임베딩 처리/ });
@@ -171,7 +182,7 @@ describe('vector-store page', () => {
   });
 
   it('calls embed pending mutation when button is clicked', async () => {
-    setupMocks({ stats: { total: 100, embedded: 80, pending: 20 } });
+    setupMocks({ stats: makeStats(100, 80, 20) });
     const user = userEvent.setup();
     render(<VectorStore />);
 
@@ -182,7 +193,7 @@ describe('vector-store page', () => {
 
   it('disables buttons when embedding is in progress', () => {
     setupMocks({
-      stats: { total: 100, embedded: 80, pending: 20 },
+      stats: makeStats(100, 80, 20),
       embedPendingIsPending: true,
     });
     render(<VectorStore />);
@@ -195,17 +206,17 @@ describe('vector-store page', () => {
   });
 
   it('shows reindex confirmation dialog content', () => {
-    setupMocks({ stats: { total: 50, embedded: 50, pending: 0 } });
+    setupMocks({ stats: makeStats(50, 50, 0) });
     render(<VectorStore />);
 
     expect(
-      screen.getByText('모든 업무노트를 다시 임베딩합니다. 이 작업은 시간이 오래 걸릴 수 있습니다.')
+      screen.getByText('모든 문서를 다시 임베딩합니다. 이 작업은 시간이 오래 걸릴 수 있습니다.')
     ).toBeInTheDocument();
-    expect(screen.getByText('총 50개의 업무노트가 재인덱싱됩니다.')).toBeInTheDocument();
+    expect(screen.getByText('총 50개의 문서가 재인덱싱됩니다.')).toBeInTheDocument();
   });
 
   it('calls reindex all mutation when confirmation is clicked', async () => {
-    setupMocks({ stats: { total: 50, embedded: 50, pending: 0 } });
+    setupMocks({ stats: makeStats(50, 50, 0) });
     const user = userEvent.setup();
     render(<VectorStore />);
 
@@ -223,7 +234,7 @@ describe('vector-store page', () => {
   });
 
   it('shows pending notice text when pending > 0', () => {
-    setupMocks({ stats: { total: 100, embedded: 80, pending: 20 } });
+    setupMocks({ stats: makeStats(100, 80, 20) });
     render(<VectorStore />);
 
     expect(screen.getByText('처리 필요')).toBeInTheDocument();
