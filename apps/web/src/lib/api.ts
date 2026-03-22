@@ -251,8 +251,9 @@ export class APIClient {
     isRetry = false
   ): Promise<T> {
     const authHeaders = await getAuthHeaders();
+    const isFormData = options.body instanceof FormData;
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...authHeaders,
       ...options.headers,
     };
@@ -979,6 +980,27 @@ export class APIClient {
       {
         method: 'POST',
         body: JSON.stringify(data),
+      },
+      onProgress
+    );
+  }
+
+  generateAgentDraftFromPDF(
+    file: File,
+    metadata?: { category?: string; personIds?: string[]; deptName?: string },
+    onProgress?: (event: AgentProgressEvent) => void
+  ) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (metadata?.category) formData.append('category', metadata.category);
+    if (metadata?.personIds?.length) formData.append('personIds', metadata.personIds.join(','));
+    if (metadata?.deptName) formData.append('deptName', metadata.deptName);
+
+    return this.fetchAgentSSE<AIGenerateDraftResponse>(
+      '/ai/work-notes/agent-draft-from-pdf',
+      {
+        method: 'POST',
+        body: formData,
       },
       onProgress
     );
