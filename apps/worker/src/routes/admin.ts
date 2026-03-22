@@ -73,7 +73,11 @@ admin.post('/embed-pending', queryValidator(adminBatchQuerySchema), async (c) =>
   return c.json({
     success: true,
     message: `미완료 임베딩 완료`,
-    result: { workNotes, meetings },
+    result: {
+      processed: workNotes.processed + meetings.processed,
+      succeeded: workNotes.succeeded + meetings.succeeded,
+      failed: workNotes.failed + meetings.failed,
+    },
   });
 });
 

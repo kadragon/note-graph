@@ -288,7 +288,14 @@ meetingMinutes.delete('/:meetingId', async (c) => {
   // Clean up Vectorize chunks in background
   if (existing) {
     const processor = new EmbeddingProcessor(db, c.env, c.get('settingService'));
-    const chunkCount = processor.estimateChunkCount(meetingId, existing.topic, existing.detailsRaw);
+    const keywordText =
+      existing.keywords.length > 0 ? `\n\n키워드: ${existing.keywords.join(', ')}` : undefined;
+    const chunkCount = processor.estimateChunkCount(
+      meetingId,
+      existing.topic,
+      existing.detailsRaw,
+      keywordText
+    );
     c.executionCtx.waitUntil(
       processor.deleteChunkRange(meetingId, 0, chunkCount).catch((error) => {
         console.error('[MeetingMinutes] Failed to delete chunks:', {

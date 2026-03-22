@@ -616,8 +616,16 @@ export class EmbeddingProcessor {
     }
   }
 
-  estimateChunkCount(_workId: string, title: string, contentRaw: string): number {
-    const fullTextLength = title.length + 2 + contentRaw.length; // "\n\n"
+  estimateChunkCount(
+    _workId: string,
+    title: string,
+    contentRaw: string,
+    extraText?: string
+  ): number {
+    let fullTextLength = title.length + 2 + contentRaw.length; // "\n\n"
+    if (extraText) {
+      fullTextLength += extraText.length;
+    }
     const chunkSizeChars = this.chunkingService.getChunkSizeChars();
     if (fullTextLength <= chunkSizeChars) return 1;
     const stepChars = this.chunkingService.getStepChars();
@@ -795,14 +803,26 @@ export class EmbeddingProcessor {
       metadata: chunk.metadata,
     }));
 
+    const keywordText =
+      meeting.keywords.length > 0 ? `\n\n키워드: ${meeting.keywords.join(', ')}` : undefined;
     const previousChunkCount = this.estimateChunkCount(
       meeting.meetingId,
       meeting.topic,
-      meeting.detailsRaw
+      meeting.detailsRaw,
+      keywordText
     );
 
     await this.upsertChunks(chunksToEmbed);
     await this.deleteStaleChunks(meeting.meetingId, chunksToEmbed.length, previousChunkCount);
-    await this.meetingRepo.updateEmbeddedAt(meeting.meetingId);
+
+    const updated = await this.meetingRepo.updateEmbeddedAtIfUpdatedAtMatches(
+      meeting.meetingId,
+      meeting.updatedAt
+    );
+    if (!updated) {
+      console.warn(
+        `[EmbeddingProcessor] Meeting ${meeting.meetingId} was modified during embedding, skipping mark`
+      );
+    }
   }
 }
