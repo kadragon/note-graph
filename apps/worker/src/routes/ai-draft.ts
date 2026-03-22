@@ -5,18 +5,20 @@
 
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import {
+  AgentDraftRequestSchema,
   DraftFromTextRequestSchema,
   EmailReplyRequestSchema,
   enhanceWorkNoteRequestSchema,
   TodoSuggestionsRequestSchema,
 } from '../schemas/ai-draft';
+import { AgentDraftService } from '../services/agent-draft-service';
 import { AIDraftService } from '../services/ai-draft-service';
 import { FileTextExtractionService } from '../services/file-text-extraction-service';
 import { MeetingMinuteReferenceService } from '../services/meeting-minute-reference-service';
 import { WorkNoteService } from '../services/work-note-service';
 import type { AppContext } from '../types/context';
 import { NotFoundError } from '../types/errors';
-import { createBufferedSSEResponse } from '../utils/buffered-sse';
+import { createAgentSSEResponse, createBufferedSSEResponse } from '../utils/buffered-sse';
 import { createSSEProxy } from '../utils/openai-chat';
 import { createProtectedRouter } from './_shared/router-factory';
 
@@ -117,6 +119,46 @@ app.post(
     });
   }
 );
+
+/**
+ * POST /ai/work-notes/agent-draft
+ * Generate work note draft using an agentic loop with tool calling.
+ * The AI autonomously decides which tools to use (similar notes, meeting minutes)
+ * and streams progress events to the client.
+ */
+app.post('/work-notes/agent-draft', bodyValidator(AgentDraftRequestSchema), async (c) => {
+  const body = getValidatedBody<typeof AgentDraftRequestSchema>(c);
+  const { taskCategories, todos: todoRepository } = c.get('repositories');
+
+  return createAgentSSEResponse(async (sendProgress) => {
+    const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
+    const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.get('db'));
+
+    const [activeCategories, todoDueDateContext] = await Promise.all([
+      taskCategories.findAll(undefined, 100, true),
+      todoRepository.getOpenTodoDueDateContextForAI(10),
+    ]);
+
+    const agentService = new AgentDraftService(
+      c.env,
+      workNoteService,
+      meetingMinuteReferenceService,
+      c.get('settingService')
+    );
+
+    return agentService.generateDraft(
+      body.inputText,
+      {
+        category: body.category,
+        personIds: body.personIds,
+        deptName: body.deptName,
+        activeCategories: activeCategories.map((cat) => cat.name),
+        todoDueDateContext,
+      },
+      sendProgress
+    );
+  });
+});
 
 /**
  * POST /ai/work-notes/:workId/todo-suggestions

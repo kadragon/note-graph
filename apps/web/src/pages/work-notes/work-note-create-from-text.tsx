@@ -5,12 +5,14 @@ import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { Label } from '@web/components/ui/label';
 import { Textarea } from '@web/components/ui/textarea';
+import { useAgentDraft } from '@web/hooks/use-agent-draft';
 import { useGenerateDraftWithSimilar } from '@web/hooks/use-ai-draft';
 import { useAIDraftForm } from '@web/hooks/use-ai-draft-form';
 import type { ProgressStep } from '@web/hooks/use-step-progress';
 import { useStepProgress } from '@web/hooks/use-step-progress';
 import { useToast } from '@web/hooks/use-toast';
-import { ArrowLeft, FileEdit, Sparkles } from 'lucide-react';
+import type { AgentProgressEvent } from '@web/types/api';
+import { ArrowLeft, Bot, Check, FileEdit, Loader2, Sparkles } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,15 +21,54 @@ const textSteps: ProgressStep[] = [
   { label: 'AI 초안 생성 중...', durationMs: 0 },
 ];
 
+function AgentProgressDisplay({ events }: { events: AgentProgressEvent[] }) {
+  if (events.length === 0) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+        <span className="text-sm font-medium">입력 텍스트를 분석하고 있습니다...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 py-2">
+      {events.map((event, index) => {
+        const isLatest = index === events.length - 1;
+        return (
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: append-only list, never reorders
+            key={index}
+            className="flex items-center gap-2 transition-all duration-300"
+          >
+            {isLatest ? (
+              <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+            ) : (
+              <Check className="h-4 w-4 text-green-500 shrink-0" />
+            )}
+            <span className={isLatest ? 'text-sm font-medium' : 'text-sm text-muted-foreground'}>
+              {event.message}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function WorkNoteCreateFromText() {
   const navigate = useNavigate();
   const [inputText, setInputText] = useState('');
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [draftGenerated, setDraftGenerated] = useState(false);
+  const [useAgent, setUseAgent] = useState(true);
   const createdWorkNoteIdRef = useRef<string | null>(null);
 
   const generateMutation = useGenerateDraftWithSimilar();
+  const agent = useAgentDraft();
   const { toast } = useToast();
+
+  const isGenerating = useAgent ? agent.isPending : generateMutation.isPending;
 
   const progress = useStepProgress({ steps: textSteps, isActive: generateMutation.isPending });
 
@@ -50,15 +91,26 @@ export default function WorkNoteCreateFromText() {
       toast({ variant: 'destructive', title: '오류', description: '텍스트를 입력해주세요.' });
       return;
     }
-    try {
-      const result = await generateMutation.mutateAsync({
-        inputText: inputText.trim(),
-        personIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
-      });
-      actions.populateDraft(result.draft, result.references, result.meetingReferences);
-      setDraftGenerated(true);
-    } catch {
-      // Error handled by mutation hook
+
+    const requestData = {
+      inputText: inputText.trim(),
+      personIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+    };
+
+    if (useAgent) {
+      const result = await agent.generate(requestData);
+      if (result) {
+        actions.populateDraft(result.draft, result.references, result.meetingReferences);
+        setDraftGenerated(true);
+      }
+    } else {
+      try {
+        const result = await generateMutation.mutateAsync(requestData);
+        actions.populateDraft(result.draft, result.references, result.meetingReferences);
+        setDraftGenerated(true);
+      } catch {
+        // Error handled by mutation hook
+      }
     }
   };
 
@@ -102,7 +154,7 @@ export default function WorkNoteCreateFromText() {
                     onChange={(e) => setInputText(e.target.value)}
                     placeholder="업무에 대한 내용을 자유롭게 입력하세요. AI가 유사한 업무노트를 참고하여 구조화된 초안을 생성합니다."
                     className="min-h-[200px]"
-                    disabled={generateMutation.isPending}
+                    disabled={isGenerating}
                   />
                 </div>
 
@@ -122,27 +174,43 @@ export default function WorkNoteCreateFromText() {
                   )}
                 </div>
 
-                {generateMutation.isPending && (
+                {isGenerating && useAgent && <AgentProgressDisplay events={agent.progress} />}
+                {isGenerating && !useAgent && (
                   <StepProgressIndicator
                     steps={progress.steps}
                     currentStepIndex={progress.currentStepIndex}
                   />
                 )}
 
-                <div className="flex gap-2 justify-end">
+                <div className="flex gap-2 justify-end items-center">
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground mr-auto cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={useAgent}
+                      onChange={(e) => setUseAgent(e.target.checked)}
+                      disabled={isGenerating}
+                      className="rounded"
+                    />
+                    <Bot className="h-4 w-4" />
+                    에이전트 모드
+                  </label>
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     취소
                   </Button>
                   <Button
                     onClick={() => void handleGenerate()}
-                    disabled={generateMutation.isPending || !inputText.trim()}
+                    disabled={isGenerating || !inputText.trim()}
                   >
-                    {generateMutation.isPending ? (
+                    {isGenerating ? (
                       <>처리 중...</>
                     ) : (
                       <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        AI로 초안 생성
+                        {useAgent ? (
+                          <Bot className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 mr-2" />
+                        )}
+                        {useAgent ? 'AI 에이전트로 생성' : 'AI로 초안 생성'}
                       </>
                     )}
                   </Button>
