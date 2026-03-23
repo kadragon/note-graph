@@ -1,5 +1,6 @@
 import type { WorkNoteDraft } from '@shared/types/search';
 import { TodoRepository } from '@worker/repositories/todo-repository';
+import { AgentDraftService } from '@worker/services/agent-draft-service';
 import { AIDraftService } from '@worker/services/ai-draft-service';
 import { PdfExtractionService } from '@worker/services/pdf-extraction-service';
 import { WorkNoteService } from '@worker/services/work-note-service';
@@ -288,6 +289,53 @@ describe('AI Draft Routes - due date distribution context wiring', () => {
     expect(enhanceSpy).toHaveBeenCalled();
     const options = enhanceSpy.mock.calls[0]?.[3];
     expect(options?.todoDueDateContext).toEqual(TODO_DUE_DATE_CONTEXT);
+  });
+
+  it('sends truncation progress event when PDF text exceeds 30,000 chars', async () => {
+    vi.spyOn(TodoRepository.prototype, 'getOpenTodoDueDateContextForAI').mockResolvedValue(
+      TODO_DUE_DATE_CONTEXT
+    );
+    vi.spyOn(PdfExtractionService.prototype, 'validatePdfBuffer').mockImplementation(
+      () => undefined
+    );
+    // Return text longer than 30,000 chars
+    vi.spyOn(PdfExtractionService.prototype, 'extractText').mockResolvedValue('A'.repeat(35_000));
+    vi.spyOn(AgentDraftService.prototype, 'generateDraft').mockResolvedValue({
+      draft: DRAFT_RESPONSE,
+      references: [],
+    });
+
+    const file = new File([new Uint8Array([37, 80, 68, 70])], 'big.pdf', {
+      type: 'application/pdf',
+    });
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await authFetch('/api/ai/work-notes/agent-draft-from-pdf', {
+      method: 'POST',
+      body: formData,
+    });
+
+    expect(response.status).toBe(200);
+
+    // Parse raw SSE to find progress events
+    const text = await response.text();
+    const progressEvents: Array<{ step: string; message: string }> = [];
+    const lines = text.split('\n');
+    let currentEventType: string | null = null;
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        currentEventType = line.slice(7);
+      } else if (line.startsWith('data: ') && currentEventType === 'progress') {
+        progressEvents.push(JSON.parse(line.slice(6)));
+      } else if (line === '') {
+        currentEventType = null;
+      }
+    }
+
+    const truncationEvent = progressEvents.find((e) => e.message.includes('30,000'));
+    expect(truncationEvent).toBeDefined();
+    expect(truncationEvent?.step).toBe('analyzing');
   });
 
   it('passes due date context to pdf draft generation', async () => {

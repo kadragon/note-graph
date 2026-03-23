@@ -21,7 +21,7 @@ export interface ReindexResult {
   processed: number;
   succeeded: number;
   failed: number;
-  errors: Array<{ workId: string; error: string; reason: EmbeddingFailureReason }>;
+  errors: Array<{ itemId: string; error: string; reason: EmbeddingFailureReason }>;
 }
 
 export const EMBEDDING_FAILURE_REASON = {
@@ -196,7 +196,7 @@ export class EmbeddingProcessor {
           const errorMessage = error instanceof Error ? error.message : String(error);
           result.failed++;
           result.errors.push({
-            workId: workNote.workId,
+            itemId: workNote.workId,
             error: errorMessage,
             reason: this.classifyFailureReason(error),
           });
@@ -386,7 +386,7 @@ export class EmbeddingProcessor {
 
             // Track failed IDs
             for (const err of batchResult.errors) {
-              failedIds.add(err.workId);
+              failedIds.add(err.itemId);
             }
 
             // Reset for next batch
@@ -400,7 +400,7 @@ export class EmbeddingProcessor {
           result.failed++;
           result.processed++;
           result.errors.push({
-            workId: workNote.workId,
+            itemId: workNote.workId,
             error: errorMessage,
             reason: this.classifyFailureReason(error, EMBEDDING_FAILURE_REASON.PREPARE_FAILED),
           });
@@ -483,13 +483,13 @@ export class EmbeddingProcessor {
     processed: number;
     succeeded: number;
     failed: number;
-    errors: Array<{ workId: string; error: string; reason: EmbeddingFailureReason }>;
+    errors: Array<{ itemId: string; error: string; reason: EmbeddingFailureReason }>;
   }> {
     const batchResult = {
       processed: 0,
       succeeded: 0,
       failed: 0,
-      errors: [] as Array<{ workId: string; error: string; reason: EmbeddingFailureReason }>,
+      errors: [] as Array<{ itemId: string; error: string; reason: EmbeddingFailureReason }>,
     };
 
     const itemIds = Array.from(chunkMap.keys());
@@ -530,7 +530,7 @@ export class EmbeddingProcessor {
             result.reason instanceof Error ? result.reason.message : String(result.reason);
           batchResult.failed++;
           batchResult.errors.push({
-            workId: itemId,
+            itemId,
             error: errorMessage,
             reason: this.classifyFailureReason(result.reason),
           });
@@ -543,7 +543,7 @@ export class EmbeddingProcessor {
         batchResult.failed++;
         batchResult.processed++;
         batchResult.errors.push({
-          workId: itemId,
+          itemId,
           error: errorMessage,
           reason: this.classifyFailureReason(error, EMBEDDING_FAILURE_REASON.UPSERT_FAILED),
         });
@@ -831,7 +831,7 @@ export class EmbeddingProcessor {
           result.processed += batchResult.processed;
 
           for (const err of batchResult.errors) {
-            failedIds.add(err.workId);
+            failedIds.add(err.itemId);
           }
 
           allChunks = [];
@@ -845,7 +845,7 @@ export class EmbeddingProcessor {
         result.failed++;
         result.processed++;
         result.errors.push({
-          workId: meeting.meetingId,
+          itemId: meeting.meetingId,
           error: errorMessage,
           reason: this.classifyFailureReason(error, EMBEDDING_FAILURE_REASON.PREPARE_FAILED),
         });

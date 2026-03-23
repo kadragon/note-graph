@@ -212,7 +212,8 @@ app.post('/work-notes/agent-draft-from-pdf', async (c) => {
   extractionService.validatePdfBuffer(pdfBuffer);
   let extractedText = await extractionService.extractText(pdfBuffer);
 
-  if (extractedText.length > PDF_MAX_TEXT_LENGTH) {
+  const wasTruncated = extractedText.length > PDF_MAX_TEXT_LENGTH;
+  if (wasTruncated) {
     extractedText = extractedText.slice(0, PDF_MAX_TEXT_LENGTH);
   }
 
@@ -223,6 +224,13 @@ app.post('/work-notes/agent-draft-from-pdf', async (c) => {
       step: 'analyzing',
       message: 'PDF에서 텍스트를 추출했습니다. 분석을 시작합니다...',
     });
+
+    if (wasTruncated) {
+      sendProgress({
+        step: 'analyzing',
+        message: `PDF 텍스트가 ${PDF_MAX_TEXT_LENGTH.toLocaleString()}자를 초과하여 앞부분만 사용합니다.`,
+      });
+    }
 
     const workNoteService = new WorkNoteService(c.get('db'), c.env, c.get('settingService'));
     const meetingMinuteReferenceService = new MeetingMinuteReferenceService(c.get('db'));
