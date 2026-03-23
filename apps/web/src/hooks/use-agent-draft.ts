@@ -33,14 +33,14 @@ export function useAgentDraft() {
     [toast]
   );
 
-  const generate = useCallback(
-    async (data: AIGenerateDraftRequest): Promise<AIGenerateDraftResponse | null> => {
+  const runWithState = useCallback(
+    async (fn: () => Promise<AIGenerateDraftResponse>): Promise<AIGenerateDraftResponse | null> => {
       setIsPending(true);
       setProgress([]);
       abortRef.current = false;
 
       try {
-        return await API.generateAgentDraft(data, onProgress);
+        return await fn();
       } catch (error) {
         handleError(error);
         return null;
@@ -48,28 +48,22 @@ export function useAgentDraft() {
         setIsPending(false);
       }
     },
-    [onProgress, handleError]
+    [handleError]
+  );
+
+  const generate = useCallback(
+    (data: AIGenerateDraftRequest): Promise<AIGenerateDraftResponse | null> =>
+      runWithState(() => API.generateAgentDraft(data, onProgress)),
+    [runWithState, onProgress]
   );
 
   const generateFromPDF = useCallback(
-    async (
+    (
       file: File,
       metadata?: { category?: string; personIds?: string[]; deptName?: string }
-    ): Promise<AIGenerateDraftResponse | null> => {
-      setIsPending(true);
-      setProgress([]);
-      abortRef.current = false;
-
-      try {
-        return await API.generateAgentDraftFromPDF(file, metadata, onProgress);
-      } catch (error) {
-        handleError(error);
-        return null;
-      } finally {
-        setIsPending(false);
-      }
-    },
-    [onProgress, handleError]
+    ): Promise<AIGenerateDraftResponse | null> =>
+      runWithState(() => API.generateAgentDraftFromPDF(file, metadata, onProgress)),
+    [runWithState, onProgress]
   );
 
   const reset = useCallback(() => {

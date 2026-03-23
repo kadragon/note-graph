@@ -250,4 +250,64 @@ describe('EmbeddingProcessor - batch fetch optimization', () => {
       vi.useRealTimers();
     }
   });
+
+  it('processChunkBatch errors use generic itemId field instead of workId', async () => {
+    // Arrange: Make upsertChunks fail so all items are marked as failed
+    (processor as TestEmbeddingProcessor).upsertChunks = vi
+      .fn()
+      .mockRejectedValue(new Error('embedding API down'));
+
+    const chunkMap = new Map<string, { chunkIds: string[]; expectedUpdatedAt: string }>([
+      ['ITEM-1', { chunkIds: ['ITEM-1#chunk0'], expectedUpdatedAt: '2024-01-01T00:00:00.000Z' }],
+      ['ITEM-2', { chunkIds: ['ITEM-2#chunk0'], expectedUpdatedAt: '2024-01-02T00:00:00.000Z' }],
+    ]);
+
+    const chunks = [
+      {
+        id: 'ITEM-1#chunk0',
+        text: 'Content 1',
+        metadata: {
+          work_id: 'ITEM-1',
+          scope: 'WORK',
+          chunk_index: 0,
+          created_at_bucket: '2024-01-01',
+        },
+        workId: 'ITEM-1',
+      },
+      {
+        id: 'ITEM-2#chunk0',
+        text: 'Content 2',
+        metadata: {
+          work_id: 'ITEM-2',
+          scope: 'WORK',
+          chunk_index: 0,
+          created_at_bucket: '2024-01-02',
+        },
+        workId: 'ITEM-2',
+      },
+    ];
+
+    const processChunkBatch = (
+      processor as unknown as {
+        processChunkBatch: (...args: unknown[]) => Promise<{
+          processed: number;
+          succeeded: number;
+          failed: number;
+          errors: Array<{ itemId: string; error: string; reason: string }>;
+        }>;
+      }
+    ).processChunkBatch.bind(processor);
+
+    // Act
+    const result = await processChunkBatch(chunks, chunkMap, vi.fn());
+
+    // Assert: errors should have itemId, not workId
+    expect(result.failed).toBe(2);
+    expect(result.errors).toHaveLength(2);
+    expect(result.errors[0]).toHaveProperty('itemId', 'ITEM-1');
+    expect(result.errors[1]).toHaveProperty('itemId', 'ITEM-2');
+    // Ensure workId is NOT present
+    expect(result.errors[0]).not.toHaveProperty('workId');
+    expect(result.errors[1]).not.toHaveProperty('workId');
+  });
 });
