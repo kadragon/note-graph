@@ -228,7 +228,7 @@ app.post('/work-notes/agent-draft-from-pdf', async (c) => {
     if (wasTruncated) {
       sendProgress({
         step: 'analyzing',
-        message: `PDF 텍스트가 30,000자를 초과하여 앞부분만 사용합니다.`,
+        message: `PDF 텍스트가 ${PDF_MAX_TEXT_LENGTH.toLocaleString()}자를 초과하여 앞부분만 사용합니다.`,
       });
     }
 
