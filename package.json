@@ -56,7 +56,7 @@
     "date-fns": "^4.1.0",
     "hono": "^4.12.9",
     "jose": "^6.2.2",
-    "lucide-react": "^0.577.0",
+    "lucide-react": "^1.6.0",
     "marked": "^17.0.5",
     "nanoid": "^5.1.7",
     "postgres": "^3.4.8",
