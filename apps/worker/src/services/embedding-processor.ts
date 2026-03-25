@@ -823,7 +823,11 @@ export class EmbeddingProcessor {
             allChunks,
             chunkMap,
             (meetingId, state) =>
-              this.finalizeMeeting(meetingId, state, currentMeetingMap.get(meetingId)!)
+              this.finalizeMeeting(
+                meetingId,
+                state,
+                currentMeetingMap.get(meetingId) as MeetingMinute
+              )
           );
           result.succeeded += batchResult.succeeded;
           result.failed += batchResult.failed;
@@ -859,7 +863,7 @@ export class EmbeddingProcessor {
     // Process remaining chunks
     if (allChunks.length > 0) {
       const batchResult = await this.processChunkBatch(allChunks, chunkMap, (meetingId, state) =>
-        this.finalizeMeeting(meetingId, state, meetingMap.get(meetingId)!)
+        this.finalizeMeeting(meetingId, state, meetingMap.get(meetingId) as MeetingMinute)
       );
       result.succeeded += batchResult.succeeded;
       result.failed += batchResult.failed;

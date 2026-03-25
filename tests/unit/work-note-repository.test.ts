@@ -446,7 +446,11 @@ describe('WorkNoteRepository', () => {
       const existing = await repository.findById(existingWorkId);
       findByIdSpy.mockClear();
 
-      const result = await repository.update(existingWorkId, { title: 'Via Previous' }, existing!);
+      const result = await repository.update(
+        existingWorkId,
+        { title: 'Via Previous' },
+        existing ?? undefined
+      );
 
       expect(findByIdSpy).not.toHaveBeenCalled();
       expect(result.title).toBe('Via Previous');

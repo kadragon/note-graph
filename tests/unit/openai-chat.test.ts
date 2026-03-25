@@ -28,7 +28,7 @@ describe('createSSEProxy', () => {
     const response = createSSEProxy(upstream, 'gpt-4o');
 
     // Consume the stream to trigger the pump
-    const reader = response.body!.getReader();
+    const reader = response.body?.getReader();
     while (!(await reader.read()).done) {}
 
     expect(consoleSpy).toHaveBeenCalledWith('[OpenAI Stream] Token usage:', {
