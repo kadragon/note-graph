@@ -27,7 +27,6 @@ export function groupTodosByWorkNote(todos: Todo[]): WorkNoteTodoGroup[] {
         todos: [],
       });
     }
-
     groups.get(key)?.todos.push(todo);
   });
 

@@ -95,7 +95,7 @@ export class CloudflareAIGatewayLogService {
     const rawLogs = this.getRawLogs(payload.result);
     const logs = rawLogs
       .map((entry, index) => this.mapLogItem(entry, index))
-      .filter((entry): entry is AIGatewayLogItem => entry !== null);
+      .filter((entry) => entry !== null);
 
     const paginationSource = this.getPaginationSource(payload, payload.result);
     const pagination = this.mapPagination(paginationSource, query.page, query.perPage, logs.length);

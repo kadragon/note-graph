@@ -550,7 +550,7 @@ export class WorkNoteService {
 
       return workIds
         .map((id) => workNoteMap.get(id))
-        .filter((note): note is WorkNote => note !== undefined)
+        .filter((note) => note !== undefined)
         .map((note) => ({
           workId: note.workId,
           title: note.title,
