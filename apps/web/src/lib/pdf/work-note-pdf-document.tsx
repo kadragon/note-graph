@@ -25,131 +25,119 @@ const styles = StyleSheet.create({
     padding: 0,
     fontFamily: 'NotoSansKR',
     fontSize: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.white,
   },
-  // Top color band
+  // Top accent bar
   topBand: {
-    height: 6,
+    height: 4,
     backgroundColor: colors.primary,
   },
   // Main content area
   mainContent: {
-    padding: 40,
-    paddingTop: 30,
+    paddingHorizontal: 40,
+    paddingTop: 28,
+    paddingBottom: 50,
   },
-  // Header section
-  header: {
-    marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
-  },
+  // Title
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 700,
-    color: colors.gray900,
-    marginBottom: 12,
+    color: colors.text,
+    marginBottom: 16,
+  },
+
+  // ── Metadata grid table ──
+  metaTable: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 20,
   },
   metaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    minHeight: 28,
   },
-  metaLabel: {
+  metaRowLast: {
+    borderBottomWidth: 0,
+  },
+  metaKeyCell: {
+    width: 72,
+    backgroundColor: colors.headerBg,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+    justifyContent: 'center',
+  },
+  metaKeyCellMid: {
+    width: 72,
+    backgroundColor: colors.headerBg,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
+    justifyContent: 'center',
+  },
+  metaKeyText: {
     fontSize: 9,
-    color: colors.gray500,
-    width: 45,
+    fontWeight: 700,
+    color: colors.textSecondary,
   },
-  metaValue: {
+  metaValueCell: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    justifyContent: 'center',
+  },
+  metaValueText: {
     fontSize: 9,
-    color: colors.gray600,
+    color: colors.text,
   },
-  // Category badges
-  categoryRow: {
+
+  // Category badges inside metadata grid
+  badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
+    gap: 4,
   },
   categoryBadge: {
     backgroundColor: colors.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 6,
-    marginBottom: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
   },
   categoryText: {
     fontSize: 9,
     color: colors.primary,
     fontWeight: 700,
   },
-  // Section card style
-  section: {
-    marginBottom: 20,
+
+  // ── Section dividers & headers ──
+  sectionDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginTop: 20,
+    marginBottom: 12,
   },
-  sectionCard: {
-    backgroundColor: colors.gray50,
-    borderRadius: 8,
-    padding: 16,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
-  },
-  sectionTitle: {
-    fontSize: 11,
+  sectionHeader: {
+    fontSize: 12,
     fontWeight: 700,
-    color: colors.gray700,
+    color: colors.text,
     marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  // Person/Assignee styles
-  personItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  personBullet: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginRight: 8,
-  },
-  personName: {
-    fontWeight: 700,
-    color: colors.gray800,
-  },
-  personDept: {
-    color: colors.gray500,
-    fontSize: 9,
-  },
-  // Content section
-  contentCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  content: {
-    lineHeight: 1.8,
-    color: colors.gray700,
-    fontSize: 10,
-  },
-  // Todo section
-  todoCard: {
-    backgroundColor: colors.gray50,
-    borderRadius: 8,
-    padding: 16,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.success,
-  },
+
+  // ── Todo section ──
   todoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
+    borderBottomColor: colors.border,
   },
   todoItemLast: {
     borderBottomWidth: 0,
@@ -160,8 +148,8 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     marginRight: 10,
     borderWidth: 1.5,
-    borderColor: colors.gray300,
-    backgroundColor: '#ffffff',
+    borderColor: colors.border,
+    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -171,34 +159,39 @@ const styles = StyleSheet.create({
   },
   todoCheckmark: {
     fontSize: 8,
-    color: '#ffffff',
+    color: colors.white,
     fontWeight: 700,
   },
   todoTitle: {
     flex: 1,
-    color: colors.gray700,
+    color: colors.text,
   },
   todoTitleCompleted: {
     textDecoration: 'line-through',
-    color: colors.gray400,
+    color: colors.textMuted,
   },
   todoDate: {
     fontSize: 8,
-    color: colors.gray500,
-    backgroundColor: colors.gray100,
+    color: colors.textSecondary,
+    backgroundColor: colors.headerBg,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   todoDateCompleted: {
-    backgroundColor: colors.successLight,
-    color: colors.success,
+    backgroundColor: colors.successBg,
+    color: colors.successText,
   },
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: colors.gray200,
-    marginVertical: 16,
+
+  // ── Footer ──
+  footer: {
+    position: 'absolute',
+    bottom: 24,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 9,
+    color: colors.textMuted,
   },
 });
 
@@ -208,141 +201,169 @@ interface WorkNotePDFDocumentProps {
 }
 
 export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProps) {
+  const hasCategories = workNote.categories && workNote.categories.length > 0;
+  const hasPersons = workNote.persons && workNote.persons.length > 0;
+
+  // Determine which metadata row is last for border removal
+  const lastRowType = hasPersons ? 'persons' : hasCategories ? 'categories' : 'dates';
+
+  // Build persons inline text: "홍길동(개발팀) · 김영희(기획팀)"
+  const personsText = workNote.persons
+    ?.map((p) => {
+      const orgParts = [p.currentDept, p.currentPosition].filter(Boolean);
+      return orgParts.length > 0 ? `${p.personName}(${orgParts.join('/')})` : p.personName;
+    })
+    .join(' \u00B7 ');
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Top color band */}
+        {/* Top accent bar */}
         <View style={styles.topBand} />
 
         <View style={styles.mainContent}>
-          {/* Header section with title, dates, and categories */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{workNote.title}</Text>
+          {/* Title */}
+          <Text style={styles.title}>{workNote.title}</Text>
 
-            {/* Meta information */}
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>생성일</Text>
-              <Text style={styles.metaValue}>
-                {formatDateTimeOrFallback(
-                  workNote.createdAt,
-                  'yyyy-MM-dd HH:mm',
-                  workNote.createdAt
-                )}
-              </Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>수정일</Text>
-              <Text style={styles.metaValue}>
-                {formatDateTimeOrFallback(
-                  workNote.updatedAt,
-                  'yyyy-MM-dd HH:mm',
-                  workNote.updatedAt
-                )}
-              </Text>
+          {/* Metadata grid table */}
+          <View style={styles.metaTable}>
+            {/* Row 1: 생성일 / 수정일 (4-column) */}
+            <View
+              style={
+                lastRowType === 'dates' ? [styles.metaRow, styles.metaRowLast] : styles.metaRow
+              }
+            >
+              <View style={styles.metaKeyCell}>
+                <Text style={styles.metaKeyText}>생성일</Text>
+              </View>
+              <View style={styles.metaValueCell}>
+                <Text style={styles.metaValueText}>
+                  {formatDateTimeOrFallback(
+                    workNote.createdAt,
+                    'yyyy-MM-dd HH:mm',
+                    workNote.createdAt
+                  )}
+                </Text>
+              </View>
+              <View style={styles.metaKeyCellMid}>
+                <Text style={styles.metaKeyText}>수정일</Text>
+              </View>
+              <View style={styles.metaValueCell}>
+                <Text style={styles.metaValueText}>
+                  {formatDateTimeOrFallback(
+                    workNote.updatedAt,
+                    'yyyy-MM-dd HH:mm',
+                    workNote.updatedAt
+                  )}
+                </Text>
+              </View>
             </View>
 
-            {/* Categories as badges */}
-            {workNote.categories && workNote.categories.length > 0 && (
-              <View style={styles.categoryRow}>
-                {workNote.categories.map((category) => (
-                  <View key={category.categoryId} style={styles.categoryBadge}>
-                    <Text style={styles.categoryText}>{category.name}</Text>
+            {/* Row 2: 업무구분 (categories) */}
+            {hasCategories && (
+              <View
+                style={
+                  lastRowType === 'categories'
+                    ? [styles.metaRow, styles.metaRowLast]
+                    : styles.metaRow
+                }
+              >
+                <View style={styles.metaKeyCell}>
+                  <Text style={styles.metaKeyText}>업무구분</Text>
+                </View>
+                <View style={styles.metaValueCell}>
+                  <View style={styles.badgeRow}>
+                    {workNote.categories!.map((category) => (
+                      <View key={category.categoryId} style={styles.categoryBadge}>
+                        <Text style={styles.categoryText}>{category.name}</Text>
+                      </View>
+                    ))}
                   </View>
-                ))}
+                </View>
+              </View>
+            )}
+
+            {/* Row 3: 담당자 (persons inline) */}
+            {hasPersons && (
+              <View style={[styles.metaRow, styles.metaRowLast]}>
+                <View style={styles.metaKeyCell}>
+                  <Text style={styles.metaKeyText}>담당자</Text>
+                </View>
+                <View style={styles.metaValueCell}>
+                  <Text style={styles.metaValueText}>{personsText}</Text>
+                </View>
               </View>
             )}
           </View>
 
-          {/* Assignees section */}
-          {workNote.persons && workNote.persons.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>담당자</Text>
-                {workNote.persons.map((person) => {
-                  const orgParts = [person.currentDept, person.currentPosition].filter(Boolean);
-                  const contactParts = [person.personId, person.phoneExt].filter(Boolean);
-                  return (
-                    <View key={person.personId} style={styles.personItem}>
-                      <View style={styles.personBullet} />
-                      <Text style={styles.personName}>{person.personName}</Text>
-                      {orgParts.length > 0 && (
-                        <Text style={styles.personDept}> ({orgParts.join('/')})</Text>
-                      )}
-                      {contactParts.length > 0 && (
-                        <Text style={styles.personDept}> · {contactParts.join(' · ')}</Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* Content section with markdown rendering */}
+          {/* Content section */}
           {workNote.content && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>내용</Text>
-              <View style={styles.contentCard}>
-                <MarkdownRenderer content={workNote.content} />
-              </View>
+            <View>
+              <View style={styles.sectionDivider} />
+              <Text style={styles.sectionHeader}>내용</Text>
+              <MarkdownRenderer content={workNote.content} />
             </View>
           )}
 
           {/* Todos section */}
           {todos.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.todoCard}>
-                <Text style={styles.sectionTitle}>할일 목록</Text>
-                {todos.map((todo, index) => {
-                  const isCompleted = todo.status === '완료';
-                  const isLast = index === todos.length - 1;
-                  // 완료된 할일: updatedAt을 완료일로 표시
-                  // 미완료 할일: dueDate를 마감일로 표시
-                  const displayDate = isCompleted ? todo.updatedAt : todo.dueDate;
-                  const dateLabel = isCompleted ? '완료' : '마감';
+            <View>
+              <View style={styles.sectionDivider} />
+              <Text style={styles.sectionHeader}>할일 목록</Text>
+              {todos.map((todo, index) => {
+                const isCompleted = todo.status === '완료';
+                const isLast = index === todos.length - 1;
+                const displayDate = isCompleted ? todo.updatedAt : todo.dueDate;
+                const dateLabel = isCompleted ? '완료' : '마감';
 
-                  return (
+                return (
+                  <View
+                    key={todo.id}
+                    style={isLast ? [styles.todoItem, styles.todoItemLast] : styles.todoItem}
+                  >
                     <View
-                      key={todo.id}
-                      style={isLast ? [styles.todoItem, styles.todoItemLast] : styles.todoItem}
+                      style={
+                        isCompleted
+                          ? [styles.todoCheckbox, styles.todoCheckboxCompleted]
+                          : styles.todoCheckbox
+                      }
                     >
-                      <View
-                        style={
-                          isCompleted
-                            ? [styles.todoCheckbox, styles.todoCheckboxCompleted]
-                            : styles.todoCheckbox
-                        }
-                      >
-                        {isCompleted && <Text style={styles.todoCheckmark}>✓</Text>}
-                      </View>
+                      {isCompleted && <Text style={styles.todoCheckmark}>✓</Text>}
+                    </View>
+                    <Text
+                      style={
+                        isCompleted
+                          ? [styles.todoTitle, styles.todoTitleCompleted]
+                          : styles.todoTitle
+                      }
+                    >
+                      {todo.title}
+                    </Text>
+                    {displayDate && (
                       <Text
                         style={
                           isCompleted
-                            ? [styles.todoTitle, styles.todoTitleCompleted]
-                            : styles.todoTitle
+                            ? [styles.todoDate, styles.todoDateCompleted]
+                            : styles.todoDate
                         }
                       >
-                        {todo.title}
+                        {dateLabel}:{' '}
+                        {formatDateTimeOrFallback(displayDate, 'yyyy-MM-dd', displayDate)}
                       </Text>
-                      {displayDate && (
-                        <Text
-                          style={
-                            isCompleted
-                              ? [styles.todoDate, styles.todoDateCompleted]
-                              : styles.todoDate
-                          }
-                        >
-                          {dateLabel}:{' '}
-                          {formatDateTimeOrFallback(displayDate, 'yyyy-MM-dd', displayDate)}
-                        </Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           )}
         </View>
+
+        {/* Page number footer */}
+        <Text
+          style={styles.footer}
+          render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
+          fixed
+        />
       </Page>
     </Document>
   );

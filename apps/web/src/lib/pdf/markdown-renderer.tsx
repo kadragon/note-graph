@@ -8,37 +8,37 @@ const styles = StyleSheet.create({
   paragraph: {
     marginBottom: 8,
     lineHeight: 1.7,
-    color: colors.gray700,
+    color: colors.text,
     fontSize: 10,
   },
   heading1: {
     fontSize: 16,
     fontWeight: 700,
-    color: colors.gray800,
+    color: colors.text,
     marginTop: 16,
     marginBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
+    borderBottomColor: colors.border,
     paddingBottom: 4,
   },
   heading2: {
     fontSize: 14,
     fontWeight: 700,
-    color: colors.gray800,
+    color: colors.text,
     marginTop: 14,
     marginBottom: 6,
   },
   heading3: {
     fontSize: 12,
     fontWeight: 700,
-    color: colors.gray800,
+    color: colors.text,
     marginTop: 12,
     marginBottom: 4,
   },
   heading4: {
     fontSize: 11,
     fontWeight: 700,
-    color: colors.gray700,
+    color: colors.text,
     marginTop: 10,
     marginBottom: 4,
   },
@@ -65,12 +65,12 @@ const styles = StyleSheet.create({
   listContent: {
     flex: 1,
     fontSize: 10,
-    color: colors.gray700,
+    color: colors.text,
     lineHeight: 1.6,
   },
   // Code styles
   codeBlock: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.headerBg,
     borderRadius: 4,
     padding: 10,
     marginVertical: 8,
@@ -79,35 +79,34 @@ const styles = StyleSheet.create({
   },
   codeText: {
     fontSize: 9,
-    color: colors.gray700,
+    color: colors.text,
     lineHeight: 1.5,
   },
   inlineCode: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.headerBg,
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 3,
     fontSize: 9,
-    color: colors.gray700,
+    color: colors.text,
   },
   // Blockquote
   blockquote: {
     borderLeftWidth: 3,
-    borderLeftColor: colors.gray200,
+    borderLeftColor: colors.primaryBorder,
     paddingLeft: 12,
     marginVertical: 8,
     marginLeft: 4,
   },
   blockquoteText: {
     fontSize: 10,
-    color: colors.gray500,
-    fontStyle: 'italic',
+    color: colors.textSecondary,
     lineHeight: 1.6,
   },
   // Horizontal rule
   hr: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
+    borderBottomColor: colors.border,
     marginVertical: 12,
   },
   // Inline styles
@@ -119,7 +118,7 @@ const styles = StyleSheet.create({
   },
   strikethrough: {
     textDecoration: 'line-through',
-    color: colors.gray500,
+    color: colors.textSecondary,
   },
 });
 
@@ -200,7 +199,7 @@ function renderInlineTokens(tokens: Token[] | undefined): React.ReactNode[] {
         return (
           <Text key={key} style={styles.bold}>
             {renderInlineTokens((token as Tokens.Link).tokens)}
-            <Text style={{ color: colors.gray500, fontWeight: 400 }}>
+            <Text style={{ color: colors.textSecondary, fontWeight: 400 }}>
               {' '}
               ({(token as Tokens.Link).href})
             </Text>
