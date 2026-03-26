@@ -13,7 +13,7 @@ import { useToast } from '@web/hooks/use-toast';
 import { API } from '@web/lib/api';
 import { autoAttachPdf } from '@web/lib/auto-attach-pdf';
 import { FileDropzone } from '@web/pages/pdf-upload/components/file-dropzone';
-import { ArrowLeft, Bot, FileText } from 'lucide-react';
+import { ArrowLeft, Bot, FileText, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,6 +29,7 @@ export default function WorkNoteCreateFromPDF() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [draftPopulated, setDraftPopulated] = useState(false);
   const [useAgent, setUseAgent] = useState(true);
+  const [isUrgent, setIsUrgent] = useState(false);
   const createdWorkNoteIdRef = useRef<string | null>(null);
 
   const uploadMutation = useUploadPDF();
@@ -91,7 +92,9 @@ export default function WorkNoteCreateFromPDF() {
     setUploadedFile(file);
 
     if (useAgent) {
-      const result = await agent.generateFromPDF(file);
+      const result = await agent.generateFromPDF(file, {
+        urgent: isUrgent ? true : undefined,
+      });
       if (result) {
         actions.populateDraft(result.draft, result.references, result.meetingReferences);
         setDraftPopulated(true);
@@ -172,17 +175,32 @@ export default function WorkNoteCreateFromPDF() {
                 )}
 
                 <div className="flex gap-2 justify-end items-center">
-                  <label className="flex items-center gap-2 text-sm text-muted-foreground mr-auto cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={useAgent}
-                      onChange={(e) => setUseAgent(e.target.checked)}
-                      disabled={useAgent ? agent.isPending : !!currentJobId}
-                      className="rounded"
-                    />
-                    <Bot className="h-4 w-4" />
-                    에이전트 모드
-                  </label>
+                  <div className="flex items-center gap-4 mr-auto">
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={useAgent}
+                        onChange={(e) => setUseAgent(e.target.checked)}
+                        disabled={useAgent ? agent.isPending : !!currentJobId}
+                        className="rounded"
+                      />
+                      <Bot className="h-4 w-4" />
+                      에이전트 모드
+                    </label>
+                    {useAgent && (
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isUrgent}
+                          onChange={(e) => setIsUrgent(e.target.checked)}
+                          disabled={agent.isPending}
+                          className="rounded"
+                        />
+                        <Zap className="h-4 w-4" />
+                        긴급
+                      </label>
+                    )}
+                  </div>
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     취소
                   </Button>

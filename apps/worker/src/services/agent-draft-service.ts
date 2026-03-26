@@ -35,6 +35,7 @@ interface AgentDraftOptions {
   deptName?: string;
   activeCategories?: string[];
   todoDueDateContext?: OpenTodoDueDateContextForAI;
+  urgent?: boolean;
 }
 
 interface RawAgentDraft {
@@ -186,7 +187,8 @@ export class AgentDraftService {
           result.content,
           options.personIds,
           collectedReferences,
-          collectedMeetingRefs
+          collectedMeetingRefs,
+          options.urgent
         );
       }
 
@@ -221,7 +223,8 @@ export class AgentDraftService {
       finalResult.content,
       options.personIds,
       collectedReferences,
-      collectedMeetingRefs
+      collectedMeetingRefs,
+      options.urgent
     );
   }
 
@@ -412,7 +415,8 @@ ${dueDateContext}
     content: string,
     personIds: string[] | undefined,
     references: AgentDraftResult['references'],
-    meetingReferences: MeetingMinuteReference[]
+    meetingReferences: MeetingMinuteReference[],
+    urgent?: boolean
   ): AgentDraftResult {
     // Extract JSON from content (may be wrapped in markdown code blocks)
     const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/(\{[\s\S]*\})/);
@@ -429,6 +433,7 @@ ${dueDateContext}
       throw new Error('Invalid draft: missing title or content');
     }
 
+    const todayDate = getTodayDateForOffset();
     const draft: WorkNoteDraft = {
       title: raw.title,
       content: raw.content,
@@ -437,7 +442,7 @@ ${dueDateContext}
       todos: (raw.todos || []).map((todo) => ({
         title: todo.title,
         description: todo.description,
-        dueDate: todo.dueDateSuggestion || getTodayDateForOffset(),
+        dueDate: urgent ? todayDate : todo.dueDateSuggestion || todayDate,
         repeatRule: todo.repeatRule,
       })),
     };

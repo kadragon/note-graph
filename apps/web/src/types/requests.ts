@@ -132,6 +132,7 @@ export interface AIGenerateDraftRequest {
   category?: string;
   personIds?: string[];
   deptName?: string;
+  urgent?: boolean;
 }
 
 // Statistics requests

@@ -60,7 +60,7 @@ export function useAgentDraft() {
   const generateFromPDF = useCallback(
     (
       file: File,
-      metadata?: { category?: string; personIds?: string[]; deptName?: string }
+      metadata?: { category?: string; personIds?: string[]; deptName?: string; urgent?: boolean }
     ): Promise<AIGenerateDraftResponse | null> =>
       runWithState(() => API.generateAgentDraftFromPDF(file, metadata, onProgress)),
     [runWithState, onProgress]

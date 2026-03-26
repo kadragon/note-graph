@@ -9,6 +9,7 @@ export const DraftFromTextRequestSchema = z.object({
   category: z.string().optional(),
   personIds: z.array(z.string()).optional(),
   deptName: z.string().optional(),
+  urgent: z.boolean().optional(),
 });
 
 export type DraftFromTextRequest = z.infer<typeof DraftFromTextRequestSchema>;
@@ -51,6 +52,7 @@ export const AgentDraftRequestSchema = z.object({
   category: z.string().optional(),
   personIds: z.array(z.string()).optional(),
   deptName: z.string().optional(),
+  urgent: z.boolean().optional(),
 });
 
 export type AgentDraftRequest = z.infer<typeof AgentDraftRequestSchema>;
