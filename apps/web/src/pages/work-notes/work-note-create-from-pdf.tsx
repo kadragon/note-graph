@@ -93,7 +93,7 @@ export default function WorkNoteCreateFromPDF() {
 
     if (useAgent) {
       const result = await agent.generateFromPDF(file, {
-        urgent: isUrgent || undefined,
+        urgent: isUrgent ? true : undefined,
       });
       if (result) {
         actions.populateDraft(result.draft, result.references, result.meetingReferences);
@@ -187,17 +187,19 @@ export default function WorkNoteCreateFromPDF() {
                       <Bot className="h-4 w-4" />
                       에이전트 모드
                     </label>
-                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={isUrgent}
-                        onChange={(e) => setIsUrgent(e.target.checked)}
-                        disabled={useAgent ? agent.isPending : !!currentJobId}
-                        className="rounded"
-                      />
-                      <Zap className="h-4 w-4" />
-                      긴급
-                    </label>
+                    {useAgent && (
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isUrgent}
+                          onChange={(e) => setIsUrgent(e.target.checked)}
+                          disabled={agent.isPending}
+                          className="rounded"
+                        />
+                        <Zap className="h-4 w-4" />
+                        긴급
+                      </label>
+                    )}
                   </div>
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     취소

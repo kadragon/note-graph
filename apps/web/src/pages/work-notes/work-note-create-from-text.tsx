@@ -61,7 +61,7 @@ export default function WorkNoteCreateFromText() {
     const requestData = {
       inputText: inputText.trim(),
       personIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
-      urgent: isUrgent || undefined,
+      urgent: isUrgent ? true : undefined,
     };
 
     if (useAgent) {
