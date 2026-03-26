@@ -17,6 +17,9 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": false,
 
+    // Root (TS 6.0: explicit rootDir needed for monorepo shared packages)
+    "rootDir": "../..",
+
     // Emit
     "declaration": true,
     "declarationMap": true,
