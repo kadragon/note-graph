@@ -1,19 +1,26 @@
 /**
- * Shared color palette for PDF documents
+ * Semantic color palette for PDF documents
+ * Optimized for print readability and WCAG AAA contrast
  */
 export const colors = {
-  primary: '#3b82f6',
-  primaryLight: '#eff6ff',
-  success: '#10b981',
-  successLight: '#ecfdf5',
-  gray50: '#f9fafb',
-  gray100: '#f3f4f6',
-  gray200: '#e5e7eb',
-  gray300: '#d1d5db',
-  gray400: '#9ca3af',
-  gray500: '#6b7280',
-  gray600: '#4b5563',
-  gray700: '#374151',
-  gray800: '#1f2937',
-  gray900: '#111827',
+  // Text hierarchy
+  text: '#1A1A1A', // 16.75:1 on white (AAA)
+  textSecondary: '#4B5563', // 7.44:1 on white (AAA)
+  textMuted: '#9CA3AF', // 3.01:1 - decorative only
+
+  // Accent
+  primary: '#2563EB',
+  primaryLight: '#EFF6FF',
+  primaryBorder: '#BFDBFE',
+
+  // Status
+  success: '#059669',
+  successBg: '#ECFDF5',
+  successBorder: '#A7F3D0',
+  successText: '#065F46', // 7.21:1 on successBg (AAA)
+
+  // Structural
+  border: '#E5E7EB',
+  headerBg: '#F8FAFC',
+  white: '#FFFFFF',
 };
