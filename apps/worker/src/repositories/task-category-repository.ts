@@ -72,7 +72,7 @@ export class TaskCategoryRepository {
     );
     return uniqueCategoryIds
       .map((categoryId) => categoryById.get(categoryId))
-      .filter((category): category is TaskCategory => category !== undefined);
+      .filter((category) => category !== undefined);
   }
 
   /**

@@ -24,7 +24,7 @@
     "db:migrate": "bunx supabase db push",
     "db:migrate:local": "bunx supabase db reset --local",
     "db:create-migration": "bunx supabase migration new",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "concurrently --kill-others-on-fail --names web,worker \"tsc --noEmit --project apps/web/tsconfig.json\" \"tsc --noEmit --project apps/worker/tsconfig.json\"",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format .",

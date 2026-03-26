@@ -39,7 +39,7 @@ export function WorkNoteRow({ workNote, onView, onDelete }: WorkNoteRowProps) {
           ({
             personId: person.personId,
             label: [person.currentDept, person.personName]
-              .filter((part): part is string => Boolean(part?.trim()))
+              .filter((part) => Boolean(part?.trim()))
               .join('/'),
           }) as const
       )

@@ -69,7 +69,7 @@ export default function Persons() {
       if (!groups.has(dept)) {
         groups.set(dept, []);
       }
-      groups.get(dept)?.push(person);
+      groups.get(dept)!.push(person);
     });
 
     return Array.from(groups.entries()).map(([dept, members]) => ({

@@ -53,14 +53,8 @@ const manageItems: NavItem[] = [
   { path: '/departments', label: '부서 관리', icon: Building2, group: 0 },
 ];
 
-const navGroups = Object.values(
-  navItems.reduce<Record<number, NavItem[]>>((acc, item) => {
-    if (!acc[item.group]) {
-      acc[item.group] = [];
-    }
-    acc[item.group].push(item);
-    return acc;
-  }, {})
+const navGroups = Object.values(Object.groupBy(navItems, (item) => item.group)).filter(
+  (group) => group !== undefined
 );
 
 const GOOGLE_AUTH_URL = '/api/auth/google/authorize';

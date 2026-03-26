@@ -205,7 +205,7 @@ export class WorkNoteRepository {
       if (!todosByWorkId.has(todo.workId)) {
         todosByWorkId.set(todo.workId, []);
       }
-      todosByWorkId.get(todo.workId)?.push({
+      todosByWorkId.get(todo.workId)!.push({
         title: todo.title,
         description: todo.description,
         status: todo.status,
@@ -252,7 +252,7 @@ export class WorkNoteRepository {
       if (!personsByWorkId.has(person.workId)) {
         personsByWorkId.set(person.workId, []);
       }
-      personsByWorkId.get(person.workId)?.push({
+      personsByWorkId.get(person.workId)!.push({
         id: person.id,
         workId: person.workId,
         personId: person.personId,

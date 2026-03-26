@@ -127,17 +127,17 @@ export function WorkNoteFileList({ workId, createdAt }: WorkNoteFileListProps) {
 
     // 순차적으로 파일 업로드
     for (const file of filesArray) {
-      await new Promise<void>((resolve) => {
-        uploadMutation.mutate(
-          { workId, file },
-          {
-            onSettled: () => {
-              setUploadingFiles((prev) => prev.filter((f) => f !== file));
-              resolve();
-            },
-          }
-        );
-      });
+      const { promise, resolve } = Promise.withResolvers<void>();
+      uploadMutation.mutate(
+        { workId, file },
+        {
+          onSettled: () => {
+            setUploadingFiles((prev) => prev.filter((f) => f !== file));
+            resolve();
+          },
+        }
+      );
+      await promise;
     }
 
     if (fileInputRef.current) {

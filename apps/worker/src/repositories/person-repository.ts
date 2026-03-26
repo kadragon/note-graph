@@ -96,7 +96,7 @@ export class PersonRepository {
     const personById = new Map(result.rows.map((person) => [person.personId, person]));
     return uniquePersonIds
       .map((personId) => personById.get(personId))
-      .filter((person): person is Person => person !== undefined);
+      .filter((person) => person !== undefined);
   }
 
   /**
