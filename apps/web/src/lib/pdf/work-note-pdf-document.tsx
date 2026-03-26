@@ -70,17 +70,6 @@ const styles = StyleSheet.create({
     borderRightColor: colors.border,
     justifyContent: 'center',
   },
-  metaKeyCellMid: {
-    width: 72,
-    backgroundColor: colors.headerBg,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-    borderLeftWidth: 1,
-    borderLeftColor: colors.border,
-    justifyContent: 'center',
-  },
   metaKeyText: {
     fontSize: 9,
     fontWeight: 700,
@@ -168,7 +157,7 @@ const styles = StyleSheet.create({
   },
   todoTitleCompleted: {
     textDecoration: 'line-through',
-    color: colors.textMuted,
+    color: colors.textSecondary,
   },
   todoDate: {
     fontSize: 8,
@@ -207,10 +196,10 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
   // Determine which metadata row is last for border removal
   const lastRowType = hasPersons ? 'persons' : hasCategories ? 'categories' : 'dates';
 
-  // Build persons inline text: "홍길동(개발팀) · 김영희(기획팀)"
-  const personsText = workNote.persons
-    ?.map((p) => {
-      const orgParts = [p.currentDept, p.currentPosition].filter(Boolean);
+  // Build persons inline text: "홍길동(개발팀/내선1234) · 김영희(기획팀)"
+  const personsText = (workNote.persons ?? [])
+    .map((p) => {
+      const orgParts = [p.currentDept, p.currentPosition, p.phoneExt].filter(Boolean);
       return orgParts.length > 0 ? `${p.personName}(${orgParts.join('/')})` : p.personName;
     })
     .join(' \u00B7 ');
@@ -245,7 +234,9 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
                   )}
                 </Text>
               </View>
-              <View style={styles.metaKeyCellMid}>
+              <View
+                style={[styles.metaKeyCell, { borderLeftWidth: 1, borderLeftColor: colors.border }]}
+              >
                 <Text style={styles.metaKeyText}>수정일</Text>
               </View>
               <View style={styles.metaValueCell}>
@@ -273,7 +264,7 @@ export function WorkNotePDFDocument({ workNote, todos }: WorkNotePDFDocumentProp
                 </View>
                 <View style={styles.metaValueCell}>
                   <View style={styles.badgeRow}>
-                    {workNote.categories!.map((category) => (
+                    {(workNote.categories ?? []).map((category) => (
                       <View key={category.categoryId} style={styles.categoryBadge}>
                         <Text style={styles.categoryText}>{category.name}</Text>
                       </View>
