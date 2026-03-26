@@ -43,7 +43,7 @@ export function useWorkNotesWithStats() {
           if (!todosByWorkId.has(workId)) {
             todosByWorkId.set(workId, []);
           }
-          todosByWorkId.get(workId)!.push(todo);
+          todosByWorkId.get(workId)?.push(todo);
         }
 
         const now = new Date();
