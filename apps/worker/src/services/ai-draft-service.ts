@@ -62,6 +62,7 @@ interface DraftGenerationOptions extends TodoDueDateContextOption {
   personIds?: string[];
   deptName?: string;
   activeCategories?: string[];
+  urgent?: boolean;
 }
 
 interface EnhanceOptions extends TodoDueDateContextOption {
@@ -131,11 +132,12 @@ export class AIDraftService {
    * Transform raw LLM todo to proper AIDraftTodo format
    * Defaults null/undefined due dates to today's date (KST)
    */
-  private transformTodo(rawTodo: RawAIDraftTodo): AIDraftTodo {
+  private transformTodo(rawTodo: RawAIDraftTodo, urgent?: boolean): AIDraftTodo {
+    const todayDate = getTodayDateForOffset();
     return {
       title: rawTodo.title,
       description: rawTodo.description,
-      dueDate: rawTodo.dueDateSuggestion || getTodayDateForOffset(),
+      dueDate: urgent ? todayDate : rawTodo.dueDateSuggestion || todayDate,
       repeatRule: rawTodo.repeatRule,
     };
   }
@@ -143,13 +145,17 @@ export class AIDraftService {
   /**
    * Transform raw LLM draft to proper WorkNoteDraft format
    */
-  private transformDraft(rawDraft: RawWorkNoteDraft, personIds?: string[]): WorkNoteDraft {
+  private transformDraft(
+    rawDraft: RawWorkNoteDraft,
+    personIds?: string[],
+    urgent?: boolean
+  ): WorkNoteDraft {
     return {
       title: rawDraft.title,
       content: rawDraft.content,
       category: rawDraft.category,
       relatedPersonIds: personIds && personIds.length > 0 ? personIds : undefined,
-      todos: rawDraft.todos.map((todo) => this.transformTodo(todo)),
+      todos: rawDraft.todos.map((todo) => this.transformTodo(todo, urgent)),
     };
   }
 
@@ -168,7 +174,8 @@ export class AIDraftService {
     return this.callGPTAndParseDraft(
       prompt,
       '당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.',
-      options?.personIds
+      options?.personIds,
+      options?.urgent
     );
   }
 
@@ -195,7 +202,8 @@ export class AIDraftService {
     return this.callGPTAndParseDraft(
       prompt,
       '당신은 한국 직장에서 업무노트를 구조화하는 어시스턴트입니다.',
-      options?.personIds
+      options?.personIds,
+      options?.urgent
     );
   }
 
@@ -525,12 +533,20 @@ ${topDueDateLines}`;
   /**
    * Build due date decision guidance section for AI prompt.
    */
-  private buildDueDateDecisionGuidanceSection(): string {
-    return `마감일 제안 지침:
-- 가능한 경우 과밀한 날짜를 피해서 제안하세요.
-- 동일 우선순위라면 더 여유 있는 날짜를 선택하세요.
-- 과밀한 날짜를 제안해야 한다면 업무 맥락상 불가피한 이유가 있을 때만 선택하세요.
-- 가능한 한 dueDateSuggestion을 명시적으로 제시하세요.`;
+  private buildDueDateDecisionGuidanceSection(urgent?: boolean): string {
+    const lines = [
+      '마감일 제안 지침:',
+      '- 가능한 경우 과밀한 날짜를 피해서 제안하세요.',
+      '- 동일 우선순위라면 더 여유 있는 날짜를 선택하세요.',
+      '- 과밀한 날짜를 제안해야 한다면 업무 맥락상 불가피한 이유가 있을 때만 선택하세요.',
+      '- 가능한 한 dueDateSuggestion을 명시적으로 제시하세요.',
+    ];
+    if (urgent) {
+      lines.push(
+        `- **긴급 업무입니다. 모든 할일의 마감일(dueDateSuggestion)을 오늘(${getTodayDateForOffset()})로 설정하세요.**`
+      );
+    }
+    return lines.join('\n');
   }
 
   /**
@@ -552,7 +568,7 @@ ${topDueDateLines}`;
         : '',
       TODO_DUE_DATE_CONTEXT: this.buildTodoDueDateContextSection(options?.todoDueDateContext),
       CATEGORY_INSTRUCTION: this.buildCategoryInstruction(options?.activeCategories),
-      DUE_DATE_GUIDANCE: this.buildDueDateDecisionGuidanceSection(),
+      DUE_DATE_GUIDANCE: this.buildDueDateDecisionGuidanceSection(options?.urgent),
       INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
     });
   }
@@ -615,7 +631,7 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
         options?.activeCategories,
         '3. 제안 카테고리 (유사 노트에서 사용된 카테고리 우선 고려, 또는 새로운 카테고리 추론)'
       ),
-      DUE_DATE_GUIDANCE: this.buildDueDateDecisionGuidanceSection(),
+      DUE_DATE_GUIDANCE: this.buildDueDateDecisionGuidanceSection(options?.urgent),
       INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
     });
   }
@@ -657,7 +673,8 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
   private async callGPTAndParseDraft(
     prompt: string,
     systemRole: string,
-    personIds?: string[]
+    personIds?: string[],
+    urgent?: boolean
   ): Promise<WorkNoteDraft> {
     const response = await this.callGPT(prompt, systemRole);
 
@@ -668,7 +685,7 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
         throw new Error('Invalid draft: missing title or content');
       }
 
-      return this.transformDraft(rawDraft, personIds);
+      return this.transformDraft(rawDraft, personIds, urgent);
     } catch (error) {
       console.error('Error parsing draft response:', error);
       throw new Error('Failed to parse AI response. Please try again.');

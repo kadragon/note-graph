@@ -54,6 +54,7 @@ app.post('/work-notes/draft-from-text', bodyValidator(DraftFromTextRequestSchema
       deptName: body.deptName,
       activeCategories: activeCategoryNames,
       todoDueDateContext,
+      urgent: body.urgent,
     });
 
     return { draft, references: [] };
@@ -98,6 +99,7 @@ app.post(
               deptName: body.deptName,
               activeCategories: activeCategoryNames,
               todoDueDateContext,
+              urgent: body.urgent,
             })
           : await aiDraftService.generateDraftFromText(body.inputText, {
               category: body.category,
@@ -105,6 +107,7 @@ app.post(
               deptName: body.deptName,
               activeCategories: activeCategoryNames,
               todoDueDateContext,
+              urgent: body.urgent,
             });
 
       const references = similarNotes.map((note) => ({
@@ -157,6 +160,7 @@ app.post('/work-notes/agent-draft', bodyValidator(AgentDraftRequestSchema), asyn
         deptName: body.deptName,
         activeCategories: activeCategories.map((cat) => cat.name),
         todoDueDateContext,
+        urgent: body.urgent,
       },
       sendProgress
     );
@@ -193,6 +197,7 @@ app.post('/work-notes/agent-draft-from-pdf', async (c) => {
   const category = formData.get('category');
   const personIds = formData.get('personIds');
   const deptName = formData.get('deptName');
+  const urgentStr = formData.get('urgent');
 
   const metadata = {
     category: category && typeof category === 'string' ? category : undefined,
@@ -204,6 +209,7 @@ app.post('/work-notes/agent-draft-from-pdf', async (c) => {
             .filter(Boolean)
         : undefined,
     deptName: deptName && typeof deptName === 'string' ? deptName : undefined,
+    urgent: urgentStr === 'true' ? true : undefined,
   };
 
   // Extract text from PDF before entering SSE stream
@@ -255,6 +261,7 @@ app.post('/work-notes/agent-draft-from-pdf', async (c) => {
         deptName: metadata.deptName,
         activeCategories: activeCategories.map((cat) => cat.name),
         todoDueDateContext,
+        urgent: metadata.urgent,
       },
       sendProgress
     );

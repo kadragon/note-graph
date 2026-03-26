@@ -987,7 +987,7 @@ export class APIClient {
 
   generateAgentDraftFromPDF(
     file: File,
-    metadata?: { category?: string; personIds?: string[]; deptName?: string },
+    metadata?: { category?: string; personIds?: string[]; deptName?: string; urgent?: boolean },
     onProgress?: (event: AgentProgressEvent) => void
   ) {
     const formData = new FormData();
@@ -995,6 +995,7 @@ export class APIClient {
     if (metadata?.category) formData.append('category', metadata.category);
     if (metadata?.personIds?.length) formData.append('personIds', metadata.personIds.join(','));
     if (metadata?.deptName) formData.append('deptName', metadata.deptName);
+    if (metadata?.urgent) formData.append('urgent', 'true');
 
     return this.fetchAgentSSE<AIGenerateDraftResponse>(
       '/ai/work-notes/agent-draft-from-pdf',

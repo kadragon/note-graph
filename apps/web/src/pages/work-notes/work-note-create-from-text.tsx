@@ -12,7 +12,7 @@ import { useAIDraftForm } from '@web/hooks/use-ai-draft-form';
 import type { ProgressStep } from '@web/hooks/use-step-progress';
 import { useStepProgress } from '@web/hooks/use-step-progress';
 import { useToast } from '@web/hooks/use-toast';
-import { ArrowLeft, Bot, FileEdit, Sparkles } from 'lucide-react';
+import { ArrowLeft, Bot, FileEdit, Sparkles, Zap } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,6 +27,7 @@ export default function WorkNoteCreateFromText() {
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const [draftGenerated, setDraftGenerated] = useState(false);
   const [useAgent, setUseAgent] = useState(true);
+  const [isUrgent, setIsUrgent] = useState(false);
   const createdWorkNoteIdRef = useRef<string | null>(null);
 
   const generateMutation = useGenerateDraftWithSimilar();
@@ -60,6 +61,7 @@ export default function WorkNoteCreateFromText() {
     const requestData = {
       inputText: inputText.trim(),
       personIds: selectedPersonIds.length > 0 ? selectedPersonIds : undefined,
+      urgent: isUrgent || undefined,
     };
 
     if (useAgent) {
@@ -148,17 +150,30 @@ export default function WorkNoteCreateFromText() {
                 )}
 
                 <div className="flex gap-2 justify-end items-center">
-                  <label className="flex items-center gap-2 text-sm text-muted-foreground mr-auto cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={useAgent}
-                      onChange={(e) => setUseAgent(e.target.checked)}
-                      disabled={isGenerating}
-                      className="rounded"
-                    />
-                    <Bot className="h-4 w-4" />
-                    에이전트 모드
-                  </label>
+                  <div className="flex items-center gap-4 mr-auto">
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={useAgent}
+                        onChange={(e) => setUseAgent(e.target.checked)}
+                        disabled={isGenerating}
+                        className="rounded"
+                      />
+                      <Bot className="h-4 w-4" />
+                      에이전트 모드
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isUrgent}
+                        onChange={(e) => setIsUrgent(e.target.checked)}
+                        disabled={isGenerating}
+                        className="rounded"
+                      />
+                      <Zap className="h-4 w-4" />
+                      긴급
+                    </label>
+                  </div>
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     취소
                   </Button>
