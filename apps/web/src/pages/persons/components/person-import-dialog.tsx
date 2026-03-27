@@ -1,5 +1,6 @@
 // Trace: TASK-LLM-IMPORT
 
+import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import {
@@ -31,6 +32,7 @@ export function PersonImportDialog({
   const [inputText, setInputText] = useState('');
   const [parsedData, setParsedData] = useState<ParsedPersonData | null>(null);
 
+  const queryClient = useQueryClient();
   const parsePersonMutation = useParsePersonFromText();
   const importPersonMutation = useImportPerson();
 
@@ -59,6 +61,7 @@ export function PersonImportDialog({
         employmentStatus: parsedData.employmentStatus,
       });
 
+      await queryClient.invalidateQueries({ queryKey: ['persons'] });
       onPersonImported?.(result.person.personId);
       // Reset and close on success
       handleClose();
