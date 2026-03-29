@@ -1,6 +1,7 @@
 import { Button } from '@web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@web/components/ui/card';
 import { useCalendarEvents } from '@web/hooks/use-calendar';
+import { useTodoCountsByDateRange } from '@web/hooks/use-todo-counts';
 import { useGoogleDriveConfigStatus } from '@web/hooks/use-work-notes';
 import { ApiError } from '@web/lib/api';
 import { addDays, format, startOfWeek } from 'date-fns';
@@ -17,9 +18,9 @@ export function CalendarCard() {
   } = useGoogleDriveConfigStatus();
   const isConnected = driveStatus?.connected ?? false;
 
-  // Calculate date range: this week's Monday to 2 weeks later
+  // Calculate date range: this week's Sunday to 2 weeks later (matches WeekCalendar's Sunday start)
   const now = new Date();
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const weekStart = startOfWeek(now, { weekStartsOn: 0 });
   const startDate = format(weekStart, 'yyyy-MM-dd');
   const endDate = format(addDays(weekStart, 13), 'yyyy-MM-dd');
 
@@ -31,6 +32,8 @@ export function CalendarCard() {
   } = useCalendarEvents(startDate, endDate, {
     enabled: configured && isConnected,
   });
+
+  const { data: todoCounts = {} } = useTodoCountsByDateRange(startDate, endDate);
 
   // Loading state
   if (isStatusLoading) {
@@ -135,7 +138,7 @@ export function CalendarCard() {
         {isEventsLoading ? (
           <CalendarSkeleton />
         ) : (
-          <WeekCalendar events={events} startDate={weekStart} weeks={2} />
+          <WeekCalendar events={events} startDate={weekStart} weeks={2} todoCounts={todoCounts} />
         )}
       </CardContent>
     </Card>

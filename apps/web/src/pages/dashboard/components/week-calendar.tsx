@@ -9,6 +9,7 @@ interface WeekCalendarProps {
   events: CalendarEvent[];
   startDate: Date;
   weeks?: number;
+  todoCounts?: Record<string, number>;
 }
 
 interface DayEvents {
@@ -26,7 +27,7 @@ function formatEventTime(event: CalendarEvent): string {
   return '';
 }
 
-export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps) {
+export function WeekCalendar({ events, startDate, weeks = 2, todoCounts }: WeekCalendarProps) {
   // Start from the beginning of the current week
   const weekStart = startOfWeek(startDate, { weekStartsOn: 0 }); // Sunday start
   const endDate = addDays(weekStart, weeks * 7 - 1);
@@ -92,6 +93,7 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
               key={day.date.toISOString()}
               day={day}
               isWeekend={dayIndex === 0 || dayIndex === 6}
+              todoCount={todoCounts?.[format(day.date, 'yyyy-MM-dd')] ?? 0}
             />
           ))}
         </div>
@@ -103,9 +105,10 @@ export function WeekCalendar({ events, startDate, weeks = 2 }: WeekCalendarProps
 interface DayCellProps {
   day: DayEvents;
   isWeekend: boolean;
+  todoCount?: number;
 }
 
-function DayCell({ day, isWeekend }: DayCellProps) {
+function DayCell({ day, isWeekend, todoCount = 0 }: DayCellProps) {
   const today = isToday(day.date);
   const maxVisibleEvents = 2;
   const visibleEvents = day.events.slice(0, maxVisibleEvents);
@@ -115,15 +118,22 @@ function DayCell({ day, isWeekend }: DayCellProps) {
     <div className={cn('min-h-[80px] border-r p-1 last:border-r-0', today && 'bg-primary/5')}>
       {/* Date header */}
       <div className="mb-1 flex items-center justify-between">
-        <span
-          className={cn(
-            'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs',
-            today && 'bg-primary text-primary-foreground font-bold',
-            !today && isWeekend && 'text-rose-500'
+        <div className="flex items-center gap-1">
+          <span
+            className={cn(
+              'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs',
+              today && 'bg-primary text-primary-foreground font-bold',
+              !today && isWeekend && 'text-rose-500'
+            )}
+          >
+            {format(day.date, 'd')}
+          </span>
+          {todoCount > 0 && (
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/20 px-1 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+              {todoCount}
+            </span>
           )}
-        >
-          {format(day.date, 'd')}
-        </span>
+        </div>
         {day.date.getDate() === 1 && (
           <span className="text-xs text-muted-foreground">
             {format(day.date, 'M월', { locale: ko })}

@@ -178,6 +178,22 @@ export interface AgentProgressEvent {
   message: string;
 }
 
+// AI Deadline Adjustment types
+export interface DeadlineAdjustmentTodoInput {
+  todoId: string;
+  title: string;
+  description?: string | null;
+  dueDate: string;
+  workTitle?: string;
+  workCategory?: string | null;
+}
+
+export interface DeadlineSuggestion {
+  todoId: string;
+  suggestedDueDate: string;
+  reason: string;
+}
+
 // Vector Store types
 export interface EmbeddingCategoryStats {
   total: number;

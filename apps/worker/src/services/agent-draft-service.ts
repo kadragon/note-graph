@@ -294,7 +294,11 @@ export class AgentDraftService {
         summary: `${results.length}건의 유사 업무노트를 찾았습니다.`,
       };
     } catch (error) {
-      console.error('[AgentDraft] search_similar_notes failed:', error);
+      console.error(
+        '[AgentDraft] search_similar_notes failed:',
+        { query: args.query, topK: args.topK },
+        error
+      );
       return { content: '업무노트 검색 중 오류가 발생했습니다.', summary: '검색 오류' };
     }
   }
@@ -330,7 +334,11 @@ export class AgentDraftService {
         summary: `${results.length}건의 관련 회의록을 찾았습니다.`,
       };
     } catch (error) {
-      console.error('[AgentDraft] search_meeting_minutes failed:', error);
+      console.error(
+        '[AgentDraft] search_meeting_minutes failed:',
+        { query: args.query, topK: args.topK },
+        error
+      );
       return { content: '회의록 검색 중 오류가 발생했습니다.', summary: '검색 오류' };
     }
   }

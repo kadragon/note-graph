@@ -8,6 +8,9 @@ function toFiniteRank(value: number): number {
 }
 
 export function buildMeetingMinutesTsQuery(rawQuery: string): string {
+  if (typeof rawQuery !== 'string' || rawQuery.length === 0) {
+    return '';
+  }
   const tokens = rawQuery.match(FTS_TERM_PATTERN) ?? [];
   const uniqueTokens = [...new Set(tokens.map((token) => token.trim()).filter(Boolean))];
 

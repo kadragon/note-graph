@@ -56,3 +56,24 @@ export const AgentDraftRequestSchema = z.object({
 });
 
 export type AgentDraftRequest = z.infer<typeof AgentDraftRequestSchema>;
+
+/**
+ * Bulk deadline adjustment request schema
+ */
+export const BulkDeadlineAdjustRequestSchema = z.object({
+  todos: z
+    .array(
+      z.object({
+        todoId: z.string().min(1),
+        title: z.string(),
+        description: z.string().nullable().optional(),
+        dueDate: z.string(),
+        workTitle: z.string().optional(),
+        workCategory: z.string().nullable().optional(),
+      })
+    )
+    .min(1, 'At least one todo is required')
+    .max(50, 'Maximum 50 todos per request'),
+});
+
+export type BulkDeadlineAdjustRequest = z.infer<typeof BulkDeadlineAdjustRequestSchema>;
