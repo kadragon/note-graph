@@ -18,9 +18,9 @@ export function CalendarCard() {
   } = useGoogleDriveConfigStatus();
   const isConnected = driveStatus?.connected ?? false;
 
-  // Calculate date range: this week's Monday to 2 weeks later
+  // Calculate date range: this week's Sunday to 2 weeks later (matches WeekCalendar's Sunday start)
   const now = new Date();
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const weekStart = startOfWeek(now, { weekStartsOn: 0 });
   const startDate = format(weekStart, 'yyyy-MM-dd');
   const endDate = format(addDays(weekStart, 13), 'yyyy-MM-dd');
 

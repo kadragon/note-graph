@@ -27,7 +27,7 @@ import { API } from '@web/lib/api';
 import type { DeadlineSuggestion, WorkNoteWithStats } from '@web/types/api';
 import type { Todo } from '@web/types/models/todo';
 import { CalendarClock, FileEdit, FileText, Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DeadlineAdjustmentDialog } from './components/deadline-adjustment-dialog';
 import { type SortDirection, type SortKey, WorkNotesTable } from './components/work-notes-table';
@@ -59,21 +59,31 @@ export default function WorkNotes() {
   const [deadlineSuggestions, setDeadlineSuggestions] = useState<DeadlineSuggestion[] | null>(null);
   const [deadlineTodos, setDeadlineTodos] = useState<Todo[]>([]);
 
-  const handleDeadlineAdjust = useCallback(async () => {
+  const handleDeadlineAdjust = async () => {
+    let withDueDate: Todo[];
     try {
       const todos = await API.getTodos('remaining');
-      const withDueDate = todos.filter((t) => t.dueDate);
+      withDueDate = todos.filter((t) => t.dueDate);
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '할일 목록을 불러오는데 실패했습니다.',
+      });
+      return;
+    }
 
-      if (withDueDate.length === 0) {
-        toast({
-          title: '알림',
-          description: '조정할 할일이 없습니다. (마감일이 있는 진행 중 할일이 없음)',
-        });
-        return;
-      }
+    if (withDueDate.length === 0) {
+      toast({
+        title: '알림',
+        description: '조정할 할일이 없습니다. (마감일이 있는 진행 중 할일이 없음)',
+      });
+      return;
+    }
 
-      setDeadlineTodos(withDueDate);
+    setDeadlineTodos(withDueDate);
 
+    try {
       const result = await suggestMutation.mutateAsync(
         withDueDate.map((t) => ({
           todoId: t.id,
@@ -97,7 +107,7 @@ export default function WorkNotes() {
     } catch {
       // Error is handled by the mutation's onError
     }
-  }, [suggestMutation, toast]);
+  };
 
   // Handle ?id=xxx query param — redirect to new URL
   const workNoteIdFromUrl = searchParams.get('id');

@@ -72,7 +72,8 @@ export const BulkDeadlineAdjustRequestSchema = z.object({
         workCategory: z.string().nullable().optional(),
       })
     )
-    .min(1, 'At least one todo is required'),
+    .min(1, 'At least one todo is required')
+    .max(50, 'Maximum 50 todos per request'),
 });
 
 export type BulkDeadlineAdjustRequest = z.infer<typeof BulkDeadlineAdjustRequestSchema>;

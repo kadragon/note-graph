@@ -22,7 +22,7 @@ import { formatDateWithYear } from '@web/lib/utils';
 import type { DeadlineSuggestion } from '@web/types/api';
 import type { Todo } from '@web/types/models/todo';
 import { ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface DeadlineAdjustmentDialogProps {
   open: boolean;
@@ -40,6 +40,10 @@ export function DeadlineAdjustmentDialog({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(suggestions.map((s) => s.todoId))
   );
+
+  useEffect(() => {
+    setSelectedIds(new Set(suggestions.map((s) => s.todoId)));
+  }, [suggestions]);
 
   const batchSetMutation = useBatchSetDueDates();
 

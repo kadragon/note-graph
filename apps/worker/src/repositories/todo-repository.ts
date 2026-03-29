@@ -810,8 +810,8 @@ export class TodoRepository {
 
     const todoIds = updates.map((u) => u.todoId);
     const existingTodos = await queryInChunks(this.db, todoIds, async (db, chunk, placeholders) => {
-      const r = await db.query<{ todoId: string }>(
-        `SELECT todo_id as "todoId" FROM todos WHERE todo_id IN (${placeholders})`,
+      const r = await db.query<{ todoId: string; waitUntil: string | null }>(
+        `SELECT todo_id as "todoId", wait_until as "waitUntil" FROM todos WHERE todo_id IN (${placeholders})`,
         chunk
       );
       return r.rows;
@@ -821,18 +821,25 @@ export class TodoRepository {
       throw new NotFoundError('Todo', todoIds.join(', '));
     }
 
-    const existingIds = new Set(existingTodos.map((t) => t.todoId));
-    const validUpdates = updates.filter((u) => existingIds.has(u.todoId));
+    const existingMap = new Map(existingTodos.map((t) => [t.todoId, t]));
+    const validUpdates = updates.filter((u) => existingMap.has(u.todoId));
 
     if (validUpdates.length === 0) {
       return { updatedCount: 0 };
     }
 
     const nowISO = new Date().toISOString();
-    const statements = validUpdates.map((update) => ({
-      sql: `UPDATE todos SET due_date = $1, updated_at = $2 WHERE todo_id = $3`,
-      params: [update.dueDate, nowISO, update.todoId],
-    }));
+    const statements = validUpdates.map((update) => {
+      const existing = existingMap.get(update.todoId)!;
+      const dueDate =
+        existing.waitUntil && this.isEarlierDateValue(update.dueDate, existing.waitUntil)
+          ? existing.waitUntil
+          : update.dueDate;
+      return {
+        sql: `UPDATE todos SET due_date = $1, updated_at = $2 WHERE todo_id = $3`,
+        params: [dueDate, nowISO, update.todoId],
+      };
+    });
 
     await this.db.executeBatch(statements);
 
