@@ -29,6 +29,7 @@ export async function loadAndApplyMigrations(pglite: PGlite): Promise<void> {
     let sql = readFileSync(join(migrationsDir, f), 'utf-8');
     sql = sql.replace(/CREATE EXTENSION IF NOT EXISTS pg_trgm;/g, '');
     sql = sql.replace(/CREATE INDEX.*USING GIN\s*\([^)]*gin_trgm_ops\);/g, '');
+    sql = sql.replace(/ALTER EXTENSION pg_trgm SET SCHEMA \w+;/g, '');
     try {
       await pglite.exec(sql);
     } catch (err) {

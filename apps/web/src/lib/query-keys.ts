@@ -3,6 +3,8 @@ import type { TodoView } from '@web/types/api';
 export const qk = {
   todosRoot: () => ['todos'] as const,
   todos: (view: TodoView = 'today', year?: number) => ['todos', view, year] as const,
+  todoCountsByDateRange: (startDate: string, endDate: string) =>
+    ['todos', 'counts', startDate, endDate] as const,
 
   workNotes: () => ['work-notes'] as const,
   workNotesWithStats: () => ['work-notes-with-stats'] as const,

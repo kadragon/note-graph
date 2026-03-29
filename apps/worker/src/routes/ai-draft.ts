@@ -6,6 +6,7 @@
 import { bodyValidator, getValidatedBody } from '../middleware/validation-middleware';
 import {
   AgentDraftRequestSchema,
+  BulkDeadlineAdjustRequestSchema,
   DraftFromTextRequestSchema,
   EmailReplyRequestSchema,
   enhanceWorkNoteRequestSchema,
@@ -408,6 +409,30 @@ app.post('/work-notes/:workId/enhance', async (c) => {
     };
   });
 });
+
+/**
+ * POST /ai/todos/suggest-deadline-adjustments
+ * Suggest optimized deadline adjustments for a batch of todos using AI
+ */
+app.post(
+  '/todos/suggest-deadline-adjustments',
+  bodyValidator(BulkDeadlineAdjustRequestSchema),
+  async (c) => {
+    const body = getValidatedBody<typeof BulkDeadlineAdjustRequestSchema>(c);
+    const { todos: todoRepository } = c.get('repositories');
+
+    return createBufferedSSEResponse(async () => {
+      const todoDueDateContext = await todoRepository.getOpenTodoDueDateContextForAI(10);
+
+      const aiDraftService = new AIDraftService(c.env, c.get('settingService'));
+      const suggestions = await aiDraftService.suggestDeadlineAdjustments(body.todos, {
+        todoDueDateContext,
+      });
+
+      return { suggestions };
+    });
+  }
+);
 
 /**
  * POST /ai/work-notes/:workId/email-reply

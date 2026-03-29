@@ -841,6 +841,17 @@ export class APIClient {
     return response.map(transformTodoFromBackend.bind(this));
   }
 
+  async getTodoCountsByDateRange(
+    startDate: string,
+    endDate: string
+  ): Promise<Record<string, number>> {
+    const queryString = this.buildQueryString({ startDate, endDate });
+    const response = await this.request<{ counts: Record<string, number> }>(
+      `/todos/counts${queryString}`
+    );
+    return response.counts;
+  }
+
   async updateTodo(todoId: string, data: UpdateTodoRequest) {
     const response = await this.request<BackendTodo>(`/todos/${todoId}`, {
       method: 'PATCH',
@@ -859,6 +870,13 @@ export class APIClient {
     return this.request<{ updatedCount: number; skippedCount: number }>('/todos/batch-postpone', {
       method: 'PATCH',
       body: JSON.stringify({ todoIds, amount, unit }),
+    });
+  }
+
+  batchSetDueDates(updates: Array<{ todoId: string; dueDate: string }>) {
+    return this.request<{ updatedCount: number }>('/todos/batch-set-due-dates', {
+      method: 'PATCH',
+      body: JSON.stringify({ updates }),
     });
   }
 
@@ -1019,6 +1037,25 @@ export class APIClient {
     return this.fetchBufferedSSE<EnhanceWorkNoteResponse>(`/ai/work-notes/${workId}/enhance`, {
       method: 'POST',
       body: formData,
+    });
+  }
+
+  // AI Deadline Adjustment
+  suggestDeadlineAdjustments(
+    todos: Array<{
+      todoId: string;
+      title: string;
+      description?: string | null;
+      dueDate: string;
+      workTitle?: string;
+      workCategory?: string | null;
+    }>
+  ) {
+    return this.fetchBufferedSSE<{
+      suggestions: Array<{ todoId: string; suggestedDueDate: string; reason: string }>;
+    }>('/ai/todos/suggest-deadline-adjustments', {
+      method: 'POST',
+      body: JSON.stringify({ todos }),
     });
   }
 

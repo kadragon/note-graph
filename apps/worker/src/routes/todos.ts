@@ -10,7 +10,13 @@ import {
   queryValidator,
 } from '../middleware/validation-middleware';
 import { WorkNoteRepository } from '../repositories/work-note-repository';
-import { batchPostponeTodosSchema, listTodosQuerySchema, updateTodoSchema } from '../schemas/todo';
+import {
+  batchPostponeTodosSchema,
+  batchSetDueDatesSchema,
+  listTodosQuerySchema,
+  todoCountsByDateRangeQuerySchema,
+  updateTodoSchema,
+} from '../schemas/todo';
 import { createProtectedRouter } from './_shared/router-factory';
 
 const todos = createProtectedRouter();
@@ -27,6 +33,18 @@ todos.get('/', queryValidator(listTodosQuerySchema), async (c) => {
 });
 
 /**
+ * GET /todos/counts - Get todo counts grouped by due date for a date range
+ * Must be registered before /:todoId to avoid parameter collision
+ */
+todos.get('/counts', queryValidator(todoCountsByDateRangeQuerySchema), async (c) => {
+  const query = getValidatedQuery<typeof todoCountsByDateRangeQuerySchema>(c);
+  const { todos: repository } = c.get('repositories');
+  const counts = await repository.getCountsByDateRange(query.startDate, query.endDate);
+
+  return c.json({ counts });
+});
+
+/**
  * PATCH /todos/batch-postpone - Batch postpone due dates for multiple todos
  * Must be registered before /:todoId to avoid parameter collision
  */
@@ -36,6 +54,18 @@ todos.patch('/batch-postpone', bodyValidator(batchPostponeTodosSchema), async (c
   const result = await repository.batchPostponeDueDates(data);
 
   return c.json({ updatedCount: result.updatedCount, skippedCount: result.skippedCount });
+});
+
+/**
+ * PATCH /todos/batch-set-due-dates - Batch set absolute due dates for multiple todos
+ * Must be registered before /:todoId to avoid parameter collision
+ */
+todos.patch('/batch-set-due-dates', bodyValidator(batchSetDueDatesSchema), async (c) => {
+  const data = getValidatedBody<typeof batchSetDueDatesSchema>(c);
+  const { todos: repository } = c.get('repositories');
+  const result = await repository.batchSetDueDates(data);
+
+  return c.json({ updatedCount: result.updatedCount });
 });
 
 /**

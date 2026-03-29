@@ -109,10 +109,34 @@ export const batchPostponeTodosSchema = z.object({
   unit: z.enum(['day', 'week', 'month']),
 });
 
+/**
+ * Batch set absolute due dates request schema
+ */
+export const batchSetDueDatesSchema = z.object({
+  updates: z
+    .array(
+      z.object({
+        todoId: z.string().min(1),
+        dueDate: dateOrDatetimeSchema,
+      })
+    )
+    .min(1, 'At least one update is required'),
+});
+
+/**
+ * Query parameters for todo counts by date range
+ */
+export const todoCountsByDateRangeQuerySchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD'),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD'),
+});
+
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>;
 export type ListTodosQuery = z.infer<typeof listTodosQuerySchema>;
 export type BatchPostponeTodosInput = z.infer<typeof batchPostponeTodosSchema>;
+export type BatchSetDueDatesInput = z.infer<typeof batchSetDueDatesSchema>;
+export type TodoCountsByDateRangeQuery = z.infer<typeof todoCountsByDateRangeQuerySchema>;
 export type TodoStatus = z.infer<typeof todoStatusSchema>;
 export type RepeatRule = z.infer<typeof repeatRuleSchema>;
 export type RecurrenceType = z.infer<typeof recurrenceTypeSchema>;

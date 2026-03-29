@@ -19,12 +19,17 @@ import {
   SelectValue,
 } from '@web/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@web/components/ui/tabs';
+import { useSuggestDeadlineAdjustments } from '@web/hooks/use-deadline-adjustment';
 import { useDialogState } from '@web/hooks/use-dialog-state';
+import { useToast } from '@web/hooks/use-toast';
 import { useDeleteWorkNote, useWorkNotesWithStats } from '@web/hooks/use-work-notes';
-import type { WorkNoteWithStats } from '@web/types/api';
-import { FileEdit, FileText, Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { API } from '@web/lib/api';
+import type { DeadlineSuggestion, WorkNoteWithStats } from '@web/types/api';
+import type { Todo } from '@web/types/models/todo';
+import { CalendarClock, FileEdit, FileText, Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DeadlineAdjustmentDialog } from './components/deadline-adjustment-dialog';
 import { type SortDirection, type SortKey, WorkNotesTable } from './components/work-notes-table';
 import {
   type CompletedYearFilter,
@@ -48,6 +53,51 @@ export default function WorkNotes() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: workNotes = [], isLoading, error } = useWorkNotesWithStats();
+  const suggestMutation = useSuggestDeadlineAdjustments();
+  const { toast } = useToast();
+
+  const [deadlineSuggestions, setDeadlineSuggestions] = useState<DeadlineSuggestion[] | null>(null);
+  const [deadlineTodos, setDeadlineTodos] = useState<Todo[]>([]);
+
+  const handleDeadlineAdjust = useCallback(async () => {
+    try {
+      const todos = await API.getTodos('remaining');
+      const withDueDate = todos.filter((t) => t.dueDate);
+
+      if (withDueDate.length === 0) {
+        toast({
+          title: '알림',
+          description: '조정할 할일이 없습니다. (마감일이 있는 진행 중 할일이 없음)',
+        });
+        return;
+      }
+
+      setDeadlineTodos(withDueDate);
+
+      const result = await suggestMutation.mutateAsync(
+        withDueDate.map((t) => ({
+          todoId: t.id,
+          title: t.title,
+          description: t.description,
+          dueDate: t.dueDate!,
+          workTitle: t.workTitle,
+          workCategory: t.workCategory,
+        }))
+      );
+
+      if (result.suggestions.length === 0) {
+        toast({
+          title: '알림',
+          description: 'AI가 조정할 사항을 찾지 못했습니다.',
+        });
+        return;
+      }
+
+      setDeadlineSuggestions(result.suggestions);
+    } catch {
+      // Error is handled by the mutation's onError
+    }
+  }, [suggestMutation, toast]);
 
   // Handle ?id=xxx query param — redirect to new URL
   const workNoteIdFromUrl = searchParams.get('id');
@@ -114,6 +164,14 @@ export default function WorkNotes() {
           <p className="page-description">업무노트를 관리하세요</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleDeadlineAdjust}
+            disabled={suggestMutation.isPending}
+          >
+            <CalendarClock className="h-4 w-4 mr-2" />
+            {suggestMutation.isPending ? '분석 중...' : '일정 일괄 조정'}
+          </Button>
           <Button variant="outline" onClick={() => navigate('/work-notes/new/from-text')}>
             <FileEdit className="h-4 w-4 mr-2" />
             텍스트로 만들기
@@ -227,6 +285,17 @@ export default function WorkNotes() {
           </StateRenderer>
         </CardContent>
       </Card>
+
+      {deadlineSuggestions && (
+        <DeadlineAdjustmentDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setDeadlineSuggestions(null);
+          }}
+          suggestions={deadlineSuggestions}
+          todos={deadlineTodos}
+        />
+      )}
 
       <AlertDialog open={deleteDialog.isOpen} onOpenChange={deleteDialog.onOpenChange}>
         <AlertDialogContent>

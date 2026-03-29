@@ -10,6 +10,7 @@ import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context
 import { getTodayDateForOffset } from '../utils/date';
 import { callOpenAIChat, callOpenAIChatStream } from '../utils/openai-chat';
 import {
+  DEFAULT_AI_DEADLINE_ADJUSTMENT_PROMPT,
   DEFAULT_AI_DRAFT_CREATE_PROMPT,
   DEFAULT_AI_DRAFT_CREATE_WITH_CONTEXT_PROMPT,
   DEFAULT_AI_DRAFT_ENHANCE_PROMPT,
@@ -49,6 +50,12 @@ interface TodoDueDateContextOption {
 export interface AIEmailReplyResult {
   subject: string;
   body: string;
+}
+
+export interface DeadlineSuggestion {
+  todoId: string;
+  suggestedDueDate: string;
+  reason: string;
 }
 
 interface EmailReplyAssignee {
@@ -706,5 +713,68 @@ ${this.wrapUserContent('user_input_similar_notes', similarNotesRaw)}`
       maxCompletionTokens: maxCompletionTokens ?? AIDraftService.GPT_MAX_COMPLETION_TOKENS,
       responseFormat: { type: 'json_object' },
     });
+  }
+
+  /**
+   * Suggest deadline adjustments for a batch of todos using AI
+   */
+  async suggestDeadlineAdjustments(
+    todos: Array<{
+      todoId: string;
+      title: string;
+      description?: string | null;
+      dueDate: string;
+      workTitle?: string;
+      workCategory?: string | null;
+    }>,
+    options?: TodoDueDateContextOption
+  ): Promise<DeadlineSuggestion[]> {
+    const template =
+      this.settingService?.getValue(
+        'prompt.ai_deadline_adjustment',
+        DEFAULT_AI_DEADLINE_ADJUSTMENT_PROMPT
+      ) ?? DEFAULT_AI_DEADLINE_ADJUSTMENT_PROMPT;
+
+    const todoLines = todos
+      .map((t) => {
+        const parts = [`- [${t.todoId}] ${t.title}`];
+        if (t.workTitle) parts.push(`  업무노트: ${t.workTitle}`);
+        if (t.workCategory) parts.push(`  카테고리: ${t.workCategory}`);
+        parts.push(`  현재 마감일: ${t.dueDate}`);
+        if (t.description) parts.push(`  설명: ${t.description}`);
+        return parts.join('\n');
+      })
+      .join('\n');
+
+    const prompt = this.renderTemplate(template, {
+      WRITER_CONTEXT: this.getWriterContext(),
+      TODAY_DATE: getTodayDateForOffset(),
+      TODO_LIST: todoLines,
+      TODO_DUE_DATE_CONTEXT: this.buildTodoDueDateContextSection(options?.todoDueDateContext),
+      INJECTION_GUARD: this.buildPromptInjectionGuardSection(),
+    });
+
+    const response = await this.callGPT(
+      prompt,
+      '당신은 업무 일정을 분석하고 최적의 마감일을 제안하는 어시스턴트입니다.',
+      1500,
+      this.getLightweightModel()
+    );
+
+    try {
+      const parsed = JSON.parse(response) as { suggestions: DeadlineSuggestion[] };
+      if (!Array.isArray(parsed.suggestions)) {
+        throw new Error('Invalid response: expected suggestions array');
+      }
+
+      // Filter to only valid todoIds from input
+      const validIds = new Set(todos.map((t) => t.todoId));
+      return parsed.suggestions.filter(
+        (s) => validIds.has(s.todoId) && s.suggestedDueDate && s.reason
+      );
+    } catch (error) {
+      console.error('Error parsing deadline adjustment response:', error);
+      throw new Error('Failed to parse AI response. Please try again.');
+    }
   }
 }

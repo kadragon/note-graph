@@ -1,6 +1,9 @@
 import { FTS_TERM_PATTERN } from './fts-constants';
 
 export function extractWorkNoteFtsTokens(rawQuery: string): string[] {
+  if (typeof rawQuery !== 'string' || rawQuery.length === 0) {
+    return [];
+  }
   return [...new Set(rawQuery.match(FTS_TERM_PATTERN) ?? [])];
 }
 

@@ -312,6 +312,44 @@ JSON 배열로 반환:
 JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
 
 // ============================================================================
+// AI Deadline Adjustment Prompt Default
+// ============================================================================
+
+export const DEFAULT_AI_DEADLINE_ADJUSTMENT_PROMPT = `당신은 업무 일정을 분석하고 최적의 마감일을 제안하는 어시스턴트입니다.
+{{WRITER_CONTEXT}}
+
+오늘 날짜: {{TODAY_DATE}}
+
+[조정 대상 할일 목록]
+{{TODO_LIST}}
+{{TODO_DUE_DATE_CONTEXT}}
+
+위 할일들의 마감일을 분석하여 최적의 일정을 제안해주세요.
+
+분석 기준:
+1. 업무 카테고리별 긴급도와 중요도를 고려하세요.
+2. 이미 지난 마감일은 가능한 빨리 처리할 수 있도록 가까운 날짜로 재배정하세요.
+3. 하루에 너무 많은 마감이 몰리지 않도록 분산하세요.
+4. 주말(토/일)은 피하세요.
+5. 할일 간의 논리적 의존성이 있으면 순서를 고려하세요.
+6. 현재 마감일이 적절하다면 그대로 유지해도 됩니다.
+7. 마감일 분포 정보를 참고하여 과밀한 날짜를 피하세요.
+{{INJECTION_GUARD}}
+
+JSON 형식으로 반환:
+{
+  "suggestions": [
+    {
+      "todoId": "할일 ID",
+      "suggestedDueDate": "YYYY-MM-DD",
+      "reason": "변경 사유 (1문장)"
+    }
+  ]
+}
+
+JSON만 반환하고 다른 텍스트는 포함하지 마세요.`;
+
+// ============================================================================
 // AI Email Reply Prompt Default
 // ============================================================================
 
@@ -430,6 +468,16 @@ export const ALL_DEFAULT_SETTINGS: DefaultSetting[] = [
     description:
       '업무노트 기반으로 할 일을 제안하는 프롬프트입니다.\n사용 가능한 변수: {{WRITER_CONTEXT}}, {{WORK_NOTE_TITLE}}, {{WORK_NOTE_CONTENT}}, {{WORK_NOTE_CATEGORY}}, {{ADDITIONAL_CONTEXT}}, {{TODO_DUE_DATE_CONTEXT}}, {{DUE_DATE_GUIDANCE}}, {{INJECTION_GUARD}}',
     value: DEFAULT_AI_DRAFT_TODO_SUGGESTIONS_PROMPT,
+  },
+
+  // AI Deadline Adjustment
+  {
+    key: 'prompt.ai_deadline_adjustment',
+    category: 'prompt',
+    label: '할일 마감일 일괄 조정 프롬프트',
+    description:
+      'AI가 할일 마감일을 분석하여 최적의 일정을 제안하는 프롬프트입니다.\n사용 가능한 변수: {{WRITER_CONTEXT}}, {{TODAY_DATE}}, {{TODO_LIST}}, {{TODO_DUE_DATE_CONTEXT}}, {{INJECTION_GUARD}}',
+    value: DEFAULT_AI_DEADLINE_ADJUSTMENT_PROMPT,
   },
 
   // AI Email Reply

@@ -14,6 +14,7 @@ import { addDays, addMonths, addWeeks } from 'date-fns';
 import { nanoid } from 'nanoid';
 import type {
   BatchPostponeTodosInput,
+  BatchSetDueDatesInput,
   CreateTodoInput,
   ListTodosQuery,
   UpdateTodoInput,
@@ -443,6 +444,38 @@ export class TodoRepository {
   }
 
   /**
+   * Get todo counts grouped by due date for a date range.
+   * Counts only active ('진행중') todos with a due_date in the range.
+   */
+  async getCountsByDateRange(
+    startDate: string,
+    endDate: string,
+    timezoneOffsetMinutes: number = DEFAULT_TIMEZONE_OFFSET_MINUTES
+  ): Promise<Record<string, number>> {
+    const startWindow = this.getDateWindowForDate(startDate, timezoneOffsetMinutes);
+    const endWindow = this.getDateWindowForDate(endDate, timezoneOffsetMinutes);
+
+    const result = await this.db.query<{ dueDate: string; count: number }>(
+      `SELECT ((due_date AT TIME ZONE 'UTC') + make_interval(mins => $4))::date::text as "dueDate",
+              COUNT(*) as count
+       FROM todos
+       WHERE status = $1
+         AND due_date IS NOT NULL
+         AND due_date >= $2::timestamptz
+         AND due_date < $3::timestamptz
+       GROUP BY 1
+       ORDER BY 1`,
+      ['진행중', startWindow.startOfDayUTC, endWindow.endOfDayUTC, timezoneOffsetMinutes]
+    );
+
+    const counts: Record<string, number> = {};
+    for (const row of result.rows) {
+      counts[row.dueDate] = Number(row.count);
+    }
+    return counts;
+  }
+
+  /**
    * Get open todo due date distribution context for AI prompt guidance.
    */
   async getOpenTodoDueDateContextForAI(limit: number = 10): Promise<OpenTodoDueDateContextForAI> {
@@ -765,5 +798,44 @@ export class TodoRepository {
       skippedCount,
       updatedTodoIds: withDueDate.map((t) => t.todoId),
     };
+  }
+
+  /**
+   * Batch set absolute due dates for multiple todos
+   */
+  async batchSetDueDates(data: BatchSetDueDatesInput): Promise<{
+    updatedCount: number;
+  }> {
+    const { updates } = data;
+
+    const todoIds = updates.map((u) => u.todoId);
+    const existingTodos = await queryInChunks(this.db, todoIds, async (db, chunk, placeholders) => {
+      const r = await db.query<{ todoId: string }>(
+        `SELECT todo_id as "todoId" FROM todos WHERE todo_id IN (${placeholders})`,
+        chunk
+      );
+      return r.rows;
+    });
+
+    if (existingTodos.length === 0) {
+      throw new NotFoundError('Todo', todoIds.join(', '));
+    }
+
+    const existingIds = new Set(existingTodos.map((t) => t.todoId));
+    const validUpdates = updates.filter((u) => existingIds.has(u.todoId));
+
+    if (validUpdates.length === 0) {
+      return { updatedCount: 0 };
+    }
+
+    const nowISO = new Date().toISOString();
+    const statements = validUpdates.map((update) => ({
+      sql: `UPDATE todos SET due_date = $1, updated_at = $2 WHERE todo_id = $3`,
+      params: [update.dueDate, nowISO, update.todoId],
+    }));
+
+    await this.db.executeBatch(statements);
+
+    return { updatedCount: validUpdates.length };
   }
 }
