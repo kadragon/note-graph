@@ -222,6 +222,7 @@ export function useEnhanceWorkNoteForm(
               API.createWorkNoteTodo(workId, {
                 title: todo.title,
                 description: todo.description,
+                priority: todo.priority ?? 3,
                 dueDate: todo.dueDate,
                 repeatRule: 'NONE',
               })

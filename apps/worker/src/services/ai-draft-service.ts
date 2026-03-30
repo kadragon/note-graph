@@ -27,6 +27,7 @@ interface RawAIDraftTodo {
   title: string;
   description: string;
   dueDateSuggestion?: string | null;
+  prioritySuggestion?: number | null;
   repeatRule?: {
     interval: number;
     unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
@@ -145,8 +146,14 @@ export class AIDraftService {
       title: rawTodo.title,
       description: rawTodo.description,
       dueDate: urgent ? todayDate : rawTodo.dueDateSuggestion || todayDate,
+      priority: urgent ? 1 : this.clampPriority(rawTodo.prioritySuggestion),
       repeatRule: rawTodo.repeatRule,
     };
+  }
+
+  private clampPriority(v?: number | null): number {
+    if (!v || v < 1 || v > 4) return 3;
+    return Math.round(v);
   }
 
   /**

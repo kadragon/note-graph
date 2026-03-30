@@ -9,6 +9,7 @@ function createTodo(overrides: Partial<Todo> = {}): Todo {
   return {
     id: 'test-id',
     title: 'Test Todo',
+    priority: 3,
     status: '진행중',
     createdAt: '2025-01-01T00:00:00.000Z',
     updatedAt: '2025-01-01T00:00:00.000Z',

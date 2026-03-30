@@ -72,6 +72,7 @@ export function createTodo(overrides: Partial<Todo> = {}): Todo {
   return {
     id: generateId('todo'),
     title: 'Test Todo',
+    priority: 3,
     status: '진행중',
     createdAt: now,
     updatedAt: now,

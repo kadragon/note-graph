@@ -581,6 +581,7 @@ describe('API.getTodos', () => {
       workNoteId: 'work-1',
       title: '할 일',
       description: '설명',
+      priority: 3,
       status: 'PENDING',
       dueDate: '2024-01-20',
       waitUntil: null,

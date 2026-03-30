@@ -13,6 +13,7 @@ export type {
   RecurrenceType,
   RepeatRule,
   Todo,
+  TodoPriority,
   TodoStatus,
   TodoView,
 } from './models/todo';

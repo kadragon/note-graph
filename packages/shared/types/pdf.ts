@@ -41,6 +41,7 @@ export interface WorkNoteDraft {
     title: string;
     description?: string;
     dueDate?: string;
+    priority?: number;
   }>;
 }
 

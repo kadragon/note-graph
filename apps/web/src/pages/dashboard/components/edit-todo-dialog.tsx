@@ -21,6 +21,7 @@ import type {
   RecurrenceType,
   RepeatRule,
   Todo,
+  TodoPriority,
   TodoStatus,
 } from '@web/types/api';
 import { format, parseISO } from 'date-fns';
@@ -59,6 +60,13 @@ const CUSTOM_UNIT_OPTIONS: Array<{ value: CustomIntervalUnit; label: string }> =
   { value: 'MONTH', label: '개월' },
 ];
 
+const PRIORITY_OPTIONS: Array<{ value: TodoPriority; label: string }> = [
+  { value: 1, label: '긴급' },
+  { value: 2, label: '높음' },
+  { value: 3, label: '보통' },
+  { value: 4, label: '낮음' },
+];
+
 const RECURRENCE_TYPE_OPTIONS: Array<{ value: RecurrenceType; label: string }> = [
   { value: 'DUE_DATE', label: '마감일 기준' },
   { value: 'COMPLETION_DATE', label: '완료일 기준' },
@@ -76,6 +84,7 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
   const [dueDate, setDueDate] = useState('');
   const [waitUntil, setWaitUntil] = useState('');
   const [status, setStatus] = useState<TodoStatus>(TODO_STATUS.IN_PROGRESS);
+  const [priority, setPriority] = useState<TodoPriority>(3);
   const [repeatRule, setRepeatRule] = useState<RepeatRule>('NONE');
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('DUE_DATE');
   const [customInterval, setCustomInterval] = useState<number>(1);
@@ -104,6 +113,7 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
       setDueDate(getClampedDueDate(initialDueDate, initialWaitUntil));
       setWaitUntil(initialWaitUntil);
       setStatus(todo.status);
+      setPriority(todo.priority ?? 3);
       setRepeatRule(todo.repeatRule || 'NONE');
       setRecurrenceType(todo.recurrenceType || 'DUE_DATE');
       setCustomInterval(todo.customInterval || 1);
@@ -136,6 +146,7 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
         data: {
           title: title.trim(),
           description: description.trim(),
+          priority,
           dueDate: effectiveDueDate ? toUTCISOString(effectiveDueDate) : undefined,
           waitUntil: waitUntil ? toUTCISOString(waitUntil) : undefined,
           status,
@@ -204,6 +215,22 @@ export function EditTodoDialog({ todo, open, onOpenChange, workNoteId }: EditTod
                 className={SELECT_CLASS_NAME}
               >
                 {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="priority">우선순위</Label>
+              <select
+                id="priority"
+                value={priority}
+                onChange={(e) => setPriority(Number(e.target.value) as TodoPriority)}
+                className={SELECT_CLASS_NAME}
+              >
+                {PRIORITY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
