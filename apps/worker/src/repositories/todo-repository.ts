@@ -449,7 +449,7 @@ export class TodoRepository {
    */
   async getCountsByDateRange(startDate: string, endDate: string): Promise<Record<string, number>> {
     const result = await this.db.query<{ dueDate: string; count: number }>(
-      `SELECT due_date::text as "dueDate",
+      `SELECT to_char(due_date, 'YYYY-MM-DD') as "dueDate",
               COUNT(*) as count
        FROM todos
        WHERE status = $1
@@ -484,7 +484,7 @@ export class TodoRepository {
         [...openStatuses]
       ),
       this.db.query<{ dueDate: string; count: number }>(
-        `SELECT due_date::text as "dueDate",
+        `SELECT to_char(due_date, 'YYYY-MM-DD') as "dueDate",
                 COUNT(*) as count
          FROM todos
          WHERE status IN ($1, $2, $3)
