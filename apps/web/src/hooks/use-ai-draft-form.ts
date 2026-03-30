@@ -208,6 +208,7 @@ export function useAIDraftForm(options: UseAIDraftFormOptions = {}) {
               API.createWorkNoteTodo(workNote.id, {
                 title: todo.title,
                 description: todo.description,
+                priority: todo.priority ?? 3,
                 dueDate: todo.dueDate,
                 repeatRule: 'NONE',
               })

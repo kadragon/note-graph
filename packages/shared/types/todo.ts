@@ -29,6 +29,11 @@ export type RecurrenceType = 'DUE_DATE' | 'COMPLETION_DATE';
 export type CustomIntervalUnit = 'DAY' | 'WEEK' | 'MONTH';
 
 /**
+ * Todo priority: 1=긴급, 2=높음, 3=보통, 4=낮음
+ */
+export type TodoPriority = 1 | 2 | 3 | 4;
+
+/**
  * Todo entity
  */
 export interface Todo {
@@ -46,6 +51,7 @@ export interface Todo {
   customInterval: number | null; // For CUSTOM repeat rule (e.g., 2 for "every 2 months")
   customUnit: CustomIntervalUnit | null; // Unit for custom interval (DAY, WEEK, MONTH)
   skipWeekends: boolean; // Skip weekends when calculating next due date
+  priority: TodoPriority;
 }
 
 /**

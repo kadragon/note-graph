@@ -6,6 +6,7 @@ import type {
   RecurrenceType,
   RepeatRule,
   Todo,
+  TodoPriority,
   TodoStatus,
 } from '@web/types/models/todo';
 
@@ -18,6 +19,7 @@ export interface BackendTodo {
   workId: string;
   title: string;
   description?: string;
+  priority: number;
   status: TodoStatus;
   dueDate?: string;
   waitUntil?: string;
@@ -43,6 +45,7 @@ export function transformTodoFromBackend(backendTodo: BackendTodo): Todo {
     workCategory: backendTodo.workCategory,
     title: backendTodo.title,
     description: backendTodo.description,
+    priority: (backendTodo.priority ?? 3) as TodoPriority,
     status: backendTodo.status,
     dueDate: backendTodo.dueDate,
     waitUntil: backendTodo.waitUntil,

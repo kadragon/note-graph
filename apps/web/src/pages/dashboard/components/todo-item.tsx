@@ -48,6 +48,19 @@ export function TodoItem({ todo, onTodoClick, showWorkTitle = true }: TodoItemPr
         onClick={handleClick}
       >
         <div className="flex items-center gap-2 flex-wrap">
+          {todo.priority === 1 && (
+            <Badge variant="destructive" className="text-xs">
+              긴급
+            </Badge>
+          )}
+          {todo.priority === 2 && (
+            <Badge className="text-xs bg-orange-500 hover:bg-orange-500/80 text-white">높음</Badge>
+          )}
+          {todo.priority === 4 && (
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              낮음
+            </Badge>
+          )}
           <p
             className={cn(
               'text-sm font-medium leading-tight',

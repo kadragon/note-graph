@@ -9,6 +9,7 @@ import type { Env } from '../types/env';
 import type { OpenTodoDueDateContextForAI } from '../types/todo-due-date-context';
 import { getTodayDateForOffset } from '../utils/date';
 import { callOpenAIChat, callOpenAIChatStream } from '../utils/openai-chat';
+import { clampPriority } from '../utils/priority';
 import {
   DEFAULT_AI_DEADLINE_ADJUSTMENT_PROMPT,
   DEFAULT_AI_DRAFT_CREATE_PROMPT,
@@ -27,6 +28,7 @@ interface RawAIDraftTodo {
   title: string;
   description: string;
   dueDateSuggestion?: string | null;
+  prioritySuggestion?: number | null;
   repeatRule?: {
     interval: number;
     unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
@@ -145,6 +147,7 @@ export class AIDraftService {
       title: rawTodo.title,
       description: rawTodo.description,
       dueDate: urgent ? todayDate : rawTodo.dueDateSuggestion || todayDate,
+      priority: urgent ? 1 : clampPriority(rawTodo.prioritySuggestion),
       repeatRule: rawTodo.repeatRule,
     };
   }

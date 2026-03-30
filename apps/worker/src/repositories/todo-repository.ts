@@ -8,6 +8,7 @@ import type {
   RecurrenceType,
   RepeatRule,
   Todo,
+  TodoPriority,
   TodoWithWorkNote,
 } from '@shared/types/todo';
 import { addDays, addMonths, addWeeks } from 'date-fns';
@@ -139,7 +140,7 @@ export class TodoRepository {
     const result = await this.db.queryOne<Todo>(
       `SELECT todo_id as "todoId", work_id as "workId",
               title, description, created_at as "createdAt", updated_at as "updatedAt",
-              due_date as "dueDate", wait_until as "waitUntil", status,
+              due_date as "dueDate", wait_until as "waitUntil", status, priority,
               repeat_rule as "repeatRule", recurrence_type as "recurrenceType",
               custom_interval as "customInterval", custom_unit as "customUnit",
               skip_weekends as "skipWeekends"
@@ -158,13 +159,13 @@ export class TodoRepository {
     const result = await this.db.query<Todo>(
       `SELECT todo_id as "todoId", work_id as "workId",
               title, description, created_at as "createdAt", updated_at as "updatedAt",
-              due_date as "dueDate", wait_until as "waitUntil", status,
+              due_date as "dueDate", wait_until as "waitUntil", status, priority,
               repeat_rule as "repeatRule", recurrence_type as "recurrenceType",
               custom_interval as "customInterval", custom_unit as "customUnit",
               skip_weekends as "skipWeekends"
        FROM todos
        WHERE work_id = $1
-       ORDER BY created_at DESC`,
+       ORDER BY priority ASC, created_at DESC`,
       [workId]
     );
 
@@ -275,7 +276,7 @@ export class TodoRepository {
     const result = await this.db.query<Todo>(
       `SELECT todo_id as "todoId", work_id as "workId",
               title, description, created_at as "createdAt", updated_at as "updatedAt",
-              due_date as "dueDate", wait_until as "waitUntil", status,
+              due_date as "dueDate", wait_until as "waitUntil", status, priority,
               repeat_rule as "repeatRule", recurrence_type as "recurrenceType",
               custom_interval as "customInterval", custom_unit as "customUnit",
               skip_weekends as "skipWeekends"
@@ -285,7 +286,7 @@ export class TodoRepository {
          AND due_date >= $2::timestamptz
          AND due_date < $3::timestamptz
          AND (wait_until IS NULL OR wait_until < $4::timestamptz)
-       ORDER BY due_date ASC, created_at DESC`,
+       ORDER BY due_date ASC, priority ASC, created_at DESC`,
       ['진행중', startExclusiveUTC, endExclusiveUTC, waitUntilUpperBoundUTC]
     );
 
@@ -298,7 +299,7 @@ export class TodoRepository {
     const result = await this.db.query<Todo>(
       `SELECT todo_id as "todoId", work_id as "workId",
               title, description, created_at as "createdAt", updated_at as "updatedAt",
-              due_date as "dueDate", wait_until as "waitUntil", status,
+              due_date as "dueDate", wait_until as "waitUntil", status, priority,
               repeat_rule as "repeatRule", recurrence_type as "recurrenceType",
               custom_interval as "customInterval", custom_unit as "customUnit",
               skip_weekends as "skipWeekends"
@@ -307,7 +308,7 @@ export class TodoRepository {
          AND due_date IS NOT NULL
          AND due_date < $2::timestamptz
          AND (wait_until IS NULL OR wait_until < $3::timestamptz)
-       ORDER BY due_date ASC, created_at DESC`,
+       ORDER BY due_date ASC, priority ASC, created_at DESC`,
       ['진행중', endOfDayUTC, endOfDayUTC]
     );
 
@@ -357,7 +358,7 @@ export class TodoRepository {
     let sql = `
       SELECT t.todo_id as "todoId", t.work_id as "workId",
              t.title, t.description, t.created_at as "createdAt", t.updated_at as "updatedAt",
-             t.due_date as "dueDate", t.wait_until as "waitUntil", t.status,
+             t.due_date as "dueDate", t.wait_until as "waitUntil", t.status, t.priority,
              t.repeat_rule as "repeatRule", t.recurrence_type as "recurrenceType",
              t.custom_interval as "customInterval", t.custom_unit as "customUnit",
              t.skip_weekends as "skipWeekends",
@@ -437,7 +438,7 @@ export class TodoRepository {
       sql += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    sql += ` ORDER BY t.due_date ASC NULLS LAST, t.created_at DESC`;
+    sql += ` ORDER BY t.due_date ASC NULLS LAST, t.priority ASC, t.created_at DESC`;
 
     const result = await this.db.query<TodoWithWorkNote>(sql, params);
     return result.rows.map((todo) => this.convertTodoFromDb(todo));
@@ -518,9 +519,11 @@ export class TodoRepository {
     const effectiveWaitUntil = data.waitUntil || null;
     const effectiveDueDate = data.dueDate || effectiveWaitUntil || null;
 
+    const effectivePriority = (data.priority ?? 3) as TodoPriority;
+
     await this.db.execute(
-      `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, priority, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [
         todoId,
         workId,
@@ -531,6 +534,7 @@ export class TodoRepository {
         effectiveDueDate,
         effectiveWaitUntil,
         '진행중',
+        effectivePriority,
         data.repeatRule,
         data.recurrenceType || null,
         data.customInterval || null,
@@ -549,6 +553,7 @@ export class TodoRepository {
       dueDate: effectiveDueDate,
       waitUntil: effectiveWaitUntil,
       status: '진행중',
+      priority: effectivePriority,
       repeatRule: data.repeatRule,
       recurrenceType: data.recurrenceType || null,
       customInterval: data.customInterval || null,
@@ -645,6 +650,10 @@ export class TodoRepository {
       updateFields.push(`custom_unit = $${paramIndex++}`);
       updateParams.push(data.customUnit || null);
     }
+    if (data.priority !== undefined) {
+      updateFields.push(`priority = $${paramIndex++}`);
+      updateParams.push(data.priority);
+    }
     if (data.skipWeekends !== undefined) {
       updateFields.push(`skip_weekends = $${paramIndex++}`);
       updateParams.push(data.skipWeekends);
@@ -677,8 +686,8 @@ export class TodoRepository {
         const nextWaitUntil = nextDueDate;
 
         statements.push({
-          sql: `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+          sql: `INSERT INTO todos (todo_id, work_id, title, description, created_at, updated_at, due_date, wait_until, status, priority, repeat_rule, recurrence_type, custom_interval, custom_unit, skip_weekends)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
           params: [
             newTodoId,
             existing.workId,
@@ -689,6 +698,7 @@ export class TodoRepository {
             nextDueDate,
             nextWaitUntil,
             '진행중',
+            existing.priority,
             existing.repeatRule,
             existing.recurrenceType,
             existing.customInterval,
@@ -721,6 +731,7 @@ export class TodoRepository {
       status: data.status !== undefined ? data.status : existing.status,
       dueDate: resultingDueDate,
       waitUntil: resultingWaitUntil,
+      priority: (data.priority !== undefined ? data.priority : existing.priority) as TodoPriority,
       repeatRule: data.repeatRule !== undefined ? data.repeatRule : existing.repeatRule,
       recurrenceType:
         data.recurrenceType !== undefined ? data.recurrenceType || null : existing.recurrenceType,

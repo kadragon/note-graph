@@ -89,6 +89,7 @@ import type { CustomIntervalUnit, RecurrenceType, RepeatRule, TodoStatus } from 
 export interface CreateTodoRequest {
   title: string;
   description?: string;
+  priority?: number;
   dueDate?: string;
   waitUntil?: string;
   repeatRule?: RepeatRule;
@@ -101,6 +102,7 @@ export interface CreateTodoRequest {
 export interface UpdateTodoRequest {
   title?: string;
   description?: string;
+  priority?: number;
   status?: TodoStatus;
   dueDate?: string;
   waitUntil?: string;

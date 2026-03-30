@@ -3,6 +3,7 @@ import type {
   CustomIntervalUnit,
   RecurrenceType,
   RepeatRule,
+  TodoPriority,
 } from '@web/types/api';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -17,6 +18,7 @@ const getTodayString = (): string => {
 export interface TodoFormValues {
   title: string;
   description: string;
+  priority: TodoPriority;
   dueDate: string;
   waitUntil: string;
   repeatRule: RepeatRule;
@@ -29,6 +31,7 @@ export interface TodoFormValues {
 export interface UseTodoFormOptions {
   title?: string;
   description?: string;
+  priority?: TodoPriority;
   dueDate?: string;
   waitUntil?: string;
   repeatRule?: RepeatRule;
@@ -41,6 +44,7 @@ export interface UseTodoFormOptions {
 const getDefaultValues = (): TodoFormValues => ({
   title: '',
   description: '',
+  priority: 3,
   dueDate: getTodayString(),
   waitUntil: '',
   repeatRule: 'NONE',
@@ -86,6 +90,7 @@ export function useTodoForm(initialValues?: UseTodoFormOptions) {
     return {
       title: trimmedTitle,
       description: trimmedDescription || undefined,
+      priority: values.priority,
       dueDate: effectiveDueDate || undefined,
       waitUntil: values.waitUntil || undefined,
       repeatRule: values.repeatRule,

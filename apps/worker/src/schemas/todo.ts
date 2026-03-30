@@ -56,6 +56,7 @@ export const createTodoSchema = z.object({
   recurrenceType: recurrenceTypeSchema.optional(),
   customInterval: z.number().int().min(1).max(365).optional(),
   customUnit: customIntervalUnitSchema.optional(),
+  priority: z.number().int().min(1).max(4).default(3),
   skipWeekends: z.boolean().default(false),
 });
 
@@ -75,6 +76,7 @@ export const updateTodoSchema = z.object({
   recurrenceType: recurrenceTypeSchema.optional(),
   customInterval: z.number().int().min(1).max(365).optional().nullable(),
   customUnit: customIntervalUnitSchema.optional().nullable(),
+  priority: z.number().int().min(1).max(4).optional(),
   skipWeekends: z.boolean().optional(),
 });
 

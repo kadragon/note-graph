@@ -18,6 +18,7 @@ import {
   type ToolCall,
   type ToolDefinition,
 } from '../utils/openai-chat';
+import { clampPriority } from '../utils/priority';
 import type {
   MeetingMinuteReference,
   MeetingMinuteReferenceService,
@@ -46,6 +47,7 @@ interface RawAgentDraft {
     title: string;
     description: string;
     dueDateSuggestion?: string | null;
+    prioritySuggestion?: number | null;
     repeatRule?: { interval: number; unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR' } | null;
   }>;
 }
@@ -380,6 +382,7 @@ ${writerContext}
       "title": "할 일 제목",
       "description": "상세 설명",
       "dueDateSuggestion": "YYYY-MM-DD",
+      "prioritySuggestion": 3,
       "repeatRule": null
     }
   ]
@@ -394,6 +397,13 @@ ${categoryInstruction}
 - 동일 우선순위라면 더 여유 있는 날짜를 선택하세요.
 - 가능한 한 dueDateSuggestion을 명시적으로 제시하세요.
 - 오늘 날짜: ${getTodayDateForOffset()}
+
+## 우선순위 지침
+- prioritySuggestion: 업무의 긴급도와 중요도를 고려하여 1~4 중 선택
+  - 1 (긴급): 즉시 처리가 필요한 긴급 사안
+  - 2 (높음): 중요하고 빠른 처리가 필요한 사안
+  - 3 (보통): 일반적인 업무 (기본값)
+  - 4 (낮음): 여유 있게 처리 가능한 사안
 ${dueDateContext}
 
 ## 보안 지침
@@ -451,6 +461,7 @@ ${dueDateContext}
         title: todo.title,
         description: todo.description,
         dueDate: urgent ? todayDate : todo.dueDateSuggestion || todayDate,
+        priority: urgent ? 1 : clampPriority(todo.prioritySuggestion),
         repeatRule: todo.repeatRule,
       })),
     };

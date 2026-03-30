@@ -11,6 +11,7 @@ import type {
   CustomIntervalUnit,
   RecurrenceType,
   RepeatRule,
+  TodoPriority,
 } from '@web/types/api';
 
 const SELECT_CLASS_NAME =
@@ -28,6 +29,13 @@ const CUSTOM_UNIT_OPTIONS: Array<{ value: CustomIntervalUnit; label: string }> =
   { value: 'DAY', label: '일' },
   { value: 'WEEK', label: '주' },
   { value: 'MONTH', label: '개월' },
+];
+
+const PRIORITY_OPTIONS: Array<{ value: TodoPriority; label: string }> = [
+  { value: 1, label: '긴급' },
+  { value: 2, label: '높음' },
+  { value: 3, label: '보통' },
+  { value: 4, label: '낮음' },
 ];
 
 const RECURRENCE_TYPE_OPTIONS: Array<{ value: RecurrenceType; label: string }> = [
@@ -61,6 +69,21 @@ export function TodoCreationForm({ onSubmit, isPending }: TodoCreationFormProps)
           placeholder="할일을 입력하세요"
           required
         />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="todo-priority">우선순위</Label>
+        <select
+          id="todo-priority"
+          value={values.priority}
+          onChange={(e) => setField('priority', Number(e.target.value) as TodoPriority)}
+          className={SELECT_CLASS_NAME}
+        >
+          {PRIORITY_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="todo-description">설명 (선택사항)</Label>

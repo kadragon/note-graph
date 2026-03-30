@@ -106,6 +106,7 @@ export interface AIDraftTodo {
     interval: number;
     unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
   } | null;
+  priority: number;
 }
 
 /**
