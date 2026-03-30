@@ -23,7 +23,7 @@ import type {
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI, TodoDueDateCount } from '../types/todo-due-date-context';
-import { pgPlaceholders, queryInChunks } from '../utils/db-utils';
+import { pgPlaceholders } from '../utils/db-utils';
 
 const DEFAULT_TIMEZONE_OFFSET_MINUTES = 9 * 60;
 const MINUTE_MS = 60 * 1000;
@@ -754,54 +754,57 @@ export class TodoRepository {
   }> {
     const { todoIds, amount, unit } = data;
 
-    const todos = await queryInChunks(this.db, todoIds, async (db, chunk, placeholders) => {
-      const r = await db.query<{ todoId: string; workId: string; dueDate: string | null }>(
-        `SELECT todo_id as "todoId", work_id as "workId", due_date as "dueDate"
-         FROM todos
-         WHERE todo_id IN (${placeholders})`,
-        chunk
-      );
-      return r.rows;
-    });
+    return this.db.transaction(async (tx) => {
+      const todos: { todoId: string; workId: string; dueDate: string | null }[] = [];
 
-    if (todos.length === 0) {
-      throw new NotFoundError('Todo', todoIds.join(', '));
-    }
+      for (let i = 0; i < todoIds.length; i += 500) {
+        const chunk = todoIds.slice(i, i + 500);
+        const placeholders = chunk.map((_, idx) => `$${idx + 1}`).join(', ');
+        const r = await tx.query<{ todoId: string; workId: string; dueDate: string | null }>(
+          `SELECT todo_id as "todoId", work_id as "workId", due_date as "dueDate"
+           FROM todos
+           WHERE todo_id IN (${placeholders})`,
+          chunk
+        );
+        todos.push(...r.rows);
+      }
 
-    // Verify all belong to the same work note
-    const workIds = new Set(todos.map((t) => t.workId));
-    if (workIds.size > 1) {
-      throw new Error('All todos must belong to the same work note');
-    }
-    const firstTodo = todos[0] as (typeof todos)[number];
-    const workId = firstTodo.workId;
+      if (todos.length === 0) {
+        throw new NotFoundError('Todo', todoIds.join(', '));
+      }
 
-    const nowISO = new Date().toISOString();
-    const withDueDate = todos.filter((t) => t.dueDate !== null);
-    const skippedCount = todos.length - withDueDate.length;
+      // Verify all belong to the same work note
+      const workIds = new Set(todos.map((t) => t.workId));
+      if (workIds.size > 1) {
+        throw new Error('All todos must belong to the same work note');
+      }
+      const firstTodo = todos[0] as (typeof todos)[number];
+      const workId = firstTodo.workId;
 
-    if (withDueDate.length === 0) {
-      return { workId, updatedCount: 0, skippedCount, updatedTodoIds: [] };
-    }
+      const withDueDate = todos.filter((t) => t.dueDate !== null);
+      const skippedCount = todos.length - withDueDate.length;
 
-    const addFn = unit === 'day' ? addDays : unit === 'week' ? addWeeks : addMonths;
+      if (withDueDate.length === 0) {
+        return { workId, updatedCount: 0, skippedCount, updatedTodoIds: [] };
+      }
 
-    const statements = withDueDate.map((todo) => {
-      const newDueDate = addFn(new Date(todo.dueDate as string), amount).toISOString();
+      const addFn = unit === 'day' ? addDays : unit === 'week' ? addWeeks : addMonths;
+
+      for (const todo of withDueDate) {
+        const newDueDate = addFn(new Date(todo.dueDate as string), amount).toISOString();
+        await tx.execute(`UPDATE todos SET due_date = $1 WHERE todo_id = $2`, [
+          newDueDate,
+          todo.todoId,
+        ]);
+      }
+
       return {
-        sql: `UPDATE todos SET due_date = $1, updated_at = $2 WHERE todo_id = $3`,
-        params: [newDueDate, nowISO, todo.todoId],
+        workId,
+        updatedCount: withDueDate.length,
+        skippedCount,
+        updatedTodoIds: withDueDate.map((t) => t.todoId),
       };
     });
-
-    await this.db.executeBatch(statements);
-
-    return {
-      workId,
-      updatedCount: withDueDate.length,
-      skippedCount,
-      updatedTodoIds: withDueDate.map((t) => t.todoId),
-    };
   }
 
   /**
