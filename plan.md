@@ -25,3 +25,7 @@
 - [x] `PRIORITY_OPTIONS` 상수를 공유 상수 파일로 추출 — `edit-todo-dialog.tsx`, `todo-creation-form.tsx` (source: Claude)
 - [x] 우선순위 뱃지 렌더링을 공유 `<PriorityBadge>` 컴포넌트로 추출 — `todo-item.tsx`, `todo-list-item.tsx` (source: Claude)
 - [x] `BackendTodo.priority` 타입을 `number`에서 `TodoPriority`로 강화 — `todo.ts` mapper (source: Claude)
+
+### PR #399 — Extract shared priority components and transaction safety (2026-03-30)
+
+- [ ] `queryInChunks` 유틸을 트랜잭션 컨텍스트에서도 사용 가능하도록 통합 — `todo-repository.ts` 내 수동 청킹 패턴 제거 (source: Claude)
