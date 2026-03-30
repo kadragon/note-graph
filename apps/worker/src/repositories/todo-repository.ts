@@ -447,25 +447,18 @@ export class TodoRepository {
    * Get todo counts grouped by due date for a date range.
    * Counts only active ('진행중') todos with a due_date in the range.
    */
-  async getCountsByDateRange(
-    startDate: string,
-    endDate: string,
-    timezoneOffsetMinutes: number = DEFAULT_TIMEZONE_OFFSET_MINUTES
-  ): Promise<Record<string, number>> {
-    const startWindow = this.getDateWindowForDate(startDate, timezoneOffsetMinutes);
-    const endWindow = this.getDateWindowForDate(endDate, timezoneOffsetMinutes);
-
+  async getCountsByDateRange(startDate: string, endDate: string): Promise<Record<string, number>> {
     const result = await this.db.query<{ dueDate: string; count: number }>(
-      `SELECT ((due_date AT TIME ZONE 'UTC') + make_interval(mins => $4))::date::text as "dueDate",
+      `SELECT due_date::text as "dueDate",
               COUNT(*) as count
        FROM todos
        WHERE status = $1
          AND due_date IS NOT NULL
-         AND due_date >= $2::timestamptz
-         AND due_date < $3::timestamptz
+         AND due_date >= $2::date
+         AND due_date <= $3::date
        GROUP BY 1
        ORDER BY 1`,
-      ['진행중', startWindow.startOfDayUTC, endWindow.endOfDayUTC, timezoneOffsetMinutes]
+      ['진행중', startDate, endDate]
     );
 
     const counts: Record<string, number> = {};
@@ -808,41 +801,44 @@ export class TodoRepository {
   }> {
     const { updates } = data;
 
-    const todoIds = updates.map((u) => u.todoId);
-    const existingTodos = await queryInChunks(this.db, todoIds, async (db, chunk, placeholders) => {
-      const r = await db.query<{ todoId: string; waitUntil: string | null }>(
-        `SELECT todo_id as "todoId", wait_until as "waitUntil" FROM todos WHERE todo_id IN (${placeholders})`,
-        chunk
-      );
-      return r.rows;
+    return this.db.transaction(async (tx) => {
+      const todoIds = updates.map((u) => u.todoId);
+      const existingTodos: { todoId: string; waitUntil: string | null }[] = [];
+
+      for (let i = 0; i < todoIds.length; i += 500) {
+        const chunk = todoIds.slice(i, i + 500);
+        const placeholders = chunk.map((_, idx) => `$${idx + 1}`).join(', ');
+        const r = await tx.query<{ todoId: string; waitUntil: string | null }>(
+          `SELECT todo_id as "todoId", wait_until as "waitUntil" FROM todos WHERE todo_id IN (${placeholders})`,
+          chunk
+        );
+        existingTodos.push(...r.rows);
+      }
+
+      if (existingTodos.length === 0) {
+        throw new NotFoundError('Todo', todoIds.join(', '));
+      }
+
+      const existingMap = new Map(existingTodos.map((t) => [t.todoId, t]));
+      const validUpdates = updates.filter((u) => existingMap.has(u.todoId));
+
+      if (validUpdates.length === 0) {
+        return { updatedCount: 0 };
+      }
+
+      for (const update of validUpdates) {
+        const existing = existingMap.get(update.todoId)!;
+        const dueDate =
+          existing.waitUntil && this.isEarlierDateValue(update.dueDate, existing.waitUntil)
+            ? existing.waitUntil
+            : update.dueDate;
+        await tx.execute(`UPDATE todos SET due_date = $1 WHERE todo_id = $2`, [
+          dueDate,
+          update.todoId,
+        ]);
+      }
+
+      return { updatedCount: validUpdates.length };
     });
-
-    if (existingTodos.length === 0) {
-      throw new NotFoundError('Todo', todoIds.join(', '));
-    }
-
-    const existingMap = new Map(existingTodos.map((t) => [t.todoId, t]));
-    const validUpdates = updates.filter((u) => existingMap.has(u.todoId));
-
-    if (validUpdates.length === 0) {
-      return { updatedCount: 0 };
-    }
-
-    const nowISO = new Date().toISOString();
-    const statements = validUpdates.map((update) => {
-      const existing = existingMap.get(update.todoId)!;
-      const dueDate =
-        existing.waitUntil && this.isEarlierDateValue(update.dueDate, existing.waitUntil)
-          ? existing.waitUntil
-          : update.dueDate;
-      return {
-        sql: `UPDATE todos SET due_date = $1, updated_at = $2 WHERE todo_id = $3`,
-        params: [dueDate, nowISO, update.todoId],
-      };
-    });
-
-    await this.db.executeBatch(statements);
-
-    return { updatedCount: validUpdates.length };
   }
 }

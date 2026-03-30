@@ -45,7 +45,7 @@ export function useToggleTodo(workNoteId?: string) {
         .findAll({ queryKey: qk.todosRoot() })
         .forEach((query) => {
           queryClient.setQueryData<Todo[]>(query.queryKey, (old) => {
-            if (!old) return old;
+            if (!old || !Array.isArray(old)) return old;
             return old.map((todo) => (todo.id === id ? { ...todo, status } : todo));
           });
         });
@@ -205,7 +205,7 @@ export function useDeleteTodo(workNoteId?: string) {
         .findAll({ queryKey: qk.todosRoot() })
         .forEach((query) => {
           queryClient.setQueryData<Todo[]>(query.queryKey, (old) => {
-            if (!old) return old;
+            if (!old || !Array.isArray(old)) return old;
             return old.filter((todo) => todo.id !== todoId);
           });
         });

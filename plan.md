@@ -12,6 +12,6 @@
 
 ### PR #396 — Todo deadline adjustment and calendar counts (2026-03-29)
 
-- [ ] `batchSetDueDates`에서 `updated_at` 수동 설정 제거하고 DB 트리거에 위임 — `todo-repository.ts:834` (source: Gemini)
-- [ ] 날짜 범위 쿼리의 타임존 처리 개선 — `startDate/endDate`를 사용자 타임존 기준으로 변환 — `todo-repository.ts:460` (source: Gemini)
-- [ ] `batchSetDueDates`에 트랜잭션 래핑 적용 — `todo-repository.ts:837` (source: Gemini, Claude)
+- [x] `batchSetDueDates`에서 `updated_at` 수동 설정 제거하고 DB 트리거에 위임 — `todo-repository.ts:834` (source: Gemini)
+- [x] 날짜 범위 쿼리의 타임존 처리 개선 — `startDate/endDate`를 사용자 타임존 기준으로 변환 — `todo-repository.ts:460` (source: Gemini)
+- [x] `batchSetDueDates`에 트랜잭션 래핑 적용 — `todo-repository.ts:837` (source: Gemini, Claude)

@@ -2,7 +2,7 @@
 // Unit tests for TodoRepository CRUD operations
 
 import { TodoRepository } from '@worker/repositories/todo-repository';
-import type { CreateTodoInput, UpdateTodoInput } from '@worker/schemas/todo';
+import type { BatchSetDueDatesInput, CreateTodoInput, UpdateTodoInput } from '@worker/schemas/todo';
 import { NotFoundError } from '@worker/types/errors';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { pgCleanupAll } from '../helpers/pg-test-utils';
@@ -323,6 +323,118 @@ describe('TodoRepository - CRUD Operations', () => {
       expect(result.title).toBe('New Title');
       expect(result.description).toBe('New Description');
       expect(result.status).toBe('완료');
+    });
+  });
+
+  describe('batchSetDueDates()', () => {
+    it('should update due_date and let DB trigger handle updated_at', async () => {
+      // Arrange
+      const todo = await repository.create(testWorkId, {
+        title: 'Trigger test',
+        dueDate: '2026-01-01',
+        repeatRule: 'NONE',
+      });
+
+      // Record the original updated_at
+      const beforeRow = await pglite.query<{ updated_at: string }>(
+        'SELECT updated_at FROM todos WHERE todo_id = $1',
+        [todo.todoId]
+      );
+      const originalUpdatedAt = new Date(beforeRow.rows[0].updated_at).getTime();
+
+      // Small delay to ensure timestamp difference
+      await new Promise((r) => setTimeout(r, 10));
+
+      const input: BatchSetDueDatesInput = {
+        updates: [{ todoId: todo.todoId, dueDate: '2026-06-15' }],
+      };
+
+      // Act
+      const result = await repository.batchSetDueDates(input);
+
+      // Assert
+      expect(result.updatedCount).toBe(1);
+
+      const afterRow = await pglite.query<{ due_date: string; updated_at: string }>(
+        'SELECT due_date, updated_at FROM todos WHERE todo_id = $1',
+        [todo.todoId]
+      );
+      expect(new Date(afterRow.rows[0].due_date).toISOString().slice(0, 10)).toBe('2026-06-15');
+
+      const newUpdatedAt = new Date(afterRow.rows[0].updated_at).getTime();
+      expect(newUpdatedAt).toBeGreaterThan(originalUpdatedAt);
+    });
+
+    it('should atomically update multiple todos in a single transaction', async () => {
+      // Arrange
+      const todo1 = await repository.create(testWorkId, {
+        title: 'Batch tx 1',
+        dueDate: '2026-01-01',
+        repeatRule: 'NONE',
+      });
+      const todo2 = await repository.create(testWorkId, {
+        title: 'Batch tx 2',
+        dueDate: '2026-01-01',
+        repeatRule: 'NONE',
+      });
+
+      const input: BatchSetDueDatesInput = {
+        updates: [
+          { todoId: todo1.todoId, dueDate: '2026-07-01' },
+          { todoId: todo2.todoId, dueDate: '2026-08-01' },
+        ],
+      };
+
+      // Act
+      const result = await repository.batchSetDueDates(input);
+
+      // Assert
+      expect(result.updatedCount).toBe(2);
+
+      const rows = await pglite.query<{ todo_id: string; due_date: string }>(
+        'SELECT todo_id, due_date FROM todos WHERE todo_id IN ($1, $2) ORDER BY todo_id',
+        [todo1.todoId, todo2.todoId]
+      );
+      const dueDates = new Map(
+        rows.rows.map((r) => [r.todo_id, new Date(r.due_date).toISOString().slice(0, 10)])
+      );
+      expect(dueDates.get(todo1.todoId)).toBe('2026-07-01');
+      expect(dueDates.get(todo2.todoId)).toBe('2026-08-01');
+    });
+  });
+
+  describe('getCountsByDateRange()', () => {
+    it('should count todos by due date using direct DATE comparison', async () => {
+      // Arrange — create todos with different due dates
+      await repository.create(testWorkId, {
+        title: 'Todo Mar 15',
+        dueDate: '2026-03-15',
+        repeatRule: 'NONE',
+      });
+      await repository.create(testWorkId, {
+        title: 'Todo Mar 15 second',
+        dueDate: '2026-03-15',
+        repeatRule: 'NONE',
+      });
+      await repository.create(testWorkId, {
+        title: 'Todo Mar 20',
+        dueDate: '2026-03-20',
+        repeatRule: 'NONE',
+      });
+      // Outside range
+      await repository.create(testWorkId, {
+        title: 'Todo Apr 01',
+        dueDate: '2026-04-01',
+        repeatRule: 'NONE',
+      });
+
+      // Act
+      const counts = await repository.getCountsByDateRange('2026-03-01', '2026-03-31');
+
+      // Assert
+      expect(counts['2026-03-15']).toBe(2);
+      expect(counts['2026-03-20']).toBe(1);
+      expect(counts['2026-04-01']).toBeUndefined();
     });
   });
 });
