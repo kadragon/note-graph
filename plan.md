@@ -18,10 +18,14 @@
 
 ### PR #397 — Todo CRUD improvements (2026-03-30)
 
-- [ ] `batchPostponeDueDates`에도 트랜잭션 래핑 + `updated_at` DB 트리거 위임 적용 — `todo-repository.ts:781` (source: Claude)
+- [x] `batchPostponeDueDates`에도 트랜잭션 래핑 + `updated_at` DB 트리거 위임 적용 — `todo-repository.ts:781` (source: Claude)
 
 ### PR #398 — Add todo priority support (2026-03-30)
 
-- [ ] `PRIORITY_OPTIONS` 상수를 공유 상수 파일로 추출 — `edit-todo-dialog.tsx`, `todo-creation-form.tsx` (source: Claude)
-- [ ] 우선순위 뱃지 렌더링을 공유 `<PriorityBadge>` 컴포넌트로 추출 — `todo-item.tsx`, `todo-list-item.tsx` (source: Claude)
-- [ ] `BackendTodo.priority` 타입을 `number`에서 `TodoPriority`로 강화 — `todo.ts` mapper (source: Claude)
+- [x] `PRIORITY_OPTIONS` 상수를 공유 상수 파일로 추출 — `edit-todo-dialog.tsx`, `todo-creation-form.tsx` (source: Claude)
+- [x] 우선순위 뱃지 렌더링을 공유 `<PriorityBadge>` 컴포넌트로 추출 — `todo-item.tsx`, `todo-list-item.tsx` (source: Claude)
+- [x] `BackendTodo.priority` 타입을 `number`에서 `TodoPriority`로 강화 — `todo.ts` mapper (source: Claude)
+
+### PR #399 — Extract shared priority components and transaction safety (2026-03-30)
+
+- [ ] `queryInChunks` 유틸을 트랜잭션 컨텍스트에서도 사용 가능하도록 통합 — `todo-repository.ts` 내 수동 청킹 패턴 제거 (source: Claude)

@@ -34,6 +34,16 @@ export type CustomIntervalUnit = 'DAY' | 'WEEK' | 'MONTH';
 export type TodoPriority = 1 | 2 | 3 | 4;
 
 /**
+ * Priority dropdown options for UI
+ */
+export const PRIORITY_OPTIONS: Array<{ value: TodoPriority; label: string }> = [
+  { value: 1, label: '긴급' },
+  { value: 2, label: '높음' },
+  { value: 3, label: '보통' },
+  { value: 4, label: '낮음' },
+];
+
+/**
  * Todo entity
  */
 export interface Todo {

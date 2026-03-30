@@ -19,7 +19,7 @@ export interface BackendTodo {
   workId: string;
   title: string;
   description?: string;
-  priority: number;
+  priority: TodoPriority;
   status: TodoStatus;
   dueDate?: string;
   waitUntil?: string;
@@ -45,7 +45,7 @@ export function transformTodoFromBackend(backendTodo: BackendTodo): Todo {
     workCategory: backendTodo.workCategory,
     title: backendTodo.title,
     description: backendTodo.description,
-    priority: (backendTodo.priority ?? 3) as TodoPriority,
+    priority: backendTodo.priority ?? 3,
     status: backendTodo.status,
     dueDate: backendTodo.dueDate,
     waitUntil: backendTodo.waitUntil,

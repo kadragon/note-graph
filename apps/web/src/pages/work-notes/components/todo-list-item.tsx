@@ -1,5 +1,6 @@
 // Trace: SPEC-todo-2, PR#121 review feedback - extract reusable todo item component
 
+import { PriorityBadge } from '@web/components/priority-badge';
 import { Badge } from '@web/components/ui/badge';
 import { Button } from '@web/components/ui/button';
 import { Checkbox } from '@web/components/ui/checkbox';
@@ -67,19 +68,7 @@ export function TodoListItem({
           </div>
         )}
         <div className="flex flex-wrap gap-2 mt-1">
-          {todo.priority === 1 && (
-            <Badge variant="destructive" className="text-xs">
-              긴급
-            </Badge>
-          )}
-          {todo.priority === 2 && (
-            <Badge className="text-xs bg-orange-500 hover:bg-orange-500/80 text-white">높음</Badge>
-          )}
-          {todo.priority === 4 && (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              낮음
-            </Badge>
-          )}
+          <PriorityBadge priority={todo.priority} />
           <Badge variant={isCompleted ? 'secondary' : 'default'} className="text-xs">
             {todo.status}
           </Badge>

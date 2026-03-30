@@ -1,4 +1,4 @@
-import { TODO_DESCRIPTION_MAX_LENGTH } from '@shared/types/todo';
+import { PRIORITY_OPTIONS, TODO_DESCRIPTION_MAX_LENGTH } from '@shared/types/todo';
 import { Button } from '@web/components/ui/button';
 import { Checkbox } from '@web/components/ui/checkbox';
 import {
@@ -58,13 +58,6 @@ const CUSTOM_UNIT_OPTIONS: Array<{ value: CustomIntervalUnit; label: string }> =
   { value: 'DAY', label: '일' },
   { value: 'WEEK', label: '주' },
   { value: 'MONTH', label: '개월' },
-];
-
-const PRIORITY_OPTIONS: Array<{ value: TodoPriority; label: string }> = [
-  { value: 1, label: '긴급' },
-  { value: 2, label: '높음' },
-  { value: 3, label: '보통' },
-  { value: 4, label: '낮음' },
 ];
 
 const RECURRENCE_TYPE_OPTIONS: Array<{ value: RecurrenceType; label: string }> = [
