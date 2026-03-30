@@ -18,6 +18,7 @@ import {
   type ToolCall,
   type ToolDefinition,
 } from '../utils/openai-chat';
+import { clampPriority } from '../utils/priority';
 import type {
   MeetingMinuteReference,
   MeetingMinuteReferenceService,
@@ -460,7 +461,7 @@ ${dueDateContext}
         title: todo.title,
         description: todo.description,
         dueDate: urgent ? todayDate : todo.dueDateSuggestion || todayDate,
-        priority: urgent ? 1 : this.clampPriority(todo.prioritySuggestion),
+        priority: urgent ? 1 : clampPriority(todo.prioritySuggestion),
         repeatRule: todo.repeatRule,
       })),
     };
@@ -469,11 +470,6 @@ ${dueDateContext}
   }
 
   // --- Helper methods ---
-
-  private clampPriority(v?: number | null): number {
-    if (!v || v < 1 || v > 4) return 3;
-    return Math.round(v);
-  }
 
   private getWriterContext(): string {
     return (
