@@ -23,15 +23,6 @@ export function pgPlaceholders(count: number, startIndex: number = 1): string {
 }
 
 /**
- * Execute a query function in chunks to avoid PostgreSQL's variable limit.
- * Collects results from all chunks into a single array.
- *
- * @param db - Database client instance
- * @param items - Array of items to process in chunks
- * @param queryFn - Function that executes the query for a chunk, receives the db client, chunk, and placeholder string
- * @returns Combined results from all chunks
- */
-/**
  * Build a multi-row INSERT statement with numbered placeholders.
  * Returns { sql, params } ready for db.execute().
  *
@@ -64,6 +55,15 @@ export function buildMultiRowInsert(
   return { sql, params };
 }
 
+/**
+ * Execute a query function in chunks to avoid PostgreSQL's variable limit.
+ * Collects results from all chunks into a single array.
+ *
+ * @param db - Database client instance
+ * @param items - Array of items to process in chunks
+ * @param queryFn - Function that executes the query for a chunk, receives the db client, chunk, and placeholder string
+ * @returns Combined results from all chunks
+ */
 export async function queryInChunks<T, R>(
   db: QueryClient,
   items: T[],
