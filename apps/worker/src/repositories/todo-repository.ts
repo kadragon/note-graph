@@ -23,7 +23,7 @@ import type {
 import type { DatabaseClient } from '../types/database';
 import { NotFoundError } from '../types/errors';
 import type { OpenTodoDueDateContextForAI, TodoDueDateCount } from '../types/todo-due-date-context';
-import { pgPlaceholders } from '../utils/db-utils';
+import { pgPlaceholders, queryInChunks } from '../utils/db-utils';
 
 const DEFAULT_TIMEZONE_OFFSET_MINUTES = 9 * 60;
 const MINUTE_MS = 60 * 1000;
@@ -755,19 +755,15 @@ export class TodoRepository {
     const { todoIds, amount, unit } = data;
 
     return this.db.transaction(async (tx) => {
-      const todos: { todoId: string; workId: string; dueDate: string | null }[] = [];
-
-      for (let i = 0; i < todoIds.length; i += 500) {
-        const chunk = todoIds.slice(i, i + 500);
-        const placeholders = chunk.map((_, idx) => `$${idx + 1}`).join(', ');
-        const r = await tx.query<{ todoId: string; workId: string; dueDate: string | null }>(
+      const todos = await queryInChunks(tx, todoIds, async (client, chunk, placeholders) => {
+        const r = await client.query<{ todoId: string; workId: string; dueDate: string | null }>(
           `SELECT todo_id as "todoId", work_id as "workId", due_date as "dueDate"
-           FROM todos
-           WHERE todo_id IN (${placeholders})`,
+             FROM todos
+             WHERE todo_id IN (${placeholders})`,
           chunk
         );
-        todos.push(...r.rows);
-      }
+        return r.rows;
+      });
 
       if (todos.length === 0) {
         throw new NotFoundError('Todo', todoIds.join(', '));
@@ -817,17 +813,17 @@ export class TodoRepository {
 
     return this.db.transaction(async (tx) => {
       const todoIds = updates.map((u) => u.todoId);
-      const existingTodos: { todoId: string; waitUntil: string | null }[] = [];
-
-      for (let i = 0; i < todoIds.length; i += 500) {
-        const chunk = todoIds.slice(i, i + 500);
-        const placeholders = chunk.map((_, idx) => `$${idx + 1}`).join(', ');
-        const r = await tx.query<{ todoId: string; waitUntil: string | null }>(
-          `SELECT todo_id as "todoId", wait_until as "waitUntil" FROM todos WHERE todo_id IN (${placeholders})`,
-          chunk
-        );
-        existingTodos.push(...r.rows);
-      }
+      const existingTodos = await queryInChunks(
+        tx,
+        todoIds,
+        async (client, chunk, placeholders) => {
+          const r = await client.query<{ todoId: string; waitUntil: string | null }>(
+            `SELECT todo_id as "todoId", wait_until as "waitUntil" FROM todos WHERE todo_id IN (${placeholders})`,
+            chunk
+          );
+          return r.rows;
+        }
+      );
 
       if (existingTodos.length === 0) {
         throw new NotFoundError('Todo', todoIds.join(', '));

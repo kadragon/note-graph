@@ -71,6 +71,14 @@
 | `AI_GATEWAY` | AI | OpenAI proxy with logging |
 | `ASSETS` | Assets | Static frontend files from `dist/web/` |
 
+## Structural Tests
+
+| Rule | Test File | Status |
+|------|-----------|--------|
+| Routes must not import from repositories | `tests/unit/structural-layer-imports.test.ts` | 3 violations (remediation in backlog) |
+| Repositories must not import from services or routes | `tests/unit/structural-layer-imports.test.ts` | Passing |
+| Services must not import from routes | `tests/unit/structural-layer-imports.test.ts` | Passing |
+
 ## Key Patterns
 
 - **Async Embedding**: CRUD triggers embedding via `c.executionCtx.waitUntil()`. Cron rescues pending every 5 min.

@@ -2,7 +2,12 @@
  * Database utilities for query operations
  */
 
-import type { DatabaseClient } from '../types/database';
+import type { DatabaseClient, TransactionClient } from '../types/database';
+
+/**
+ * Minimal interface for query-capable clients (both DatabaseClient and TransactionClient).
+ */
+export type QueryClient = Pick<DatabaseClient, 'query'> | TransactionClient;
 
 /**
  * PostgreSQL supports up to 32,767 binding variables per query.
@@ -60,9 +65,9 @@ export function buildMultiRowInsert(
 }
 
 export async function queryInChunks<T, R>(
-  db: DatabaseClient,
+  db: QueryClient,
   items: T[],
-  queryFn: (db: DatabaseClient, chunk: T[], placeholders: string) => Promise<R[]>
+  queryFn: (db: QueryClient, chunk: T[], placeholders: string) => Promise<R[]>
 ): Promise<R[]> {
   if (items.length === 0) return [];
 
